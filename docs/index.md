@@ -7,7 +7,7 @@ nav_exclude: true
 <div style="text-align: center;"><img src="assets/img/logo.svg" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
 
 
-OxiBase is a modern embedded SQL database that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer, and features that rival established databases like PostgreSQL and DuckDB. Built entirely in Rust with minimal unsafe code (only for FFI and performance-critical hot paths), OxiBase features:
+OxiBase is a relation database operating system (DBOS) that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer.
 
 - **Multiple Index Types**: B-tree, Hash, and Bitmap indexes with automatic type selection
 - **Multi-Column Indexes**: Composite indexes for complex query patterns
