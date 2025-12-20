@@ -7,11 +7,11 @@ order: 2
 
 # Quick Start Tutorial
 
-This tutorial will guide you through creating your first database with Stoolap and performing basic operations.
+This tutorial will guide you through creating your first database with OxiBase and performing basic operations.
 
 ## Installation
 
-Before starting, ensure you have Stoolap installed. If not, follow the [Installation Guide](installation).
+Before starting, ensure you have OxiBase installed. If not, follow the [Installation Guide](installation).
 
 ```bash
 # Install with Cargo
@@ -25,7 +25,7 @@ cargo build --release
 
 ## Starting the CLI
 
-Stoolap includes a command-line interface (CLI) for interactive use:
+OxiBase includes a command-line interface (CLI) for interactive use:
 
 ```bash
 # Start with an in-memory database (data is lost when the CLI exits)

@@ -129,7 +129,7 @@ fn test_bugs9_multiple_coalesce_aggregates() {
 
 // =============================================================================
 // BUG #8: Column Alias Without AS Keyword Not Supported
-// Problem: Standard SQL allows "SELECT col alias" but Stoolap required "SELECT col AS alias"
+    // Problem: Standard SQL allows "SELECT col alias" but OxiBase required "SELECT col AS alias"
 // =============================================================================
 
 #[test]

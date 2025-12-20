@@ -5,11 +5,11 @@ category: Performance
 order: 5
 ---
 
-# Parallel Execution in Stoolap
+# Parallel Execution in OxiBase
 
 ## Overview
 
-Stoolap's query execution engine is designed to accelerate SQL query processing by operating on data in parallel batches, allowing for better CPU utilization across multiple cores. This document explains the architecture and components of the parallel execution system.
+OxiBase's query execution engine is designed to accelerate SQL query processing by operating on data in parallel batches, allowing for better CPU utilization across multiple cores. This document explains the architecture and components of the parallel execution system.
 
 ## Key Concepts
 
@@ -24,7 +24,7 @@ Key characteristics:
 
 ### Parallelization Thresholds
 
-Stoolap automatically parallelizes operations based on data size:
+OxiBase automatically parallelizes operations based on data size:
 
 | Operation | Threshold | Description |
 |-----------|-----------|-------------|
@@ -113,7 +113,7 @@ Parallel execution provides the greatest benefit for:
 
 ## Best Practices
 
-For optimal performance with Stoolap's parallel execution:
+For optimal performance with OxiBase's parallel execution:
 
 1. **Ensure sufficient data**: Parallel overhead only pays off for larger datasets
 2. **Use appropriate indexes**: Even with parallelism, indexes are still important
@@ -124,7 +124,7 @@ For optimal performance with Stoolap's parallel execution:
 
 ### Rayon Integration
 
-Stoolap uses Rayon for parallel execution:
+OxiBase uses Rayon for parallel execution:
 
 - Work-stealing scheduler for optimal load balancing
 - Automatic thread pool management

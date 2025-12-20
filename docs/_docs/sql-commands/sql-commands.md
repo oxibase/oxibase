@@ -7,7 +7,7 @@ order: 1
 
 # SQL Commands
 
-This document provides a comprehensive reference to SQL commands supported by Stoolap.
+This document provides a comprehensive reference to SQL commands supported by OxiBase.
 
 ## Data Manipulation Language (DML)
 
@@ -72,7 +72,7 @@ HAVING COUNT(*) > 5;
 
 #### JOIN Operations
 
-Stoolap supports all standard JOIN types:
+OxiBase supports all standard JOIN types:
 
 ```sql
 -- INNER JOIN
@@ -552,7 +552,7 @@ ON table_name (column_name [, column_name...]);
 
 #### Index Type Selection
 
-Stoolap automatically selects the optimal index type based on column data type:
+OxiBase automatically selects the optimal index type based on column data type:
 
 | Data Type | Index Type | Best For |
 |-----------|------------|----------|
@@ -772,7 +772,7 @@ See [Parameter Binding](../sql-features/parameter-binding) for detailed document
 
 ## Notes
 
-1. **Transactions**: Stoolap provides MVCC-based transactions for concurrent operations
+1. **Transactions**: OxiBase provides MVCC-based transactions for concurrent operations
 2. **NULL Handling**: Follows standard SQL NULL semantics; use IS NULL or IS NOT NULL for testing
 3. **Type Conversion**: Explicit CAST is recommended for clarity
 4. **Case Sensitivity**: SQL keywords are case-insensitive; identifiers are case-sensitive

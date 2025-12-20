@@ -7,7 +7,7 @@ order: 6
 
 # Operators and Expressions
 
-Stoolap supports a comprehensive set of SQL operators for building expressions in SELECT, WHERE, HAVING, and other clauses.
+OxiBase supports a comprehensive set of SQL operators for building expressions in SELECT, WHERE, HAVING, and other clauses.
 
 ## Comparison Operators
 

@@ -7,15 +7,15 @@ order: 9
 
 # NULL Handling
 
-This document explains how NULL values are handled in Stoolap based on test files and implementation details.
+This document explains how NULL values are handled in OxiBase based on test files and implementation details.
 
 ## Overview
 
-Stoolap follows standard SQL semantics for NULL values, representing the absence of a value. NULL is distinct from zero, empty string, or any other value.
+OxiBase follows standard SQL semantics for NULL values, representing the absence of a value. NULL is distinct from zero, empty string, or any other value.
 
 ## NULL Behavior in SQL
 
-In Stoolap, NULL follows these standard SQL behaviors:
+In OxiBase, NULL follows these standard SQL behaviors:
 
 - NULL is not equal to any value, including another NULL
 - Comparisons with NULL generally yield NULL, not TRUE or FALSE
@@ -25,7 +25,7 @@ In Stoolap, NULL follows these standard SQL behaviors:
 
 ## Column NULL Constraints
 
-Columns in Stoolap can be defined as nullable (the default) or NOT NULL:
+Columns in OxiBase can be defined as nullable (the default) or NOT NULL:
 
 ```sql
 -- Create a table with both nullable and NOT NULL columns
@@ -85,7 +85,7 @@ WHERE float_val IS NOT NULL AND bool_val = FALSE;  -- Returns 3
 
 ## NULL in Indexes
 
-Stoolap supports indexing columns that contain NULL values:
+OxiBase supports indexing columns that contain NULL values:
 
 ```sql
 -- Create a table with nullable columns

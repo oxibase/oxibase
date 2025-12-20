@@ -7,11 +7,11 @@ order: 7
 
 # Persistence
 
-Stoolap provides durable storage through a combination of Write-Ahead Logging (WAL) and periodic snapshots. This architecture ensures data durability while maintaining high performance.
+OxiBase provides durable storage through a combination of Write-Ahead Logging (WAL) and periodic snapshots. This architecture ensures data durability while maintaining high performance.
 
 ## Overview
 
-Stoolap's persistence layer consists of two main components:
+OxiBase's persistence layer consists of two main components:
 
 1. **Write-Ahead Log (WAL)**: Records all changes before they're applied to memory
 2. **Snapshots**: Periodic full copies of the database state
@@ -136,7 +136,7 @@ The filename includes the timestamp of creation.
 
 ## Recovery Process
 
-When opening a database, Stoolap performs recovery automatically:
+When opening a database, OxiBase performs recovery automatically:
 
 1. **Load Latest Snapshot**: Restore base state from most recent snapshot
 2. **Replay WAL**: Apply any operations logged after the snapshot
@@ -239,7 +239,7 @@ A persistent database creates this directory structure:
 ### Corrupt WAL
 
 If WAL corruption is detected during recovery:
-- Stoolap attempts to recover up to the last valid entry
+- OxiBase attempts to recover up to the last valid entry
 - Corrupted entries at the end are discarded
 - A warning is logged
 

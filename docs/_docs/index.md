@@ -3,13 +3,13 @@ title: Documentation
 layout: doc
 ---
 
-# Stoolap Documentation
+# OxiBase Documentation
 
-Welcome to the Stoolap Documentation! This is your comprehensive guide to using and understanding Stoolap, a high-performance embedded SQL database written in pure Rust.
+Welcome to the OxiBase Documentation! This is your comprehensive guide to using and understanding OxiBase, a high-performance embedded SQL database written in pure Rust.
 
-## What is Stoolap?
+## What is OxiBase?
 
-Stoolap is a modern embedded SQL database that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer, and features that rival established databases like PostgreSQL and DuckDB. Built entirely in Rust with minimal unsafe code (only for FFI and performance-critical hot paths), Stoolap features:
+OxiBase is a modern embedded SQL database that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer, and features that rival established databases like PostgreSQL and DuckDB. Built entirely in Rust with minimal unsafe code (only for FFI and performance-critical hot paths), OxiBase features:
 
 - **Multiple Index Types**: B-tree, Hash, and Bitmap indexes with automatic type selection
 - **Multi-Column Indexes**: Composite indexes for complex query patterns

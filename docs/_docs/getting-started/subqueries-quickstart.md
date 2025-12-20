@@ -5,9 +5,9 @@ category: Getting Started
 order: 5
 ---
 
-# Quick Start: Using Subqueries in Stoolap
+# Quick Start: Using Subqueries in OxiBase
 
-This guide provides a quick introduction to using subqueries in Stoolap SQL statements.
+This guide provides a quick introduction to using subqueries in OxiBase SQL statements.
 
 ## What are Subqueries?
 
@@ -164,7 +164,7 @@ JOIN (
 
 ## Supported Features
 
-Stoolap fully supports:
+OxiBase fully supports:
 - ✅ IN and NOT IN subqueries
 - ✅ EXISTS and NOT EXISTS operators
 - ✅ Scalar subqueries (returning single values)

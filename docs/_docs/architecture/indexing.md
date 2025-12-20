@@ -5,13 +5,13 @@ category: Architecture
 order: 3
 ---
 
-# Indexing in Stoolap
+# Indexing in OxiBase
 
-This document explains Stoolap's indexing system, including the types of indexes available, when to use each type, and best practices for index management.
+This document explains OxiBase's indexing system, including the types of indexes available, when to use each type, and best practices for index management.
 
 ## Index Types
 
-Stoolap supports three primary index types, each optimized for different query patterns:
+OxiBase supports three primary index types, each optimized for different query patterns:
 
 ### 1. B-tree Indexes
 
@@ -88,7 +88,7 @@ CREATE INDEX idx_verified ON users(verified) USING BITMAP;
 
 ## Automatic Index Type Selection
 
-When you create an index without specifying a type, Stoolap automatically selects the optimal type based on the column's data type:
+When you create an index without specifying a type, OxiBase automatically selects the optimal type based on the column's data type:
 
 | Data Type | Default Index | Reason |
 |-----------|---------------|--------|
@@ -116,7 +116,7 @@ CREATE INDEX idx_status_bitmap ON orders(status) USING BITMAP;
 
 ## Multi-Column Indexes
 
-Stoolap supports composite indexes on multiple columns:
+OxiBase supports composite indexes on multiple columns:
 
 ```sql
 -- Create a multi-column index
@@ -148,7 +148,7 @@ SELECT * FROM orders WHERE customer_id = 100;
 
 ## Index Intersection
 
-When multiple indexes exist on different columns, Stoolap can combine them:
+When multiple indexes exist on different columns, OxiBase can combine them:
 
 ```sql
 -- If idx_category (Hash) and idx_price (B-tree) exist:
@@ -189,7 +189,7 @@ DROP INDEX index_name ON table_name;
 
 ## Index and MVCC
 
-Stoolap's indexes are integrated with the MVCC system:
+OxiBase's indexes are integrated with the MVCC system:
 
 - Indexes are updated during transaction commit
 - For UPDATE: old values removed, new values added
@@ -263,7 +263,7 @@ ANALYZE orders;
 
 ## Implementation Notes
 
-Stoolap's indexes are implemented in:
+OxiBase's indexes are implemented in:
 
 - `src/storage/mvcc/btree_index.rs` - B-tree index implementation
 - `src/storage/mvcc/hash_index.rs` - Hash index implementation

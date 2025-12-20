@@ -1,17 +1,17 @@
 ---
 layout: doc
-title: Data Types in Stoolap
+title: Data Types in OxiBase
 category: Data Types
 order: 1
 ---
 
-# Data Types in Stoolap
+# Data Types in OxiBase
 
-This document provides information about the data types supported in Stoolap, based on evidence from test files and implementations.
+This document provides information about the data types supported in OxiBase, based on evidence from test files and implementations.
 
 ## Supported Data Types
 
-Stoolap supports the following data types:
+OxiBase supports the following data types:
 
 ### INTEGER
 
@@ -148,7 +148,7 @@ Features:
 
 ## Column Constraints
 
-Stoolap supports several column constraints:
+OxiBase supports several column constraints:
 
 ### PRIMARY KEY
 
@@ -241,7 +241,7 @@ Note: CHECK must be specified as a column constraint (inline with column definit
 
 ## NULL Values
 
-Stoolap fully supports NULL values:
+OxiBase fully supports NULL values:
 
 ```sql
 -- Column definition with nullable columns
@@ -266,7 +266,7 @@ Features:
 
 ## Type Conversions
 
-Stoolap supports type casting between compatible types:
+OxiBase supports type casting between compatible types:
 
 ```sql
 -- Explicit CAST

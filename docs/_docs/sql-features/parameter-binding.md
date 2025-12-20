@@ -7,7 +7,7 @@ order: 10
 
 # Parameter Binding
 
-Stoolap supports parameterized queries using positional parameters (`$1`, `$2`, etc.) to prevent SQL injection and improve performance through query plan reuse.
+OxiBase supports parameterized queries using positional parameters (`$1`, `$2`, etc.) to prevent SQL injection and improve performance through query plan reuse.
 
 ## Syntax
 
@@ -70,7 +70,7 @@ db.execute("INSERT INTO users VALUES ($1, $2, $3)", params![3, name, age])?;
 
 ### Named Parameters
 
-Stoolap also supports named parameters with the `:name` syntax:
+OxiBase also supports named parameters with the `:name` syntax:
 
 ```rust
 use oxibase::{Database, named_params};

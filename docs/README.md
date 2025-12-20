@@ -1,6 +1,6 @@
-# Stoolap Documentation Website
+# OxiBase Documentation Website
 
-This directory contains the GitHub Pages website for Stoolap, hosted at [stoolap.io](https://stoolap.io). It includes comprehensive documentation migrated from the project's GitHub Wiki.
+This directory contains the GitHub Pages website for OxiBase, hosted at [oxibase.io](https://oxibase.io). It includes comprehensive documentation migrated from the project's GitHub Wiki.
 
 ## Local Development
 
@@ -36,7 +36,7 @@ To run the website locally:
 - `_layouts/` - Page layouts
 - `_includes/` - Reusable components
 - `_docs/` - Documentation pages organized by category:
-  - `architecture/` - Design and implementation of Stoolap components
+  - `architecture/` - Design and implementation of OxiBase components
   - `data-types/` - Information about supported data types
   - `functions/` - SQL function reference
   - `getting-started/` - Installation and quick start guides
@@ -80,4 +80,4 @@ The website uses a custom theme based on Jekyll's minimal theme with support for
 - Light and dark mode (automatically detects system preference with manual toggle)
 - Responsive design for all device sizes
 - Encode Sans font
-- Stoolap brand colors
+- OxiBase brand colors

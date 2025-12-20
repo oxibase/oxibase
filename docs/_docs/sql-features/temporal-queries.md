@@ -7,7 +7,7 @@ order: 1
 
 # Temporal Queries (AS OF)
 
-Stoolap supports temporal queries using the SQL:2011 standard `AS OF` clause, allowing you to query historical data at a specific point in time. This feature leverages Stoolap's MVCC (Multi-Version Concurrency Control) architecture to provide time travel capabilities.
+OxiBase supports temporal queries using the SQL:2011 standard `AS OF` clause, allowing you to query historical data at a specific point in time. This feature leverages OxiBase's MVCC (Multi-Version Concurrency Control) architecture to provide time travel capabilities.
 
 ## Overview
 
@@ -21,7 +21,7 @@ The `AS OF` clause enables you to view data as it existed at a specific transact
 
 ## Syntax
 
-Stoolap supports two types of temporal queries:
+OxiBase supports two types of temporal queries:
 
 ### AS OF TRANSACTION
 
@@ -85,11 +85,11 @@ WHERE users.status = 'active';
 
 ## How It Works
 
-1. **Transaction-based Queries**: When using `AS OF TRANSACTION`, Stoolap finds all row versions that were visible to that specific transaction ID.
+1. **Transaction-based Queries**: When using `AS OF TRANSACTION`, OxiBase finds all row versions that were visible to that specific transaction ID.
 
-2. **Timestamp-based Queries**: When using `AS OF TIMESTAMP`, Stoolap finds the newest version of each row that was created before or at the specified timestamp.
+2. **Timestamp-based Queries**: When using `AS OF TIMESTAMP`, OxiBase finds the newest version of each row that was created before or at the specified timestamp.
 
-3. **Version Chain Traversal**: Stoolap traverses the version chain for each row from newest to oldest, finding the appropriate version based on the temporal criteria.
+3. **Version Chain Traversal**: OxiBase traverses the version chain for each row from newest to oldest, finding the appropriate version based on the temporal criteria.
 
 4. **Deletion Handling**: Deleted rows are properly handled - if a row was deleted before the AS OF point, it won't appear in the results.
 
@@ -97,7 +97,7 @@ WHERE users.status = 'active';
 
 ### Timestamp Format
 
-- Timestamps should be provided in UTC to match Stoolap's internal timestamp handling
+- Timestamps should be provided in UTC to match OxiBase's internal timestamp handling
 - The timestamp string format is flexible and supports ISO 8601 and common date/time formats
 - Common formats include:
   - `'2025-06-10 14:30:00'`
@@ -153,7 +153,7 @@ WHERE current.product_id = historical.product_id;
 
 ## Future Enhancements
 
-The AS OF feature is the foundation for Stoolap's planned "Git for Data" functionality, which will include:
+The AS OF feature is the foundation for OxiBase's planned "Git for Data" functionality, which will include:
 
 - Named branches for data versioning
 - Data merging capabilities

@@ -43,8 +43,8 @@ cargo build --release
 Or build from source:
 
 ```bash
-git clone https://github.com/stoolap/stoolap.git
-cd stoolap
+git clone https://github.com/oxibase/oxibase.git
+cd oxibase
 cargo build --release
 ```
 
@@ -120,7 +120,7 @@ WHERE current.price != historical.price;
 
 ### Index Types
 
-Stoolap automatically selects optimal index types, or you can specify explicitly:
+OxiBase automatically selects optimal index types, or you can specify explicitly:
 
 ```sql
 -- B-tree: Range queries, sorting, prefix matching
@@ -271,7 +271,7 @@ WHERE c.country = 'US';
 
 ## Persistence
 
-Stoolap uses write-ahead logging (WAL) with periodic snapshots:
+OxiBase uses write-ahead logging (WAL) with periodic snapshots:
 
 ```bash
 # In-memory (default) - data lost on exit

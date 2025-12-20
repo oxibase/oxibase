@@ -5,13 +5,13 @@ category: Getting Started
 order: 4
 ---
 
-# Stoolap API Reference
+# OxiBase API Reference
 
-This document provides a comprehensive reference for the Stoolap Rust API.
+This document provides a comprehensive reference for the OxiBase Rust API.
 
 ## Database API
 
-The `Database` struct is the main entry point for using Stoolap.
+The `Database` struct is the main entry point for using OxiBase.
 
 ### Opening a Database
 

@@ -7,15 +7,15 @@ order: 8
 
 # DISTINCT Operations
 
-This document explains DISTINCT operations in Stoolap based on the implementation and test files.
+This document explains DISTINCT operations in OxiBase based on the implementation and test files.
 
 ## Overview
 
-Stoolap supports the DISTINCT keyword to eliminate duplicate rows from query results. This feature is essential for retrieving unique values or combinations of values from tables.
+OxiBase supports the DISTINCT keyword to eliminate duplicate rows from query results. This feature is essential for retrieving unique values or combinations of values from tables.
 
 ## Syntax
 
-Stoolap supports these DISTINCT syntax patterns:
+OxiBase supports these DISTINCT syntax patterns:
 
 ```sql
 -- Basic DISTINCT on single column
@@ -119,9 +119,9 @@ SELECT COUNT(DISTINCT category) FROM sales;
 -- Result: 3 (Electronics, Clothing, Books)
 ```
 
-## How DISTINCT Works in Stoolap
+## How DISTINCT Works in OxiBase
 
-Stoolap implements DISTINCT operations through the following mechanism:
+OxiBase implements DISTINCT operations through the following mechanism:
 
 1. The query executor detects the DISTINCT keyword during SQL parsing
 2. After retrieving the base result set, but before applying ORDER BY or LIMIT, the result is filtered for uniqueness
@@ -174,7 +174,7 @@ Based on the implementation:
 
 ## Implementation Details
 
-Internally, Stoolap:
+Internally, OxiBase:
 
 1. Creates a map to track unique rows
 2. Generates a unique key for each row based on its values

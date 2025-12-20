@@ -7,7 +7,7 @@ order: 6
 
 # Expression Pushdown
 
-This document explains Stoolap's expression pushdown optimization, which moves filtering operations closer to the data to improve query performance.
+This document explains OxiBase's expression pushdown optimization, which moves filtering operations closer to the data to improve query performance.
 
 ## What is Expression Pushdown?
 
@@ -31,11 +31,11 @@ Depending on the query, expression pushdown can provide:
 - 2-10x improvement in query execution time
 - Significant memory usage reduction
 
-## How Expression Pushdown Works in Stoolap
+## How Expression Pushdown Works in OxiBase
 
 ### Pushdown Levels
 
-Stoolap implements expression pushdown at multiple levels:
+OxiBase implements expression pushdown at multiple levels:
 
 1. **Storage Level Pushdown** - Expressions pushed directly to storage
 2. **Index Level Pushdown** - Expressions leveraging indexes (B-tree, Hash, Bitmap)
@@ -57,7 +57,7 @@ When processing a query with filtering conditions:
 
 ## Expression Types
 
-Not all expressions can be pushed down. Stoolap categorizes expressions by pushdown eligibility:
+Not all expressions can be pushed down. OxiBase categorizes expressions by pushdown eligibility:
 
 ### Fully Pushable Expressions
 
@@ -121,7 +121,7 @@ Expressions are translated from SQL syntax to storage-level predicates:
 
 ### Specialized Expression Types
 
-Stoolap implements specialized expression types for efficient pushdown:
+OxiBase implements specialized expression types for efficient pushdown:
 
 - **SimpleExpression** - Basic comparison operations
 - **BetweenExpression** - Range checks
@@ -135,7 +135,7 @@ These expression types are implemented in `src/storage/expression/`.
 
 ### Storage-Level Implementation
 
-At the storage level, Stoolap implements optimized filtering:
+At the storage level, OxiBase implements optimized filtering:
 
 - **Index-Based Filtering** - Filter operations using B-tree, Hash, and Bitmap indexes
 - **Parallel Evaluation** - Multi-threaded predicate evaluation using Rayon
@@ -247,7 +247,7 @@ WHERE LOWER(name) LIKE '%organic%';
 
 ## Implementation Details
 
-Stoolap's expression pushdown is implemented in several components:
+OxiBase's expression pushdown is implemented in several components:
 
 - **src/executor/query.rs** - High-level pushdown decisions
 - **src/executor/planner.rs** - Query planning with pushdown
@@ -268,7 +268,7 @@ To maximize the benefits of expression pushdown:
 
 ### Custom Expressions
 
-Stoolap allows for specialized expression types:
+OxiBase allows for specialized expression types:
 
 ```sql
 -- Range expressions are highly optimized

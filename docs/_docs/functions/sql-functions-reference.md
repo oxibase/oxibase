@@ -7,7 +7,7 @@ order: 1
 
 # SQL Functions Reference
 
-This document provides a comprehensive reference for the SQL functions supported by Stoolap, categorized by function type.
+This document provides a comprehensive reference for the SQL functions supported by OxiBase, categorized by function type.
 
 ## Aggregate Functions
 
@@ -269,7 +269,7 @@ HAVING SUM(total) > 10000;
 
 ## Implementation Details
 
-Stoolap's function implementation is modular and extensible:
+OxiBase's function implementation is modular and extensible:
 
 - **Function Registry** - Central registry of all available functions
 - **Type Checking** - Functions validate argument types at parse time

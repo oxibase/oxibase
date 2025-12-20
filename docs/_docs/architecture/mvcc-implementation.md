@@ -7,11 +7,11 @@ order: 4
 
 # MVCC Implementation
 
-This document provides a detailed explanation of Stoolap's Multi-Version Concurrency Control (MVCC) implementation, which enables transaction isolation without locking.
+This document provides a detailed explanation of OxiBase's Multi-Version Concurrency Control (MVCC) implementation, which enables transaction isolation without locking.
 
 ## MVCC Overview
 
-Multi-Version Concurrency Control (MVCC) is a concurrency control method used by Stoolap to provide transaction isolation. The key principles are:
+Multi-Version Concurrency Control (MVCC) is a concurrency control method used by OxiBase to provide transaction isolation. The key principles are:
 
 1. Maintain full version chains for each row with unlimited history
 2. Track deletion status with transaction IDs for proper visibility
@@ -21,7 +21,7 @@ Multi-Version Concurrency Control (MVCC) is a concurrency control method used by
 
 ## Design Philosophy
 
-Stoolap implements a **true multi-version MVCC** design:
+OxiBase implements a **true multi-version MVCC** design:
 
 - **Full Version Chains**: Unlimited version history per row linked via `prev` pointers
 - **In-Memory Chains**: Version chains built from WAL replay during recovery
@@ -64,7 +64,7 @@ The `prev` pointer creates a backward-linked chain from newest to oldest version
 
 ## Transaction IDs and Timestamps
 
-Stoolap uses monotonic sequences instead of wall-clock timestamps to avoid platform-specific timing issues:
+OxiBase uses monotonic sequences instead of wall-clock timestamps to avoid platform-specific timing issues:
 
 - **Transaction ID**: Unique identifier assigned atomically
 - **Begin Sequence**: Monotonic sequence when transaction starts
@@ -157,7 +157,7 @@ Write-write conflict detection during commit:
 ```rust
 // Check for conflicts before commit
 if version_store.check_write_conflict(&written_rows, begin_seq) {
-    return Err(StoolapError::Transaction(
+    return Err(OxiBaseError::Transaction(
         "transaction aborted due to write-write conflict".to_string()
     ));
 }

@@ -208,7 +208,7 @@ fn test_case_sensitivity() {
     )
     .expect("Failed to insert with mixed case column");
 
-    // Query returns lowercase column names (Stoolap normalizes internally)
+    // Query returns lowercase column names (OxiBase normalizes internally)
     let result = db
         .query(r#"SELECT "MyColumn" FROM case_test"#, ())
         .expect("Failed to query");

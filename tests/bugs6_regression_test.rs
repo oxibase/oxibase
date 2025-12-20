@@ -48,7 +48,7 @@ fn test_bugs6_line_comment_after_semicolon_piped() {
     // Read and execute the file content
     let sql = std::fs::read_to_string(file.path()).expect("Failed to read temp file");
 
-    // Execute statements one by one (simulating what stoolap CLI does)
+    // Execute statements one by one (simulating what oxibase CLI does)
     for stmt in sql.lines().filter(|l| !l.trim().is_empty()) {
         db.execute(stmt, ())
             .unwrap_or_else(|_| panic!("Failed to execute: {}", stmt));

@@ -7,7 +7,7 @@ order: 2
 
 # Scalar Functions
 
-Stoolap provides a comprehensive set of scalar functions that operate on individual values and return a single result. This document covers all available scalar functions organized by category.
+OxiBase provides a comprehensive set of scalar functions that operate on individual values and return a single result. This document covers all available scalar functions organized by category.
 
 ## String Functions
 
@@ -513,7 +513,7 @@ SELECT TYPEOF(NULL);                       -- Returns 'NULL'
 
 ## JSON Functions
 
-Stoolap provides comprehensive JSON support for storing and querying JSON data.
+OxiBase provides comprehensive JSON support for storing and querying JSON data.
 
 ### JSON_EXTRACT
 Extracts a value from JSON using a path expression.
@@ -577,7 +577,7 @@ SELECT JSON_OBJECT('name', 'Alice', 'age', 30);   -- '{"age":30,"name":"Alice"}'
 ## Utility Functions
 
 ### VERSION
-Returns the Stoolap version string.
+Returns the OxiBase version string.
 
 ```sql
 SELECT VERSION();                          -- Returns version info

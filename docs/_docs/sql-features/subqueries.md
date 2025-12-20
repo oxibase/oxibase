@@ -5,9 +5,9 @@ category: SQL Features
 order: 3
 ---
 
-# Subqueries in Stoolap
+# Subqueries in OxiBase
 
-Stoolap supports both correlated and non-correlated subqueries in SQL statements, allowing you to use the results of one query within another query. This enables complex data operations and filtering based on dynamic conditions.
+OxiBase supports both correlated and non-correlated subqueries in SQL statements, allowing you to use the results of one query within another query. This enables complex data operations and filtering based on dynamic conditions.
 
 ## Supported Subquery Types
 
@@ -342,11 +342,11 @@ WHERE id = 5;
 
 ## How Subqueries Work
 
-Stoolap processes subqueries differently based on their type:
+OxiBase processes subqueries differently based on their type:
 
 ### Non-Correlated Subqueries
 
-For non-correlated subqueries, Stoolap uses a two-phase approach:
+For non-correlated subqueries, OxiBase uses a two-phase approach:
 
 1. **Evaluation Phase**: The subquery is executed first and its results are collected
 2. **Substitution Phase**: The subquery is replaced with its results before the main query executes
@@ -517,7 +517,7 @@ WHERE customer_id NOT IN (
 
 ## Limitations
 
-Currently, Stoolap supports the following subquery features:
+Currently, OxiBase supports the following subquery features:
 
 **Supported:**
 - EXISTS and NOT EXISTS operators (both correlated and non-correlated)
@@ -573,9 +573,9 @@ WHERE price > (
 
 ## Future Enhancements
 
-Stoolap's subquery support is comprehensive. Planned enhancements include:
+OxiBase's subquery support is comprehensive. Planned enhancements include:
 
 - Performance optimizations for correlated subqueries (caching, decorrelation)
 - Lateral subqueries (LATERAL JOIN)
 
-For the latest updates on subquery support, check the [Stoolap GitHub repository](https://github.com/oxibase/oxibase).
+For the latest updates on subquery support, check the [OxiBase GitHub repository](https://github.com/oxibase/oxibase).

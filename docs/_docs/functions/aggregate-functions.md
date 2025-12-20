@@ -7,7 +7,7 @@ order: 3
 
 # Aggregate Functions
 
-Stoolap supports standard SQL aggregate functions that operate on multiple rows to calculate a single result. These functions are typically used with GROUP BY clauses for summarizing data.
+OxiBase supports standard SQL aggregate functions that operate on multiple rows to calculate a single result. These functions are typically used with GROUP BY clauses for summarizing data.
 
 ## Basic Aggregate Functions
 
@@ -293,7 +293,7 @@ See [ROLLUP, CUBE, and GROUPING SETS](../sql-features/rollup-cube) for detailed 
 
 ## NULL Handling
 
-Stoolap follows standard SQL NULL handling for aggregate functions:
+OxiBase follows standard SQL NULL handling for aggregate functions:
 
 - NULL values are ignored by most aggregate functions (SUM, AVG, MIN, MAX)
 - COUNT(*) includes all rows regardless of NULL values

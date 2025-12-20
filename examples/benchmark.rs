@@ -24,7 +24,7 @@ const ROW_COUNT: usize = 10_000;
 const ITERATIONS: usize = 100;
 
 fn main() {
-    println!("Starting Stoolap-Rust benchmark...");
+    println!("Starting OxiBase benchmark...");
     println!(
         "Configuration: {} rows, {} iterations per test\n",
         ROW_COUNT, ITERATIONS
@@ -77,9 +77,9 @@ fn main() {
             .unwrap();
     }
 
-    println!("Benchmarking Stoolap-Rust...\n");
+    println!("Benchmarking OxiBase...\n");
     println!("============================================================");
-    println!("STOOLAP-RUST BENCHMARK (10,000 rows, 100 iterations, in-memory)");
+    println!("OXIBASE BENCHMARK (10,000 rows, 100 iterations, in-memory)");
     println!("============================================================\n");
     println!(
         "{:<25} | {:>12} | {:>12}",

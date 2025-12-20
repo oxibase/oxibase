@@ -233,7 +233,7 @@ fn test_string_functions() {
     db.execute(
         "INSERT INTO string_test VALUES
             (1, 'Hello', 'World'),
-            (2, 'STOOLAP', 'Database'),
+            (2, 'OXIBASE', 'Database'),
             (3, 'Test', 'String')",
         (),
     )

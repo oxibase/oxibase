@@ -772,7 +772,7 @@ fn test_same_row_updates_across_sessions() {
     let db_path = dir.path().join("test.db");
     let dsn = format!("file://{}", db_path.display());
 
-    // Session 1: Create and insert (use INTEGER PRIMARY KEY as required by stoolap)
+    // Session 1: Create and insert (use INTEGER PRIMARY KEY as required by oxibase)
     {
         let db = Database::open(&dsn).unwrap();
         db.execute(

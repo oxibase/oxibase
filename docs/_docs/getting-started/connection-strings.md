@@ -7,11 +7,11 @@ order: 3
 
 # Connection String Reference
 
-This document provides information about Stoolap connection string formats and their usage.
+This document provides information about OxiBase connection string formats and their usage.
 
 ## Connection String Basics
 
-Stoolap connection strings follow a URL-like format:
+OxiBase connection strings follow a URL-like format:
 
 ```
 scheme://[path][?options]
@@ -24,7 +24,7 @@ Where:
 
 ## Storage Modes
 
-Stoolap supports two storage modes:
+OxiBase supports two storage modes:
 
 ### In-Memory Mode (memory://)
 

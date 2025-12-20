@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Stoolap CLI - Interactive SQL database command-line interface
+//! OxiBase CLI - Interactive SQL database command-line interface
 //!
 
 use std::fs::File;
@@ -196,7 +196,7 @@ impl Cli {
     }
 
     fn run(&mut self) -> io::Result<()> {
-        println!("Stoolap v{}.{}.{}", MAJOR, MINOR, PATCH);
+        println!("OxiBase v{}.{}.{}", MAJOR, MINOR, PATCH);
         println!("Enter SQL commands, 'help' for assistance, or 'exit' to quit.");
         println!("Use Up/Down arrows for history, Ctrl+R to search history.");
         if self.json_output {
@@ -547,7 +547,7 @@ impl Cli {
     }
 
     fn print_help(&self) {
-        println!("\x1b[1mStoolap SQL CLI Commands:\x1b[0m");
+        println!("\x1b[1mOxiBase SQL CLI Commands:\x1b[0m");
         println!();
         println!("  \x1b[1;33mSQL Commands:\x1b[0m");
         println!("    SELECT ...             Execute a SELECT query");
@@ -1349,7 +1349,7 @@ fn split_sql_statements(input: &str) -> Vec<String> {
 }
 
 fn print_help_main() {
-    println!("Stoolap SQL CLI");
+    println!("OxiBase SQL CLI");
     println!();
     println!("  SQL Commands:");
     println!("    SELECT ...             Execute a SELECT query");

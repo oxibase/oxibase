@@ -7,11 +7,11 @@ order: 3
 
 # PRAGMA Commands
 
-This document describes the PRAGMA commands available in Stoolap based on implementations and test cases.
+This document describes the PRAGMA commands available in OxiBase based on implementations and test cases.
 
 ## Overview
 
-Stoolap provides PRAGMA commands for configuring and inspecting the database engine. These commands primarily focus on persistence settings and storage behavior.
+OxiBase provides PRAGMA commands for configuring and inspecting the database engine. These commands primarily focus on persistence settings and storage behavior.
 
 ## Syntax
 
@@ -29,7 +29,7 @@ PRAGMA [pragma_name];
 
 ## Available PRAGMA Commands
 
-Stoolap currently supports the following PRAGMA commands:
+OxiBase currently supports the following PRAGMA commands:
 
 ### Snapshot and WAL Configuration
 

@@ -5,9 +5,9 @@ category: Performance
 order: 1
 ---
 
-# Performance Optimization in Stoolap
+# Performance Optimization in OxiBase
 
-This document provides guidelines and best practices for optimizing performance in Stoolap, including database design, query optimization, and system configuration.
+This document provides guidelines and best practices for optimizing performance in OxiBase, including database design, query optimization, and system configuration.
 
 ## Database Design Optimization
 
@@ -39,7 +39,7 @@ CREATE INDEX idx_product_category_price ON products (category_id, price);
 
 ### Recent Performance Improvements
 
-Stoolap includes significant performance optimizations:
+OxiBase includes significant performance optimizations:
 
 - **Hash-Based IN Subqueries** - Up to 2048x faster for large IN lists
 - **Array-Based Row Storage** - Eliminated map allocations throughout query execution
@@ -108,7 +108,7 @@ for id in 1..=100 {
 
 ## Parallel Execution
 
-Stoolap's parallel execution engine processes data using Rayon's work-stealing scheduler:
+OxiBase's parallel execution engine processes data using Rayon's work-stealing scheduler:
 
 - **Automatic Parallelization** - Operations exceeding thresholds are automatically parallelized
 - **Work-Stealing** - Optimal load balancing across CPU cores
@@ -149,7 +149,7 @@ INSERT INTO products (name, price, category_id) VALUES
 
 ## Performance Monitoring
 
-Stoolap provides several performance monitoring features:
+OxiBase provides several performance monitoring features:
 
 - **EXPLAIN** - Shows the query execution plan
 - **EXPLAIN ANALYZE** - Shows the plan with actual runtime statistics
@@ -168,11 +168,11 @@ See [EXPLAIN](../sql-features/explain) for detailed documentation.
 
 ## Implementation-Specific Optimizations
 
-Stoolap includes several specialized optimizations:
+OxiBase includes several specialized optimizations:
 
 ### Parallel Processing
 
-Stoolap uses Rayon for parallel query execution:
+OxiBase uses Rayon for parallel query execution:
 
 - **Parallel Filtering** - Predicate evaluation across multiple threads
 - **Parallel Aggregation** - Concurrent aggregation operations with DashMap
@@ -180,7 +180,7 @@ Stoolap uses Rayon for parallel query execution:
 
 ### Custom Data Structures
 
-Stoolap uses specialized data structures for better performance:
+OxiBase uses specialized data structures for better performance:
 
 - **DashMap** - Concurrent hash tables for parallel operations
 - **Efficient Index Structures** - B-tree, Hash, and Bitmap indexes
@@ -190,7 +190,7 @@ Stoolap uses specialized data structures for better performance:
 
 ### Expression Pushdown
 
-Stoolap pushes down expressions to minimize data processing:
+OxiBase pushes down expressions to minimize data processing:
 
 ```sql
 -- Filter and projection will be pushed down to the storage layer
@@ -199,7 +199,7 @@ SELECT name, price FROM products WHERE price > 100;
 
 ### Join Algorithms
 
-Stoolap selects among several join algorithms:
+OxiBase selects among several join algorithms:
 
 - **Hash Join** - For equality joins with large tables
 - **Merge Join** - For pre-sorted data
@@ -207,7 +207,7 @@ Stoolap selects among several join algorithms:
 
 ### Parallel Execution
 
-Stoolap can execute some operations in parallel:
+OxiBase can execute some operations in parallel:
 
 - **Parallel scans** - Multiple segments scanned concurrently
 - **Parallel aggregations** - Divided work for faster aggregations
@@ -215,7 +215,7 @@ Stoolap can execute some operations in parallel:
 
 ## CTE and Subquery Optimization
 
-Stoolap includes advanced optimizations for CTEs and subqueries:
+OxiBase includes advanced optimizations for CTEs and subqueries:
 
 ### Common Table Expressions (CTEs)
 

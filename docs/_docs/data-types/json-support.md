@@ -7,11 +7,11 @@ order: 3
 
 # JSON Support
 
-This document details Stoolap's current JSON data type support, capabilities, and best practices for working with JSON data based on the implemented test cases.
+This document details OxiBase's current JSON data type support, capabilities, and best practices for working with JSON data based on the implemented test cases.
 
-## Introduction to JSON in Stoolap
+## Introduction to JSON in OxiBase
 
-Stoolap provides native support for JSON (JavaScript Object Notation) data, allowing you to store structured data alongside your conventional relational data. The current implementation focuses on:
+OxiBase provides native support for JSON (JavaScript Object Notation) data, allowing you to store structured data alongside your conventional relational data. The current implementation focuses on:
 
 - Basic JSON storage and validation
 - Support for JSON data types in tables
@@ -19,7 +19,7 @@ Stoolap provides native support for JSON (JavaScript Object Notation) data, allo
 
 ## JSON Data Type
 
-Stoolap implements a dedicated JSON data type:
+OxiBase implements a dedicated JSON data type:
 
 ```sql
 CREATE TABLE products (
@@ -29,7 +29,7 @@ CREATE TABLE products (
 );
 ```
 
-The JSON data type in Stoolap supports:
+The JSON data type in OxiBase supports:
 
 - **Objects** - Collection of key-value pairs: `{"name": "value", "name2": "value2"}`
 - **Arrays** - Ordered collection of values: `[1, 2, 3, "text", true]`
@@ -76,7 +76,7 @@ WHERE id = 1;
 
 ## JSON Validation
 
-As shown in the test files, Stoolap validates JSON syntax during insertion:
+As shown in the test files, OxiBase validates JSON syntax during insertion:
 
 ```sql
 -- Valid JSON will be accepted
@@ -87,7 +87,7 @@ INSERT INTO products (id, name, attributes) VALUES (5, 'Invalid', '{brand:"Examp
 -- Error: Invalid JSON format
 ```
 
-Stoolap validates these examples of properly formatted JSON:
+OxiBase validates these examples of properly formatted JSON:
 
 ```
 {"name":"John","age":30}
@@ -112,7 +112,7 @@ And these examples of invalid JSON:
 
 ## JSON Functions
 
-Stoolap provides several functions for working with JSON data:
+OxiBase provides several functions for working with JSON data:
 
 ### JSON_EXTRACT
 
@@ -162,7 +162,7 @@ SELECT JSON_KEYS('{"a": 1, "b": 2, "c": 3}');
 
 ## Application Integration
 
-When using Rust with Stoolap, you can work with JSON data using `serde_json`:
+When using Rust with OxiBase, you can work with JSON data using `serde_json`:
 
 ```rust
 use oxibase::Database;

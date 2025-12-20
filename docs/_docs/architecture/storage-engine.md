@@ -7,11 +7,11 @@ order: 2
 
 # Storage Engine
 
-This document provides a detailed overview of Stoolap's storage engine, including its design principles, components, and how data is stored and retrieved.
+This document provides a detailed overview of OxiBase's storage engine, including its design principles, components, and how data is stored and retrieved.
 
 ## Storage Engine Design
 
-Stoolap's storage engine is designed with the following principles:
+OxiBase's storage engine is designed with the following principles:
 
 - **Memory-optimized** - Prioritizes in-memory performance with optional persistence
 - **MVCC-based** - Uses multi-version concurrency control for transaction isolation
@@ -23,7 +23,7 @@ Stoolap's storage engine is designed with the following principles:
 
 ### Table Structure
 
-Tables in Stoolap are composed of:
+Tables in OxiBase are composed of:
 
 - **Metadata** - Schema information, column definitions, and indexes
 - **Row Data** - The primary data storage, organized by row
@@ -33,7 +33,7 @@ Tables in Stoolap are composed of:
 
 ### Data Types
 
-Stoolap supports a variety of data types, each with optimized storage:
+OxiBase supports a variety of data types, each with optimized storage:
 
 - **INTEGER** - 64-bit signed integers
 - **FLOAT** - 64-bit floating-point numbers
@@ -45,7 +45,7 @@ Stoolap supports a variety of data types, each with optimized storage:
 
 ### Version Management
 
-Stoolap tracks different versions of data for transaction isolation:
+OxiBase tracks different versions of data for transaction isolation:
 
 - Each change creates a new version rather than overwriting
 - Versions are associated with transaction IDs

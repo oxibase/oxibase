@@ -7,7 +7,7 @@ order: 13
 
 # EXPLAIN
 
-The EXPLAIN command shows the query execution plan that Stoolap will use to execute a query. EXPLAIN ANALYZE additionally shows actual runtime statistics after executing the query.
+The EXPLAIN command shows the query execution plan that OxiBase will use to execute a query. EXPLAIN ANALYZE additionally shows actual runtime statistics after executing the query.
 
 ## Basic Syntax
 

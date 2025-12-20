@@ -5,13 +5,13 @@ category: Architecture
 order: 5
 ---
 
-# Transaction Isolation in Stoolap
+# Transaction Isolation in OxiBase
 
-Stoolap implements Multi-Version Concurrency Control (MVCC) to provide transaction isolation with minimal locking overhead. This document explains how transactions work in Stoolap and the available isolation levels.
+OxiBase implements Multi-Version Concurrency Control (MVCC) to provide transaction isolation with minimal locking overhead. This document explains how transactions work in OxiBase and the available isolation levels.
 
 ## Implemented Isolation Levels
 
-Stoolap currently supports two isolation levels:
+OxiBase currently supports two isolation levels:
 
 1. **READ COMMITTED** - The default isolation level where a transaction only sees data that has been committed by other transactions. Each query within the transaction may see different versions of data as other transactions commit.
 
@@ -19,7 +19,7 @@ Stoolap currently supports two isolation levels:
 
 ## Setting Isolation Levels
 
-Stoolap provides multiple ways to control transaction isolation levels:
+OxiBase provides multiple ways to control transaction isolation levels:
 
 ### Connection-level Default Isolation Level
 
@@ -51,7 +51,7 @@ BEGIN TRANSACTION ISOLATION LEVEL SNAPSHOT;
 
 ### Programmatic Transaction Control
 
-When using the Stoolap driver programmatically:
+When using the OxiBase driver programmatically:
 
 ```go
 // Use connection default (affected by SET ISOLATIONLEVEL)
@@ -67,7 +67,7 @@ tx, err := db.BeginTx(context.Background(), &sql.TxOptions{
 
 ## MVCC Implementation
 
-Stoolap's MVCC implementation uses a combination of techniques to provide efficient transaction isolation:
+OxiBase's MVCC implementation uses a combination of techniques to provide efficient transaction isolation:
 
 ### Transaction IDs and Timestamps
 
@@ -89,7 +89,7 @@ Stoolap's MVCC implementation uses a combination of techniques to provide effici
 
 ### Visibility Rules
 
-The core visibility rules in Stoolap determine which row versions are visible to a transaction:
+The core visibility rules in OxiBase determine which row versions are visible to a transaction:
 
 #### READ COMMITTED Mode
 
@@ -163,7 +163,7 @@ During rollback:
 
 ## Concurrency Control
 
-Stoolap uses optimistic concurrency control with lock-free design:
+OxiBase uses optimistic concurrency control with lock-free design:
 
 1. Transactions proceed without acquiring any locks
 2. Multiple writers can work concurrently on different rows
@@ -172,7 +172,7 @@ Stoolap uses optimistic concurrency control with lock-free design:
 
 ### Write-Write Conflict Detection
 
-For SNAPSHOT isolation, Stoolap implements write-write conflict detection to prevent lost updates:
+For SNAPSHOT isolation, OxiBase implements write-write conflict detection to prevent lost updates:
 
 - When a transaction begins, it records a begin timestamp
 - When rows are modified, write timestamps are tracked
@@ -191,7 +191,7 @@ Conflicts are detected in the following scenarios:
 
 ## Implementation Details
 
-The transaction isolation in Stoolap is implemented in the following key components:
+The transaction isolation in OxiBase is implemented in the following key components:
 
 - `src/storage/mvcc/engine.rs` - Contains the transaction creation and management logic
 - `src/storage/mvcc/transaction.rs` - Implements the transaction interface with isolation level management

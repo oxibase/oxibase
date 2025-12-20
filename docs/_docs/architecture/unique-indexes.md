@@ -5,13 +5,13 @@ category: Architecture
 order: 8
 ---
 
-# Unique Indexes in Stoolap
+# Unique Indexes in OxiBase
 
-This document explains Stoolap's unique index implementation, how uniqueness constraints are enforced, and best practices for using unique indexes.
+This document explains OxiBase's unique index implementation, how uniqueness constraints are enforced, and best practices for using unique indexes.
 
 ## Overview of Unique Indexes
 
-Unique indexes ensure that no duplicate values exist in the indexed columns. In Stoolap, they serve two primary purposes:
+Unique indexes ensure that no duplicate values exist in the indexed columns. In OxiBase, they serve two primary purposes:
 
 1. **Data Integrity** - Enforce uniqueness constraints on data
 2. **Performance** - Provide fast access paths for lookups
@@ -80,13 +80,13 @@ CREATE UNIQUE INDEX idx_active_subscription ON subscriptions (user_id, plan_id)
 WHERE status = 'active';
 ```
 
-## How Unique Indexes Work in Stoolap
+## How Unique Indexes Work in OxiBase
 
-Stoolap's unique indexes are implemented using specialized versions of the standard indexing mechanisms:
+OxiBase's unique indexes are implemented using specialized versions of the standard indexing mechanisms:
 
 ### Implementation Details
 
-Unique indexes in Stoolap use a combination of:
+Unique indexes in OxiBase use a combination of:
 
 1. **MVCC-Aware Uniqueness Check** - Performs visibility-aware uniqueness validation
 2. **Lock-Free Concurrent Operations** - Uses optimistic concurrency for high throughput
@@ -106,7 +106,7 @@ When inserting or updating a row that affects a unique index:
 
 ### NULL Handling
 
-Stoolap follows the SQL standard for handling NULL values in unique indexes:
+OxiBase follows the SQL standard for handling NULL values in unique indexes:
 
 - Multiple NULL values are allowed in a unique index (they are not considered equal)
 - In a composite unique index, rows are considered duplicate only if all non-NULL values match
@@ -127,7 +127,7 @@ Stoolap follows the SQL standard for handling NULL values in unique indexes:
 
 ## Unique Indexes and MVCC
 
-Stoolap's unique indexes are fully integrated with the MVCC system:
+OxiBase's unique indexes are fully integrated with the MVCC system:
 
 ### Visibility Rules
 
@@ -162,7 +162,7 @@ When two transactions attempt to insert the same unique value:
 
 ## Error Handling
 
-When a uniqueness violation occurs, Stoolap returns an error:
+When a uniqueness violation occurs, OxiBase returns an error:
 
 ```
 ERROR: Duplicate value in unique index 'idx_users_email' for value 'user@example.com'
@@ -188,7 +188,7 @@ match db.execute("INSERT INTO users (email) VALUES ($1)", (email,)) {
 
 ## Implementation Details
 
-Stoolap's unique index implementation is found in these key components:
+OxiBase's unique index implementation is found in these key components:
 
 - **src/storage/mvcc/btree_index.rs** - B-tree index implementation
 - **src/storage/mvcc/hash_index.rs** - Hash index implementation
@@ -205,7 +205,7 @@ fn check_uniqueness(
     table: &Table,
     index: &UniqueIndex,
     values: &[Value],
-) -> Result<(), StoolapError> {
+) -> Result<(), OxiBaseError> {
     // Get all potentially matching rows
     let matches = index.find_matches(values)?;
 
@@ -215,7 +215,7 @@ fn check_uniqueness(
     // If any visible matches exist (excluding the current row in updates),
     // then we have a uniqueness violation
     if !visible_matches.is_empty() {
-        return Err(StoolapError::UniqueConstraintViolation(
+        return Err(OxiBaseError::UniqueConstraintViolation(
             index.name.clone(),
             format!("{:?}", values),
         ));
@@ -227,7 +227,7 @@ fn check_uniqueness(
 
 ## Limitations
 
-Current limitations of Stoolap's unique index implementation:
+Current limitations of OxiBase's unique index implementation:
 
 1. **No Partial Unique Indexes** - Cannot create unique indexes that apply only to a subset of rows
 2. **No Deferrable Constraints** - Uniqueness is always enforced immediately, not at transaction end
