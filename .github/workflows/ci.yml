@@ -111,7 +111,7 @@ jobs:
         # Check that all .rs files have the Apache license header
         missing_license=""
         for file in $(find . -name "*.rs" -not -path "./target/*" -not -path "./.git/*"); do
-          if ! grep -q "Copyright.*Stoolap Contributors" "$file"; then
+          if ! grep -q "Copyright.*OxiBase Contributors" "$file"; then
             missing_license="$missing_license\n$file"
           fi
         done
@@ -125,27 +125,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: stoolap
-            asset_name: stoolap-linux-amd64
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            artifact_name: stoolap
-            asset_name: stoolap-linux-arm64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: stoolap
-            asset_name: stoolap-darwin-amd64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: stoolap
-            asset_name: stoolap-darwin-arm64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: stoolap.exe
-            asset_name: stoolap-windows-amd64.exe
+         include:
+           - os: ubuntu-latest
+             target: x86_64-unknown-linux-gnu
+             artifact_name: oxibase
+             asset_name: oxibase-linux-amd64
+           - os: ubuntu-latest
+             target: aarch64-unknown-linux-gnu
+             artifact_name: oxibase
+             asset_name: oxibase-linux-arm64
+           - os: macos-latest
+             target: x86_64-apple-darwin
+             artifact_name: oxibase
+             asset_name: oxibase-darwin-amd64
+           - os: macos-latest
+             target: aarch64-apple-darwin
+             artifact_name: oxibase
+             asset_name: oxibase-darwin-arm64
+           - os: windows-latest
+             target: x86_64-pc-windows-msvc
+             artifact_name: oxibase.exe
+             asset_name: oxibase-windows-amd64.exe
     steps:
     - uses: actions/checkout@v4
 
