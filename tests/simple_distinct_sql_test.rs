@@ -16,8 +16,8 @@
 //!
 //! Tests SELECT DISTINCT functionality
 
-use std::collections::HashSet;
 use oxibase::Database;
+use std::collections::HashSet;
 
 /// Test basic SELECT DISTINCT
 #[test]

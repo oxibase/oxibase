@@ -28,8 +28,8 @@
 //! mechanism. The Rayon work-stealing scheduler handles this gracefully by
 //! default - incomplete work is abandoned when the parent scope exits.
 
-use std::time::Instant;
 use oxibase::api::Database;
+use std::time::Instant;
 
 /// Test parallel filtering on a large dataset
 #[test]

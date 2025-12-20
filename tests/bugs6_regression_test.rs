@@ -15,8 +15,8 @@
 // Regression tests for Bug Batch 6
 // Tests for bugs #37, #38, #39 discovered during exploratory testing
 
-use std::io::Write;
 use oxibase::Database;
+use std::io::Write;
 use tempfile::NamedTempFile;
 
 fn setup_db() -> Database {

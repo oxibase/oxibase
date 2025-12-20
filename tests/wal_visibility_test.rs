@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::fs;
 use oxibase::Database;
+use std::fs;
 use tempfile::tempdir;
 
 #[test]

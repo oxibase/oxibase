@@ -16,9 +16,9 @@
 //!
 //! Run with: cargo run --release --example rust_benchmark
 
+use oxibase::Database;
 use rand::Rng;
 use std::time::Instant;
-use oxibase::Database;
 
 const ROW_COUNT: usize = 10_000;
 const ITERATIONS: usize = 100;
