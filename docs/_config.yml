@@ -23,6 +23,9 @@ collections:
 theme: just-the-docs
 logo: "/assets/img/logo-horizontal.svg"
 
+# Color scheme
+color_scheme: blue
+
 just_the_docs:
   collections:
     docs:
@@ -50,6 +53,8 @@ kramdown:
   syntax_highlighter: rouge
 
 highlighter: rouge
+
+enable_copy_code_button: true
 
 mermaid:
   # Version of mermaid library

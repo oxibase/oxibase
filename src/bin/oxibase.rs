@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! OxiBase CLI - Interactive SQL database command-line interface
+//! Oxibase CLI - Interactive SQL database command-line interface
 //!
 
 use std::fs::File;
@@ -38,14 +38,14 @@ const VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION_PATCH")
 );
 
-/// OxiBase SQL Database CLI
+/// Oxibase SQL Database CLI
 #[derive(Parser, Debug)]
 #[command(name = "oxibase")]
-#[command(author = "Stoolap Contributors")]
+#[command(author = "Oxibase Contributors")]
 #[command(version = VERSION)]
 #[command(about = "High-performance embedded SQL database with MVCC")]
 #[command(
-    long_about = "OxiBase is a high-performance embedded SQL database with MVCC transactions.\n\
+    long_about = "Oxibase is a high-performance embedded SQL database with MVCC transactions.\n\
 This CLI provides an interactive interface to execute SQL queries and manage your database.\n\n\
 PERSISTENCE DSN PARAMETERS:\n\
   file:///path/to/db?param=value&param2=value2\n\n\
@@ -196,7 +196,7 @@ impl Cli {
     }
 
     fn run(&mut self) -> io::Result<()> {
-        println!("OxiBase v{}.{}.{}", MAJOR, MINOR, PATCH);
+        println!("Oxibase v{}.{}.{}", MAJOR, MINOR, PATCH);
         println!("Enter SQL commands, 'help' for assistance, or 'exit' to quit.");
         println!("Use Up/Down arrows for history, Ctrl+R to search history.");
         if self.json_output {
@@ -547,7 +547,7 @@ impl Cli {
     }
 
     fn print_help(&self) {
-        println!("\x1b[1mOxiBase SQL CLI Commands:\x1b[0m");
+        println!("\x1b[1mOxibase SQL CLI Commands:\x1b[0m");
         println!();
         println!("  \x1b[1;33mSQL Commands:\x1b[0m");
         println!("    SELECT ...             Execute a SELECT query");
@@ -1349,7 +1349,7 @@ fn split_sql_statements(input: &str) -> Vec<String> {
 }
 
 fn print_help_main() {
-    println!("OxiBase SQL CLI");
+    println!("Oxibase SQL CLI");
     println!();
     println!("  SQL Commands:");
     println!("    SELECT ...             Execute a SELECT query");
