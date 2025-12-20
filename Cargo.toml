@@ -1,6 +1,6 @@
 [package]
 name = "oxibase"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["OxiBase Contributors"]
 description = "High-performance embedded SQL database with MVCC, time-travel queries, and full ACID compliance"
