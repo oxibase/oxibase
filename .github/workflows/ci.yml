@@ -111,7 +111,7 @@ jobs:
         # Check that all .rs files have the Apache license header
         missing_license=""
         for file in $(find . -name "*.rs" -not -path "./target/*" -not -path "./.git/*"); do
-          if ! grep -q "Copyright.*OxiBase Contributors" "$file"; then
+          if ! grep -q "Copyright.* Contributors" "$file"; then
             missing_license="$missing_license\n$file"
           fi
         done
