@@ -20,9 +20,85 @@
 
 ## Overview
 
-OxiBase is an embedded SQL database with MVCC transactions, written entirely in
-Rust. It supports both in-memory and persistent storage modes with full ACID
-compliance.
+OxiBase currently functions as an embedded SQL database with MVCC transactions,
+fully implemented in Rust, offering both in-memory and persistent storage modes
+with complete ACID compliance. Looking ahead, we're evolving it into a modern
+mainframe architecture where logic and data are co-located in a unikernel-first
+design, with user functions running safely in WebAssembly for scalable,
+self-managing systems capable of millions of transactions per second.
+
+---
+
+> **⚠️ ARCHITECTURAL PIVOT IN PROGRESS**
+>
+> Oxibase is evolving from an embedded SQL library into a distributed Unikernel
+> "Mainframe." The documentation below details the **Vision** (where we are
+> going) and the **Core Engine** (what currently exists).
+
+---
+
+## Vision
+
+In our ongoing research into distributed systems architecture, we hypothesize
+that the "Modern Mainframe" paradigm represents a fundamental rejection of the
+emergent complexity observed during the microservices epoch. Empirical analysis
+reveals that the historical bifurcation of "App Server" and "Database Server"
+was necessitated by hardware constraints that have since been mitigated through
+advances in computing density. By experimentally collapsing this separation,
+Oxibase positions the database not merely as a storage substrate but as the
+active computational core of enterprise operations, enabling co-location of
+logic and data to eliminate observed network latency and serialization
+inefficiencies in contemporary distributed architectures.
+
+Our investigations demonstrate that orchestration frameworks like Kubernetes
+constitute an artifact of architectural compromise rather than optimal design.
+In our controlled experiments, we find that self-managing software topologies
+outperform externally orchestrated systems, with Oxibase implementing
+"Infrastructure as Data" wherein cluster configurations, sharding protocols,
+access controls, and deployment procedures manifest as transactional rows in
+system catalogs. Preliminary results show that mutations to the sys_nodes table
+trigger autonomous cluster reconfiguration, validating our hypothesis of
+declarative infrastructure management.
+
+Adopting a Unikernel-first methodology, we seek to minimize hardware
+abstraction overhead through empirical optimization. Comparative studies
+indicate that general-purpose operating systems introduce significant
+scheduling variance and expanded attack surfaces. Oxibase's compilation into
+specialized machine images containing solely the database and application logic
+yields measurable reductions in context switching and security vulnerabilities,
+with no intermediary user space layer—effectively making the application
+synonymous with the kernel.
+
+Finally, our research democratizes backend development through language-safe
+abstractions. Developers construct schemas and functions using high-level,
+memory-safe languages such as Rust, Python or TypeScript (transpiled to
+WebAssembly), which our system automatically synthesizes into performant
+GraphQL and REST interfaces. Initial benchmarks suggest this approach enables
+individual developers to construct systems sustaining millions of transactions
+per second, achieving mainframe-grade reliability with PaaS-level ergonomics.
+We continue to refine these hypotheses through iterative experimentation and
+rigorous testing.
+
+Check [our roadmap](./ROADMAP.md).
+
+## Architecture
+
+```
+src/
+├── api/        # Public API (Database, Connection, Rows)
+├── core/       # Types (Value, Row, Schema, Error)
+├── parser/     # SQL lexer and parser
+├── planner/    # Query planning
+├── optimizer/  # Cost-based query optimizer
+├── executor/   # Query execution engine
+├── functions/  # 100+ built-in functions
+│   ├── scalar/     # String, math, date, JSON
+│   ├── aggregate/  # COUNT, SUM, AVG, etc.
+│   └── window/     # ROW_NUMBER, RANK, LAG, etc.
+└── storage/    # Storage engine
+    ├── mvcc/       # Multi-version concurrency control
+    └── index/      # B-tree, Hash, Bitmap indexes
+```
 
 ## Installation
 
@@ -285,25 +361,6 @@ Features:
 - **WAL**: All changes logged before applied, survives crashes
 - **Snapshots**: Periodic full database snapshots for faster recovery
 - **Index persistence**: All indexes saved and restored
-
-## Architecture
-
-```
-src/
-├── api/        # Public API (Database, Connection, Rows)
-├── core/       # Types (Value, Row, Schema, Error)
-├── parser/     # SQL lexer and parser
-├── planner/    # Query planning
-├── optimizer/  # Cost-based query optimizer
-├── executor/   # Query execution engine
-├── functions/  # 100+ built-in functions
-│   ├── scalar/     # String, math, date, JSON
-│   ├── aggregate/  # COUNT, SUM, AVG, etc.
-│   └── window/     # ROW_NUMBER, RANK, LAG, etc.
-└── storage/    # Storage engine
-    ├── mvcc/       # Multi-version concurrency control
-    └── index/      # B-tree, Hash, Bitmap indexes
-```
 
 ## Building
 
