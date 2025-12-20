@@ -1,5 +1,5 @@
 /**
- * Enhanced Syntax Highlighting for Stoolap Documentation
+ * Enhanced Syntax Highlighting for Oxibase Documentation
  * 
  * Focused on improving SQL and Go syntax highlighting in both light and dark modes
  */
@@ -219,7 +219,7 @@ div.highlighter-rouge {
   color: var(--go-identifier);
 }
 
-/* Special enhancements for SQL keywords commonly used in Stoolap */
+/* Special enhancements for SQL keywords commonly used in Oxibase */
 .language-sql .highlight .k[data-content="SELECT"],
 .language-sql .highlight .k[data-content="INSERT"],
 .language-sql .highlight .k[data-content="UPDATE"],

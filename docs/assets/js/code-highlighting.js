@@ -1,5 +1,5 @@
 /**
- * Enhanced Code Highlighting for Stoolap Documentation
+ * Enhanced Code Highlighting for Oxibase Documentation
  * 
  * This script enhances code highlighting for SQL and Go code blocks
  * by adding language badges and improving syntax highlighting.

@@ -100,7 +100,7 @@
   </defs>
 
   <!-- Title -->
-  <text x="500" y="40" text-anchor="middle" class="title">Stoolap Architecture</text>
+  <text x="500" y="40" text-anchor="middle" class="title">Oxibase Architecture</text>
 
   <!-- ═══════════════════════════════════════════════════════════════════ -->
   <!-- API LAYER -->

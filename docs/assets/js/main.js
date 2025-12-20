@@ -1,5 +1,5 @@
 /**
- * Stoolap website JavaScript
+ * Oxibase website JavaScript
  */
 
 document.addEventListener('DOMContentLoaded', () => {
