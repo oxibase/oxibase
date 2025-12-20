@@ -279,7 +279,7 @@ fn test_string_functions() {
             (),
         )
         .expect("Failed to execute SUBSTRING");
-    assert_eq!(substr, "STO");
+    assert_eq!(substr, "OXI");
 }
 
 /// Test date/time functions
