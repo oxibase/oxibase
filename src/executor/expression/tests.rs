@@ -1,4 +1,4 @@
-// Copyright 2025 OxiBase Contributors
+// Copyright 2025 Stoolap Contributors
 use ahash::AHashSet;
 
 //

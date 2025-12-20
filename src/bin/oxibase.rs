@@ -1,4 +1,4 @@
-// Copyright 2025 OxiBase Contributors
+// Copyright 2025 Stoolap Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ const VERSION: &str = concat!(
 /// OxiBase SQL Database CLI
 #[derive(Parser, Debug)]
 #[command(name = "oxibase")]
-#[command(author = "OxiBase Contributors")]
+#[command(author = "Stoolap Contributors")]
 #[command(version = VERSION)]
 #[command(about = "High-performance embedded SQL database with MVCC")]
 #[command(
