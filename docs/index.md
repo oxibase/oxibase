@@ -1,13 +1,11 @@
 ---
-title: Documentation
-layout: doc
+title: Home
+layout: default
+nav_exclude: true
 ---
 
-# OxiBase Documentation
+<div style="text-align: center;"><img src="assets/img/logo.svg" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
 
-Welcome to the OxiBase Documentation! This is your comprehensive guide to using and understanding OxiBase, a high-performance embedded SQL database written in pure Rust.
-
-## What is OxiBase?
 
 OxiBase is a modern embedded SQL database that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer, and features that rival established databases like PostgreSQL and DuckDB. Built entirely in Rust with minimal unsafe code (only for FFI and performance-critical hot paths), OxiBase features:
 
@@ -19,17 +17,6 @@ OxiBase is a modern embedded SQL database that provides full ACID transactions w
 - **Disk Persistence**: WAL and snapshots with crash recovery
 - **Rich SQL Support**: Window functions, CTEs (including recursive), subqueries, ROLLUP/CUBE, and 101+ built-in functions
 
-## Documentation Sections
-
-{% for category in site.data.doc_categories %}
-{% assign category_docs = site.docs | where: "category", category.name | sort: "order" %}
-{% if category_docs.size > 0 %}
-### {{ category.name }}
-{% for doc in category_docs %}
-* [{{ doc.title }}]({{ doc.url | relative_url }})
-{% endfor %}
-{% endif %}
-{% endfor %}
 
 ## Need Help?
 

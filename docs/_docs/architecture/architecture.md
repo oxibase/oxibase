@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Architecture Overview
-category: Architecture
-order: 1
+parent: Architecture
+nav_order: 1
 ---
 
 # OxiBase Architecture

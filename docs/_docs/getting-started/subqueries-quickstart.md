@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Subqueries Quick Start
-category: Getting Started
-order: 5
+parent: Getting Started
+nav_order: 5
 ---
 
 # Quick Start: Using Subqueries in OxiBase

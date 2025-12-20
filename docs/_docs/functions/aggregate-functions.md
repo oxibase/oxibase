@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Aggregate Functions
-category: Functions
-order: 3
+parent: Functions
+nav_order: 3
 ---
 
 # Aggregate Functions
@@ -149,7 +149,7 @@ GROUP BY department;
 
 ### FIRST
 
-Returns the first value in a group based on row order:
+Returns the first value in a group based on row nav_order:
 
 ```sql
 SELECT FIRST(name) FROM employees;
@@ -162,7 +162,7 @@ Note: FIRST depends on the order of rows. Use ORDER BY in a subquery for determi
 
 ### LAST
 
-Returns the last value in a group based on row order:
+Returns the last value in a group based on row nav_order:
 
 ```sql
 SELECT LAST(name) FROM employees;

@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Connection String Reference
-category: Getting Started
-order: 3
+parent: Getting Started
+nav_order: 3
 ---
 
 # Connection String Reference

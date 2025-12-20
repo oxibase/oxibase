@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: EXPLAIN
-category: SQL Features
-order: 13
+parent: SQL Features
+nav_order: 13
 ---
 
 # EXPLAIN

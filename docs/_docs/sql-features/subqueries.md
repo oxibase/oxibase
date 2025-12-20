@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Subqueries
-category: SQL Features
-order: 3
+parent: SQL Features
+nav_order: 3
 ---
 
 # Subqueries in OxiBase

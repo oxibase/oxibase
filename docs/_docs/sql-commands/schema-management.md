@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Schema Management in OxiBase
-category: SQL Commands
-order: 2
+parent: SQL Commands
+nav_order: 2
 ---
 
 # Schema Management in OxiBase

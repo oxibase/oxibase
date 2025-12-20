@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Savepoints
-category: SQL Features
-order: 12
+parent: SQL Features
+nav_order: 12
 ---
 
 # Savepoints

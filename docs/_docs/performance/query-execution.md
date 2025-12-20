@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Query Execution and Optimization in OxiBase
-category: Performance
-order: 4
+parent: Performance
+nav_order: 4
 ---
 
 # Query Execution and Optimization in OxiBase

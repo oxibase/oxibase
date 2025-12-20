@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: API Reference
-category: Getting Started
-order: 4
+parent: Getting Started
+nav_order: 4
 ---
 
 # OxiBase API Reference

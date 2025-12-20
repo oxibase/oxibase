@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: PRAGMA Commands
-category: SQL Commands
-order: 3
+parent: SQL Commands
+nav_order: 3
 ---
 
 # PRAGMA Commands

@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Temporal Queries (AS OF)
-category: SQL Features
-order: 1
+parent: SQL Features
+nav_order: 1
 ---
 
 # Temporal Queries (AS OF)

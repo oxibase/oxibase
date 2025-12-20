@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Persistence
-category: Architecture
-order: 7
+parent: Architecture
+nav_order: 7
 ---
 
 # Persistence

@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Parameter Binding
-category: SQL Features
-order: 10
+parent: SQL Features
+nav_order: 10
 ---
 
 # Parameter Binding

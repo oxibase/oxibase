@@ -1,8 +1,9 @@
 ---
-layout: doc
+layout: default
 title: Installation Guide
-category: Getting Started
-order: 1
+parent: Getting Started
+parent: Getting Started
+nav_nav_order: 1
 ---
 
 # Installation Guide

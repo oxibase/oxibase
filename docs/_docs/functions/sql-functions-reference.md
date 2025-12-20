@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: SQL Functions Reference
-category: Functions
-order: 1
+parent: Functions
+nav_order: 1
 ---
 
 # SQL Functions Reference

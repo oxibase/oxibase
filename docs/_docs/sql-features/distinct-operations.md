@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: DISTINCT Operations
-category: SQL Features
-order: 8
+parent: SQL Features
+nav_order: 8
 ---
 
 # DISTINCT Operations

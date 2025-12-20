@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: ROLLUP, CUBE, and GROUPING SETS
-category: SQL Features
-order: 5
+parent: SQL Features
+nav_order: 5
 ---
 
 # ROLLUP, CUBE, and GROUPING SETS

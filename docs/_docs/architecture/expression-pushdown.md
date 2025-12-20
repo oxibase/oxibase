@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Expression Pushdown
-category: Architecture
-order: 6
+parent: Architecture
+nav_order: 6
 ---
 
 # Expression Pushdown

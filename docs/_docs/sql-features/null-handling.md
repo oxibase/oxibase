@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: NULL Handling
-category: SQL Features
-order: 9
+parent: SQL Features
+nav_order: 9
 ---
 
 # NULL Handling

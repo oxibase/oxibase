@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: CAST Operations
-category: SQL Features
-order: 7
+parent: SQL Features
+nav_order: 7
 ---
 
 # CAST Operations

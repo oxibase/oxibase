@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: SQL Commands
-category: SQL Commands
-order: 1
+parent: SQL Commands
+nav_order: 1
 ---
 
 # SQL Commands

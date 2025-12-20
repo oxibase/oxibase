@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Performance Optimization
-category: Performance
-order: 1
+parent: Performance
+nav_order: 1
 ---
 
 # Performance Optimization in OxiBase

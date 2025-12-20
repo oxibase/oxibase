@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: MVCC Implementation
-category: Architecture
-order: 4
+parent: Architecture
+nav_order: 4
 ---
 
 # MVCC Implementation

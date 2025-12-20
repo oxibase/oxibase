@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Quick Start Tutorial
-category: Getting Started
-order: 2
+parent: Getting Started
+nav_order: 2
 ---
 
 # Quick Start Tutorial

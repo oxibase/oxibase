@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: JSON Support
-category: Data Types
-order: 3
+parent: Data Types
+nav_order: 3
 ---
 
 # JSON Support

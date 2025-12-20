@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Operators and Expressions
-category: SQL Features
-order: 6
+parent: SQL Features
+nav_order: 6
 ---
 
 # Operators and Expressions
@@ -194,7 +194,7 @@ From highest to lowest:
 11. `AND` - Logical AND
 12. `OR` - Logical OR
 
-Use parentheses to control evaluation order:
+Use parentheses to control evaluation nav_order:
 
 ```sql
 -- Without parentheses: AND has higher precedence than OR

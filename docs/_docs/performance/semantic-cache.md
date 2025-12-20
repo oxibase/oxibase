@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Semantic Query Cache
-category: Performance
-order: 3
+parent: Performance
+nav_order: 3
 ---
 
 # Semantic Query Cache

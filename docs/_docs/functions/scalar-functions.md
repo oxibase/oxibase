@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Scalar Functions
-category: Functions
-order: 2
+parent: Functions
+nav_order: 2
 ---
 
 # Scalar Functions

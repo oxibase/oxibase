@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Common Table Expressions (CTEs)
-category: SQL Features
-order: 4
+parent: SQL Features
+nav_order: 4
 ---
 
 # Common Table Expressions (CTEs)

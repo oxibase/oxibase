@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Parallel Execution
-category: Performance
-order: 5
+parent: Performance
+nav_order: 5
 ---
 
 # Parallel Execution in OxiBase

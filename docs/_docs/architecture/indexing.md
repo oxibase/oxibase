@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Indexing
-category: Architecture
-order: 3
+parent: Architecture
+nav_order: 3
 ---
 
 # Indexing in OxiBase

@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Data Types in OxiBase
-category: Data Types
-order: 1
+parent: Data Types
+nav_order: 1
 ---
 
 # Data Types in OxiBase

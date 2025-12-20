@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Window Functions
-category: Functions
-order: 4
+parent: Functions
+nav_order: 4
 ---
 
 # Window Functions

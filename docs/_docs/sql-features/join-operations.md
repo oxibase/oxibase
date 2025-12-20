@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: JOIN Operations
-category: SQL Features
-order: 2
+parent: SQL Features
+nav_order: 2
 ---
 
 # JOIN Operations

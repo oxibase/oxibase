@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: ON DUPLICATE KEY UPDATE
-category: SQL Features
-order: 11
+parent: SQL Features
+nav_order: 11
 ---
 
 # ON DUPLICATE KEY UPDATE

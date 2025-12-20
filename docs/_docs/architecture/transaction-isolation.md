@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Transaction Isolation
-category: Architecture
-order: 5
+parent: Architecture
+nav_order: 5
 ---
 
 # Transaction Isolation in OxiBase

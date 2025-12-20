@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Unique Indexes
-category: Architecture
-order: 8
+parent: Architecture
+nav_order: 8
 ---
 
 # Unique Indexes in OxiBase

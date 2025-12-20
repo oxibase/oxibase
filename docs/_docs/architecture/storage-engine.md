@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Storage Engine
-category: Architecture
-order: 2
+parent: Architecture
+nav_order: 2
 ---
 
 # Storage Engine

@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Date and Time Handling
-category: Data Types
-order: 2
+parent: Data Types
+nav_order: 2
 ---
 
 # Date and Time Handling

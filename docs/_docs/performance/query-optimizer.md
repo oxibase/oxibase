@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Query Optimizer
-category: Performance
-order: 2
+parent: Performance
+nav_order: 2
 ---
 
 # Query Optimizer
@@ -95,7 +95,7 @@ SELECT * FROM orders WHERE status = 'pending';
 
 ### Join Ordering
 
-For queries joining multiple tables, the optimizer uses dynamic programming to find the optimal join order:
+For queries joining multiple tables, the optimizer uses dynamic programming to find the optimal join nav_order:
 
 ```sql
 -- The optimizer considers all possible join orders
