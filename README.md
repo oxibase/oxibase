@@ -4,8 +4,7 @@
    <p>An embedded SQL database written in Rust.</p>
 
   <p>
-     <a href="https://oxibase.github.io">Website</a> •
-     <a href="https://oxibase.github.io/docs">Docs</a> •
+     <a href="https://oxibase.xyz">Docs</a> •
      <a href="https://github.com/oxibase/oxibase/releases">Releases</a>
   </p>
 
