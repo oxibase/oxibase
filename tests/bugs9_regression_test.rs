@@ -18,7 +18,7 @@
 // - Bug #8: Column alias without AS keyword
 // - Bug #9: WINDOW clause (named windows)
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_db() -> Database {
     Database::open_in_memory().expect("Failed to create in-memory database")

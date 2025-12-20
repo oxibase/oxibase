@@ -16,7 +16,7 @@
 //!
 //! Tests for bitwise operators: &, |, ^, ~, <<, >>
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // Basic Bitwise AND (&)

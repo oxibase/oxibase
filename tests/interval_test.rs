@@ -16,8 +16,8 @@
 //!
 //! Tests INTERVAL support for date/time arithmetic
 
-use stoolap::core::Value;
-use stoolap::Database;
+use oxibase::core::Value;
+use oxibase::Database;
 
 /// Test NOW() minus 24 hours
 #[test]

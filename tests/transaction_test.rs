@@ -16,7 +16,7 @@
 //!
 //! Tests for transaction functionality: BEGIN, COMMIT, ROLLBACK
 
-use stoolap::Database;
+use oxibase::Database;
 
 #[test]
 fn test_basic_commit() {

@@ -16,7 +16,7 @@
 //!
 //! Tests window functions: ROW_NUMBER, RANK, DENSE_RANK, etc.
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_window_table(db: &Database) {
     db.execute(

@@ -16,7 +16,7 @@
 //!
 //! Tests UPDATE statements with IN and NOT IN subqueries
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_update_tables(db: &Database) {
     // Create products table

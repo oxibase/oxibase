@@ -16,7 +16,7 @@
 //!
 //! Tests the SQL CAST expression
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test simple query without CAST to verify table is working
 #[test]

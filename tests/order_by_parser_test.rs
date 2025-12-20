@@ -16,7 +16,7 @@
 //!
 //! Tests parsing of ORDER BY expressions inside function calls like FIRST(), LAST()
 
-use stoolap::parser::parse_sql;
+use oxibase::parser::parse_sql;
 
 /// Test simple FIRST with ORDER BY
 #[test]

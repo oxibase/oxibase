@@ -44,7 +44,7 @@ static LAST_TIMESTAMP: AtomicI64 = AtomicI64::new(0);
 /// # Example
 ///
 /// ```
-/// use stoolap::storage::mvcc::get_fast_timestamp;
+/// use oxibase::storage::mvcc::get_fast_timestamp;
 ///
 /// let ts1 = get_fast_timestamp();
 /// let ts2 = get_fast_timestamp();

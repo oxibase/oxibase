@@ -21,7 +21,7 @@
 //! - Build side optimization (smaller table as build side)
 //! - Edge cases (NULLs, duplicates, empty tables)
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn create_test_db(name: &str) -> Database {
     Database::open(&format!("memory://{}", name)).expect("Failed to create database")

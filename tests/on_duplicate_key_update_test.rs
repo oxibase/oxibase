@@ -16,7 +16,7 @@
 //!
 //! Tests INSERT ... ON DUPLICATE KEY UPDATE functionality
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_users_table(db: &Database) {
     db.execute(

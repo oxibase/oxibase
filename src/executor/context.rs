@@ -703,7 +703,7 @@ impl TimeoutManager {
         // Spawn the background timer thread
         let manager_clone = Arc::clone(&manager);
         std::thread::Builder::new()
-            .name("stoolap-timeout-manager".to_string())
+            .name("oxibase-timeout-manager".to_string())
             .spawn(move || {
                 manager_clone.run();
             })

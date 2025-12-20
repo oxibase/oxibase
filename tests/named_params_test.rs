@@ -16,7 +16,7 @@
 //!
 //! Tests for named parameter binding with :name syntax.
 
-use stoolap::{named_params, Database, NamedParams};
+use oxibase::{named_params, Database, NamedParams};
 
 /// Test basic named parameter insert
 #[test]

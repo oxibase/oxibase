@@ -67,7 +67,7 @@ mod integration_tests {
         assert!(!v.is_empty());
 
         let info = version_info();
-        assert!(info.contains("stoolap"));
+        assert!(info.contains("oxibase"));
     }
 
     #[test]

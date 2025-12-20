@@ -16,7 +16,7 @@
 //!
 //! Tests that scanning works correctly when WHERE clause references columns not in SELECT
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test selecting subset of columns with WHERE on different column
 #[test]

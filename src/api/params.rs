@@ -20,7 +20,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! use stoolap::{Database, params, named_params};
+//! use oxibase::{Database, params, named_params};
 //!
 //! let db = Database::open("memory://")?;
 //!
@@ -234,7 +234,7 @@ impl_params_for_tuple!(0: T0, 1: T1, 2: T2, 3: T3, 4: T4, 5: T5, 6: T6, 7: T7, 8
 /// # Examples
 ///
 /// ```ignore
-/// use stoolap::{Database, params};
+/// use oxibase::{Database, params};
 ///
 /// let db = Database::open("memory://")?;
 /// db.execute("CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)", ())?;
@@ -275,7 +275,7 @@ macro_rules! params {
 /// # Examples
 ///
 /// ```ignore
-/// use stoolap::{Database, NamedParams, named_params};
+/// use oxibase::{Database, NamedParams, named_params};
 ///
 /// let db = Database::open("memory://")?;
 /// db.execute("CREATE TABLE users (id INTEGER, name TEXT)", ())?;
@@ -341,7 +341,7 @@ impl From<HashMap<String, Value>> for NamedParams {
 /// # Examples
 ///
 /// ```ignore
-/// use stoolap::{Database, named_params};
+/// use oxibase::{Database, named_params};
 ///
 /// let db = Database::open("memory://")?;
 /// db.execute("CREATE TABLE users (id INTEGER, name TEXT, active BOOLEAN)", ())?;

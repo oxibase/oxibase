@@ -27,7 +27,7 @@
 //! 3. Cache invalidation on DML operations
 //! 4. Performance benefits of subsumption hits
 
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 /// Helper function to create an in-memory test database
 fn create_test_db() -> Database {

@@ -16,7 +16,7 @@
 //!
 //! Tests for CREATE VIEW, DROP VIEW, and querying views
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_base_table(db: &Database) {
     db.execute(

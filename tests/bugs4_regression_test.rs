@@ -15,7 +15,7 @@
 // Regression tests for Bug Batch 4
 // Tests for bugs discovered during exploratory testing session 2
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_db() -> Database {
     Database::open_in_memory().expect("Failed to create in-memory database")

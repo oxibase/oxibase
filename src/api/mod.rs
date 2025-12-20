@@ -19,7 +19,7 @@
 //! # Quick Start
 //!
 //! ```ignore
-//! use stoolap::{Database, params};
+//! use oxibase::{Database, params};
 //!
 //! // Open an in-memory database
 //! let db = Database::open_in_memory()?;

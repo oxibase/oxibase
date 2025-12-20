@@ -17,7 +17,7 @@
 //! Tests for DDL statements (CREATE TABLE, DROP TABLE) being properly
 //! rolled back within transactions (Bug #86)
 
-use stoolap::Database;
+use oxibase::Database;
 
 #[test]
 fn test_create_table_rollback() {

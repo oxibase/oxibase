@@ -16,7 +16,7 @@
 //!
 //! Tests SQL literal values and scalar functions
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test integer literals
 #[test]

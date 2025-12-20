@@ -17,7 +17,7 @@
 //! Zone maps maintain min/max statistics per data segment, enabling the query
 //! executor to skip entire segments when predicates fall outside the range.
 
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 /// Test that ANALYZE builds zone maps for tables
 #[test]

@@ -16,7 +16,7 @@
 //!
 //! Tests DELETE operations with various conditions
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test simple DELETE with direct equality condition
 #[test]

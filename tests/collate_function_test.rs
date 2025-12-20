@@ -16,7 +16,7 @@
 //!
 //! Tests for collation functions (BINARY, NOCASE, NOACCENT)
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test BINARY collation (case-sensitive)
 #[test]

@@ -32,7 +32,7 @@ UPDATE products SET price = $1 WHERE id = $2;
 ### Basic Usage
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 let db = Database::open("memory://")?;
 
@@ -55,7 +55,7 @@ for row in db.query("SELECT * FROM users WHERE age > $1", (25,))? {
 For more complex cases, use the `params!` macro:
 
 ```rust
-use stoolap::{Database, params};
+use oxibase::{Database, params};
 
 let db = Database::open("memory://")?;
 
@@ -73,7 +73,7 @@ db.execute("INSERT INTO users VALUES ($1, $2, $3)", params![3, name, age])?;
 Stoolap also supports named parameters with the `:name` syntax:
 
 ```rust
-use stoolap::{Database, named_params};
+use oxibase::{Database, named_params};
 
 let db = Database::open("memory://")?;
 
@@ -105,7 +105,7 @@ for row in db.query_named(
 ## With Transactions
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 let db = Database::open("memory://")?;
 

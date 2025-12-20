@@ -16,7 +16,7 @@
 //!
 //! Tests SHOW TABLES, SHOW CREATE TABLE, SHOW INDEXES, and DESCRIBE commands
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test SHOW TABLES command
 #[test]

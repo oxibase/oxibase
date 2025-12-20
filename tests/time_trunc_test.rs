@@ -16,7 +16,7 @@
 //!
 //! Tests DATE_TRUNC and TIME_TRUNC functions
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test DATE_TRUNC function with year unit
 #[test]

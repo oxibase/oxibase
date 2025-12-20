@@ -16,7 +16,7 @@
 //!
 //! Tests Common Table Expressions (WITH clause)
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_cte_tables(db: &Database) {
     // Create employees table

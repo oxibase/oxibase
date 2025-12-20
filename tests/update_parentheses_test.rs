@@ -16,7 +16,7 @@
 //!
 //! Tests UPDATE statements with parenthesized expressions
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_paren_test_db() -> Database {
     let db = Database::open("memory://update_paren").expect("Failed to create database");

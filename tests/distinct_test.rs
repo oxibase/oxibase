@@ -17,7 +17,7 @@
 //! Tests SELECT DISTINCT functionality: single column, multi-column, with ORDER BY, numeric columns
 
 use std::collections::HashSet;
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_products_table(db: &Database) {
     db.execute(

@@ -25,9 +25,9 @@ use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
 use rustyline::{Config, DefaultEditor, EditMode, Editor};
 
-use stoolap::api::{Database, Transaction as ApiTransaction};
-use stoolap::common::version::{MAJOR, MINOR, PATCH};
-use stoolap::Value;
+use oxibase::api::{Database, Transaction as ApiTransaction};
+use oxibase::common::version::{MAJOR, MINOR, PATCH};
+use oxibase::Value;
 
 /// Version string constant
 const VERSION: &str = concat!(
@@ -38,14 +38,14 @@ const VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION_PATCH")
 );
 
-/// Stoolap SQL Database CLI
+/// OxiBase SQL Database CLI
 #[derive(Parser, Debug)]
-#[command(name = "stoolap")]
-#[command(author = "Stoolap Contributors")]
+#[command(name = "oxibase")]
+#[command(author = "OxiBase Contributors")]
 #[command(version = VERSION)]
 #[command(about = "High-performance embedded SQL database with MVCC")]
 #[command(
-    long_about = "Stoolap is a high-performance embedded SQL database with MVCC transactions.\n\
+    long_about = "OxiBase is a high-performance embedded SQL database with MVCC transactions.\n\
 This CLI provides an interactive interface to execute SQL queries and manage your database.\n\n\
 PERSISTENCE DSN PARAMETERS:\n\
   file:///path/to/db?param=value&param2=value2\n\n\
@@ -62,12 +62,12 @@ PERSISTENCE DSN PARAMETERS:\n\
   snapshot_compression=on|off Snapshot compression only (default: on)\n\
   compression_threshold=BYTES Min size to compress (default: 64)\n\n\
 EXAMPLES:\n\
-  stoolap -d memory://                                    In-memory database\n\
-  stoolap -d file:///tmp/mydb                             Persistent database\n\
-  stoolap -d file:///tmp/mydb?sync=full                   Maximum durability\n\
-  stoolap -d file:///tmp/mydb?sync=none&compression=off   Maximum performance\n\
-  stoolap -d file:///tmp/mydb --profile durable           Use durable preset\n\
-  stoolap -d file:///tmp/mydb --sync full --compression off"
+oxibase -d memory://                                    In-memory database\n\
+oxibase -d file:///tmp/mydb                             Persistent database\n\
+oxibase -d file:///tmp/mydb?sync=full                   Maximum durability\n\
+oxibase -d file:///tmp/mydb?sync=none&compression=off   Maximum performance\n\
+oxibase -d file:///tmp/mydb --profile durable           Use durable preset\n\
+oxibase -d file:///tmp/mydb --sync full --compression off"
 )]
 struct Args {
     /// Database path (file://<path> or memory://)
@@ -163,7 +163,7 @@ impl Cli {
 
         // Load history from file
         if let Some(home) = dirs::home_dir() {
-            let history_file = home.join(".stoolap_history");
+            let history_file = home.join(".oxibase_history");
             let _ = editor.load_history(&history_file);
         }
 
@@ -305,7 +305,7 @@ impl Cli {
 
         // Save history
         if let Some(home) = dirs::home_dir() {
-            let history_file = home.join(".stoolap_history");
+            let history_file = home.join(".oxibase_history");
             let _ = self.editor.save_history(&history_file);
         }
 

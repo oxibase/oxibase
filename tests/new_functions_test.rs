@@ -15,7 +15,7 @@
 //! Integration tests for new SQL functions and syntax
 //! Tests CONCAT_WS, STRPOS, POSITION(x IN y), and CURRENT_TRANSACTION_ID
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // CONCAT_WS Function Tests

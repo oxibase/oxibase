@@ -16,7 +16,7 @@
 //!
 //! Tests date, time, and timestamp operations
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test inserting and querying date values
 #[test]

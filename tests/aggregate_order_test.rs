@@ -16,7 +16,7 @@
 //!
 //! Tests aggregation with ORDER BY and LIMIT
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_sales_table(db: &Database) {
     db.execute(

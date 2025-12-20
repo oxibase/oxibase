@@ -16,7 +16,7 @@
 //!
 //! Tests CTE with expressions on aliased columns
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test CTE expression with aliased columns and division
 #[test]

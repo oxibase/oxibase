@@ -15,7 +15,7 @@
 //! Tests for EXPLAIN and EXPLAIN ANALYZE functionality
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use stoolap::Database;
+use oxibase::Database;
 
 static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
 

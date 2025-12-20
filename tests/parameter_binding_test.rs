@@ -16,8 +16,8 @@
 //!
 //! Tests SQL parameter binding with ? placeholders
 
-use stoolap::Database;
-use stoolap::Value;
+use oxibase::Database;
+use oxibase::Value;
 
 /// Test integer parameter binding
 #[test]
@@ -207,7 +207,7 @@ fn test_null_parameter() {
     // Use Value::Null directly for explicit NULL
     db.execute(
         "INSERT INTO nullable (id, value) VALUES (?, ?)",
-        (1, Value::Null(stoolap::DataType::Text)),
+        (1, Value::Null(oxibase::DataType::Text)),
     )
     .expect("Failed to insert with NULL parameter");
 

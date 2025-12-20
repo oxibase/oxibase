@@ -16,7 +16,7 @@
 //!
 //! Tests DATE_TRUNC, TIME_TRUNC functions and their usage with GROUP BY
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_time_test_table(db: &Database) {
     db.execute(

@@ -17,7 +17,7 @@
 //! Cardinality feedback records actual vs estimated row counts from query execution
 //! and uses this information to improve future cardinality estimates.
 
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 /// Test that EXPLAIN ANALYZE returns both estimated and actual rows
 #[test]

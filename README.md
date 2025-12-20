@@ -1,33 +1,43 @@
 <div align="center">
-  <img src="logo.svg" alt="Stoolap Logo" width="360">
+   <img src="logo.svg" alt="OxiBase Logo" width="360">
 
-  <p>An embedded SQL database written in Rust.</p>
+   <p>An embedded SQL database written in Rust.</p>
 
   <p>
-    <a href="https://stoolap.io">Website</a> •
-    <a href="https://stoolap.io/docs">Docs</a> •
-    <a href="https://github.com/stoolap/stoolap/releases">Releases</a>
+     <a href="https://oxibase.github.io">Website</a> •
+     <a href="https://oxibase.github.io/docs">Docs</a> •
+     <a href="https://github.com/oxibase/oxibase/releases">Releases</a>
   </p>
 
   <p>
-    <a href="https://github.com/stoolap/stoolap/actions/workflows/ci.yml"><img src="https://github.com/stoolap/stoolap/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-    <a href="https://codecov.io/gh/stoolap/stoolap"><img src="https://codecov.io/gh/stoolap/stoolap/branch/main/graph/badge.svg" alt="codecov"></a>
-    <a href="https://crates.io/crates/stoolap"><img src="https://img.shields.io/crates/v/stoolap.svg" alt="Crates.io"></a>
-    <a href="https://github.com/stoolap/stoolap/releases"><img src="https://img.shields.io/github/v/release/stoolap/stoolap" alt="GitHub release"></a>
+     <a href="https://github.com/oxibase/oxibase/actions/workflows/ci.yml"><img src="https://github.com/oxibase/oxibase/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+     <a href="https://codecov.io/gh/oxibase/oxibase"><img src="https://codecov.io/gh/oxibase/oxibase/branch/main/graph/badge.svg" alt="codecov"></a>
+     <a href="https://crates.io/crates/oxibase"><img src="https://img.shields.io/crates/v/oxibase.svg" alt="Crates.io"></a>
+     <a href="https://github.com/oxibase/oxibase/releases"><img src="https://img.shields.io/github/v/release/oxibase/oxibase" alt="GitHub release"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
   </p>
 </div>
 
 ## Overview
 
-Stoolap is an embedded SQL database with MVCC transactions, written entirely in Rust. It supports both in-memory and persistent storage modes with full ACID compliance.
+OxiBase is an embedded SQL database with MVCC transactions, written entirely in
+Rust. It supports both in-memory and persistent storage modes with full ACID
+compliance.
 
 ## Installation
 
 ```bash
 # Add to Cargo.toml
 [dependencies]
-stoolap = "0.1"
+oxibase = "0.1"
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/oxibase/oxibase.git
+cd oxibase
+cargo build --release
 ```
 
 Or build from source:
@@ -43,7 +53,7 @@ cargo build --release
 ### As a Library
 
 ```rust
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = Database::open_in_memory()?;
@@ -63,9 +73,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Command Line
 
 ```bash
-./stoolap                                    # In-memory REPL
-./stoolap --db "file:///path/to/data"        # Persistent database
-./stoolap -q "SELECT 1 + 1"                  # Execute query directly
+./oxibase                                    # In-memory REPL
+./oxibase --db "file:///path/to/data"        # Persistent database
+./oxibase -q "SELECT 1 + 1"                  # Execute query directly
 ```
 
 ## Features
@@ -265,10 +275,10 @@ Stoolap uses write-ahead logging (WAL) with periodic snapshots:
 
 ```bash
 # In-memory (default) - data lost on exit
-./stoolap --db "memory://"
+./oxibase --db "memory://"
 
 # File-based - durable storage
-./stoolap --db "file:///var/lib/stoolap/data"
+./oxibase --db "file:///var/lib/oxibase/data"
 ```
 
 Features:

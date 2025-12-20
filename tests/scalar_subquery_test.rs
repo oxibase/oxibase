@@ -16,7 +16,7 @@
 //!
 //! Tests scalar subqueries in WHERE clauses
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_products_table(db: &Database) {
     db.execute(

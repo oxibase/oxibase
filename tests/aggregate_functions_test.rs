@@ -15,7 +15,7 @@
 //! Integration tests for new aggregate functions:
 //! STRING_AGG, GROUP_CONCAT, STDDEV, VARIANCE, MEDIAN
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_numbers_db(name: &str) -> Database {
     let db = Database::open(&format!("memory://{}", name)).expect("Failed to create database");

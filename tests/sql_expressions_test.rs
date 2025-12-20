@@ -16,7 +16,7 @@
 //!
 //! Tests various SQL expressions including literals, arithmetic, string functions, math functions
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_expression_table(db: &Database) {
     db.execute(

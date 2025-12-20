@@ -16,7 +16,7 @@
 //!
 //! Tests the SQL COALESCE function with literals
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test COALESCE with first value non-null
 #[test]

@@ -16,7 +16,7 @@
 //!
 //! Tests TIMESTAMP column formatting and parsing
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test TIMESTAMP column formatting
 #[test]

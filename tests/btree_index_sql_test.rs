@@ -17,7 +17,7 @@
 //! Tests B-tree INDEX functionality through SQL interface.
 //! B-tree indexes are auto-selected for INTEGER, FLOAT, and TIMESTAMP columns.
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test creating and using B-tree index
 #[test]

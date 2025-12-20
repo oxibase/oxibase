@@ -18,7 +18,7 @@
 //! observed during execution. This helps handle cases where estimated cardinalities
 //! are significantly different from actual cardinalities.
 
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 /// Test that AQE doesn't break basic join queries
 #[test]

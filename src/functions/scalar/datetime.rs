@@ -1654,7 +1654,7 @@ mod tests {
         let f = VersionFunction;
         let result = f.evaluate(&[]).unwrap();
         if let Value::Text(s) = result {
-            assert!(s.contains("stoolap"));
+            assert!(s.contains("oxibase"));
         } else {
             panic!("Expected string");
         }

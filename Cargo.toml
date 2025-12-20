@@ -1,24 +1,24 @@
 [package]
-name = "stoolap"
+name = "oxibase"
 version = "0.1.0"
 edition = "2021"
-authors = ["Stoolap Contributors"]
+authors = ["OxiBase Contributors"]
 description = "High-performance embedded SQL database with MVCC, time-travel queries, and full ACID compliance"
 license = "Apache-2.0"
-repository = "https://github.com/stoolap/stoolap"
-homepage = "https://stoolap.io"
-documentation = "https://stoolap.io/docs/"
+repository = "https://github.com/oxibase/oxibase"
+homepage = "https://oxibase.io"
+documentation = "https://oxibase.io/docs/"
 readme = "README.md"
 keywords = ["database", "sql", "embedded", "mvcc", "acid"]
 categories = ["database", "database-implementations"]
 
 [lib]
-name = "stoolap"
+name = "oxibase"
 path = "src/lib.rs"
 
 [[bin]]
-name = "stoolap"
-path = "src/bin/stoolap.rs"
+name = "oxibase"
+path = "src/bin/oxibase.rs"
 required-features = ["cli"]
 
 # PG server will be enabled once implemented

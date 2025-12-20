@@ -16,7 +16,7 @@
 //!
 //! Tests FIRST and LAST aggregate functions
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_first_last_table(db: &Database) {
     db.execute(

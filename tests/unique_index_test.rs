@@ -16,7 +16,7 @@
 //!
 //! Tests unique index creation and constraint enforcement
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test creating a unique index and verifying constraint enforcement
 #[test]

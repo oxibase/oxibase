@@ -16,7 +16,7 @@
 //!
 //! Tests aggregation functions: COUNT, SUM, AVG, MIN, MAX, GROUP BY, HAVING, DISTINCT
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_sales_table(db: &Database) {
     db.execute("CREATE TABLE sales_aggr (id INTEGER, product TEXT, category TEXT, amount FLOAT, region TEXT)", ())

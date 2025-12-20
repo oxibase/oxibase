@@ -16,7 +16,7 @@
 //!
 //! Tests that filters are properly pushed down to the storage engine
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_pushdown_table(db: &Database) {
     db.execute(

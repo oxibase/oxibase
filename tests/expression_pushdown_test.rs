@@ -16,7 +16,7 @@
 //!
 //! Tests NOT, IN, and NOT IN expression handling
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_test_products(db: &Database) {
     db.execute(

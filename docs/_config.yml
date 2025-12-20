@@ -1,12 +1,9 @@
-title: Stoolap
+title: OxiBase
 description: High-performance embedded SQL database written in pure Rust
 theme: jekyll-theme-minimal
-url: https://stoolap.io
-baseurl: "/"
-permalink: pretty
-logo: /assets/img/logo.svg
-github:
-  repository_url: https://github.com/stoolap/stoolap
+url: https://oxibase.io
+
+repository_url: https://github.com/oxibase/oxibase
 
 # Google Analytics
 google_analytics: 

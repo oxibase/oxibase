@@ -16,7 +16,7 @@
 //!
 //! Tests for correlated subqueries that reference columns from outer queries.
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_test_tables(db: &Database) {
     // Create customers table

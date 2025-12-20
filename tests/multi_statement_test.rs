@@ -16,7 +16,7 @@
 //!
 //! Tests parsing of multiple SQL statements in one string
 
-use stoolap::parser::parse_sql;
+use oxibase::parser::parse_sql;
 
 /// Test multi-statement parsing with transaction statements
 #[test]

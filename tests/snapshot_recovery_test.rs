@@ -15,7 +15,7 @@
 // Snapshot recovery integration tests
 // These tests verify that snapshots can be created and loaded correctly
 
-use stoolap::Database;
+use oxibase::Database;
 use tempfile::tempdir;
 
 /// Test basic snapshot creation and loading

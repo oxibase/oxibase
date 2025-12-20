@@ -40,7 +40,7 @@ const CALIBRATION_THRESHOLD: usize = 50;
 ///
 /// # Example
 /// ```
-/// use stoolap::common::BufferPool;
+/// use oxibase::common::BufferPool;
 ///
 /// let pool = BufferPool::new(4096, 1024 * 1024, "test");
 ///

@@ -34,8 +34,8 @@ Stoolap is a modern embedded SQL database that provides full ACID transactions w
 ## Need Help?
 
 If you can't find what you're looking for in the documentation, you can:
-* [Open an issue](https://github.com/stoolap/stoolap/issues) on GitHub
-* [Join the discussions](https://github.com/stoolap/stoolap/discussions) to ask questions
+* [Open an issue](https://github.com/oxibase/oxibase/issues) on GitHub
+* [Join the discussions](https://github.com/oxibase/oxibase/discussions) to ask questions
 
 ---
 

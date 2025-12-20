@@ -16,7 +16,7 @@
 //!
 //! Comprehensive integration tests for SQL functionality
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test basic aggregations (COUNT, SUM, AVG, MIN, MAX)
 #[test]

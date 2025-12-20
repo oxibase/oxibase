@@ -25,7 +25,7 @@
 //! # Example
 //!
 //! ```
-//! use stoolap::parser::{parse_sql, Statement};
+//! use oxibase::parser::{parse_sql, Statement};
 //!
 //! let sql = "SELECT * FROM users WHERE id = 1";
 //! let statements = parse_sql(sql).unwrap();
@@ -148,7 +148,7 @@ pub use token::{
 /// # Example
 ///
 /// ```
-/// use stoolap::parser::parse_sql;
+/// use oxibase::parser::parse_sql;
 ///
 /// let statements = parse_sql("SELECT 1").unwrap();
 /// assert_eq!(statements.len(), 1);

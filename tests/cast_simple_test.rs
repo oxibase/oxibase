@@ -16,7 +16,7 @@
 //!
 //! Tests basic CAST functionality
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test simple query without CAST
 #[test]

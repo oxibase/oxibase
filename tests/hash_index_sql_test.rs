@@ -18,7 +18,7 @@
 //! Hash indexes are auto-selected for TEXT and JSON columns.
 //! They excel at equality lookups but do NOT support range queries.
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test hash index on TEXT column (auto-selected)
 #[test]

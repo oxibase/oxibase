@@ -16,7 +16,7 @@
 //!
 //! Tests data type validation during INSERT operations
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test inserting valid data with all supported data types
 #[test]

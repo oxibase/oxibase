@@ -14,7 +14,7 @@
 
 //! Tests for new scalar functions: LOCATE, TO_CHAR, EXTRACT DOW/DOY
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // LOCATE Function Tests

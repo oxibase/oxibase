@@ -14,7 +14,7 @@
 
 //! FromRow Tests - Row to Struct mapping
 
-use stoolap::{named_params, Database, FromRow, Result, ResultRow};
+use oxibase::{named_params, Database, FromRow, Result, ResultRow};
 
 // Simple user struct
 struct User {

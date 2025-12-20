@@ -16,7 +16,7 @@
 //!
 //! Tests column alias usage in WHERE clauses
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_products_db(test_name: &str) -> Database {
     let db = Database::open(&format!("memory://col_alias_where_{}", test_name))

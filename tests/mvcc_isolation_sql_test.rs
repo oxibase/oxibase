@@ -17,7 +17,7 @@
 //! Tests transaction isolation through the SQL interface
 //! Uses BEGIN/COMMIT/ROLLBACK statements (matching working transaction_test.rs pattern)
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test that uncommitted changes are not visible to other connections
 /// Note: This test uses the db.begin() API which has known limitations

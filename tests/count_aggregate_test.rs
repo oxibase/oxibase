@@ -16,7 +16,7 @@
 //!
 //! Tests COUNT aggregation with various conditions
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_count_test_table(db: &Database) {
     db.execute(

@@ -16,7 +16,7 @@
 // Tests for bugs #37, #38, #39 discovered during exploratory testing
 
 use std::io::Write;
-use stoolap::Database;
+use oxibase::Database;
 use tempfile::NamedTempFile;
 
 fn setup_db() -> Database {

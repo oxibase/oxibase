@@ -16,7 +16,7 @@
 //!
 //! Tests INSERT and UPDATE statements with function calls
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test INSERT with UPPER() function
 #[test]

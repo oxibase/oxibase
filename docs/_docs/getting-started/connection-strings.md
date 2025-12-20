@@ -53,7 +53,7 @@ Data persisted to disk:
 Examples:
 ```
 file:///data/mydb
-file:///Users/username/stoolap/data
+file:///Users/username/oxibase/data
 file:///tmp/test_db
 ```
 
@@ -85,7 +85,7 @@ file:///path/to/data?sync_mode=normal&snapshot_interval=60
 ### Rust API
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // In-memory database
@@ -119,16 +119,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```bash
 # In-memory database (default)
-stoolap
+oxibase
 
 # Persistent database
-stoolap --db "file:///data/mydb"
+oxibase --db "file:///data/mydb"
 
 # With configuration
-stoolap --db "file:///data/mydb?sync_mode=full"
+oxibase --db "file:///data/mydb?sync_mode=full"
 
 # Execute a query directly
-stoolap --db "file:///data/mydb" -q "SELECT * FROM users"
+oxibase --db "file:///data/mydb" -q "SELECT * FROM users"
 ```
 
 ## PRAGMA Configuration

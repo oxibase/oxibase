@@ -22,7 +22,7 @@ This guide walks you through the process of installing Stoolap on different plat
 The easiest way to install Stoolap is via Cargo:
 
 ```bash
-cargo install stoolap
+cargo install oxibase
 ```
 
 This command downloads the source code, compiles it, and installs the binary into your `~/.cargo/bin` directory.
@@ -33,7 +33,7 @@ To use Stoolap as a library in your Rust project:
 
 ```toml
 [dependencies]
-stoolap = "0.1"
+oxibase = "0.1"
 ```
 
 ### Method 3: Building from Source
@@ -42,15 +42,15 @@ If you need the latest features or want to make modifications:
 
 ```bash
 # Clone the repository
-git clone https://github.com/stoolap/stoolap.git
+git clone https://github.com/oxibase/oxibase.git
 
 # Navigate to the directory
-cd stoolap
+cd oxibase
 
 # Build in release mode
 cargo build --release
 
-# The binary will be at ./target/release/stoolap
+# The binary will be at ./target/release/oxibase
 ```
 
 ## Platform-Specific Instructions
@@ -61,7 +61,7 @@ On macOS, after building from source:
 
 ```bash
 # Optionally move to a directory in your PATH
-sudo cp ./target/release/stoolap /usr/local/bin/
+sudo cp ./target/release/oxibase /usr/local/bin/
 ```
 
 ### Linux
@@ -70,7 +70,7 @@ For Linux users, after building the binary:
 
 ```bash
 # Optionally move to a directory in your PATH
-sudo cp ./target/release/stoolap /usr/local/bin/
+sudo cp ./target/release/oxibase /usr/local/bin/
 ```
 
 ### Windows
@@ -78,7 +78,7 @@ sudo cp ./target/release/stoolap /usr/local/bin/
 On Windows:
 
 1. Build from source as described above
-2. The binary will be at `.\target\release\stoolap.exe`
+2. The binary will be at `.\target\release\oxibase.exe`
 3. Place the executable in a suitable location, such as `C:\Program Files\Stoolap`
 4. Add the directory to your PATH through System Properties > Advanced > Environment Variables
 
@@ -88,13 +88,13 @@ To use Stoolap in your Rust application:
 
 ```toml
 [dependencies]
-stoolap = "0.1"
+oxibase = "0.1"
 ```
 
 Then use it in your code:
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create in-memory database
@@ -125,7 +125,7 @@ See the [API Reference](api-reference) for complete documentation of the Stoolap
 To verify that Stoolap CLI was installed correctly:
 
 ```bash
-stoolap --version
+oxibase --version
 ```
 
 This should display the version number of your Stoolap installation.
@@ -147,4 +147,4 @@ If you encounter issues during installation:
 - Ensure Cargo is available: `cargo --version`
 - For permission issues on Linux/macOS, use `sudo` as needed
 
-If problems persist, please [open an issue](https://github.com/stoolap/stoolap/issues) on GitHub with details about your environment and the error you're experiencing.
+If problems persist, please [open an issue](https://github.com/oxibase/oxibase/issues) on GitHub with details about your environment and the error you're experiencing.

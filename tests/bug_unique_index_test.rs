@@ -16,7 +16,7 @@
 //!
 //! Tests unique index constraint enforcement
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test that unique constraint is enforced on INSERT
 #[test]

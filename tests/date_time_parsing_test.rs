@@ -16,7 +16,7 @@
 //!
 //! Tests date and time literal parsing in SQL queries
 
-use stoolap::parser::parse_sql;
+use oxibase::parser::parse_sql;
 
 /// Test parsing date literal in WHERE clause
 #[test]

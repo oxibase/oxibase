@@ -16,7 +16,7 @@
 //!
 //! Tests IS NULL and IS NOT NULL expressions through SQL queries
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_nullable_table(db: &Database) {
     db.execute(

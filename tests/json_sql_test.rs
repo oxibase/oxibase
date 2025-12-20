@@ -16,7 +16,7 @@
 //!
 //! Tests JSON data type support in SQL statements
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test creating tables with JSON columns
 #[test]

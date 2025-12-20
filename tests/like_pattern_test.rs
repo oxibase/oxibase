@@ -16,7 +16,7 @@
 //!
 //! Tests SQL LIKE pattern matching with %, _, and combinations
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_like_table(db: &Database) {
     db.execute(

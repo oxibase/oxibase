@@ -14,7 +14,7 @@
 
 //! Integration tests for INSERT INTO ... SELECT support
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn create_test_db(name: &str) -> Database {
     Database::open(&format!("memory://{}", name)).expect("Failed to create in-memory database")

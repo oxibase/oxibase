@@ -16,7 +16,7 @@
 //!
 //! Tests CTE with column aliases
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_cte_alias_db(test_name: &str) -> Database {
     let db = Database::open(&format!("memory://cte_alias_{}", test_name))

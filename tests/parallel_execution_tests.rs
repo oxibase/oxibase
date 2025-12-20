@@ -29,7 +29,7 @@
 //! default - incomplete work is abandoned when the parent scope exits.
 
 use std::time::Instant;
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 /// Test parallel filtering on a large dataset
 #[test]

@@ -14,7 +14,7 @@
 
 //! Query Cache Integration Tests
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Tests basic query cache functionality
 #[test]

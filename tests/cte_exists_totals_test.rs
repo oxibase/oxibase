@@ -16,7 +16,7 @@
 //!
 //! Tests CTE with GROUP BY and aggregation for totals
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_sales_db() -> Database {
     let db = Database::open("memory://cte_totals").expect("Failed to create database");

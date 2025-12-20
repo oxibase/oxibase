@@ -16,7 +16,7 @@
 //!
 //! Tests auto-increment functionality for primary key columns
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test auto-increment functionality for a table with an explicit primary key
 #[test]

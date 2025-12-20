@@ -20,7 +20,7 @@
 //! - CASE with aggregates
 //! - CASE in different SQL contexts
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // Basic CASE WHEN expressions

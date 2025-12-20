@@ -21,7 +21,7 @@
 //! - FILTER clause for aggregates
 //! - JSON_ARRAY_LENGTH function
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // EXISTS as Scalar Expression

@@ -16,7 +16,7 @@
 //!
 //! Tests using SQL keywords as column names with proper quoting
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test creating table with double-quoted keyword columns
 #[test]

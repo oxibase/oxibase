@@ -36,7 +36,7 @@ pub type FxBuildHasher = BuildHasherDefault<FxHasher>;
 ///
 /// # Example
 /// ```
-/// use stoolap::common::Int64Map;
+/// use oxibase::common::Int64Map;
 ///
 /// let mut map: Int64Map<String> = Int64Map::default();
 /// map.insert(42, "hello".to_string());
@@ -70,7 +70,7 @@ pub type UsizeSet = FxHashSet<usize>;
 ///
 /// # Example
 /// ```
-/// use stoolap::common::ConcurrentInt64Map;
+/// use oxibase::common::ConcurrentInt64Map;
 ///
 /// let map: ConcurrentInt64Map<String> = ConcurrentInt64Map::default();
 /// map.insert(42, "hello".to_string());
@@ -96,7 +96,7 @@ pub type ConcurrentUsizeMap<V> = DashMap<usize, V, FxBuildHasher>;
 ///
 /// # Example
 /// ```
-/// use stoolap::common::OrderedInt64Map;
+/// use oxibase::common::OrderedInt64Map;
 /// use std::collections::BTreeMap;
 /// use std::sync::RwLock;
 ///

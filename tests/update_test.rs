@@ -14,7 +14,7 @@
 
 //! UPDATE Statement Integration Tests
 
-use stoolap::Database;
+use oxibase::Database;
 
 #[test]
 fn test_simple_update() {

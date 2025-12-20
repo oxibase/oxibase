@@ -16,7 +16,7 @@
 //!
 //! Tests UPDATE statements with arithmetic expressions
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test UPDATE with arithmetic expressions
 #[test]

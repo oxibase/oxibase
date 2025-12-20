@@ -18,7 +18,7 @@
 //! Keywords like TIMESTAMP, DATE, TIME, JSON, etc. should be usable as column names
 //! without requiring quotes when they are not truly reserved.
 
-use stoolap::Database;
+use oxibase::Database;
 
 #[test]
 fn test_timestamp_as_column_name() {

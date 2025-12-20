@@ -19,7 +19,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! use stoolap::{Database, params};
+//! use oxibase::{Database, params};
 //!
 //! let db = Database::open("memory://")?;
 //!
@@ -94,7 +94,7 @@ impl Drop for DatabaseInner {
 /// # Examples
 ///
 /// ```ignore
-/// use stoolap::{Database, params};
+/// use oxibase::{Database, params};
 ///
 /// // Open in-memory database
 /// let db = Database::open("memory://")?;
@@ -589,7 +589,7 @@ impl Database {
     /// # Examples
     ///
     /// ```ignore
-    /// use stoolap::{Database, named_params};
+    /// use oxibase::{Database, named_params};
     ///
     /// let db = Database::open("memory://")?;
     /// db.execute("CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)", ())?;
@@ -624,7 +624,7 @@ impl Database {
     /// # Examples
     ///
     /// ```ignore
-    /// use stoolap::{Database, named_params};
+    /// use oxibase::{Database, named_params};
     ///
     /// let db = Database::open("memory://")?;
     /// db.execute("CREATE TABLE users (id INTEGER, name TEXT)", ())?;
@@ -655,7 +655,7 @@ impl Database {
     /// # Examples
     ///
     /// ```ignore
-    /// use stoolap::{Database, named_params};
+    /// use oxibase::{Database, named_params};
     ///
     /// let count: i64 = db.query_one_named(
     ///     "SELECT COUNT(*) FROM users WHERE age > :min_age",
@@ -679,7 +679,7 @@ impl Database {
     /// # Examples
     ///
     /// ```ignore
-    /// use stoolap::{Database, FromRow, ResultRow, Result};
+    /// use oxibase::{Database, FromRow, ResultRow, Result};
     ///
     /// struct User {
     ///     id: i64,
@@ -714,7 +714,7 @@ impl Database {
     /// # Examples
     ///
     /// ```ignore
-    /// use stoolap::{Database, FromRow, ResultRow, Result, named_params};
+    /// use oxibase::{Database, FromRow, ResultRow, Result, named_params};
     ///
     /// struct Product {
     ///     id: i64,
@@ -760,7 +760,7 @@ impl Database {
     /// # Examples
     ///
     /// ```ignore
-    /// use stoolap::IsolationLevel;
+    /// use oxibase::IsolationLevel;
     ///
     /// let tx = db.begin_with_isolation(IsolationLevel::Snapshot)?;
     /// // All reads in this transaction see a consistent snapshot

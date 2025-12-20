@@ -578,4 +578,4 @@ Stoolap's subquery support is comprehensive. Planned enhancements include:
 - Performance optimizations for correlated subqueries (caching, decorrelation)
 - Lateral subqueries (LATERAL JOIN)
 
-For the latest updates on subquery support, check the [Stoolap GitHub repository](https://github.com/stoolap/stoolap).
+For the latest updates on subquery support, check the [Stoolap GitHub repository](https://github.com/oxibase/oxibase).

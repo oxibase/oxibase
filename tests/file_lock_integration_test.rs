@@ -16,7 +16,7 @@
 // Note: Unix flock() allows the same process to acquire the lock multiple times
 // The file lock is designed for inter-process locking, not intra-process
 
-use stoolap::Database;
+use oxibase::Database;
 use tempfile::tempdir;
 
 #[test]

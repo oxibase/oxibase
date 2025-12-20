@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use std::fs;
-use stoolap::Database;
+use oxibase::Database;
 use tempfile::tempdir;
 
 #[test]

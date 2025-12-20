@@ -16,7 +16,7 @@
 //!
 //! Tests NOT operator in various contexts
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_products_table(db: &Database) {
     db.execute(

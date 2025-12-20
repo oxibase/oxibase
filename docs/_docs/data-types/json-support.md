@@ -165,7 +165,7 @@ SELECT JSON_KEYS('{"a": 1, "b": 2, "c": 3}');
 When using Rust with Stoolap, you can work with JSON data using `serde_json`:
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]

@@ -16,7 +16,7 @@
 //!
 //! Tests that the parser can handle real-world SQL patterns.
 
-use stoolap::parser::{parse_sql, Statement};
+use oxibase::parser::{parse_sql, Statement};
 
 /// Helper to parse SQL and assert no errors
 fn parse_ok(sql: &str) -> Statement {

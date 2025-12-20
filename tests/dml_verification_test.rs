@@ -16,7 +16,7 @@
 //!
 //! Tests to verify that functions work correctly in INSERT statements
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test UPPER function works correctly in INSERT
 #[test]

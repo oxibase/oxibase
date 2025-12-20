@@ -14,7 +14,7 @@
 
 //! Persistence tests for snapshot, WAL, and index recovery
 
-use stoolap::Database;
+use oxibase::Database;
 use tempfile::tempdir;
 
 /// Verifies that UPDATE operations are persisted correctly across database

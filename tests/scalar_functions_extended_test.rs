@@ -15,7 +15,7 @@
 //! Integration tests for extended scalar functions
 //! Tests string, math, and datetime functions
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // String Function Tests

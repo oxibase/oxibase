@@ -14,7 +14,7 @@
 
 //! Integration tests for join optimizer
 
-use stoolap::Database;
+use oxibase::Database;
 
 #[test]
 fn test_explain_shows_hash_join() {

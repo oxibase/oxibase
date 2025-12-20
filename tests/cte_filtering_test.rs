@@ -16,7 +16,7 @@
 //!
 //! Tests CTE operations with various WHERE clause filters and aggregates
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_products_db(test_name: &str) -> Database {
     let db = Database::open(&format!("memory://cte_filter_{}", test_name))

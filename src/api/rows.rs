@@ -58,7 +58,7 @@ use super::database::FromValue;
 /// # Example
 ///
 /// ```ignore
-/// use stoolap::{Database, FromRow, ResultRow, Result};
+/// use oxibase::{Database, FromRow, ResultRow, Result};
 ///
 /// struct User {
 ///     id: i64,

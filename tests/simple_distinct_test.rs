@@ -16,7 +16,7 @@
 //!
 //! Tests basic DISTINCT functionality
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test basic DISTINCT with duplicate values
 #[test]

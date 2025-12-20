@@ -16,7 +16,7 @@
 //!
 //! Tests CREATE INDEX, DROP INDEX, and queries with indexes
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_index_table(db: &Database) {
     db.execute(

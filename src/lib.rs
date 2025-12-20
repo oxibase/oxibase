@@ -34,7 +34,7 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use stoolap::api::Database;
+//! use oxibase::api::Database;
 //!
 //! // Open in-memory database
 //! let db = Database::open_in_memory().unwrap();

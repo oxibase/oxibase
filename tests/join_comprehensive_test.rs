@@ -16,7 +16,7 @@
 //!
 //! Tests various JOIN operations with different tables
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_comprehensive_tables(db: &Database) {
     // Create categories_ch table with parent-child structure

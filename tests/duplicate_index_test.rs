@@ -16,7 +16,7 @@
 //!
 //! Tests behavior when creating duplicate indexes on same column
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test creating unique index first, then trying non-unique
 #[test]

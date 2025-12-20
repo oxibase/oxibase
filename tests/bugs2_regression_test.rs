@@ -15,7 +15,7 @@
 // Integration tests for all bugs tracked in BUGS2.md
 // These tests ensure that fixed bugs don't regress
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_db(name: &str) -> Database {
     Database::open(&format!("memory://{}", name)).expect("Failed to create database")

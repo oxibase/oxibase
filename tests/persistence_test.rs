@@ -14,7 +14,7 @@
 
 // Persistence tests for WAL and recovery
 
-use stoolap::Database;
+use oxibase::Database;
 use tempfile::tempdir;
 
 #[test]

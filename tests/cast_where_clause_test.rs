@@ -17,7 +17,7 @@
 //! Tests CAST expressions in WHERE clauses
 
 use std::collections::HashSet;
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_cast_where_db(test_name: &str) -> Database {
     let db = Database::open(&format!("memory://cast_where_{}", test_name))

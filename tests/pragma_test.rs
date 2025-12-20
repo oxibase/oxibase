@@ -16,7 +16,7 @@
 //!
 //! Tests PRAGMA statement functionality for database configuration
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test reading snapshot_interval PRAGMA
 #[test]

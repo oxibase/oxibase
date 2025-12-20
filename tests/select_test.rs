@@ -16,7 +16,7 @@
 //!
 //! Tests SELECT queries with complex WHERE clauses
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test string comparison in SELECT
 #[test]

@@ -19,7 +19,7 @@
 //! NOTE: Some JOIN tests are marked as ignored due to known issues in the
 //! current JOIN implementation that need to be fixed.
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_simple_tables(db: &Database) {
     // Create departments_simple table (with ID, name)

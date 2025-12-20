@@ -16,7 +16,7 @@
 //!
 //! Tests proper handling of single quotes (strings) vs double quotes (identifiers)
 
-use stoolap::parser::{Lexer, TokenType};
+use oxibase::parser::{Lexer, TokenType};
 
 /// Test single quotes create string tokens
 #[test]

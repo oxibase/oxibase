@@ -16,7 +16,7 @@
 //!
 //! Tests scalar functions: UPPER, LOWER, LENGTH, ABS, ROUND, COALESCE, etc.
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_sample_table(db: &Database) {
     // Create the test table

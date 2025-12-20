@@ -18,7 +18,7 @@
 //! Bitmap indexes are auto-selected for BOOLEAN columns.
 //! They excel at low-cardinality columns with fast AND/OR operations.
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test bitmap index on BOOLEAN column (auto-selected)
 #[test]

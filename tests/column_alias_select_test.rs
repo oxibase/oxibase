@@ -16,7 +16,7 @@
 //!
 //! Tests SELECT with column aliases functionality
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test basic SELECT with column alias
 #[test]

@@ -16,7 +16,7 @@
 //!
 //! Tests EXISTS and NOT EXISTS subqueries
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_exists_tables(db: &Database) {
     // Create customers table

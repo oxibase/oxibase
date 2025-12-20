@@ -16,7 +16,7 @@
 //!
 //! Tests COLLATE function for case-insensitive and accent-insensitive comparisons
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_collate_test_table(db: &Database) {
     db.execute(

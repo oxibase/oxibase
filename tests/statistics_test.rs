@@ -14,7 +14,7 @@
 
 //! Tests for ANALYZE command and statistics infrastructure
 
-use stoolap::api::Database;
+use oxibase::api::Database;
 
 /// Test basic ANALYZE command creates system tables
 #[test]
@@ -426,7 +426,7 @@ fn test_analyze_excludes_system_tables() {
 /// Test selectivity estimator formulas
 #[test]
 fn test_selectivity_estimator() {
-    use stoolap::storage::SelectivityEstimator;
+    use oxibase::storage::SelectivityEstimator;
 
     // Test equality selectivity
     let eq_sel = SelectivityEstimator::equality(100); // 100 distinct values
@@ -479,7 +479,7 @@ fn test_selectivity_estimator() {
 /// Test join cardinality estimation
 #[test]
 fn test_join_cardinality() {
-    use stoolap::storage::SelectivityEstimator;
+    use oxibase::storage::SelectivityEstimator;
 
     // Test join cardinality estimation
     // Function signature: join_cardinality(left_rows, right_rows, left_distinct, right_distinct)

@@ -26,7 +26,7 @@ This dual approach provides:
 To enable persistence, use a `file://` connection string:
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 // In-memory only (no persistence)
 let db = Database::open("memory://")?;
@@ -38,10 +38,10 @@ let db = Database::open("file:///path/to/database")?;
 Command line:
 ```bash
 # In-memory
-stoolap
+oxibase
 
 # With persistence
-stoolap --db "file:///path/to/database"
+oxibase --db "file:///path/to/database"
 ```
 
 ## Write-Ahead Log (WAL)
@@ -259,7 +259,7 @@ Only one process can open a database directory:
 ## Example: Complete Configuration
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open with custom persistence settings

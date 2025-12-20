@@ -58,7 +58,7 @@ pub fn version() -> &'static str {
 /// Returns version info as a formatted string
 pub fn version_info() -> String {
     format!(
-        "stoolap {} (commit: {}, built: {})",
+        "oxibase {} (commit: {}, built: {})",
         get_version(),
         GIT_COMMIT,
         BUILD_TIME
@@ -143,7 +143,7 @@ mod tests {
     #[test]
     fn test_version_info() {
         let info = version_info();
-        assert!(info.contains("stoolap"));
+        assert!(info.contains("oxibase"));
         assert!(info.contains("0.1.0"));
     }
 

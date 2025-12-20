@@ -15,11 +15,11 @@ Before starting, ensure you have Stoolap installed. If not, follow the [Installa
 
 ```bash
 # Install with Cargo
-cargo install stoolap
+cargo install oxibase
 
 # Or build from source
-git clone https://github.com/stoolap/stoolap.git
-cd stoolap
+git clone https://github.com/oxibase/oxibase.git
+cd oxibase
 cargo build --release
 ```
 
@@ -29,13 +29,13 @@ Stoolap includes a command-line interface (CLI) for interactive use:
 
 ```bash
 # Start with an in-memory database (data is lost when the CLI exits)
-./target/release/stoolap
+./target/release/oxibase
 
 # Or with persistent storage (data is saved to disk)
-./target/release/stoolap --db "file:///path/to/data"
+./target/release/oxibase --db "file:///path/to/data"
 
 # Execute a query directly
-./target/release/stoolap -q "SELECT 1 + 1"
+./target/release/oxibase -q "SELECT 1 + 1"
 ```
 
 ## Creating a Table

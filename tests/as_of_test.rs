@@ -16,7 +16,7 @@
 //!
 //! Tests for temporal queries using AS OF TRANSACTION and AS OF TIMESTAMP syntax.
 
-use stoolap::Database;
+use oxibase::Database;
 
 // ============================================================================
 // Parser Tests

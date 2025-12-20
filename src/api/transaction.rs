@@ -19,7 +19,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! use stoolap::Database;
+//! use oxibase::Database;
 //!
 //! let db = Database::open("memory://")?;
 //! db.execute("CREATE TABLE accounts (id INTEGER, balance INTEGER)", ())?;

@@ -16,7 +16,7 @@ The `Database` struct is the main entry point for using Stoolap.
 ### Opening a Database
 
 ```rust
-use stoolap::Database;
+use oxibase::Database;
 
 // Open an in-memory database (unique instance)
 let db = Database::open_in_memory()?;
@@ -48,7 +48,7 @@ let db = Database::open("file:///path/to/database?sync_mode=full&snapshot_interv
 Execute DDL or DML statements that don't return rows.
 
 ```rust
-use stoolap::{Database, params};
+use oxibase::{Database, params};
 
 let db = Database::open("memory://")?;
 
@@ -163,7 +163,7 @@ match name {
 Use named parameters with `:name` syntax.
 
 ```rust
-use stoolap::{Database, named_params};
+use oxibase::{Database, named_params};
 
 let db = Database::open("memory://")?;
 db.execute("CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)", ())?;
@@ -281,7 +281,7 @@ for row in db.query("SELECT id, name, active FROM users", ())? {
 ## Error Handling
 
 ```rust
-use stoolap::{Database, Error};
+use oxibase::{Database, Error};
 
 let db = Database::open("memory://")?;
 
@@ -332,7 +332,7 @@ println!("Final count: {}", count);
 ## Complete Example
 
 ```rust
-use stoolap::{Database, params};
+use oxibase::{Database, params};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open persistent database

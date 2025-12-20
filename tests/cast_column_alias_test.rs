@@ -16,7 +16,7 @@
 //!
 //! Tests CAST with column aliases
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test simple column aliases
 #[test]

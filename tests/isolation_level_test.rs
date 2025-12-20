@@ -16,7 +16,7 @@
 //!
 //! Tests transaction isolation level settings
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test session-wide isolation level setting with SET ISOLATIONLEVEL
 #[test]

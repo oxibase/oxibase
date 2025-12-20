@@ -16,7 +16,7 @@
 //!
 //! Tests COUNT(*) with WHERE clause using indexes
 
-use stoolap::Database;
+use oxibase::Database;
 
 /// Test COUNT(*) with WHERE clause and index
 #[test]

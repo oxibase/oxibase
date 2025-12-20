@@ -16,7 +16,7 @@
 //!
 //! Tests for GROUP BY ROLLUP, GROUP BY CUBE, and GROUPING SETS functionality
 
-use stoolap::Database;
+use oxibase::Database;
 
 fn setup_sales_table(db: &Database) {
     db.execute(

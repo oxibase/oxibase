@@ -18,7 +18,7 @@
 
 use rand::Rng;
 use std::time::Instant;
-use stoolap::Database;
+use oxibase::Database;
 
 const ROW_COUNT: usize = 10_000;
 const ITERATIONS: usize = 100;
