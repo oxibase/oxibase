@@ -419,6 +419,7 @@ impl Transaction {
     }
 
     /// Convert AST expression to storage expression
+    #[allow(clippy::only_used_in_recursion)]
     fn convert_to_storage_expression(
         &self,
         expr: &Expression,
