@@ -2063,8 +2063,12 @@ impl fmt::Display for CreateFunctionStatement {
             result.push_str(&format!("{} {}", param.name, param.data_type));
         }
 
-        result.push_str(&format!(") RETURNS {} LANGUAGE {} AS '{}'",
-            self.return_type, self.language, self.body.replace("'", "''")));
+        result.push_str(&format!(
+            ") RETURNS {} LANGUAGE {} AS '{}'",
+            self.return_type,
+            self.language,
+            self.body.replace("'", "''")
+        ));
         write!(f, "{}", result)
     }
 }

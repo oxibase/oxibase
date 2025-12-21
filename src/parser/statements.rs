@@ -1866,9 +1866,10 @@ impl Parser {
         let data_type = self.cur_token.literal.to_uppercase();
 
         // Handle DECIMAL(precision, scale) and NUMERIC(precision, scale) syntax
-        if (data_type == "DECIMAL" || data_type == "NUMERIC") && self.peek_token_is_punctuator("(") {
+        if (data_type == "DECIMAL" || data_type == "NUMERIC") && self.peek_token_is_punctuator("(")
+        {
             self.next_token(); // consume (
-            // Skip precision
+                               // Skip precision
             if self.peek_token.token_type == TokenType::Integer {
                 self.next_token();
             }
@@ -1925,7 +1926,8 @@ impl Parser {
                 if !self.expect_peek(TokenType::Identifier) {
                     return None;
                 }
-                let param_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+                let param_name =
+                    Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
 
                 let param_type = self.parse_data_type()?;
                 parameters.push(FunctionParameter {

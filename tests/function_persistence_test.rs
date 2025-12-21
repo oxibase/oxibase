@@ -31,32 +31,40 @@ fn test_function_persistence_basic() {
     ).expect("Failed to create function");
 
     // Query the system table directly to verify persistence
-    let name: String = db.query_one(
-        "SELECT name FROM _sys_functions WHERE name = 'test_add'",
-        ()
-    ).expect("Failed to query function");
+    let name: String = db
+        .query_one(
+            "SELECT name FROM _sys_functions WHERE name = 'test_add'",
+            (),
+        )
+        .expect("Failed to query function");
 
     assert_eq!(name, "test_add");
 
-    let return_type: String = db.query_one(
-        "SELECT return_type FROM _sys_functions WHERE name = 'test_add'",
-        ()
-    ).expect("Failed to query return type");
+    let return_type: String = db
+        .query_one(
+            "SELECT return_type FROM _sys_functions WHERE name = 'test_add'",
+            (),
+        )
+        .expect("Failed to query return type");
 
     assert_eq!(return_type, "INTEGER");
 
-    let language: String = db.query_one(
-        "SELECT language FROM _sys_functions WHERE name = 'test_add'",
-        ()
-    ).expect("Failed to query language");
+    let language: String = db
+        .query_one(
+            "SELECT language FROM _sys_functions WHERE name = 'test_add'",
+            (),
+        )
+        .expect("Failed to query language");
 
     assert_eq!(language, "DENO");
 
     // Verify parameters column is JSON type
-    let param_type: String = db.query_one(
-        "SELECT JSON_TYPE(parameters) FROM _sys_functions WHERE name = 'test_add'",
-        ()
-    ).expect("Failed to query parameters type");
+    let param_type: String = db
+        .query_one(
+            "SELECT JSON_TYPE(parameters) FROM _sys_functions WHERE name = 'test_add'",
+            (),
+        )
+        .expect("Failed to query parameters type");
 
     assert_eq!(param_type, "array", "Parameters should be a JSON array");
 }
@@ -65,7 +73,12 @@ fn test_function_persistence_basic() {
 #[test]
 fn test_function_persistence_restart() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
-    let db_path = temp_dir.path().join("test.db").to_str().unwrap().to_string();
+    let db_path = temp_dir
+        .path()
+        .join("test.db")
+        .to_str()
+        .unwrap()
+        .to_string();
 
     // First session: create function and persist it
     {
@@ -78,7 +91,9 @@ fn test_function_persistence_restart() {
         ).expect("Failed to create function");
 
         // Use the function to verify it works
-        let result: i64 = db.query_one("SELECT persistent_func(5)", ()).expect("Failed to call function");
+        let result: i64 = db
+            .query_one("SELECT persistent_func(5)", ())
+            .expect("Failed to call function");
         assert_eq!(result, 10);
     }
 
@@ -87,7 +102,9 @@ fn test_function_persistence_restart() {
         let db = Database::open(&format!("file://{}", db_path)).expect("Failed to reopen database");
 
         // Function should work after restart (proves it was loaded from system table)
-        let result: i64 = db.query_one("SELECT persistent_func(7)", ()).expect("Failed to call function after restart");
+        let result: i64 = db
+            .query_one("SELECT persistent_func(7)", ())
+            .expect("Failed to call function after restart");
         assert_eq!(result, 14);
     }
 }
@@ -109,14 +126,20 @@ fn test_multiple_functions_persistence() {
     ).expect("Failed to create func2");
 
     // Verify both functions are persisted
-    let count: i64 = db.query_one("SELECT COUNT(*) FROM _sys_functions", ()).expect("Failed to count functions");
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .expect("Failed to count functions");
     assert_eq!(count, 2);
 
     // Test both functions work
-    let result1: String = db.query_one("SELECT func1('World')", ()).expect("Failed to call func1");
+    let result1: String = db
+        .query_one("SELECT func1('World')", ())
+        .expect("Failed to call func1");
     assert_eq!(result1, "Hello World");
 
-    let result2: i64 = db.query_one("SELECT func2(3, 7)", ()).expect("Failed to call func2");
+    let result2: i64 = db
+        .query_one("SELECT func2(3, 7)", ())
+        .expect("Failed to call func2");
     assert_eq!(result2, 7);
 }
 
@@ -138,7 +161,9 @@ fn test_function_if_not_exists_persistence() {
     ).expect("Failed to create function second time");
 
     // Function should still exist and work with original implementation
-    let result: String = db.query_one("SELECT conditional_func()", ()).expect("Failed to call function");
+    let result: String = db
+        .query_one("SELECT conditional_func()", ())
+        .expect("Failed to call function");
     assert_eq!(result, "created");
 }
 
@@ -155,9 +180,12 @@ fn test_functions_table_starts_empty() {
     db.execute(
         "CREATE FUNCTION temp_func() RETURNS INTEGER LANGUAGE DENO AS 'return 42;'",
         (),
-    ).expect("Failed to create function");
+    )
+    .expect("Failed to create function");
 
     // Now the table should exist and have 1 row
-    let count: i64 = db.query_one("SELECT COUNT(*) FROM _sys_functions", ()).expect("Failed to count functions");
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .expect("Failed to count functions");
     assert_eq!(count, 1);
 }

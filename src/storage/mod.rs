@@ -82,6 +82,4 @@ pub use statistics::{
 };
 
 // Re-export Functions types
-pub use functions::{
-    is_functions_table, StoredFunction, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
-};
+pub use functions::{is_functions_table, StoredFunction, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS};

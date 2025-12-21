@@ -74,7 +74,7 @@ use rustc_hash::FxHashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::core::{Error, Result, Value};
-use crate::functions::{global_registry, FunctionRegistry, FunctionSignature, FunctionDataType};
+use crate::functions::{global_registry, FunctionDataType, FunctionRegistry, FunctionSignature};
 use crate::parser::ast::{Program, Statement};
 use crate::parser::Parser;
 use crate::storage::mvcc::engine::MVCCEngine;
@@ -99,8 +99,8 @@ pub(crate) enum DeferredDdlOperation {
     }, // Undo by recreating
 }
 
-use serde_json;
 use crate::storage::functions::StoredParameter;
+use serde_json;
 
 pub use context::{ExecutionContext, TimeoutGuard};
 pub use expression::{
@@ -248,9 +248,7 @@ impl Executor {
         // Check if the functions system table exists
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        let has_functions_table = tables
-            .iter()
-            .any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
+        let has_functions_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
 
         if !has_functions_table {
             // No functions table yet, nothing to load
@@ -264,22 +262,31 @@ impl Executor {
         while scanner.next() {
             let row = scanner.row();
             // Schema: id(0), name(1), parameters(2), return_type(3), language(4), code(5)
-            if let (Some(Value::Text(name)), Some(Value::Text(parameters_json)),
-                 Some(Value::Text(_return_type)), Some(Value::Text(_language)),
-                 Some(Value::Text(code))) =
-                (row.get(1), row.get(2), row.get(3), row.get(4), row.get(5))
+            if let (
+                Some(Value::Text(name)),
+                Some(Value::Text(parameters_json)),
+                Some(Value::Text(_return_type)),
+                Some(Value::Text(_language)),
+                Some(Value::Text(code)),
+            ) = (row.get(1), row.get(2), row.get(3), row.get(4), row.get(5))
             {
                 // Parse parameters from JSON
                 let stored_parameters: Vec<StoredParameter> =
-                    serde_json::from_str(&parameters_json)
-                        .map_err(|e| Error::internal(format!("Failed to parse function parameters: {}", e)))?;
+                    serde_json::from_str(&parameters_json).map_err(|e| {
+                        Error::internal(format!("Failed to parse function parameters: {}", e))
+                    })?;
 
                 // Convert to FunctionParameter format for registration
-                let parameters: Vec<crate::parser::ast::FunctionParameter> = stored_parameters.into_iter()
+                let parameters: Vec<crate::parser::ast::FunctionParameter> = stored_parameters
+                    .into_iter()
                     .map(|sp| crate::parser::ast::FunctionParameter {
                         name: crate::parser::ast::Identifier::new(
-                            crate::parser::token::Token::new(crate::parser::token::TokenType::Identifier, sp.name.clone(), crate::parser::token::Position::default()),
-                            sp.name
+                            crate::parser::token::Token::new(
+                                crate::parser::token::TokenType::Identifier,
+                                sp.name.clone(),
+                                crate::parser::token::Position::default(),
+                            ),
+                            sp.name,
                         ),
                         data_type: sp.data_type,
                     })

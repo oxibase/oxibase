@@ -57,4 +57,3 @@ pub struct StoredFunction {
     pub language: String,
     pub code: String,
 }
-

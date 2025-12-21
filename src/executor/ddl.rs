@@ -23,12 +23,14 @@
 //! - CREATE VIEW
 //! - DROP VIEW
 
-use crate::core::{DataType, Error, Result, SchemaBuilder, Value, Row};
-use crate::functions::{global_registry, FunctionSignature, FunctionDataType};
+use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
+use crate::functions::{global_registry, FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
-use crate::storage::traits::{Engine, QueryResult, result::EmptyResult};
+use crate::storage::functions::{
+    StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
+};
+use crate::storage::traits::{result::EmptyResult, Engine, QueryResult};
 use rustc_hash::FxHashMap;
-use crate::storage::functions::{CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS, StoredFunction, StoredParameter};
 
 use serde_json;
 use std::sync::Arc;
@@ -732,7 +734,9 @@ impl Executor {
         }
 
         // Convert parameters to simplified format
-        let stored_parameters: Vec<StoredParameter> = stmt.parameters.iter()
+        let stored_parameters: Vec<StoredParameter> = stmt
+            .parameters
+            .iter()
             .map(|p| StoredParameter {
                 name: p.name.value.clone(),
                 data_type: p.data_type.clone(),
@@ -775,9 +779,7 @@ impl Executor {
         // Check if table exists first - need a transaction
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        let has_functions_table = tables
-            .iter()
-            .any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
+        let has_functions_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
         drop(tx); // Drop transaction before creating tables
 
         if !has_functions_table {
@@ -813,17 +815,18 @@ impl Executor {
         let mut table = tx.get_table(SYS_FUNCTIONS)?;
 
         // Serialize parameters to JSON
-        let parameters_json = serde_json::to_string(&function.parameters)
-            .map_err(|e| Error::internal(format!("Failed to serialize function parameters: {}", e)))?;
+        let parameters_json = serde_json::to_string(&function.parameters).map_err(|e| {
+            Error::internal(format!("Failed to serialize function parameters: {}", e))
+        })?;
 
         // Create row with values in schema order (id is auto-increment, set to NULL)
         let values = vec![
-            Value::Null(DataType::Integer),                       // id (auto-increment)
-            Value::Text(Arc::from(function.name.clone())),        // name
-            Value::Text(Arc::from(parameters_json)),              // parameters
+            Value::Null(DataType::Integer),                // id (auto-increment)
+            Value::Text(Arc::from(function.name.clone())), // name
+            Value::Text(Arc::from(parameters_json)),       // parameters
             Value::Text(Arc::from(function.return_type.clone())), // return_type
-            Value::Text(Arc::from(function.language.clone())),    // language
-            Value::Text(Arc::from(function.code.clone())),        // code
+            Value::Text(Arc::from(function.language.clone())), // language
+            Value::Text(Arc::from(function.code.clone())), // code
         ];
 
         let row = Row::from_values(values);
