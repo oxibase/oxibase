@@ -37,33 +37,36 @@ jobs:
     - name: Clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
 
-  test:
-    name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-    - name: Free disk space (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        sudo docker image prune --all --force
+   test:
+     name: Test
+     runs-on: ${{ matrix.os }}
+     strategy:
+       fail-fast: false
+       matrix:
+         os: [ubuntu-latest, macos-latest, windows-latest]
+     steps:
+     - name: Free disk space (Linux)
+       if: runner.os == 'Linux'
+       run: |
+         sudo rm -rf /usr/share/dotnet
+         sudo rm -rf /usr/local/lib/android
+         sudo rm -rf /opt/ghc
+         sudo rm -rf /opt/hostedtoolcache/CodeQL
+         sudo docker image prune --all --force
 
-    - uses: actions/checkout@v4
+     - uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+     - name: Install Rust
+       uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache
-      uses: Swatinem/rust-cache@v2
+     - name: Cache
+       uses: Swatinem/rust-cache@v2
 
-    - name: Run tests
-      run: cargo test
+     - name: Setup PostgreSQL
+       uses: ikalnytskyi/action-setup-postgres@v4
+
+     - name: Run tests
+       run: cargo test
 
   coverage:
     name: Code Coverage
