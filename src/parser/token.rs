@@ -308,6 +308,8 @@ pub static KEYWORDS: &[&str] = &[
     "TRIGGER",
     "PROCEDURE",
     "FUNCTION",
+    "RETURNS",
+    "LANGUAGE",
     "RETURNING",
     "OVER",
     "PARTITION",

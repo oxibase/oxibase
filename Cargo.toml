@@ -64,6 +64,9 @@ crc32fast = "1.4"
 # Compression
 lz4_flex = "0.11"
 
+# Deno runtime for user-defined functions
+deno_runtime = "0.212"
+
 # Utilities
 bytes = "1.5"
 smallvec = "1.11"
