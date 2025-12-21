@@ -21,11 +21,11 @@ name = "oxibase"
 path = "src/bin/oxibase.rs"
 required-features = ["cli"]
 
-# PG server will be enabled once implemented
-# [[bin]]
-# name = "stoolap-pgserver"
-# path = "src/bin/pgserver.rs"
-# required-features = ["pg-server"]
+# Server binary
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+required-features = ["pg-server"]
 
 [dependencies]
 # Error handling
@@ -40,6 +40,11 @@ rayon = "1.8"
 
 # Async (for pg-server)
 tokio = { version = "1.35", features = ["full"], optional = true }
+
+# PostgreSQL wire protocol server
+pgwire = { version = "0.37", optional = true }
+futures = { version = "0.3", optional = true }
+async-trait = { version = "0.1", optional = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -94,7 +99,7 @@ tempfile = "3.9"
 [features]
 default = ["cli"]
 cli = ["clap", "rustyline", "comfy-table", "dirs"]
-pg-server = ["tokio"]
+pg-server = ["tokio", "pgwire", "futures", "async-trait"]
 simd = []  # Enable SIMD optimizations
 
 [profile.release]
