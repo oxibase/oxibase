@@ -23,6 +23,7 @@
 
 pub mod config;
 pub mod expression;
+pub mod functions;
 pub mod index;
 pub mod mvcc;
 pub mod statistics;
@@ -78,4 +79,9 @@ pub use statistics::{
     is_stats_table, ColumnCorrelations, ColumnStats, Histogram, HistogramOp, SelectivityEstimator,
     TableStats, CREATE_COLUMN_STATS_SQL, CREATE_TABLE_STATS_SQL, DEFAULT_HISTOGRAM_BUCKETS,
     DEFAULT_SAMPLE_SIZE, SYS_COLUMN_STATS, SYS_TABLE_STATS,
+};
+
+// Re-export Functions types
+pub use functions::{
+    is_functions_table, StoredFunction, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
 };
