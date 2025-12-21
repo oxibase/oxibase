@@ -17,13 +17,13 @@
 //! This module provides support for user-defined scalar functions written in
 //! JavaScript/TypeScript that execute using the Deno runtime.
 
-use std::sync::Arc;
+use deno_runtime::deno_core::{serde_v8, v8, JsRuntime, RuntimeOptions};
 use std::collections::HashMap;
-use deno_runtime::deno_core::{v8, serde_v8, JsRuntime, RuntimeOptions};
+use std::sync::Arc;
 
-use crate::core::{Error, Result, Value};
 use super::{FunctionInfo, FunctionSignature, ScalarFunction};
 use crate::core::types::DataType;
+use crate::core::{Error, Result, Value};
 
 /// User-defined scalar function that executes JavaScript code using Deno
 pub struct UserDefinedScalarFunction {
@@ -34,15 +34,17 @@ pub struct UserDefinedScalarFunction {
 
 impl UserDefinedScalarFunction {
     /// Create a new user-defined function
-    pub fn new(name: impl Into<String>, code: impl Into<String>, signature: FunctionSignature) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        code: impl Into<String>,
+        signature: FunctionSignature,
+    ) -> Self {
         Self {
             name: name.into(),
             code: code.into(),
             signature,
         }
     }
-
-
 }
 
 impl ScalarFunction for UserDefinedScalarFunction {
@@ -66,28 +68,35 @@ impl ScalarFunction for UserDefinedScalarFunction {
         });
 
         // Convert args to JavaScript values
-        let js_args_vec: Vec<serde_json::Value> = args.iter().map(|v| match v {
-            Value::Null(_) => serde_json::Value::Null,
-            Value::Integer(i) => serde_json::json!(i),
-            Value::Float(f) => serde_json::json!(f),
-            Value::Text(s) => serde_json::json!(s.as_ref()),
-            Value::Boolean(b) => serde_json::json!(b),
-            Value::Timestamp(ts) => serde_json::json!(ts.to_rfc3339()),
-            Value::Json(j) => serde_json::from_str(j).unwrap_or(serde_json::Value::Null),
-        }).collect();
+        let js_args_vec: Vec<serde_json::Value> = args
+            .iter()
+            .map(|v| match v {
+                Value::Null(_) => serde_json::Value::Null,
+                Value::Integer(i) => serde_json::json!(i),
+                Value::Float(f) => serde_json::json!(f),
+                Value::Text(s) => serde_json::json!(s.as_ref()),
+                Value::Boolean(b) => serde_json::json!(b),
+                Value::Timestamp(ts) => serde_json::json!(ts.to_rfc3339()),
+                Value::Json(j) => serde_json::from_str(j).unwrap_or(serde_json::Value::Null),
+            })
+            .collect();
 
         let js_args = serde_json::to_string(&js_args_vec)
             .map_err(|e| Error::internal(format!("Failed to serialize arguments: {}", e)))?;
 
         // Execute the function call
-        let script = format!("
+        let script = format!(
+            "
             globalThis.__user_function = function() {{
                 {}
             }};
             globalThis.__user_function.apply(null, {})
-        ", self.code, js_args);
+        ",
+            self.code, js_args
+        );
 
-        let result = runtime.execute_script("<user_function>", script)
+        let result = runtime
+            .execute_script("<user_function>", script)
             .map_err(|e| Error::internal(format!("Function execution failed: {}", e)))?;
 
         // Extract the result
@@ -114,15 +123,16 @@ impl ScalarFunction for UserDefinedScalarFunction {
             Err(_) => {
                 // Fallback: try to convert as string
                 if local.is_string() {
-                    let string = serde_v8::from_v8::<String>(scope, local)
-                        .map_err(|e| Error::internal(format!("Failed to deserialize string result: {}", e)))?;
+                    let string = serde_v8::from_v8::<String>(scope, local).map_err(|e| {
+                        Error::internal(format!("Failed to deserialize string result: {}", e))
+                    })?;
                     Ok(Value::Text(Arc::from(string.as_str())))
                 } else {
                     Err(Error::internal("Failed to deserialize function result"))
                 }
             }
         }
-}
+    }
 
     fn clone_box(&self) -> Box<dyn ScalarFunction> {
         Box::new(Self {
@@ -146,8 +156,17 @@ impl UserDefinedFunctionRegistry {
     }
 
     /// Register a user-defined function
-    pub fn register(&mut self, name: String, code: String, signature: FunctionSignature) -> Result<()> {
-        let udf = Arc::new(UserDefinedScalarFunction::new(name.clone(), code, signature));
+    pub fn register(
+        &mut self,
+        name: String,
+        code: String,
+        signature: FunctionSignature,
+    ) -> Result<()> {
+        let udf = Arc::new(UserDefinedScalarFunction::new(
+            name.clone(),
+            code,
+            signature,
+        ));
         self.functions.insert(name.to_uppercase(), udf);
         Ok(())
     }

@@ -35,8 +35,6 @@ use super::aggregate::{
     StddevSampFunction, StringAggFunction, SumFunction, VarPopFunction, VarSampFunction,
     VarianceFunction,
 };
-use super::user_defined::UserDefinedFunctionRegistry;
-use super::FunctionSignature;
 use super::scalar::{
     AbsFunction, CastFunction, CeilFunction, CeilingFunction, CharFunction, CharLengthFunction,
     CoalesceFunction, CollateFunction, ConcatFunction, ConcatWsFunction, CosFunction,
@@ -54,11 +52,13 @@ use super::scalar::{
     SubstringFunction, TanFunction, TimeTruncFunction, ToCharFunction, TrimFunction, TruncFunction,
     TruncateFunction, TypeOfFunction, UpperFunction, VersionFunction, YearFunction,
 };
+use super::user_defined::UserDefinedFunctionRegistry;
 use super::window::{
     CumeDistFunction, DenseRankFunction, FirstValueFunction, LagFunction, LastValueFunction,
     LeadFunction, NthValueFunction, NtileFunction, PercentRankFunction, RankFunction,
     RowNumberFunction,
 };
+use super::FunctionSignature;
 use super::{AggregateFunction, FunctionInfo, ScalarFunction, WindowFunction};
 
 /// Type alias for aggregate function factory
@@ -265,7 +265,12 @@ impl FunctionRegistry {
     }
 
     /// Register a user-defined function
-    pub fn register_user_defined(&self, name: String, code: String, signature: FunctionSignature) -> crate::core::Result<()> {
+    pub fn register_user_defined(
+        &self,
+        name: String,
+        code: String,
+        signature: FunctionSignature,
+    ) -> crate::core::Result<()> {
         let mut udf_registry = self.user_defined_functions.write().unwrap();
         udf_registry.register(name.clone(), code, signature.clone())?;
 

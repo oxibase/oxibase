@@ -340,16 +340,18 @@ mod tests {
     fn test_user_defined_function_registry() {
         let mut registry = user_defined::UserDefinedFunctionRegistry::new();
 
-        registry.register(
-            "add".to_string(),
-            "return args[0] + args[1];".to_string(),
-            FunctionSignature::new(
-                FunctionDataType::Integer,
-                vec![FunctionDataType::Integer, FunctionDataType::Integer],
-                2,
-                2,
-            ),
-        ).unwrap();
+        registry
+            .register(
+                "add".to_string(),
+                "return args[0] + args[1];".to_string(),
+                FunctionSignature::new(
+                    FunctionDataType::Integer,
+                    vec![FunctionDataType::Integer, FunctionDataType::Integer],
+                    2,
+                    2,
+                ),
+            )
+            .unwrap();
 
         assert!(registry.exists("add"));
         assert!(registry.get("add").is_some());
