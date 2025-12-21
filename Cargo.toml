@@ -25,7 +25,7 @@ required-features = ["cli"]
 [[bin]]
 name = "server"
 path = "src/bin/server.rs"
-required-features = ["pg-server"]
+required-features = ["server"]
 
 [dependencies]
 # Error handling
@@ -38,7 +38,7 @@ dashmap = "5.5"
 crossbeam = "0.8"
 rayon = "1.8"
 
-# Async (for pg-server)
+# Async (for server)
 tokio = { version = "1.35", features = ["full"], optional = true }
 
 # PostgreSQL wire protocol server
@@ -99,7 +99,7 @@ tempfile = "3.9"
 [features]
 default = ["cli"]
 cli = ["clap", "rustyline", "comfy-table", "dirs"]
-pg-server = ["tokio", "pgwire", "futures", "async-trait"]
+server = ["tokio", "pgwire", "futures", "async-trait"]
 simd = []  # Enable SIMD optimizations
 
 [profile.release]
