@@ -1490,6 +1490,7 @@ impl Executor {
     }
 
     /// Replace CTE references with subqueries in an expression
+    #[allow(clippy::only_used_in_recursion)]
     fn inline_cte_references(
         &self,
         expr: &Expression,

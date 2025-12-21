@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::zombie_processes)]
+
 //! Pgwire Integration Tests
 //!
 //! Tests for PostgreSQL wire protocol (pgwire) server functionality

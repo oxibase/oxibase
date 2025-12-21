@@ -148,6 +148,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::const_is_empty)]
     fn test_git_commit_default() {
         // Without env var set, should be "unknown"
         // This tests the default case
@@ -155,6 +156,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::const_is_empty)]
     fn test_build_time_default() {
         // Without env var set, should be "unknown"
         assert!(!BUILD_TIME.is_empty());
