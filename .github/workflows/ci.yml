@@ -62,8 +62,17 @@ jobs:
      - name: Cache
        uses: Swatinem/rust-cache@v2
 
-     - name: Setup PostgreSQL
-       uses: ikalnytskyi/action-setup-postgres@v4
+     - name: Install PostgreSQL (Linux)
+       if: runner.os == 'Linux'
+       run: sudo apt-get update && sudo apt-get install -y postgresql postgresql-client
+
+     - name: Install PostgreSQL (macOS)
+       if: runner.os == 'macOS'
+       run: brew install postgresql
+
+     - name: Install PostgreSQL (Windows)
+       if: runner.os == 'Windows'
+       run: choco install postgresql --yes
 
      - name: Run tests
        run: cargo test
