@@ -23,11 +23,15 @@
 //! - CREATE VIEW
 //! - DROP VIEW
 
-use crate::core::{DataType, Error, Result, SchemaBuilder, Value};
+use crate::core::{DataType, Error, Result, SchemaBuilder, Value, Row};
 use crate::functions::{global_registry, FunctionSignature, FunctionDataType};
 use crate::parser::ast::*;
 use crate::storage::traits::{Engine, QueryResult, result::EmptyResult};
 use rustc_hash::FxHashMap;
+use crate::storage::functions::{CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS, StoredFunction, StoredParameter};
+
+use serde_json;
+use std::sync::Arc;
 
 use super::context::ExecutionContext;
 use super::expression::ExpressionEval;
@@ -715,6 +719,39 @@ impl Executor {
         stmt: &CreateFunctionStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
+        // Ensure the functions system table exists
+        self.ensure_functions_table_exists()?;
+
+        // Check if function already exists
+        let function_name = &stmt.function_name.value;
+        if self.function_exists(function_name)? {
+            if stmt.if_not_exists {
+                return Ok(Box::new(EmptyResult::new()));
+            }
+            return Err(Error::FunctionAlreadyExists(function_name.clone()));
+        }
+
+        // Convert parameters to simplified format
+        let stored_parameters: Vec<StoredParameter> = stmt.parameters.iter()
+            .map(|p| StoredParameter {
+                name: p.name.value.clone(),
+                data_type: p.data_type.clone(),
+            })
+            .collect();
+
+        // Create stored function record
+        let stored_function = StoredFunction {
+            id: 0, // Will be set by database
+            name: function_name.clone(),
+            parameters: stored_parameters,
+            return_type: stmt.return_type.clone(),
+            language: stmt.language.clone(),
+            code: stmt.body.clone(),
+        };
+
+        // Insert function into system table
+        self.insert_function(&stored_function)?;
+
         // Register the function in the global registry
         let registry = global_registry();
         registry.register_user_defined(
@@ -731,6 +768,84 @@ impl Executor {
         )?;
 
         Ok(Box::new(EmptyResult::new()))
+    }
+
+    /// Ensure the functions system table exists
+    fn ensure_functions_table_exists(&self) -> Result<()> {
+        // Check if table exists first - need a transaction
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_functions_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
+        drop(tx); // Drop transaction before creating tables
+
+        if !has_functions_table {
+            // Parse and execute CREATE TABLE for functions
+            self.execute_functions_sql(CREATE_FUNCTIONS_SQL)?;
+        }
+
+        Ok(())
+    }
+
+    /// Check if a function exists in the system table
+    fn function_exists(&self, function_name: &str) -> Result<bool> {
+        let tx = self.engine.begin_transaction()?;
+        let table = tx.get_table(SYS_FUNCTIONS)?;
+
+        // Query for function by name (name is at index 1 in the schema)
+        let mut scanner = table.scan(&[], None)?;
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Text(name)) = row.get(1) {
+                if name.eq_ignore_ascii_case(function_name) {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Insert a function into the system table
+    fn insert_function(&self, function: &StoredFunction) -> Result<()> {
+        let mut tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table(SYS_FUNCTIONS)?;
+
+        // Serialize parameters to JSON
+        let parameters_json = serde_json::to_string(&function.parameters)
+            .map_err(|e| Error::internal(format!("Failed to serialize function parameters: {}", e)))?;
+
+        // Create row with values in schema order (id is auto-increment, set to NULL)
+        let values = vec![
+            Value::Null(DataType::Integer),                       // id (auto-increment)
+            Value::Text(Arc::from(function.name.clone())),        // name
+            Value::Text(Arc::from(parameters_json)),              // parameters
+            Value::Text(Arc::from(function.return_type.clone())), // return_type
+            Value::Text(Arc::from(function.language.clone())),    // language
+            Value::Text(Arc::from(function.code.clone())),        // code
+        ];
+
+        let row = Row::from_values(values);
+        table.insert(row)?;
+        tx.commit()?;
+
+        Ok(())
+    }
+
+    /// Execute SQL statement for functions (helper for system table creation)
+    fn execute_functions_sql(&self, sql: &str) -> Result<()> {
+        let mut parser = crate::parser::Parser::new(sql);
+        let program = parser
+            .parse_program()
+            .map_err(|e| Error::parse(e.to_string()))?;
+
+        for stmt in &program.statements {
+            let ctx = ExecutionContext::default();
+            self.execute_statement(stmt, &ctx)?;
+        }
+
+        Ok(())
     }
 
     /// Execute a DROP COLUMNAR INDEX statement
