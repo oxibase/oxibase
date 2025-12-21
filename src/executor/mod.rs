@@ -272,7 +272,7 @@ impl Executor {
             {
                 // Parse parameters from JSON
                 let stored_parameters: Vec<StoredParameter> =
-                    serde_json::from_str(&parameters_json).map_err(|e| {
+                    serde_json::from_str(parameters_json).map_err(|e| {
                         Error::internal(format!("Failed to parse function parameters: {}", e))
                     })?;
 
