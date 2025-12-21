@@ -107,8 +107,8 @@ impl OxiBaseBackend {
                 // Use first row to infer field types, or default to TEXT
                 let first_row = all_rows.first().and_then(|r| r.as_ref().ok());
 
-                 for (i, col_name) in columns.iter().enumerate() {
-                     let field_type = if let Some(row) = first_row {
+                for (i, col_name) in columns.iter().enumerate() {
+                    let field_type = if let Some(row) = first_row {
                         if let Some(value) = row.get_value(i) {
                             Self::value_to_field_type(value)
                         } else {
