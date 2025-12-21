@@ -1,3 +1,5 @@
+// Copyright 2025 Oxibase Contributors
+//
 // Example demonstrating user-defined functions with Deno
 //
 // This example shows how to create and use user-defined functions
