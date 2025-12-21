@@ -20,8 +20,8 @@ use async_trait::async_trait;
 use futures::stream;
 use pgwire::api::query::SimpleQueryHandler;
 use pgwire::api::results::{DataRowEncoder, FieldFormat, FieldInfo, QueryResponse, Response};
-use pgwire::api::Type as FieldType;
 use pgwire::api::PgWireServerHandlers;
+use pgwire::api::Type as FieldType;
 use pgwire::error::{ErrorInfo, PgWireResult};
 
 use crate::api::Database;
@@ -93,12 +93,14 @@ impl OxiBaseBackend {
     fn handle_select_query(&self, query: &str) -> PgWireResult<Vec<Response>> {
         match self.db.query(query, ()) {
             Ok(rows) => {
-                let all_rows: Vec<Result<super::rows::ResultRow, crate::core::Error>> = rows.collect();
+                let all_rows: Vec<Result<super::rows::ResultRow, crate::core::Error>> =
+                    rows.collect();
                 let columns: Arc<Vec<String>> = Arc::new(
-                    all_rows.first()
+                    all_rows
+                        .first()
                         .and_then(|r| r.as_ref().ok())
                         .map(|row| row.columns().to_vec())
-                        .unwrap_or_default()
+                        .unwrap_or_default(),
                 );
                 let mut field_infos = Vec::new();
 
@@ -130,7 +132,8 @@ impl OxiBaseBackend {
                 for row_result in all_rows {
                     match row_result {
                         Ok(row) => {
-                            let mut encoder = DataRowEncoder::new(std::sync::Arc::new(field_infos.clone()));
+                            let mut encoder =
+                                DataRowEncoder::new(std::sync::Arc::new(field_infos.clone()));
                             for i in 0..columns.len() {
                                 if let Some(value) = row.get_value(i) {
                                     Self::encode_value(value, &mut encoder)?;
@@ -159,7 +162,7 @@ impl OxiBaseBackend {
                 "ERROR".to_owned(),
                 "XX000".to_owned(),
                 format!("Query execution failed: {}", e),
-            )))])
+            )))]),
         }
     }
 
@@ -189,18 +192,14 @@ impl OxiBaseBackend {
                 "ERROR".to_owned(),
                 "XX000".to_owned(),
                 format!("Query execution failed: {}", e),
-            )))])
+            )))]),
         }
     }
 }
 
 #[async_trait]
 impl SimpleQueryHandler for OxiBaseBackend {
-    async fn do_query<C>(
-        &self,
-        _client: &mut C,
-        query: &str,
-    ) -> PgWireResult<Vec<Response>>
+    async fn do_query<C>(&self, _client: &mut C, query: &str) -> PgWireResult<Vec<Response>>
     where
         C: pgwire::api::ClientInfo + Unpin + Send + Sync,
     {
@@ -213,4 +212,3 @@ impl SimpleQueryHandler for OxiBaseBackend {
         }
     }
 }
-

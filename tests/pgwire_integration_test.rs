@@ -27,7 +27,14 @@ fn test_server_startup_and_connectivity() {
     println!("Starting server...");
     // Start server in background
     let mut server = Command::new("./target/debug/server")
-        .args(&["--host", "127.0.0.1", "--port", "5433", "--db", "memory://test_connectivity"])
+        .args(&[
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "5433",
+            "--db",
+            "memory://test_connectivity",
+        ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -40,7 +47,16 @@ fn test_server_startup_and_connectivity() {
     println!("Testing connectivity with psql...");
     // Test connectivity with psql
     let output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "\\conninfo"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "\\conninfo",
+        ])
         .output()
         .expect("Failed to run psql connectivity test");
 
@@ -51,7 +67,11 @@ fn test_server_startup_and_connectivity() {
     let _ = server.kill(); // Don't panic if already dead
 
     println!("Test completed");
-    assert!(output.status.success(), "psql connection failed: {:?}", output);
+    assert!(
+        output.status.success(),
+        "psql connection failed: {:?}",
+        output
+    );
 }
 
 /// Test if psql is available
@@ -71,7 +91,14 @@ fn test_psql_available() {
 fn test_basic_select_query() {
     // Start server in background
     let mut server = Command::new("./target/debug/server")
-        .args(&["--host", "127.0.0.1", "--port", "5433", "--db", "memory://test_select"])
+        .args(&[
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "5433",
+            "--db",
+            "memory://test_select",
+        ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -82,7 +109,16 @@ fn test_basic_select_query() {
 
     // Test SELECT query
     let output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "SELECT 1 as test_value;"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "SELECT 1 as test_value;",
+        ])
         .output()
         .expect("Failed to run SELECT query");
 
@@ -91,7 +127,10 @@ fn test_basic_select_query() {
 
     assert!(output.status.success(), "SELECT query failed");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("test_value"), "Query result missing expected column");
+    assert!(
+        stdout.contains("test_value"),
+        "Query result missing expected column"
+    );
     assert!(stdout.contains("1"), "Query result missing expected value");
 }
 
@@ -109,7 +148,14 @@ fn test_create_table_and_insert() {
 
     // Start server in background
     let mut server = Command::new("./target/debug/server")
-        .args(&["--host", "127.0.0.1", "--port", "5433", "--db", &format!("file://{}", db_path)])
+        .args(&[
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "5433",
+            "--db",
+            &format!("file://{}", db_path),
+        ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -120,7 +166,16 @@ fn test_create_table_and_insert() {
 
     // Create table
     let create_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "CREATE TABLE test_table_create (id INT, name TEXT);"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "CREATE TABLE test_table_create (id INT, name TEXT);",
+        ])
         .output()
         .expect("Failed to run CREATE TABLE");
 
@@ -130,13 +185,31 @@ fn test_create_table_and_insert() {
 
     // Insert data
     let _insert_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "INSERT INTO test_table_create VALUES (1, 'test');"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "INSERT INTO test_table_create VALUES (1, 'test');",
+        ])
         .output()
         .expect("Failed to run INSERT");
 
     // Query data
     let select_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "SELECT * FROM test_table_create;"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "SELECT * FROM test_table_create;",
+        ])
         .output()
         .expect("Failed to run SELECT");
 
@@ -149,7 +222,10 @@ fn test_create_table_and_insert() {
     assert!(select_output.status.success(), "SELECT after INSERT failed");
     let stdout = String::from_utf8_lossy(&select_output.stdout);
     assert!(stdout.contains("1"), "Query result missing expected id");
-    assert!(stdout.contains("test"), "Query result missing expected name");
+    assert!(
+        stdout.contains("test"),
+        "Query result missing expected name"
+    );
 }
 
 /// Test data type mappings
@@ -157,7 +233,14 @@ fn test_create_table_and_insert() {
 fn test_data_type_mappings() {
     // Start server in background
     let mut server = Command::new("./target/debug/server")
-        .args(&["--host", "127.0.0.1", "--port", "5433", "--db", "memory://test_types"])
+        .args(&[
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "5433",
+            "--db",
+            "memory://test_types",
+        ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -182,7 +265,16 @@ fn test_data_type_mappings() {
 
     // Query and verify data types
     let select_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "SELECT * FROM types_test;"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "SELECT * FROM types_test;",
+        ])
         .output()
         .expect("Failed to run SELECT with types");
 
@@ -203,7 +295,14 @@ fn test_data_type_mappings() {
 fn test_error_handling() {
     // Start server in background
     let mut server = Command::new("./target/debug/server")
-        .args(&["--host", "127.0.0.1", "--port", "5433", "--db", "memory://test_error"])
+        .args(&[
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "5433",
+            "--db",
+            "memory://test_error",
+        ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -214,7 +313,16 @@ fn test_error_handling() {
 
     // Test invalid SQL
     let _error_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "SELECT * FROM nonexistent_table;"])
+        .args(&[
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5433",
+            "-d",
+            "postgres",
+            "-c",
+            "SELECT * FROM nonexistent_table;",
+        ])
         .output()
         .expect("Failed to run invalid SQL");
 
