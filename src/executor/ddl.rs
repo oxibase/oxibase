@@ -24,8 +24,9 @@
 //! - DROP VIEW
 
 use crate::core::{DataType, Error, Result, SchemaBuilder, Value};
+use crate::functions::{global_registry, FunctionSignature, FunctionDataType};
 use crate::parser::ast::*;
-use crate::storage::traits::{Engine, QueryResult};
+use crate::storage::traits::{Engine, QueryResult, result::EmptyResult};
 use rustc_hash::FxHashMap;
 
 use super::context::ExecutionContext;
@@ -706,6 +707,30 @@ impl Executor {
         Err(Error::internal(
             "CREATE COLUMNAR INDEX syntax is deprecated. Use CREATE INDEX instead - the index type is auto-selected based on column type.",
         ))
+    }
+
+    /// Execute a CREATE FUNCTION statement
+    pub(crate) fn execute_create_function(
+        &self,
+        stmt: &CreateFunctionStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Register the function in the global registry
+        let registry = global_registry();
+        registry.register_user_defined(
+            stmt.function_name.value.clone(),
+            stmt.body.clone(),
+            FunctionSignature::new(
+                // TODO: Map return_type string to FunctionDataType
+                FunctionDataType::Unknown,
+                // TODO: Map parameters to FunctionDataType
+                vec![],
+                stmt.parameters.len(),
+                stmt.parameters.len(),
+            ),
+        )?;
+
+        Ok(Box::new(EmptyResult::new()))
     }
 
     /// Execute a DROP COLUMNAR INDEX statement

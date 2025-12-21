@@ -1279,6 +1279,7 @@ pub enum Statement {
     CreateSchema(CreateSchemaStatement),
     DropSchema(DropSchemaStatement),
     UseSchema(UseSchemaStatement),
+    CreateFunction(CreateFunctionStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1317,6 +1318,7 @@ impl fmt::Display for Statement {
             Statement::CreateSchema(s) => write!(f, "{}", s),
             Statement::DropSchema(s) => write!(f, "{}", s),
             Statement::UseSchema(s) => write!(f, "{}", s),
+            Statement::CreateFunction(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -2025,6 +2027,46 @@ pub struct DropViewStatement {
     pub token: Token,
     pub view_name: Identifier,
     pub if_exists: bool,
+}
+
+/// CREATE FUNCTION statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateFunctionStatement {
+    pub token: Token,
+    pub function_name: Identifier,
+    pub parameters: Vec<FunctionParameter>,
+    pub return_type: String,
+    pub language: String,
+    pub body: String,
+    pub if_not_exists: bool,
+}
+
+/// Function parameter
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionParameter {
+    pub name: Identifier,
+    pub data_type: String,
+}
+
+impl fmt::Display for CreateFunctionStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE FUNCTION ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        result.push_str(&format!("{} (", self.function_name));
+
+        for (i, param) in self.parameters.iter().enumerate() {
+            if i > 0 {
+                result.push_str(", ");
+            }
+            result.push_str(&format!("{} {}", param.name, param.data_type));
+        }
+
+        result.push_str(&format!(") RETURNS {} LANGUAGE {} AS '{}'",
+            self.return_type, self.language, self.body.replace("'", "''")));
+        write!(f, "{}", result)
+    }
 }
 
 impl fmt::Display for DropViewStatement {

@@ -24,6 +24,7 @@
 pub mod aggregate;
 pub mod registry;
 pub mod scalar;
+pub mod user_defined;
 pub mod window;
 
 use crate::core::{Error, Result, Value};
@@ -317,5 +318,40 @@ mod tests {
         );
         assert_eq!(info.name, "TEST");
         assert_eq!(info.function_type, FunctionType::Scalar);
+    }
+
+    #[test]
+    fn test_user_defined_function_creation() {
+        let udf = user_defined::UserDefinedScalarFunction::new(
+            "test_func",
+            "return args[0] + args[1];",
+            FunctionSignature::new(
+                FunctionDataType::Integer,
+                vec![FunctionDataType::Integer, FunctionDataType::Integer],
+                2,
+                2,
+            ),
+        );
+
+        assert_eq!(udf.name(), "test_func");
+    }
+
+    #[test]
+    fn test_user_defined_function_registry() {
+        let mut registry = user_defined::UserDefinedFunctionRegistry::new();
+
+        registry.register(
+            "add".to_string(),
+            "return args[0] + args[1];".to_string(),
+            FunctionSignature::new(
+                FunctionDataType::Integer,
+                vec![FunctionDataType::Integer, FunctionDataType::Integer],
+                2,
+                2,
+            ),
+        ).unwrap();
+
+        assert!(registry.exists("add"));
+        assert!(registry.get("add").is_some());
     }
 }

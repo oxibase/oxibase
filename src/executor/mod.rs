@@ -506,6 +506,7 @@ impl Executor {
             Statement::Expression(stmt) => self.execute_expression_stmt(stmt, &ctx),
             Statement::Explain(stmt) => self.execute_explain(stmt, &ctx),
             Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
+            Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
         }
     }
 
