@@ -51,6 +51,14 @@ fn test_function_persistence_basic() {
     ).expect("Failed to query language");
 
     assert_eq!(language, "DENO");
+
+    // Verify parameters column is JSON type
+    let param_type: String = db.query_one(
+        "SELECT JSON_TYPE(parameters) FROM _sys_functions WHERE name = 'test_add'",
+        ()
+    ).expect("Failed to query parameters type");
+
+    assert_eq!(param_type, "array", "Parameters should be a JSON array");
 }
 
 /// Test function persistence across database restart

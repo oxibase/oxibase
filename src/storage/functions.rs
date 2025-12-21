@@ -28,7 +28,7 @@ pub const CREATE_FUNCTIONS_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS _sys_functions (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     name TEXT NOT NULL UNIQUE,
-    parameters TEXT NOT NULL,
+    parameters JSON NOT NULL,
     return_type TEXT NOT NULL,
     language TEXT NOT NULL,
     code TEXT NOT NULL
