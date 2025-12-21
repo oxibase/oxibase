@@ -19,7 +19,7 @@ use std::sync::Arc;
 use clap::Parser;
 use oxibase::api::Database;
 
-use oxibase::api::pgwire::OxiBaseBackendFactory;
+use oxibase::api::pgwire::OxibaseBackendFactory;
 use pgwire::tokio::process_socket;
 
 /// Oxibase Server - PostgreSQL wire protocol server
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = Database::open(&args.db_path)?;
 
     // Create backend factory
-    let factory = Arc::new(OxiBaseBackendFactory::new(db));
+    let factory = Arc::new(OxibaseBackendFactory::new(db));
 
     // No authentication for now
 

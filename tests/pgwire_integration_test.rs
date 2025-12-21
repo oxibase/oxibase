@@ -21,12 +21,16 @@
 //! using external psql client to verify end-to-end connectivity and query execution.
 
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::thread;
 use std::time::Duration;
+
+static PORT: AtomicU16 = AtomicU16::new(5433);
 
 /// Test basic server startup and connectivity
 #[test]
 fn test_server_startup_and_connectivity() {
+    let port = PORT.fetch_add(1, Ordering::SeqCst).to_string();
     println!("Starting server...");
     // Start server in background
     let mut server = Command::new("./target/debug/server")
@@ -34,7 +38,7 @@ fn test_server_startup_and_connectivity() {
             "--host",
             "127.0.0.1",
             "--port",
-            "5433",
+            &port,
             "--db",
             "memory://test_connectivity",
         ])
@@ -45,7 +49,7 @@ fn test_server_startup_and_connectivity() {
 
     println!("Server started, waiting for startup...");
     // Give server time to start up
-    thread::sleep(Duration::from_secs(3));
+    thread::sleep(Duration::from_secs(5));
 
     println!("Testing connectivity with psql...");
     // Test connectivity with psql
@@ -54,7 +58,7 @@ fn test_server_startup_and_connectivity() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",
@@ -92,13 +96,14 @@ fn test_psql_available() {
 /// Test basic SELECT query execution
 #[test]
 fn test_basic_select_query() {
+    let port = PORT.fetch_add(1, Ordering::SeqCst).to_string();
     // Start server in background
     let mut server = Command::new("./target/debug/server")
         .args(&[
             "--host",
             "127.0.0.1",
             "--port",
-            "5433",
+            &port,
             "--db",
             "memory://test_select",
         ])
@@ -108,7 +113,7 @@ fn test_basic_select_query() {
         .expect("Failed to start server");
 
     // Give server time to start up
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(5));
 
     // Test SELECT query
     let output = Command::new("psql")
@@ -116,7 +121,7 @@ fn test_basic_select_query() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",
@@ -143,6 +148,7 @@ fn test_create_table_and_insert() {
     use std::fs;
     use std::path::Path;
 
+    let port = PORT.fetch_add(1, Ordering::SeqCst).to_string();
     // Clean up any existing test database
     let db_path = "/tmp/test_create_table.db";
     if Path::new(db_path).exists() {
@@ -155,7 +161,7 @@ fn test_create_table_and_insert() {
             "--host",
             "127.0.0.1",
             "--port",
-            "5433",
+            &port,
             "--db",
             &format!("file://{}", db_path),
         ])
@@ -165,7 +171,7 @@ fn test_create_table_and_insert() {
         .expect("Failed to start server");
 
     // Give server time to start up
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(5));
 
     // Create table
     let create_output = Command::new("psql")
@@ -173,7 +179,7 @@ fn test_create_table_and_insert() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",
@@ -192,7 +198,7 @@ fn test_create_table_and_insert() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",
@@ -207,7 +213,7 @@ fn test_create_table_and_insert() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",
@@ -234,13 +240,14 @@ fn test_create_table_and_insert() {
 /// Test data type mappings
 #[test]
 fn test_data_type_mappings() {
+    let port = PORT.fetch_add(1, Ordering::SeqCst).to_string();
     // Start server in background
     let mut server = Command::new("./target/debug/server")
         .args(&[
             "--host",
             "127.0.0.1",
             "--port",
-            "5433",
+            &port,
             "--db",
             "memory://test_types",
         ])
@@ -250,11 +257,11 @@ fn test_data_type_mappings() {
         .expect("Failed to start server");
 
     // Give server time to start up
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(5));
 
     // Create table with various data types
     let _create_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "CREATE TABLE types_test (id INT, name TEXT, price FLOAT, active BOOLEAN, created TIMESTAMP);"])
+        .args(&["-h", "127.0.0.1", "-p", &port, "-d", "postgres", "-c", "CREATE TABLE types_test (id INT, name TEXT, price FLOAT, active BOOLEAN, created TIMESTAMP);"])
         .output()
         .expect("Failed to run CREATE TABLE with types");
 
@@ -262,7 +269,7 @@ fn test_data_type_mappings() {
 
     // Insert test data
     let _insert_output = Command::new("psql")
-        .args(&["-h", "127.0.0.1", "-p", "5433", "-d", "postgres", "-c", "INSERT INTO types_test VALUES (1, 'widget', 29.99, true, TIMESTAMP '2024-01-01 12:00:00');"])
+        .args(&["-h", "127.0.0.1", "-p", &port, "-d", "postgres", "-c", "INSERT INTO types_test VALUES (1, 'widget', 29.99, true, TIMESTAMP '2024-01-01 12:00:00');"])
         .output()
         .expect("Failed to run INSERT with types");
 
@@ -272,7 +279,7 @@ fn test_data_type_mappings() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",
@@ -296,13 +303,14 @@ fn test_data_type_mappings() {
 /// Test error handling
 #[test]
 fn test_error_handling() {
+    let port = PORT.fetch_add(1, Ordering::SeqCst).to_string();
     // Start server in background
     let mut server = Command::new("./target/debug/server")
         .args(&[
             "--host",
             "127.0.0.1",
             "--port",
-            "5433",
+            &port,
             "--db",
             "memory://test_error",
         ])
@@ -312,7 +320,7 @@ fn test_error_handling() {
         .expect("Failed to start server");
 
     // Give server time to start up
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(5));
 
     // Test invalid SQL
     let _error_output = Command::new("psql")
@@ -320,7 +328,7 @@ fn test_error_handling() {
             "-h",
             "127.0.0.1",
             "-p",
-            "5433",
+            &port,
             "-d",
             "postgres",
             "-c",

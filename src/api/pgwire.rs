@@ -1,4 +1,4 @@
-// Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! PostgreSQL wire protocol implementation for Oxibase
 
 use std::sync::Arc;
 
@@ -28,33 +27,33 @@ use crate::api::Database;
 use crate::core::{types::DataType, Value};
 
 /// Backend factory for creating Oxibase backends
-pub struct OxiBaseBackendFactory {
+pub struct OxibaseBackendFactory {
     db: Database,
 }
 
-impl OxiBaseBackendFactory {
+impl OxibaseBackendFactory {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
 }
 
-impl PgWireServerHandlers for OxiBaseBackendFactory {
+impl PgWireServerHandlers for OxibaseBackendFactory {
     fn simple_query_handler(&self) -> Arc<impl SimpleQueryHandler> {
-        Arc::new(OxiBaseBackend::new(self.db.clone()))
+        Arc::new(OxibaseBackend::new(self.db.clone()))
     }
 }
 
 /// Oxibase backend implementation
-pub struct OxiBaseBackend {
+pub struct OxibaseBackend {
     db: Database,
 }
 
-impl OxiBaseBackend {
+impl OxibaseBackend {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
 
-    /// Convert OxiBase Value to pgwire FieldType
+    /// Convert Oxibase Value to pgwire FieldType
     fn value_to_field_type(value: &Value) -> FieldType {
         match value {
             Value::Null(dt) => match dt {
@@ -198,7 +197,7 @@ impl OxiBaseBackend {
 }
 
 #[async_trait]
-impl SimpleQueryHandler for OxiBaseBackend {
+impl SimpleQueryHandler for OxibaseBackend {
     async fn do_query<C>(&self, _client: &mut C, query: &str) -> PgWireResult<Vec<Response>>
     where
         C: pgwire::api::ClientInfo + Unpin + Send + Sync,

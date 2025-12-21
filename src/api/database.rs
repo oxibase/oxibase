@@ -81,9 +81,9 @@ impl Drop for DatabaseInner {
     }
 }
 
-/// Database represents a Stoolap database connection
+/// Database represents a Oxibase database connection
 ///
-/// This is the main entry point for using Stoolap. It wraps the storage engine
+/// This is the main entry point for using Oxibase. It wraps the storage engine
 /// and executor, providing a simple API for executing SQL queries.
 ///
 /// # Thread Safety
