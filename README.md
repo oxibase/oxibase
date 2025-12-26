@@ -1,7 +1,7 @@
 <div align="center">
    <img src="logo.svg" alt="OxiBase Logo" width="360">
 
-   <p>An embedded SQL database written in Rust.</p>
+   <p>Moving computation to data.</p>
 
   <p>
      <a href="https://oxibase.xyz">Docs</a> •
@@ -19,20 +19,21 @@
 
 ## Overview
 
-OxiBase currently functions as an embedded SQL database with MVCC transactions,
-fully implemented in Rust, offering both in-memory and persistent storage modes
-with complete ACID compliance. Looking ahead, we're evolving it into a modern
-mainframe architecture where logic and data are co-located in a unikernel-first
-design, with user functions running safely in WebAssembly for scalable,
-self-managing systems capable of millions of transactions per second.
+OxiBase is a research platform focused on bringing computation as close as
+possible to the data itself. Our goal is to investigate how embedding
+computation within the database management system, by co-locating logic and
+data, can eliminate inefficiencies and complexities and enable self-managing
+systems. We want to provide user-defined functions and libraries to empower
+developers to run business logic directly where the data lives, exploring new
+patterns for local computing and evolving the concept of a 'Modern Mainframe'.
 
 ---
 
 > **⚠️ ARCHITECTURAL PIVOT IN PROGRESS**
 >
 > Oxibase is evolving from an embedded SQL library into a distributed Unikernel
-> "Mainframe." The documentation below details the **Vision** (where we are
-> going) and the **Core Engine** (what currently exists).
+> "Mainframe" through iterative research. The documentation below details the
+> **Vision** (our hypotheses) and the **Core Engine** (current implementation).
 
 ---
 
@@ -40,45 +41,45 @@ self-managing systems capable of millions of transactions per second.
 
 In our ongoing research into distributed systems architecture, we hypothesize
 that the "Modern Mainframe" paradigm represents a fundamental rejection of the
-emergent complexity observed during the microservices epoch. Empirical analysis
-reveals that the historical bifurcation of "App Server" and "Database Server"
-was necessitated by hardware constraints that have since been mitigated through
-advances in computing density. By experimentally collapsing this separation,
-Oxibase positions the database not merely as a storage substrate but as the
-active computational core of enterprise operations, enabling co-location of
-logic and data to eliminate observed network latency and serialization
-inefficiencies in contemporary distributed architectures.
+emergent complexity observed during the microservices epoch. The historical
+bifurcation of "App Server" and "Database Server" was necessitated by hardware
+constraints that have since been mitigated through advances in computing
+density. By experimentally collapsing this separation, Oxibase positions the
+DBMS not merely as a storage substrate but as the active computational core of
+operations, enabling co-location of logic and data to eliminate observed
+network latency and serialization inefficiencies in contemporary distributed
+architectures.
 
-Our investigations demonstrate that orchestration frameworks like Kubernetes
-constitute an artifact of architectural compromise rather than optimal design.
-In our controlled experiments, we find that self-managing software topologies
-outperform externally orchestrated systems, with Oxibase implementing
-"Infrastructure as Data" wherein cluster configurations, sharding protocols,
-access controls, and deployment procedures manifest as transactional rows in
-system catalogs. Preliminary results show that mutations to the sys_nodes table
-trigger autonomous cluster reconfiguration, validating our hypothesis of
-declarative infrastructure management.
 
-Adopting a Unikernel-first methodology, we seek to minimize hardware
-abstraction overhead through empirical optimization. Comparative studies
-indicate that general-purpose operating systems introduce significant
-scheduling variance and expanded attack surfaces. Oxibase's compilation into
-specialized machine images containing solely the database and application logic
-yields measurable reductions in context switching and security vulnerabilities,
-with no intermediary user space layer—effectively making the application
-synonymous with the kernel.
+### Project Philosophy
 
-Finally, our research democratizes backend development through language-safe
-abstractions. Developers construct schemas and functions using high-level,
-memory-safe languages such as Rust, Python or TypeScript (transpiled to
-WebAssembly), which our system automatically synthesizes into performant
-GraphQL and REST interfaces. Initial benchmarks suggest this approach enables
-individual developers to construct systems sustaining millions of transactions
-per second, achieving mainframe-grade reliability with PaaS-level ergonomics.
-We continue to refine these hypotheses through iterative experimentation and
-rigorous testing.
+- **Self-sufficiency:** Oxibase aspires to be a fully self-contained system, minimizing external dependencies for both development and deployment.
+- **Strong Opinions:** The architecture and feature set are intentionally opinionated, favoring bold, clear principles over generic extensibility.
+- **Learning & Research:** Oxibase is a playground for exploring new ideas in database systems, distributed architectures, transactionality, and co-location of data and logic. Continuous learning and disseminating insights are core to the project.
+- **Heavily Tested:** Reliability and correctness matter deeply. Features and infrastructure are expected to be exhaustively tested.
+- **Accessible for Humans:** Readability and clarity of code, configuration, and operation are prioritized—even at the expense of some automation or performance.
 
-Check [our roadmap](./ROADMAP.md).
+#### Explicit Non-Goals
+
+- **Maximum Performance:** Raw benchmark performance is not the primary pursuit. Reasonable performance is preferred, but clarity and correctness take precedence.
+- **Strict Standards Conformance:** While best effort will be made for compatibility (e.g., SQL, network protocols), strict adherence to industry standards is not a goal. Deviations may be made for clarity, simplicity, or research motivations.
+- **Prioritizing Automation Over Clarity:** Design choices that favor ease of maintenance, modification, or explanation—even if that leads to less automation or a "bottleneck" for throughput—will be preferred.
+- **Generic Extensibility:** Oxibase is explicitly not "one size fits all." It targets specific philosophies and refuses to chase universal flexibility.
+
+Currently, active efforts focus on embedded scripting, web exposure, wire protocol support, simulation for scaling, unikernel compilation, and autonomous networking:
+
+```mermaid
+graph TD;
+    A[Embedded Scripting Languages<br/>Stored functions & triggers<br/>FaaS-like with debugger] --> B[Web Server Exposure<br/>REST/GraphQL endpoints<br/>DML routes, HTML/function execution]
+    A --> C[Postgres Wire Protocol Server<br/>Third-party connectivity<br/>Remote control & vertical scaling]
+    A --> D[Deterministic Simulator<br/>Failure simulation<br/>Horizontal scaling prep]
+    B --> E[Horizontal Scaling<br/>Post-simulator implementation]
+    C --> E
+    D --> E
+    F[Unikernel Compilation<br/>OS-free, bootable images] --> E
+```
+
+See [our roadmap](./docs/_docs/roadmap.md) for details.
 
 ## Architecture
 
@@ -312,36 +313,43 @@ WHERE c.country = 'US';
 
 ## Data Types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `INTEGER` | 64-bit signed integer | `42`, `-100` |
-| `FLOAT` | 64-bit floating point | `3.14`, `-0.001` |
-| `TEXT` | UTF-8 string | `'hello'`, `'日本語'` |
-| `BOOLEAN` | true/false | `TRUE`, `FALSE` |
-| `TIMESTAMP` | Date and time | `'2024-01-15 10:30:00'` |
-| `JSON` | JSON data | `'{"key": "value"}'` |
+| Type        | Description           | Example                 |
+| ----------- | --------------------- | ----------------------- |
+| `INTEGER`   | 64-bit signed integer | `42`, `-100`            |
+| `FLOAT`     | 64-bit floating point | `3.14`, `-0.001`        |
+| `TEXT`      | UTF-8 string          | `'hello'`, `'日本語'`   |
+| `BOOLEAN`   | true/false            | `TRUE`, `FALSE`         |
+| `TIMESTAMP` | Date and time         | `'2024-01-15 10:30:00'` |
+| `JSON`      | JSON data             | `'{"key": "value"}'`    |
 
 ## Built-in Functions
 
 ### String Functions
+
 `UPPER`, `LOWER`, `LENGTH`, `TRIM`, `LTRIM`, `RTRIM`, `CONCAT`, `SUBSTRING`, `REPLACE`, `REVERSE`, `LEFT`, `RIGHT`, `LPAD`, `RPAD`, `REPEAT`, `POSITION`, `LOCATE`, `INSTR`, `SPLIT_PART`, `INITCAP`, `ASCII`, `CHR`, `TRANSLATE`
 
 ### Math Functions
+
 `ABS`, `CEIL`, `FLOOR`, `ROUND`, `TRUNC`, `SQRT`, `POWER`, `MOD`, `SIGN`, `GREATEST`, `LEAST`, `EXP`, `LN`, `LOG`, `LOG10`, `LOG2`, `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2`, `DEGREES`, `RADIANS`, `PI`, `RAND`, `RANDOM`
 
 ### Date/Time Functions
+
 `NOW`, `CURRENT_DATE`, `CURRENT_TIME`, `CURRENT_TIMESTAMP`, `EXTRACT`, `DATE_TRUNC`, `DATE_ADD`, `DATE_SUB`, `DATEDIFF`, `YEAR`, `MONTH`, `DAY`, `HOUR`, `MINUTE`, `SECOND`, `DAYOFWEEK`, `DAYOFYEAR`, `WEEK`, `QUARTER`, `TO_CHAR`, `TO_DATE`, `TO_TIMESTAMP`
 
 ### JSON Functions
+
 `JSON_EXTRACT`, `JSON_EXTRACT_PATH`, `JSON_TYPE`, `JSON_TYPEOF`, `JSON_VALID`, `JSON_KEYS`, `JSON_ARRAY_LENGTH`
 
 ### Aggregate Functions
+
 `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `STDDEV`, `STDDEV_POP`, `STDDEV_SAMP`, `VARIANCE`, `VAR_POP`, `VAR_SAMP`, `STRING_AGG`, `ARRAY_AGG`, `FIRST`, `LAST`, `BIT_AND`, `BIT_OR`, `BIT_XOR`, `BOOL_AND`, `BOOL_OR`
 
 ### Window Functions
+
 `ROW_NUMBER`, `RANK`, `DENSE_RANK`, `NTILE`, `LAG`, `LEAD`, `FIRST_VALUE`, `LAST_VALUE`, `NTH_VALUE`, `PERCENT_RANK`, `CUME_DIST`
 
 ### Other Functions
+
 `COALESCE`, `NULLIF`, `CAST`, `CASE`, `IF`, `IIF`, `NVL`, `NVL2`, `DECODE`, `GREATEST`, `LEAST`, `GENERATE_SERIES`
 
 ## Persistence
@@ -357,6 +365,7 @@ OxiBase uses write-ahead logging (WAL) with periodic snapshots:
 ```
 
 Features:
+
 - **WAL**: All changes logged before applied, survives crashes
 - **Snapshots**: Periodic full database snapshots for faster recovery
 - **Index persistence**: All indexes saved and restored
