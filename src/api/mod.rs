@@ -86,6 +86,9 @@ pub mod rows;
 pub mod statement;
 pub mod transaction;
 
+#[cfg(feature = "server")]
+pub mod pgwire;
+
 pub use database::{Database, FromValue};
 pub use params::{NamedParams, Params, ToParam};
 pub use rows::{FromRow, ResultRow, Rows};

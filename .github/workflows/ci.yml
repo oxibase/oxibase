@@ -36,7 +36,6 @@ jobs:
 
     - name: Clippy
       run: cargo clippy --all-targets --all-features -- -D warnings
-
   test:
     name: Test
     runs-on: ${{ matrix.os }}
@@ -61,6 +60,9 @@ jobs:
 
     - name: Cache
       uses: Swatinem/rust-cache@v2
+
+    - name: Setup PostgreSQL
+      uses: ankane/setup-postgres@v1
 
     - name: Run tests
       run: cargo test
