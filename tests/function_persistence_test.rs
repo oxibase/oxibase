@@ -189,3 +189,64 @@ fn test_functions_table_starts_empty() {
         .expect("Failed to count functions");
     assert_eq!(count, 1);
 }
+
+#[test]
+fn test_show_functions() {
+    let db = Database::open("memory://show_functions").expect("Failed to create database");
+
+    // Initially no functions
+    let result = db
+        .query("SHOW FUNCTIONS", ())
+        .expect("Failed to execute SHOW FUNCTIONS");
+    let mut rows: Vec<_> = result.collect();
+    assert_eq!(rows.len(), 0);
+
+    // Create some functions
+    db.execute(
+        "CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + arguments[1];'",
+        (),
+    )
+    .expect("Failed to create function");
+
+    let result = db
+        .query("SELECT name FROM _sys_functions", ())
+        .expect("Failed to select functions after first");
+    let rows: Vec<_> = result.map(|r| r.unwrap()).collect();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].get::<String>(0).unwrap(), "ADD_NUMS");
+
+    db.execute(
+        "CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'",
+        (),
+    )
+    .expect("Failed to create function");
+
+    // Check that functions are persisted
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .expect("Failed to count functions");
+    assert_eq!(count, 2);
+
+    // Now SHOW FUNCTIONS should return them
+    let result = db
+        .query("SHOW FUNCTIONS", ())
+        .expect("Failed to execute SHOW FUNCTIONS");
+    let rows: Vec<_> = result.map(|r| r.unwrap()).collect();
+    assert_eq!(rows.len(), 2);
+
+    // Check first function (ADD_NUMS)
+    let row = &rows[0];
+    assert_eq!(row.get::<String>(0).unwrap(), "ADD_NUMS");
+    assert_eq!(row.get::<String>(1).unwrap(), "(a INTEGER, b INTEGER)");
+    assert_eq!(row.get::<String>(2).unwrap(), "INTEGER");
+    assert_eq!(row.get::<String>(3).unwrap(), "DENO");
+    assert!(row.get::<String>(4).unwrap().contains("arguments[0] + arguments[1]"));
+
+    // Check second function (GREET)
+    let row = &rows[1];
+    assert_eq!(row.get::<String>(0).unwrap(), "GREET");
+    assert_eq!(row.get::<String>(1).unwrap(), "(name TEXT)");
+    assert_eq!(row.get::<String>(2).unwrap(), "TEXT");
+    assert_eq!(row.get::<String>(3).unwrap(), "DENO");
+    assert!(row.get::<String>(4).unwrap().contains("Hello"));
+}

@@ -2505,6 +2505,9 @@ impl Parser {
                 token,
                 table_name,
             }))
+        } else if self.peek_token_is_keyword("FUNCTIONS") {
+            self.next_token();
+            Some(Statement::ShowFunctions(ShowFunctionsStatement { token }))
         } else {
             self.add_error(format!(
                 "unsupported SHOW statement at {}",
