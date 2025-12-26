@@ -1224,6 +1224,7 @@ pub enum Statement {
     DropColumnarIndex(DropColumnarIndexStatement),
     CreateView(CreateViewStatement),
     DropView(DropViewStatement),
+    CreateFunction(CreateFunctionStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1235,6 +1236,7 @@ pub enum Statement {
     ShowCreateTable(ShowCreateTableStatement),
     ShowCreateView(ShowCreateViewStatement),
     ShowIndexes(ShowIndexesStatement),
+    ShowFunctions(ShowFunctionsStatement),
     Describe(DescribeStatement),
     Expression(ExpressionStatement),
     Explain(ExplainStatement),
@@ -1258,6 +1260,7 @@ impl fmt::Display for Statement {
             Statement::DropColumnarIndex(s) => write!(f, "{}", s),
             Statement::CreateView(s) => write!(f, "{}", s),
             Statement::DropView(s) => write!(f, "{}", s),
+            Statement::CreateFunction(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -1269,6 +1272,7 @@ impl fmt::Display for Statement {
             Statement::ShowCreateTable(s) => write!(f, "{}", s),
             Statement::ShowCreateView(s) => write!(f, "{}", s),
             Statement::ShowIndexes(s) => write!(f, "{}", s),
+            Statement::ShowFunctions(s) => write!(f, "{}", s),
             Statement::Describe(s) => write!(f, "{}", s),
             Statement::Expression(s) => write!(f, "{}", s),
             Statement::Explain(s) => write!(f, "{}", s),
@@ -1967,6 +1971,50 @@ pub struct DropViewStatement {
     pub if_exists: bool,
 }
 
+/// CREATE FUNCTION statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateFunctionStatement {
+    pub token: Token,
+    pub function_name: Identifier,
+    pub parameters: Vec<FunctionParameter>,
+    pub return_type: String,
+    pub language: String,
+    pub body: String,
+    pub if_not_exists: bool,
+}
+
+/// Function parameter
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionParameter {
+    pub name: Identifier,
+    pub data_type: String,
+}
+
+impl fmt::Display for CreateFunctionStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE FUNCTION ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        result.push_str(&format!("{} (", self.function_name));
+
+        for (i, param) in self.parameters.iter().enumerate() {
+            if i > 0 {
+                result.push_str(", ");
+            }
+            result.push_str(&format!("{} {}", param.name, param.data_type));
+        }
+
+        result.push_str(&format!(
+            ") RETURNS {} LANGUAGE {} AS '{}'",
+            self.return_type,
+            self.language,
+            self.body.replace("'", "''")
+        ));
+        write!(f, "{}", result)
+    }
+}
+
 impl fmt::Display for DropViewStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut result = String::from("DROP VIEW ");
@@ -2129,6 +2177,18 @@ pub struct ShowIndexesStatement {
 impl fmt::Display for ShowIndexesStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "SHOW INDEXES FROM {}", self.table_name)
+    }
+}
+
+/// SHOW FUNCTIONS statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShowFunctionsStatement {
+    pub token: Token,
+}
+
+impl fmt::Display for ShowFunctionsStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SHOW FUNCTIONS")
     }
 }
 

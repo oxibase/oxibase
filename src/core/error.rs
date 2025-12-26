@@ -205,6 +205,17 @@ pub enum Error {
     ViewNotFound(String),
 
     // =========================================================================
+    // Function errors
+    // =========================================================================
+    /// Function already exists
+    #[error("function '{0}' already exists")]
+    FunctionAlreadyExists(String),
+
+    /// Function not found
+    #[error("function '{0}' not found")]
+    FunctionNotFound(String),
+
+    // =========================================================================
     // Lock errors
     // =========================================================================
     /// Failed to acquire lock
