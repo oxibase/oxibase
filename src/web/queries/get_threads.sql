@@ -1,0 +1,1 @@
+SELECT t.*, u.username, COUNT(p.id) as post_count FROM forum_threads t JOIN forum_users u ON t.user_id = u.id LEFT JOIN forum_posts p ON t.id = p.thread_id WHERE t.category_id = ? GROUP BY t.id ORDER BY t.is_pinned DESC, t.updated_at

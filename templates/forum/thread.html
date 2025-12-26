@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ thread.title }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="forum-container">
+    <div class="thread-header">
+        <h2>{{ thread.title }}</h2>
+        <div class="thread-info">
+            <span>Created: {{ thread.created_at }}</span>
+            {% if thread.is_pinned %}<span class="pinned">📌 Pinned</span>{% endif %}
+            {% if thread.is_locked %}<span class="locked">🔒 Locked</span>{% endif %}
+        </div>
+    </div>
+
+    <div class="posts-section">
+        <div class="posts-header">
+            <h3>Posts</h3>
+            <button hx-get="/thread/{{ thread.id }}/posts" hx-target="#posts-list" hx-swap="innerHTML">
+                Refresh
+            </button>
+        </div>
+
+        <div id="posts-list">
+            {% include "forum/posts_fragment.html" %}
+        </div>
+    </div>
+
+    <div class="new-post-section">
+        <h3>Reply to Thread</h3>
+        <form hx-post="/thread/{{ thread.id }}/post" hx-target="#posts-list" hx-swap="beforeend">
+            <div class="form-group">
+                <label for="post-content">Your Reply:</label>
+                <textarea id="post-content" name="content" rows="5" required></textarea>
+            </div>
+            <button type="submit">Post Reply</button>
+        </form>
+    </div>
+
+    <div class="back-link">
+        <a href="/category/{{ thread.category_id }}">← Back to Category</a>
+    </div>
+</div>
+{% endblock %}

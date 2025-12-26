@@ -71,6 +71,8 @@ pub mod functions;
 pub mod optimizer;
 pub mod parser;
 pub mod storage;
+#[cfg(feature = "web-server")]
+pub mod web;
 
 // Re-export main types for convenience
 pub use core::{

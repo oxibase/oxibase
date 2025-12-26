@@ -1,0 +1,17 @@
+{% for post in posts %}
+<div class="post-item">
+    <div class="post-header">
+        <span class="post-author">{{ post.author.username }}</span>
+        <span class="post-date">{{ post.post.created_at }}</span>
+    </div>
+    <div class="post-content">
+        {{ post.post.content|linebreaks }}
+    </div>
+</div>
+{% endfor %}
+
+{% if posts.is_empty() %}
+<div class="no-posts">
+    <p>No posts in this thread yet.</p>
+</div>
+{% endif %}
