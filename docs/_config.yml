@@ -60,3 +60,6 @@ mermaid:
   # Version of mermaid library
   # Pick an available version from https://cdn.jsdelivr.net/npm/mermaid/
   version: "11.12.2"
+
+sass:
+  quiet_deps: true

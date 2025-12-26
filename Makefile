@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license help
+.PHONY: all lint test build coverage license docs docs-build help
 
 .PHONY: help
 help:
@@ -34,3 +34,9 @@ license:## Check license headers
 		echo "Files missing license header:$$missing_license"; \
 		exit 1; \
 	fi
+
+docs:## Serve the Jekyll documentation site
+	cd docs && bundle exec jekyll serve
+
+docs-build:## Build the Jekyll documentation site
+	cd docs && bundle exec jekyll build
