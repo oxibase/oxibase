@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     const getTargetSvg = (e) => {
         const svg = e.target.closest('svg');
-        // If no SVG, or if the SVG is part of our UI button, ignore it
-        if (!svg || svg.closest('.svg-pan-expand-btn')) return null;
+        // If no SVG, or if the SVG is part of our UI button, or not a mermaid SVG, ignore it
+        if (!svg || svg.closest('.svg-pan-expand-btn') || !svg.id.startsWith('mermaid-')) return null;
         return svg;
     };
 

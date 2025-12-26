@@ -9,6 +9,125 @@ nav_order: 4
 
 Window functions perform calculations across a set of table rows that are related to the current row. Unlike regular aggregate functions, window functions do not cause rows to become grouped into a single output row - the rows retain their separate identities.
 
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Entry Points"
+        Query["execute_select<br/>[query.rs:155]"]
+        HasWindow["has_window_functions<br/>[window.rs:2522]"]
+    end
+    
+    subgraph "Execution Coordinators"
+        ExecWindow["execute_select_with_window_functions<br/>[window.rs:115]"]
+        ExecPresorted["execute_select_with_window_functions_presorted<br/>[window.rs:135]"]
+        ExecPregrouped["execute_select_with_window_functions_pregrouped<br/>[window.rs:156]"]
+        ExecStreaming["execute_select_with_window_functions_streaming<br/>[window.rs:422]"]
+        ExecLazy["execute_select_with_window_functions_lazy_partition<br/>[window.rs:591]"]
+    end
+    
+    subgraph "Core Computation"
+        ParseWF["parse_window_functions<br/>[window.rs:974]"]
+        ComputeWF["compute_window_function<br/>[window.rs:1216]"]
+        ComputePartition["compute_window_for_partition<br/>[window.rs:1423]"]
+        ComputeAggWF["compute_aggregate_window_function<br/>[window.rs:2111]"]
+    end
+    
+    subgraph "Specialized Computations"
+        ComputeLeadLag["compute_lead_lag<br/>[window.rs:1541]"]
+        ComputeNtile["compute_ntile<br/>[window.rs:1585]"]
+        ComputeRank["compute_rank<br/>[window.rs:1639]"]
+        ComputePercentRank["compute_percent_rank<br/>[window.rs:1821]"]
+        ComputeCumeDist["compute_cume_dist<br/>[window.rs:1859]"]
+    end
+    
+    subgraph "Support Functions"
+        PrecomputeOrderBy["precompute_order_by_values<br/>[window.rs:1967]"]
+        SortByOrderValues["sort_by_order_values<br/>[window.rs:2092]"]
+        ParseSelectList["parse_select_list_for_window<br/>[window.rs:748]"]
+    end
+    
+    Query -->|"has window functions?"| HasWindow
+    HasWindow -->|"yes"| ExecWindow
+    ExecWindow --> ParseWF
+    
+    ExecWindow --> ComputeWF
+    ExecPresorted --> ComputeWF
+    ExecPregrouped --> ComputeWF
+    ExecStreaming --> ComputePartition
+    ExecLazy --> ComputePartition
+    
+    ComputeWF -->|"partition rows"| ComputePartition
+    ComputeWF -->|"aggregate functions"| ComputeAggWF
+    
+    ComputePartition --> PrecomputeOrderBy
+    ComputePartition --> SortByOrderValues
+    ComputePartition --> ComputeLeadLag
+    ComputePartition --> ComputeNtile
+    ComputePartition --> ComputeRank
+    
+    ComputeAggWF --> PrecomputeOrderBy
+    ComputeAggWF --> SortByOrderValues
+    
+    ExecWindow --> ParseSelectList
+    ExecStreaming --> ParseSelectList
+    ExecLazy --> ParseSelectList
+```
+
+## Execution Pipeline
+
+```mermaid
+graph TD
+    Start["Query with Window Function"] --> Detect["Detect Window Functions<br/>[window.rs:2522-2536]"]
+    Detect --> Parse["Parse Window Functions<br/>[window.rs:974-1031]<br/>Extract WindowFunctionInfo"]
+    
+    Parse --> OptCheck{"Optimization<br/>Eligible?"}
+    
+    OptCheck -->|"PARTITION BY + LIMIT<br/>+ indexed partition col"| LazyPartition["Lazy Partition Fetch<br/>[window.rs:591-745]<br/>Fetch partitions one-by-one<br/>Stop at LIMIT"]
+    
+    OptCheck -->|"No PARTITION BY<br/>+ indexed ORDER BY col"| PreSorted["Pre-sorted Optimization<br/>[window.rs:135-151]<br/>Skip sorting"]
+    
+    OptCheck -->|"PARTITION BY<br/>+ indexed partition col"| PreGrouped["Pre-grouped Optimization<br/>[window.rs:156-172]<br/>Skip hash grouping"]
+    
+    OptCheck -->|"PARTITION BY + LIMIT"| Streaming["Streaming with LIMIT<br/>[window.rs:422-586]<br/>Process partitions until LIMIT"]
+    
+    OptCheck -->|"Standard case"| Standard["Standard Execution<br/>[window.rs:115-131]"]
+    
+    LazyPartition --> BuildResult["Build Result Rows<br/>[window.rs:352-417]"]
+    PreSorted --> Compute["Compute Window Values<br/>[window.rs:1216-1416]"]
+    PreGrouped --> Compute
+    Streaming --> BuildResult
+    Standard --> Compute
+    
+    Compute --> Partition{"Has<br/>PARTITION BY?"}
+    
+    Partition -->|"No"| SinglePartition["Single Partition<br/>[window.rs:1250-1293]<br/>All rows together"]
+    Partition -->|"Yes"| MultiPartition["Hash-based Partitioning<br/>[window.rs:1295-1354]<br/>Group by partition key"]
+    
+    SinglePartition --> ComputePartition["compute_window_for_partition<br/>[window.rs:1423-1538]"]
+    MultiPartition -->|"≥10 partitions<br/>+ ≥1000 rows"| Parallel["Parallel Partition Processing<br/>[window.rs:1359-1390]<br/>Rayon parallel_iter"]
+    MultiPartition -->|"Small dataset"| Sequential["Sequential Processing<br/>[window.rs:1391-1415]"]
+    
+    Parallel --> ComputePartition
+    Sequential --> ComputePartition
+    
+    ComputePartition --> FuncType{"Function<br/>Type?"}
+    
+    FuncType -->|"Aggregate<br/>(SUM, COUNT, etc.)"| AggCompute["compute_aggregate_window_function<br/>[window.rs:2111-2520]<br/>With frame bounds"]
+    FuncType -->|"LEAD/LAG"| LeadLag["compute_lead_lag<br/>[window.rs:1541-1582]"]
+    FuncType -->|"NTILE"| Ntile["compute_ntile<br/>[window.rs:1585-1636]"]
+    FuncType -->|"RANK/DENSE_RANK"| Rank["compute_rank<br/>[window.rs:1639-1693]"]
+    FuncType -->|"Other ranking"| Other["ROW_NUMBER, etc.<br/>[window.rs:1530-1532]"]
+    
+    AggCompute --> BuildResult
+    LeadLag --> BuildResult
+    Ntile --> BuildResult
+    Rank --> BuildResult
+    Other --> BuildResult
+    
+    BuildResult --> End["Return ExecutorMemoryResult<br/>or streaming result"]
+```
+
 ## Syntax
 
 ```sql

@@ -93,6 +93,67 @@ WHERE users.status = 'active';
 
 4. **Deletion Handling**: Deleted rows are properly handled - if a row was deleted before the AS OF point, it won't appear in the results.
 
+### Version Chain Illustration
+
+```mermaid
+graph TB
+    subgraph "Version Chain for row_id=100"
+        V3["Version 3<br/>txn_id: 30<br/>deleted_at_txn_id: 30<br/>create_time: 1737504000<br/>data: []"]
+        V2["Version 2<br/>txn_id: 20<br/>deleted_at_txn_id: 0<br/>create_time: 1737502000<br/>data: [42, 'Alice']"]
+        V1["Version 1<br/>txn_id: 10<br/>deleted_at_txn_id: 0<br/>create_time: 1737500000<br/>data: [42, 'Bob']"]
+        
+        V3 -->|"prev: Arc"| V2
+        V2 -->|"prev: Arc"| V1
+        V1 -->|"prev: None"| End[" "]
+    end
+    
+    Query1["AS OF TRANSACTION 15<br/>Returns: Version 1"]
+    Query2["AS OF TRANSACTION 25<br/>Returns: Version 2"]
+    Query3["AS OF TRANSACTION 35<br/>Returns: None (deleted)"]
+    
+    Query1 -.->|"txn_id <= 15"| V1
+    Query2 -.->|"txn_id <= 25"| V2
+    Query3 -.->|"deleted_at_txn_id <= 35"| V3
+```
+
+### Time-Travel Query Components
+
+```mermaid
+graph TB
+    subgraph "Query Execution Path"
+        Parser["SQL Parser<br/>Parses AS OF clause"]
+        Planner["Query Planner<br/>Creates TimeTravel node"]
+        Executor["Query Executor<br/>Calls time-travel methods"]
+    end
+    
+    subgraph "VersionStore: src/storage/mvcc/version_store.rs"
+        GetTxn["get_visible_version_as_of_transaction()<br/>Lines 569-595"]
+        GetTs["get_visible_version_as_of_timestamp()<br/>Lines 597-625"]
+        Versions["versions: ConcurrentInt64Map<br/>Row ID → Version Chain"]
+    end
+    
+    subgraph "Version Chain Entry"
+        Entry["VersionChainEntry<br/>Lines 112-119"]
+        Version["RowVersion<br/>txn_id, deleted_at_txn_id<br/>create_time, data"]
+        Prev["prev: Arc<VersionChainEntry>"]
+    end
+    
+    Parser --> Planner
+    Planner --> Executor
+    
+    Executor -->|"AS OF TRANSACTION"| GetTxn
+    Executor -->|"AS OF TIMESTAMP"| GetTs
+    
+    GetTxn --> Versions
+    GetTs --> Versions
+    
+    Versions -->|"returns"| Entry
+    Entry --> Version
+    Entry --> Prev
+    
+    Prev -.->|"traverses backward"| Entry
+```
+
 ## Important Notes
 
 ### Timestamp Format

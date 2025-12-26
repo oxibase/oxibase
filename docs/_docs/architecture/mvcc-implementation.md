@@ -19,6 +19,39 @@ Multi-Version Concurrency Control (MVCC) is a concurrency control method used by
 4. Reads never block writes, and writes never block reads
 5. Implement optimistic concurrency control for conflict detection
 
+### Core Components Overview
+
+```mermaid
+graph TB
+    subgraph "Transaction Context"
+        MVCCTable["MVCCTable<br/>txn_id: i64<br/>cached_schema: Schema"]
+        TxnVerStore["Arc&lt;RwLock&lt;TransactionVersionStore&gt;&gt;<br/>local_versions: Int64Map<br/>write_set: FxHashMap"]
+    end
+    
+    subgraph "Global State"
+        VersionStore["VersionStore<br/>versions: ConcurrentInt64Map<br/>schema: RwLock&lt;Schema&gt;<br/>indexes: RwLock&lt;FxHashMap&gt;"]
+        Arena["RowArena<br/>arena_rows: Vec&lt;RowMetadata&gt;<br/>arena_data: Vec&lt;Value&gt;"]
+    end
+    
+    subgraph "Version Chain"
+        V1["VersionChainEntry<br/>version: RowVersion<br/>prev: Option&lt;Arc&lt;...&gt;&gt;<br/>arena_idx: Option&lt;usize&gt;"]
+        V2["VersionChainEntry<br/>older version"]
+        V3["VersionChainEntry<br/>oldest version"]
+        
+        V1 -->|"Arc::clone()"| V2
+        V2 -->|"Arc::clone()"| V3
+    end
+    
+    MVCCTable -->|"reads from"| VersionStore
+    MVCCTable -->|"writes to"| TxnVerStore
+    MVCCTable -->|"shares"| TxnVerStore
+    
+    VersionStore -->|"stores"| V1
+    VersionStore -->|"uses"| Arena
+    
+    V1 -.->|"arena_idx"| Arena
+```
+
 ## Design Philosophy
 
 OxiBase implements a **true multi-version MVCC** design:
@@ -61,6 +94,132 @@ struct RowVersion {
 ```
 
 The `prev` pointer creates a backward-linked chain from newest to oldest version.
+
+### Version Chains with Arc Pointers
+
+```mermaid
+graph LR
+    subgraph "versions: ConcurrentInt64Map"
+        Head["row_id: 100<br/>↓<br/>VersionChainEntry"]
+    end
+    
+    Head -->|"prev: Arc"| V2["VersionChainEntry<br/>txn_id: 20<br/>deleted_at: 0"]
+    V2 -->|"prev: Arc"| V3["VersionChainEntry<br/>txn_id: 10<br/>deleted_at: 0"]
+    V3 -.->|"prev: None"| End["None"]
+    
+    Head2["Different transaction<br/>clones Arc"] -.->|"Arc::clone()"| V2
+```
+
+### VersionStore: Global Committed State
+
+```mermaid
+graph TB
+    subgraph "VersionStore"
+        Versions["versions<br/>ConcurrentInt64Map&lt;i64, VersionChainEntry&gt;<br/>(row_id → chain head)"]
+        Schema["schema<br/>RwLock&lt;Schema&gt;"]
+        Indexes["indexes<br/>RwLock&lt;FxHashMap&lt;String, Arc&lt;dyn Index&gt;&gt;&gt;"]
+        Arena["arena<br/>RowArena"]
+        RowArenaIndex["row_arena_index<br/>RwLock&lt;Int64Map&lt;usize&gt;&gt;"]
+        UncommittedWrites["uncommitted_writes<br/>ConcurrentInt64Map&lt;i64, i64&gt;<br/>(row_id → txn_id)"]
+    end
+    
+    Versions --> Chain["Version chains"]
+    Arena --> ArenaRows["arena_rows: Vec&lt;RowMetadata&gt;"]
+    Arena --> ArenaData["arena_data: Vec&lt;Value&gt;"]
+    
+    RowArenaIndex -.->|"maps row_id"| Arena
+```
+
+### Arena-Based Storage for Zero-Copy Scans
+
+```mermaid
+graph TB
+    subgraph "RowArena Structure"
+        direction LR
+        
+        subgraph "arena_rows: Vec&lt;RowMetadata&gt;"
+            M0["[0] RowMetadata<br/>row_id: 1<br/>start: 0, end: 3<br/>txn_id: 10"]
+            M1["[1] RowMetadata<br/>row_id: 2<br/>start: 3, end: 6<br/>deleted_at: 15"]
+            M2["[2] RowMetadata<br/>row_id: 1<br/>start: 6, end: 9<br/>txn_id: 20"]
+        end
+        
+        subgraph "arena_data: Vec&lt;Value&gt;"
+            D0["[0] Integer(100)"]
+            D1["[1] Text('Alice')"]
+            D2["[2] Boolean(true)"]
+            D3["[3] Integer(200)"]
+            D4["[4] Text('Bob')"]
+            D5["[5] Boolean(false)"]
+            D6["[6] Integer(150)"]
+            D7["[7] Text('Alice')"]
+            D8["[8] Boolean(true)"]
+        end
+    end
+    
+    M0 -.->|"[start..end]"| D0
+    M0 -.-> D1
+    M0 -.-> D2
+    
+    M1 -.-> D3
+    M1 -.-> D4
+    M1 -.-> D5
+    
+    M2 -.-> D6
+    M2 -.-> D7
+    M2 -.-> D8
+```
+
+### TransactionVersionStore: Uncommitted Changes
+
+```mermaid
+graph TB
+    subgraph "TransactionVersionStore"
+        LocalVers["local_versions<br/>Int64Map&lt;i64, RowVersion&gt;<br/>(row_id → pending version)"]
+        WriteSet["write_set<br/>FxHashMap&lt;i64, WriteSetEntry&gt;<br/>(row_id → read version)"]
+        OldRows["old_rows<br/>FxHashMap&lt;i64, Row&gt;<br/>(row_id → pre-update row)"]
+    end
+    
+    subgraph "WriteSetEntry"
+        ReadVer["read_version: Option&lt;RowVersion&gt;"]
+        ReadSeq["read_version_seq: i64"]
+    end
+    
+    WriteSet --> ReadVer
+    WriteSet --> ReadSeq
+```
+
+### Conflict Detection Flow
+
+```mermaid
+sequenceDiagram
+    participant Txn as Transaction
+    participant TVS as TransactionVersionStore
+    participant VS as VersionStore
+    
+    Txn->>VS: get_visible_version(row_id=1)
+    VS-->>Txn: RowVersion(txn_id=10, seq=50)
+    
+    Txn->>TVS: put(row_id=1, new_data)
+    TVS->>TVS: write_set[1] = {read_version: v10, read_seq: 50}
+    TVS->>TVS: local_versions[1] = new_version
+    
+    Note over Txn: Time passes...
+    
+    Txn->>TVS: commit()
+    TVS->>VS: get_current_sequence()
+    VS-->>TVS: current_seq=75
+    
+    alt read_seq (50) < current_seq (75)
+        TVS->>VS: get_visible_version(row_id=1, current_txn)
+        VS-->>TVS: RowVersion(txn_id=20, seq=60)
+        
+        TVS->>TVS: Conflict! (read v10 but v20 was committed)
+        TVS-->>Txn: Error: write-write conflict
+    else read_seq == current_seq
+        TVS->>VS: add_versions_batch(local_versions)
+        TVS-->>Txn: Commit successful
+    end
+```
 
 ## Transaction IDs and Timestamps
 
@@ -177,6 +336,70 @@ SNAPSHOT commits use optimistic concurrency control:
 
 No global mutex needed - conflicts detected through version checks.
 
+### Read Path: Query Execution
+
+```mermaid
+flowchart TD
+    Query["SELECT * FROM users<br/>WHERE email = 'alice@example.com'"]
+    
+    Query --> TryPK{{"try_pk_lookup()<br/>Is WHERE on PK?"}}
+    
+    TryPK -->|Yes| PKLookup["get_visible_version(row_id)<br/>O(1) hash lookup"]
+    TryPK -->|No| TryIndex{{"try_index_lookup()<br/>Is WHERE on indexed column?"}}
+    
+    TryIndex -->|Yes| IndexPath["Index lookup"]
+    TryIndex -->|No| FullScan["Full table scan"]
+    
+    IndexPath --> HashIndex{{"Index type?"}}
+    HashIndex -->|Hash| HashFind["hash_to_rows.get(hash)<br/>O(1)"]
+    HashIndex -->|BTree| BTreeFind["sorted_values.range()<br/>O(log n + k)"]
+    HashIndex -->|Bitmap| BitmapFind["bitmap.and_count()<br/>O(n/64)"]
+    
+    HashFind --> RowIDs["Vec&lt;i64&gt; row_ids"]
+    BTreeFind --> RowIDs
+    BitmapFind --> RowIDs
+    
+    RowIDs --> BatchGet["get_visible_versions_batch(row_ids)"]
+    
+    PKLookup --> CheckVis["Check visibility"]
+    BatchGet --> CheckVis
+    FullScan --> ArenaIter["get_all_visible_rows_arena()"]
+    
+    ArenaIter --> CheckVis
+    
+    CheckVis --> Normalize["normalize_row_to_schema()<br/>(handle ALTER TABLE)"]
+    Normalize --> Results["Vec&lt;(i64, Row)&gt;"]
+```
+
+### Write Path: Insert, Update, Delete
+
+```mermaid
+flowchart TD
+    Insert["MVCCTable::insert(row)"]
+    Update["MVCCTable::update(filter, updates)"]
+    Delete["MVCCTable::delete(filter)"]
+    
+    Insert --> ExtractPK["extract_row_pk(row)<br/>Auto-increment if needed"]
+    ExtractPK --> CheckUnique["check_unique_constraints(row)"]
+    CheckUnique --> AddLocal["txn_versions.put(row_id, version)"]
+    
+    Update --> ScanRows["scan(filter)<br/>Get matching row_ids"]
+    ScanRows --> BatchGetUpdate["get_visible_versions_for_update()<br/>Read + track in write_set"]
+    BatchGetUpdate --> ApplyUpdates["Apply SET clauses"]
+    ApplyUpdates --> BatchPut["Batch: txn_versions.put(...)"]
+    
+    Delete --> ScanDel["scan(filter)"]
+    ScanDel --> MarkDeleted["txn_versions.delete(row_id)"]
+    
+    AddLocal --> LocalStore["TransactionVersionStore<br/>local_versions"]
+    BatchPut --> LocalStore
+    MarkDeleted --> LocalStore
+    
+    LocalStore -.->|"Later: commit()"| FlushGlobal["Flush to VersionStore"]
+    FlushGlobal --> UpdateIndexes["Update all indexes"]
+    UpdateIndexes --> ZoneMap["Mark zone_maps_stale"]
+```
+
 ## Version Chain Management
 
 ### Updates
@@ -198,13 +421,34 @@ When a row is deleted:
 ### Version Chain Example
 
 ```
-[Newest] -> Version 3 (TxnID=300, DeletedAt=400) 
+[Newest] -> Version 3 (TxnID=300, DeletedAt=400)
               |
               v
             Version 2 (TxnID=200)
               |
               v
             Version 1 (TxnID=100) -> [Oldest]
+```
+
+### Row Normalization for Schema Evolution
+
+```mermaid
+graph LR
+    OldRow["Old Row (2 columns)<br/>[100, 'Alice']"]
+    NewSchema["Current Schema (3 columns)<br/>id, name, age"]
+    
+    OldRow --> Normalize["normalize_row_to_schema()"]
+    NewSchema --> Normalize
+    
+    Normalize --> Check{{"row.len() vs schema.len()"}}
+    
+    Check -->|"row.len() < schema"| AddDefaults["Append default values<br/>or NULLs"]
+    Check -->|"row.len() > schema"| Truncate["Truncate extra columns"]
+    Check -->|"Equal"| NoOp["Return as-is"]
+    
+    AddDefaults --> NewRow["[100, 'Alice', NULL]"]
+    Truncate --> NewRow2["Truncated row"]
+    NoOp --> NewRow3["Original row"]
 ```
 
 ## Performance Optimizations

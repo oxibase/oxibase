@@ -19,6 +19,38 @@ The query optimizer performs several tasks:
 - **Predicate pushdown**: Moves filters close to data sources
 - **Expression simplification**: Optimizes boolean and arithmetic expressions
 
+### Optimization Phases
+
+```mermaid
+graph TD
+    SQL["SQL Query"]
+    Parse["Parser<br/>AST Generation"]
+    Analyze["Query Analysis<br/>• Collect predicates<br/>• Detect aggregations<br/>• Identify subqueries"]
+    
+    subgraph "Optimization Phases"
+        Simplify["Expression Simplification<br/>ExpressionSimplifier"]
+        SubqueryOpt["Subquery Optimization<br/>• Cache non-correlated<br/>• Semi-join conversion<br/>• EXISTS to index probe"]
+        PredicateOpt["Predicate Optimization<br/>• Pushdown to storage<br/>• Partition for JOINs<br/>• Zone map pruning"]
+        IndexOpt["Index Selection<br/>• PK lookup detection<br/>• Single/multi-column<br/>• Type-based selection"]
+        JoinOpt["Join Optimization<br/>• AQE algorithm selection<br/>• Build side selection<br/>• Filter pushdown"]
+        LimitOpt["LIMIT Optimization<br/>• Storage pushdown<br/>• TOP-N heap<br/>• Early termination"]
+    end
+    
+    Physical["Physical Plan<br/>ScannerResult pipeline"]
+    Execute["Execution<br/>Storage Layer"]
+    
+    SQL --> Parse
+    Parse --> Analyze
+    Analyze --> Simplify
+    Simplify --> SubqueryOpt
+    SubqueryOpt --> PredicateOpt
+    PredicateOpt --> IndexOpt
+    IndexOpt --> JoinOpt
+    JoinOpt --> LimitOpt
+    LimitOpt --> Physical
+    Physical --> Execute
+```
+
 ## Cost Model
 
 ### Cost Components
@@ -36,14 +68,26 @@ The optimizer considers two main cost components:
 
 ### Access Methods
 
-The optimizer chooses from these access methods:
-
 | Method | Use Case | Cost |
 |--------|----------|------|
 | Primary Key Lookup | WHERE pk = value | Lowest (O(1)) |
 | Index Scan | WHERE indexed_col = value | Low (O(log n)) |
 | Index Range Scan | WHERE indexed_col > value | Medium |
 | Sequential Scan | No usable index | Highest (O(n)) |
+
+#### Primary Key Lookup Flow
+
+```mermaid
+graph LR
+    Query["WHERE id = 42"]
+    Detect["try_pk_lookup<br/>Extract PK value"]
+    Storage["get_visible_version<br/>O(1) HashMap lookup"]
+    Result["Single Row"]
+    
+    Query --> Detect
+    Detect -->|"pk_id = 42"| Storage
+    Storage --> Result
+```
 
 ### Example
 
@@ -195,6 +239,33 @@ The optimizer simplifies expressions when possible:
 
 -- Before: WHERE x = 5 AND x = 5
 -- After:  WHERE x = 5
+```
+
+### Filter Pushdown to Storage
+
+```mermaid
+graph TD
+    WHERE["WHERE age > 30<br/>AND status = 'active'"]
+    
+    subgraph "Compilation"
+        Parse["Parse to Expression AST"]
+        Compile["RowFilter::new<br/>Compile to bytecode"]
+        Program["Arc<Program><br/>Shared bytecode"]
+    end
+    
+    subgraph "Storage Layer"
+        Arena["Arena Read<br/>get_all_visible_rows_filtered"]
+        Filter["CompiledFilter::matches<br/>Eliminate virtual dispatch"]
+        Collect["Collect matching rows"]
+    end
+    
+    WHERE --> Parse
+    Parse --> Compile
+    Compile --> Program
+    Program --> Arena
+    Arena --> Filter
+    Filter --> Collect
+    Collect --> Results["Filtered Results<br/>3-5x faster"]
 ```
 
 ## Viewing Query Plans
