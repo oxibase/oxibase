@@ -1,0 +1,20 @@
+{% for thread in threads %}
+<div class="thread-item">
+    <div class="thread-title">
+        <a href="/thread/{{ thread.thread.id }}">{{ thread.thread.title }}</a>
+        {% if thread.thread.is_pinned %}<span class="pinned">📌</span>{% endif %}
+        {% if thread.thread.is_locked %}<span class="locked">🔒</span>{% endif %}
+    </div>
+    <div class="thread-meta">
+        <span>By {{ thread.author.username }}</span>
+        <span>{{ thread.post_count }} posts</span>
+        <span>Last updated: {{ thread.thread.updated_at }}</span>
+    </div>
+</div>
+{% endfor %}
+
+{% if threads.is_empty() %}
+<div class="no-threads">
+    <p>No threads in this category yet. Be the first to create one!</p>
+</div>
+{% endif %}

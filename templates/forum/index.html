@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Forum - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="forum-container">
+    <h2>Forum Categories</h2>
+
+    <div class="categories-grid">
+        {% for category in categories %}
+        <div class="category-card">
+            <h3><a href="/category/{{ category.category.id }}">{{ category.category.name }}</a></h3>
+            {% if category.category.description %}
+            <p class="category-description">{{ category.category.description }}</p>
+            {% endif %}
+            <div class="category-stats">
+                <span>{{ category.thread_count }} threads</span>
+                <span>{{ category.post_count }} posts</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="quick-stats">
+        <p>Welcome to the Oxibase Forum! This forum is built directly into the database.</p>
+    </div>
+</div>
+{% endblock %}

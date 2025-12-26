@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Oxibase Forum{% endblock %}</title>
+    <script src="/static/js/htmx.min.js"></script>
+    <link rel="stylesheet" href="/static/forum.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="nav-container">
+                <h1><a href="/">Oxibase Forum</a></h1>
+                <div class="nav-links">
+                    <a href="/">Home</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>Powered by <a href="https://oxibase.io">Oxibase</a></p>
+    </footer>
+</body>
+</html>

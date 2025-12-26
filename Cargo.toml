@@ -27,6 +27,11 @@ required-features = ["cli"]
 # path = "src/bin/pgserver.rs"
 # required-features = ["pg-server"]
 
+[[bin]]
+name = "oxibase-web"
+path = "src/bin/oxibase-web.rs"
+required-features = ["web-server"]
+
 [dependencies]
 # Error handling
 thiserror = "1.0"
@@ -40,6 +45,12 @@ rayon = "1.8"
 
 # Async (for pg-server)
 tokio = { version = "1.35", features = ["full"], optional = true }
+
+# Web server dependencies (optional)
+axum = { version = "0.7", optional = true }
+askama = { version = "0.12", features = ["with-axum"], optional = true }
+askama_axum = { version = "0.4", optional = true }
+tower-http = { version = "0.5", features = ["fs"], optional = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -95,6 +106,7 @@ tempfile = "3.9"
 default = ["cli"]
 cli = ["clap", "rustyline", "comfy-table", "dirs"]
 pg-server = ["tokio"]
+web-server = ["tokio", "axum", "askama", "askama_axum", "tower-http"]
 simd = []  # Enable SIMD optimizations
 
 [profile.release]
