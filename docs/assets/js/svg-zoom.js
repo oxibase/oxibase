@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clone.removeAttribute('height');
         clone.style.width = '100%';
         clone.style.height = '100%';
+        clone.style.removeProperty('max-width');
         clone.style.cursor = 'grab'; // Hint that it's pannable
 
         // Clean previous content (keep close button)
