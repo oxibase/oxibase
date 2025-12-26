@@ -27,7 +27,9 @@ use std::sync::Arc;
 
 use crate::core::{Error, Result, Row, Value};
 use crate::parser::ast::*;
+use crate::parser::Parser;
 use crate::storage::traits::{Engine, QueryResult};
+use serde_json;
 
 use super::context::ExecutionContext;
 use super::result::ExecutorMemoryResult;
@@ -327,5 +329,90 @@ impl Executor {
         }
 
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+    }
+
+    /// Execute SHOW FUNCTIONS statement
+    pub(crate) fn execute_show_functions(
+        &self,
+        _stmt: &ShowFunctionsStatement,
+        ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Execute equivalent SELECT query to leverage existing execution path
+        let sql = "SELECT name, parameters, return_type, language, code FROM _sys_functions ORDER BY name";
+        let mut parser = Parser::new(sql);
+        let program = parser.parse_program().map_err(|e| {
+            Error::internal(format!("Failed to parse SHOW FUNCTIONS query: {}", e))
+        })?;
+
+        let stmt = match program.statements.into_iter().next() {
+            Some(Statement::Select(s)) => s,
+            _ => return Err(Error::internal("Invalid SHOW FUNCTIONS query")),
+        };
+
+        // Format the parameters column by post-processing the result
+        let mut raw_result = self.execute_select(&stmt, ctx)?;
+
+        // Post-process to format parameters
+        let mut formatted_rows: Vec<Row> = Vec::new();
+        while raw_result.next() {
+            let row = raw_result.row();
+            let name = row.get(0).unwrap().clone();
+            let parameters_value = row.get(1).unwrap();
+            let parameters_json = match parameters_value {
+                Value::Text(s) => s.as_ref(),
+                _ => "",
+            };
+            let return_type = row.get(2).unwrap().clone();
+            let language = row.get(3).unwrap().clone();
+            let code = row.get(4).unwrap().clone();
+
+            // Format parameters nicely (JSON array to readable format)
+            let parameters_formatted = if parameters_json.is_empty() {
+                "()".to_string()
+            } else {
+                // Parse JSON and format as (param1 type1, param2 type2)
+                if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(parameters_json) {
+                    let params: Vec<String> = parsed
+                        .iter()
+                        .filter_map(|p| {
+                            if let (Some(name), Some(dtype)) = (p.get("name"), p.get("data_type")) {
+                                if let (Some(name_str), Some(dtype_str)) = (name.as_str(), dtype.as_str()) {
+                                    Some(format!("{} {}", name_str, dtype_str))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if params.is_empty() {
+                        "()".to_string()
+                    } else {
+                        format!("({})", params.join(", "))
+                    }
+                } else {
+                    parameters_json.to_string()
+                }
+            };
+
+            formatted_rows.push(Row::from_values(vec![
+                name,
+                Value::Text(Arc::from(parameters_formatted)),
+                return_type,
+                language,
+                code,
+            ]));
+        }
+
+        let columns = vec![
+            "name".to_string(),
+            "parameters".to_string(),
+            "return_type".to_string(),
+            "language".to_string(),
+            "code".to_string(),
+        ];
+
+        Ok(Box::new(ExecutorMemoryResult::new(columns, formatted_rows)))
     }
 }

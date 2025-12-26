@@ -1292,6 +1292,7 @@ pub enum Statement {
     ShowCreateTable(ShowCreateTableStatement),
     ShowCreateView(ShowCreateViewStatement),
     ShowIndexes(ShowIndexesStatement),
+    ShowFunctions(ShowFunctionsStatement),
     Describe(DescribeStatement),
     Expression(ExpressionStatement),
     Explain(ExplainStatement),
@@ -1331,6 +1332,7 @@ impl fmt::Display for Statement {
             Statement::ShowCreateTable(s) => write!(f, "{}", s),
             Statement::ShowCreateView(s) => write!(f, "{}", s),
             Statement::ShowIndexes(s) => write!(f, "{}", s),
+            Statement::ShowFunctions(s) => write!(f, "{}", s),
             Statement::Describe(s) => write!(f, "{}", s),
             Statement::Expression(s) => write!(f, "{}", s),
             Statement::Explain(s) => write!(f, "{}", s),
@@ -2298,6 +2300,18 @@ pub struct ShowIndexesStatement {
 impl fmt::Display for ShowIndexesStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "SHOW INDEXES FROM {}", self.table_name)
+    }
+}
+
+/// SHOW FUNCTIONS statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShowFunctionsStatement {
+    pub token: Token,
+}
+
+impl fmt::Display for ShowFunctionsStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SHOW FUNCTIONS")
     }
 }
 
