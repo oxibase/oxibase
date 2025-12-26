@@ -618,7 +618,7 @@ pub fn commit(&self) -> Result<()> {
 
 The system does **not** currently implement automatic garbage collection. Version chains grow unbounded, which can cause memory exhaustion for workloads with many updates.
 
-Future enhancement: [ROADMAP.md]() mentions implementing a vacuum process to prune versions no longer visible to any active transaction.
+Future enhancement: [../../../../roadmap.md]() mentions implementing a vacuum process to prune versions no longer visible to any active transaction.
 
 ### Arena Lazy Rebuild
 

@@ -9,7 +9,7 @@ The following files were used as context for generating this wiki page:
 
 - [.gitignore](.gitignore)
 - [README.md](README.md)
-- [ROADMAP.md](ROADMAP.md)
+- [../../../../roadmap.md](../../../../roadmap.md)
 - [docs/_config.yml](docs/_config.yml)
 
 </details>
@@ -22,7 +22,7 @@ This document describes OxiBase's planned evolution from an embedded SQL databas
 
 For information about the current embedded architecture, see [Architecture Overview](#1.2). For current MVCC implementation details, see [MVCC Architecture](#4.1). For current storage engine features, see [Storage Engine](#4).
 
-**Sources**: [README.md:31-80](), [ROADMAP.md:1-115]()
+**Sources**: [README.md:31-80](), [../../../../roadmap.md:1-115]()
 
 ---
 
@@ -87,7 +87,7 @@ graph LR
     Phase3 --> Phase4["Phase 4"]
 ```
 
-**Sources**: [ROADMAP.md:3-115]()
+**Sources**: [../../../../roadmap.md:3-115]()
 
 ---
 
@@ -158,7 +158,7 @@ fn wasm_commit_txn(txn_id: i32) -> i32;
 
 This allows business logic (written in Rust, TypeScript, Python) to run inside the transaction boundary, accessing the `MVCCEngine` without network round-trips.
 
-**Sources**: [ROADMAP.md:7-12](), [README.md:72-75]()
+**Sources**: [../../../../roadmap.md:7-12](), [README.md:72-75]()
 
 ---
 
@@ -190,7 +190,7 @@ graph LR
 
 The debugger leverages `wasmtime`'s debug capabilities to pause execution, inspect stack frames, and view variable states directly in the terminal.
 
-**Sources**: [ROADMAP.md:14-21]()
+**Sources**: [../../../../roadmap.md:14-21]()
 
 ---
 
@@ -232,7 +232,7 @@ graph TB
 
 This integrates with the existing `DDLExecutor` at [src/executor/ddl.rs](), extending it to support declarative diffing.
 
-**Sources**: [ROADMAP.md:23-28]()
+**Sources**: [../../../../roadmap.md:23-28]()
 
 ---
 
@@ -272,7 +272,7 @@ Modifies the MVCC scanner in `VersionStore` to:
 - Add lock checking to version visibility logic
 - Track lock ownership in `TransactionRegistry`
 
-**Sources**: [ROADMAP.md:34-39]()
+**Sources**: [../../../../roadmap.md:34-39]()
 
 ---
 
@@ -318,7 +318,7 @@ graph LR
 
 This provides read scalability while maintaining single-writer consistency.
 
-**Sources**: [ROADMAP.md:41-45]()
+**Sources**: [../../../../roadmap.md:41-45]()
 
 ---
 
@@ -359,7 +359,7 @@ graph TB
 - Pull-based: workers fetch data over network RPC
 - Compute-intensive: run aggregations, Wasm procedures, joins
 
-**Sources**: [ROADMAP.md:47-56]()
+**Sources**: [../../../../roadmap.md:47-56]()
 
 ---
 
@@ -418,7 +418,7 @@ graph TB
 2. Translate SQL writes to Raft log entries
 3. Apply committed entries to `VersionStore`
 
-**Sources**: [ROADMAP.md:63-67]()
+**Sources**: [../../../../roadmap.md:63-67]()
 
 ---
 
@@ -456,7 +456,7 @@ graph LR
 
 This integrates with the existing `VersionStore` structure at [src/storage/mvcc/version_store.rs]().
 
-**Sources**: [ROADMAP.md:69-74]()
+**Sources**: [../../../../roadmap.md:69-74]()
 
 ---
 
@@ -508,7 +508,7 @@ CREATE TABLE users_us PARTITION OF users
 - Latency optimization (speed of light)
 - Failure isolation (regional outage doesn't affect global cluster)
 
-**Sources**: [ROADMAP.md:76-79]()
+**Sources**: [../../../../roadmap.md:76-79]()
 
 ---
 
@@ -545,7 +545,7 @@ graph TB
 
 No central coordination required (no Zookeeper dependency).
 
-**Sources**: [ROADMAP.md:81-84]()
+**Sources**: [../../../../roadmap.md:81-84]()
 
 ---
 
@@ -598,7 +598,7 @@ DELETE FROM sys_nodes WHERE node_id = 'node-xyz';
 
 This eliminates Terraform, Ansible, and Kubernetes operators.
 
-**Sources**: [ROADMAP.md:91-96](), [README.md:55-60]()
+**Sources**: [../../../../roadmap.md:91-96](), [README.md:55-60]()
 
 ---
 
@@ -638,7 +638,7 @@ graph TB
 **Zero-Copy GPU Access**:
 For unikernels, GPU memory can be mapped directly into the OxiBase address space via PCI passthrough. No copying data over PCIe to user-space and back.
 
-**Sources**: [ROADMAP.md:98-102](), [ROADMAP.md:104-109]()
+**Sources**: [../../../../roadmap.md:98-102](), [../../../../roadmap.md:104-109]()
 
 ---
 
@@ -689,7 +689,7 @@ graph TB
 - **Privacy preserving**: Satisfies GDPR (raw data never leaves region)
 - **Petabyte scale**: Train on full dataset without network bottlenecks
 
-**Sources**: [ROADMAP.md:111-115]()
+**Sources**: [../../../../roadmap.md:111-115]()
 
 ---
 
@@ -771,7 +771,7 @@ gantt
     Federated Learning       :2027-01, 3M
 ```
 
-**Sources**: [ROADMAP.md:3-115]()
+**Sources**: [../../../../roadmap.md:3-115]()
 
 ---
 
@@ -816,7 +816,7 @@ ALTER CLUSTER SET consensus_mode = 'raft';
 -- Now linearizable writes across all nodes
 ```
 
-**Sources**: [ROADMAP.md:3-12]()
+**Sources**: [../../../../roadmap.md:3-12]()
 
 ---
 
