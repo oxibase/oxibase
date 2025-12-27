@@ -478,7 +478,7 @@ impl MVCCEngine {
         // Store the schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
             default_schema.insert(table_name_lower.clone(), schema);
         }
         {
@@ -553,7 +553,7 @@ impl MVCCEngine {
 
                     {
                         let mut schemas = self.schemas.write().unwrap();
-                        let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+                        let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
                         default_schema.insert(table_name.clone(), schema);
                     }
                     {
@@ -1182,7 +1182,7 @@ impl MVCCEngine {
         // Store schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
             default_schema.insert(table_name.clone(), schema.clone());
         }
         {
@@ -1269,7 +1269,9 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let default_schema = schemas
+            .get_mut(DEFAULT_SCHEMA)
+            .ok_or(Error::TableNotFound)?;
         let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
@@ -1323,7 +1325,9 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let default_schema = schemas
+            .get_mut(DEFAULT_SCHEMA)
+            .ok_or(Error::TableNotFound)?;
         let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
@@ -1372,7 +1376,9 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let default_schema = schemas
+            .get_mut(DEFAULT_SCHEMA)
+            .ok_or(Error::TableNotFound)?;
         let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
@@ -1409,7 +1415,9 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let default_schema = schemas
+            .get_mut(DEFAULT_SCHEMA)
+            .ok_or(Error::TableNotFound)?;
         let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
@@ -1453,7 +1461,9 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let default_schema = schemas
+            .get_mut(DEFAULT_SCHEMA)
+            .ok_or(Error::TableNotFound)?;
         let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
@@ -1734,7 +1744,7 @@ impl Engine for MVCCEngine {
 
         let schemas = self.schemas.read().unwrap();
         let default_schema = schemas.get(DEFAULT_SCHEMA);
-        Ok(default_schema.map_or(false, |s| s.contains_key(&table_name.to_lowercase())))
+        Ok(default_schema.is_some_and(|s| s.contains_key(&table_name.to_lowercase())))
     }
 
     fn index_exists(&self, index_name: &str, table_name: &str) -> Result<bool> {
@@ -1883,140 +1893,142 @@ impl Engine for MVCCEngine {
         // Phase 1: Write all snapshots to temp files
         if let Some(default_schema) = schemas.get(DEFAULT_SCHEMA) {
             for (table_name, schema) in default_schema.iter() {
-            if let Some(store) = stores.get(table_name) {
-                // Create table-specific snapshot directory
-                let table_snapshot_dir = snapshot_dir.join(table_name);
-                if let Err(e) = std::fs::create_dir_all(&table_snapshot_dir) {
-                    eprintln!(
-                        "Warning: Failed to create snapshot directory for {}: {}",
-                        table_name, e
-                    );
-                    all_succeeded = false;
-                    break;
-                }
-
-                // Write to .tmp file first, will rename after all succeed
-                let final_path = table_snapshot_dir.join(format!("snapshot-{}.bin", timestamp));
-                let temp_path = table_snapshot_dir.join(format!("snapshot-{}.bin.tmp", timestamp));
-
-                // Create snapshot writer for temp file with captured LSN
-                let mut writer = match super::snapshot::SnapshotWriter::with_source_lsn(
-                    &temp_path,
-                    snapshot_lsn,
-                ) {
-                    Ok(w) => w,
-                    Err(e) => {
+                if let Some(store) = stores.get(table_name) {
+                    // Create table-specific snapshot directory
+                    let table_snapshot_dir = snapshot_dir.join(table_name);
+                    if let Err(e) = std::fs::create_dir_all(&table_snapshot_dir) {
                         eprintln!(
-                            "Warning: Failed to create snapshot writer for {}: {}",
+                            "Warning: Failed to create snapshot directory for {}: {}",
                             table_name, e
                         );
                         all_succeeded = false;
                         break;
                     }
-                };
 
-                // Write schema
-                if let Err(e) = writer.write_schema(schema) {
-                    eprintln!("Warning: Failed to write schema for {}: {}", table_name, e);
-                    writer.fail();
-                    all_succeeded = false;
-                    break;
-                }
+                    // Write to .tmp file first, will rename after all succeed
+                    let final_path = table_snapshot_dir.join(format!("snapshot-{}.bin", timestamp));
+                    let temp_path =
+                        table_snapshot_dir.join(format!("snapshot-{}.bin.tmp", timestamp));
 
-                // Write all committed versions using commit sequence cutoff for consistency.
-                // This ensures that transactions that commit after the checkpoint but before
-                // iteration completes are excluded from the snapshot, maintaining consistency
-                // between the WAL checkpoint and the snapshot contents.
-                let mut write_error = false;
-                store.for_each_committed_version_with_cutoff(
-                    |_row_id, version| {
-                        // Clone version with snapshot TxnID marker
-                        let mut snapshot_version = version.clone();
-                        snapshot_version.txn_id = -1; // Mark as snapshot version
-
-                        if let Err(e) = writer.append_row(&snapshot_version) {
+                    // Create snapshot writer for temp file with captured LSN
+                    let mut writer = match super::snapshot::SnapshotWriter::with_source_lsn(
+                        &temp_path,
+                        snapshot_lsn,
+                    ) {
+                        Ok(w) => w,
+                        Err(e) => {
                             eprintln!(
-                                "Warning: Failed to write row {} to snapshot: {}",
-                                _row_id, e
+                                "Warning: Failed to create snapshot writer for {}: {}",
+                                table_name, e
                             );
-                            write_error = true;
-                            return false; // Stop iteration
+                            all_succeeded = false;
+                            break;
                         }
-                        true
-                    },
-                    snapshot_commit_seq,
-                );
+                    };
 
-                if write_error {
-                    writer.fail();
-                    all_succeeded = false;
-                    break;
-                }
-
-                // Finalize the snapshot (writes CRC32, syncs to disk)
-                if let Err(e) = writer.finalize() {
-                    eprintln!(
-                        "Warning: Failed to finalize snapshot for {}: {}",
-                        table_name, e
-                    );
-                    writer.fail();
-                    all_succeeded = false;
-                    break;
-                }
-
-                // Track this temp file for later rename
-                pending_snapshots.push((temp_path, final_path, table_name.clone()));
-            }
-        }
-
-        // Phase 2: If all snapshots succeeded, rename all temp files atomically
-        // Track successfully renamed files for rollback on failure
-        let mut renamed_successfully: Vec<(std::path::PathBuf, std::path::PathBuf)> = Vec::new();
-
-        if all_succeeded {
-            // Collect unique directories that need syncing
-            let mut dirs_to_sync: std::collections::HashSet<std::path::PathBuf> =
-                std::collections::HashSet::new();
-
-            for (temp_path, final_path, table_name) in &pending_snapshots {
-                if let Err(e) = std::fs::rename(temp_path, final_path) {
-                    eprintln!(
-                        "Warning: Failed to rename snapshot for {}: {}",
-                        table_name, e
-                    );
-                    // CRITICAL: Rollback all previously successful renames to maintain consistency
-                    // Without this, partial renames cause different tables to have snapshots
-                    // from different points in time, leading to data loss on recovery.
-                    for (orig_temp, renamed_final) in renamed_successfully.iter().rev() {
-                        if let Err(rollback_err) = std::fs::rename(renamed_final, orig_temp) {
-                            eprintln!(
-                                "Critical: Failed to rollback snapshot rename {:?} -> {:?}: {}",
-                                renamed_final, orig_temp, rollback_err
-                            );
-                        }
+                    // Write schema
+                    if let Err(e) = writer.write_schema(schema) {
+                        eprintln!("Warning: Failed to write schema for {}: {}", table_name, e);
+                        writer.fail();
+                        all_succeeded = false;
+                        break;
                     }
-                    all_succeeded = false;
-                    break;
-                }
-                // Track successful rename for potential rollback
-                renamed_successfully.push((temp_path.clone(), final_path.clone()));
-                // Track the directory for syncing
-                if let Some(parent) = final_path.parent() {
-                    dirs_to_sync.insert(parent.to_path_buf());
+
+                    // Write all committed versions using commit sequence cutoff for consistency.
+                    // This ensures that transactions that commit after the checkpoint but before
+                    // iteration completes are excluded from the snapshot, maintaining consistency
+                    // between the WAL checkpoint and the snapshot contents.
+                    let mut write_error = false;
+                    store.for_each_committed_version_with_cutoff(
+                        |_row_id, version| {
+                            // Clone version with snapshot TxnID marker
+                            let mut snapshot_version = version.clone();
+                            snapshot_version.txn_id = -1; // Mark as snapshot version
+
+                            if let Err(e) = writer.append_row(&snapshot_version) {
+                                eprintln!(
+                                    "Warning: Failed to write row {} to snapshot: {}",
+                                    _row_id, e
+                                );
+                                write_error = true;
+                                return false; // Stop iteration
+                            }
+                            true
+                        },
+                        snapshot_commit_seq,
+                    );
+
+                    if write_error {
+                        writer.fail();
+                        all_succeeded = false;
+                        break;
+                    }
+
+                    // Finalize the snapshot (writes CRC32, syncs to disk)
+                    if let Err(e) = writer.finalize() {
+                        eprintln!(
+                            "Warning: Failed to finalize snapshot for {}: {}",
+                            table_name, e
+                        );
+                        writer.fail();
+                        all_succeeded = false;
+                        break;
+                    }
+
+                    // Track this temp file for later rename
+                    pending_snapshots.push((temp_path, final_path, table_name.clone()));
                 }
             }
 
-            // Sync directories to ensure renames are durable
-            // This is important on some file systems (e.g., ext4) where
-            // rename durability requires directory sync
+            // Phase 2: If all snapshots succeeded, rename all temp files atomically
+            // Track successfully renamed files for rollback on failure
+            let mut renamed_successfully: Vec<(std::path::PathBuf, std::path::PathBuf)> =
+                Vec::new();
+
             if all_succeeded {
-                for dir in &dirs_to_sync {
-                    if let Ok(dir_file) = std::fs::File::open(dir) {
-                        let _ = dir_file.sync_all();
+                // Collect unique directories that need syncing
+                let mut dirs_to_sync: std::collections::HashSet<std::path::PathBuf> =
+                    std::collections::HashSet::new();
+
+                for (temp_path, final_path, table_name) in &pending_snapshots {
+                    if let Err(e) = std::fs::rename(temp_path, final_path) {
+                        eprintln!(
+                            "Warning: Failed to rename snapshot for {}: {}",
+                            table_name, e
+                        );
+                        // CRITICAL: Rollback all previously successful renames to maintain consistency
+                        // Without this, partial renames cause different tables to have snapshots
+                        // from different points in time, leading to data loss on recovery.
+                        for (orig_temp, renamed_final) in renamed_successfully.iter().rev() {
+                            if let Err(rollback_err) = std::fs::rename(renamed_final, orig_temp) {
+                                eprintln!(
+                                    "Critical: Failed to rollback snapshot rename {:?} -> {:?}: {}",
+                                    renamed_final, orig_temp, rollback_err
+                                );
+                            }
+                        }
+                        all_succeeded = false;
+                        break;
+                    }
+                    // Track successful rename for potential rollback
+                    renamed_successfully.push((temp_path.clone(), final_path.clone()));
+                    // Track the directory for syncing
+                    if let Some(parent) = final_path.parent() {
+                        dirs_to_sync.insert(parent.to_path_buf());
+                    }
+                }
+
+                // Sync directories to ensure renames are durable
+                // This is important on some file systems (e.g., ext4) where
+                // rename durability requires directory sync
+                if all_succeeded {
+                    for dir in &dirs_to_sync {
+                        if let Ok(dir_file) = std::fs::File::open(dir) {
+                            let _ = dir_file.sync_all();
+                        }
                     }
                 }
             }
-        }
         }
 
         // Phase 3: Cleanup - if anything failed, remove all temp files
@@ -2069,8 +2081,11 @@ impl Engine for MVCCEngine {
             for (_, _, table_name) in &pending_snapshots {
                 if let Some(default_schema) = schemas.get(DEFAULT_SCHEMA) {
                     if let Some(schema) = default_schema.get(table_name) {
-                        let disk_store =
-                            super::snapshot::DiskVersionStore::new(&snapshot_dir, table_name, schema);
+                        let disk_store = super::snapshot::DiskVersionStore::new(
+                            &snapshot_dir,
+                            table_name,
+                            schema,
+                        );
                         if let Ok(disk_store) = disk_store {
                             if let Err(e) = disk_store.cleanup_old_snapshots(keep_count) {
                                 eprintln!(
@@ -2569,7 +2584,7 @@ impl TransactionEngineOperations for EngineOperations {
         // Store schema and version store
         {
             let mut schemas = (*self.schemas()).write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
             default_schema.insert(table_name.clone(), schema);
         }
         {
