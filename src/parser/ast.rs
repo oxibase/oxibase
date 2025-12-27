@@ -1224,6 +1224,9 @@ pub enum Statement {
     DropColumnarIndex(DropColumnarIndexStatement),
     CreateView(CreateViewStatement),
     DropView(DropViewStatement),
+    CreateSchema(CreateSchemaStatement),
+    DropSchema(DropSchemaStatement),
+    UseSchema(UseSchemaStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1258,6 +1261,9 @@ impl fmt::Display for Statement {
             Statement::DropColumnarIndex(s) => write!(f, "{}", s),
             Statement::CreateView(s) => write!(f, "{}", s),
             Statement::DropView(s) => write!(f, "{}", s),
+            Statement::CreateSchema(s) => write!(f, "{}", s),
+            Statement::DropSchema(s) => write!(f, "{}", s),
+            Statement::UseSchema(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -1975,6 +1981,57 @@ impl fmt::Display for DropViewStatement {
         }
         result.push_str(&self.view_name.to_string());
         write!(f, "{}", result)
+    }
+}
+
+/// CREATE SCHEMA statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateSchemaStatement {
+    pub token: Token,
+    pub schema_name: Identifier,
+    pub if_not_exists: bool,
+}
+
+impl fmt::Display for CreateSchemaStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE SCHEMA ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        result.push_str(&self.schema_name.to_string());
+        write!(f, "{}", result)
+    }
+}
+
+/// DROP SCHEMA statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropSchemaStatement {
+    pub token: Token,
+    pub schema_name: Identifier,
+    pub if_exists: bool,
+}
+
+impl fmt::Display for DropSchemaStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("DROP SCHEMA ");
+        if self.if_exists {
+            result.push_str("IF EXISTS ");
+        }
+        result.push_str(&self.schema_name.to_string());
+        write!(f, "{}", result)
+    }
+}
+
+/// USE SCHEMA statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct UseSchemaStatement {
+    pub token: Token,
+    pub schema_name: Identifier,
+}
+
+impl fmt::Display for UseSchemaStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "USE SCHEMA {}", self.schema_name)
     }
 }
 

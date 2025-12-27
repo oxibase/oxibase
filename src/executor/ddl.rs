@@ -26,6 +26,7 @@
 use crate::core::{DataType, Error, Result, SchemaBuilder, Value};
 use crate::parser::ast::*;
 use crate::storage::traits::{Engine, QueryResult};
+use rustc_hash::FxHashMap;
 
 use super::context::ExecutionContext;
 use super::expression::ExpressionEval;
@@ -760,6 +761,72 @@ impl Executor {
         }
 
         Ok(Value::null(target_type))
+    }
+
+    /// Execute a CREATE SCHEMA statement
+    pub(crate) fn execute_create_schema(
+        &self,
+        stmt: &CreateSchemaStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let schema_name = stmt.schema_name.value.to_lowercase();
+
+        // Check if schema already exists
+        {
+            let schemas = self.engine.schemas.read().unwrap();
+            if schemas.contains_key(&schema_name) {
+                if stmt.if_not_exists {
+                    return Ok(Box::new(ExecResult::empty()));
+                }
+                return Err(Error::TableAlreadyExists); // Reuse error, or create SchemaAlreadyExists
+            }
+        }
+
+        // Create the schema
+        {
+            let mut schemas = self.engine.schemas.write().unwrap();
+            schemas.insert(schema_name, FxHashMap::default());
+        }
+
+        Ok(Box::new(ExecResult::empty()))
+    }
+
+    /// Execute a DROP SCHEMA statement
+    pub(crate) fn execute_drop_schema(
+        &self,
+        stmt: &DropSchemaStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let schema_name = stmt.schema_name.value.to_lowercase();
+
+        // Check if schema exists
+        {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema_name) {
+                if stmt.if_exists {
+                    return Ok(Box::new(ExecResult::empty()));
+                }
+                return Err(Error::TableNotFound); // Reuse error
+            }
+        }
+
+        // Drop the schema
+        {
+            let mut schemas = self.engine.schemas.write().unwrap();
+            schemas.remove(&schema_name);
+        }
+
+        Ok(Box::new(ExecResult::empty()))
+    }
+
+    /// Execute a USE SCHEMA statement
+    pub(crate) fn execute_use_schema(
+        &self,
+        _stmt: &UseSchemaStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // TODO: Implement schema switching
+        Err(Error::NotSupported)
     }
 }
 

@@ -45,6 +45,7 @@ impl Parser {
                 "CREATE" => self.parse_create_statement(),
                 "DROP" => self.parse_drop_statement(),
                 "ALTER" => self.parse_alter_statement().map(Statement::AlterTable),
+                "USE" => self.parse_use_statement().map(Statement::UseSchema),
                 "BEGIN" => self.parse_begin_statement().map(Statement::Begin),
                 "COMMIT" => self.parse_commit_statement().map(Statement::Commit),
                 "ROLLBACK" => self.parse_rollback_statement().map(Statement::Rollback),
@@ -1263,6 +1264,10 @@ impl Parser {
             self.next_token();
             self.parse_create_table_statement()
                 .map(Statement::CreateTable)
+        } else if self.peek_token_is_keyword("SCHEMA") {
+            self.next_token();
+            self.parse_create_schema_statement()
+                .map(Statement::CreateSchema)
         } else if self.peek_token_is_keyword("UNIQUE") {
             self.next_token();
             if !self.expect_keyword("INDEX") {
@@ -1287,7 +1292,7 @@ impl Parser {
                 .map(Statement::CreateView)
         } else {
             self.add_error(format!(
-                "expected TABLE, INDEX, COLUMNAR INDEX, or VIEW after CREATE at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, or VIEW after CREATE at {}",
                 self.cur_token.position
             ));
             None
@@ -1821,6 +1826,9 @@ impl Parser {
         if self.peek_token_is_keyword("TABLE") {
             self.next_token();
             self.parse_drop_table_statement().map(Statement::DropTable)
+        } else if self.peek_token_is_keyword("SCHEMA") {
+            self.next_token();
+            self.parse_drop_schema_statement().map(Statement::DropSchema)
         } else if self.peek_token_is_keyword("INDEX") {
             self.next_token();
             self.parse_drop_index_statement().map(Statement::DropIndex)
@@ -1836,7 +1844,7 @@ impl Parser {
             self.parse_drop_view_statement().map(Statement::DropView)
         } else {
             self.add_error(format!(
-                "expected TABLE, INDEX, COLUMNAR INDEX, or VIEW after DROP at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, or VIEW after DROP at {}",
                 self.cur_token.position
             ));
             None
@@ -1991,6 +1999,86 @@ impl Parser {
             token,
             view_name,
             if_exists,
+        })
+    }
+
+    /// Parse a CREATE SCHEMA statement
+    fn parse_create_schema_statement(&mut self) -> Option<CreateSchemaStatement> {
+        let token = self.cur_token.clone();
+
+        // Check for IF NOT EXISTS
+        let if_not_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("NOT") {
+                return None;
+            }
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse schema name
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let schema_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+        Some(CreateSchemaStatement {
+            token,
+            schema_name,
+            if_not_exists,
+        })
+    }
+
+    /// Parse a DROP SCHEMA statement
+    fn parse_drop_schema_statement(&mut self) -> Option<DropSchemaStatement> {
+        let token = self.cur_token.clone();
+
+        // Check for IF EXISTS
+        let if_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse schema name
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let schema_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+        Some(DropSchemaStatement {
+            token,
+            schema_name,
+            if_exists,
+        })
+    }
+
+    /// Parse a USE SCHEMA statement
+    fn parse_use_statement(&mut self) -> Option<UseSchemaStatement> {
+        let token = self.cur_token.clone();
+
+        // Expect SCHEMA keyword
+        if !self.expect_keyword("SCHEMA") {
+            return None;
+        }
+
+        // Parse schema name
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let schema_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+        Some(UseSchemaStatement {
+            token,
+            schema_name,
         })
     }
 
@@ -2636,6 +2724,41 @@ mod tests {
                 assert!(drop.if_exists);
             }
             _ => panic!("expected DropTableStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_create_schema() {
+        let stmt = parse_stmt("CREATE SCHEMA IF NOT EXISTS myschema").unwrap();
+        match stmt {
+            Statement::CreateSchema(create) => {
+                assert_eq!(create.schema_name.value, "myschema");
+                assert!(create.if_not_exists);
+            }
+            _ => panic!("expected CreateSchemaStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_drop_schema() {
+        let stmt = parse_stmt("DROP SCHEMA IF EXISTS myschema").unwrap();
+        match stmt {
+            Statement::DropSchema(drop) => {
+                assert_eq!(drop.schema_name.value, "myschema");
+                assert!(drop.if_exists);
+            }
+            _ => panic!("expected DropSchemaStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_use_schema() {
+        let stmt = parse_stmt("USE SCHEMA myschema").unwrap();
+        match stmt {
+            Statement::UseSchema(use_stmt) => {
+                assert_eq!(use_stmt.schema_name.value, "myschema");
+            }
+            _ => panic!("expected UseSchemaStatement"),
         }
     }
 
