@@ -4678,6 +4678,7 @@ impl Executor {
         *active_tx = Some(ActiveTransaction {
             transaction,
             tables: FxHashMap::default(),
+            ddl_undo_log: Vec::new(),
         });
 
         Ok(Box::new(ExecResult::empty()))
@@ -4687,13 +4688,16 @@ impl Executor {
     pub(crate) fn execute_commit_stmt(
         &self,
         _stmt: &CommitStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let mut active_tx = self.active_transaction.lock().unwrap();
 
         if let Some(mut tx_state) = active_tx.take() {
             // Commit the transaction - it will commit all tables via commit_all_tables()
             tx_state.transaction.commit()?;
+
+            // DDL operations were already executed during transaction, nothing more to do
+
             Ok(Box::new(ExecResult::empty()))
         } else {
             // No active transaction - this is a no-op (auto-commit mode)
@@ -4705,7 +4709,7 @@ impl Executor {
     pub(crate) fn execute_rollback_stmt(
         &self,
         stmt: &RollbackStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let mut active_tx = self.active_transaction.lock().unwrap();
 
@@ -4746,8 +4750,24 @@ impl Executor {
                 for (_name, mut table) in tx_state.tables.drain() {
                     table.rollback();
                 }
-                // Then rollback the transaction
+
+                // Rollback the transaction
                 tx_state.transaction.rollback()?;
+
+                // Undo DDL operations (LIFO order)
+                while let Some(op) = tx_state.ddl_undo_log.pop() {
+                    match op {
+                        super::DeferredDdlOperation::CreateTable { name } => {
+                            // Undo CreateTable by dropping it
+                            let _ = self.engine.drop_table_internal(&name);
+                        }
+                        super::DeferredDdlOperation::DropTable { name, schema } => {
+                            // Undo DropTable by recreating it
+                            let _ = self.engine.create_table(schema);
+                        }
+                    }
+                }
+
                 Ok(Box::new(ExecResult::empty()))
             } else {
                 // No active transaction - this is a no-op

@@ -65,6 +65,7 @@ pub use ast::{
     CommonTableExpression,
     CreateColumnarIndexStatement,
     CreateIndexStatement,
+    CreateSchemaStatement,
     CreateTableStatement,
     CreateViewStatement,
     CteReference,
@@ -72,6 +73,7 @@ pub use ast::{
     DistinctExpression,
     DropColumnarIndexStatement,
     DropIndexStatement,
+    DropSchemaStatement,
     DropTableStatement,
     DropViewStatement,
     ExistsExpression,
@@ -114,6 +116,7 @@ pub use ast::{
     StringLiteral,
     SubqueryTableSource,
     UpdateStatement,
+    UseSchemaStatement,
     WhenClause,
     WindowExpression,
     // Window

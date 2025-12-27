@@ -159,6 +159,7 @@ mod tests {
     #[allow(clippy::const_is_empty)]
     fn test_build_time_default() {
         // Without env var set, should be "unknown"
+        // This tests the default case
         assert!(!BUILD_TIME.is_empty());
     }
 

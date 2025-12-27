@@ -71,6 +71,9 @@ pub trait Engine: Send + Sync {
     /// Checks if a table exists
     fn table_exists(&self, table_name: &str) -> Result<bool>;
 
+    /// Checks if a view exists
+    fn view_exists(&self, view_name: &str) -> Result<bool>;
+
     /// Checks if an index exists
     fn index_exists(&self, index_name: &str, table_name: &str) -> Result<bool>;
 
