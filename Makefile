@@ -55,13 +55,15 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 		echo "No VERSION provided, bumping patch to $$VERSION"; \
 	fi; \
 	echo "Updating version to $$VERSION"; \
-	sed -i '' 's/^version = ".*"/version = "$$VERSION"/' Cargo.toml; \
+	sed -i '' "s/^version = \".*\"/version = \"$$VERSION\"/" Cargo.toml; \
 	git add Cargo.toml; \
 	git commit -m "Bump version to $$VERSION"; \
 	git tag -a v$$VERSION -m "Release version $$VERSION"; \
 	git push; \
 	git push --tags;
-	echo "Release prepared."
+	cargo publish;
+	gh release create v$$VERSION --generate-notes;
+	echo "Release completed."
 
 run-memory: build## Run oxibase with in-memory database
 	./target/release/oxibase -d memory://
