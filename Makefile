@@ -59,4 +59,6 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 	git add Cargo.toml; \
 	git commit -m "Bump version to $$VERSION"; \
 	git tag -a v$$VERSION -m "Release version $$VERSION"; \
-	echo "Release prepared. Run 'git push && git push --tags' to publish"
+	git push; \
+	git push --tags;
+	echo "Release prepared."
