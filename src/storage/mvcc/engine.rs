@@ -249,7 +249,7 @@ impl ViewDefinition {
 }
 
 /// Default schema name for backward compatibility
-const DEFAULT_SCHEMA: &str = "";
+const DEFAULT_SCHEMA: &str = "public";
 
 /// MVCC Storage Engine
 ///
@@ -1745,6 +1745,10 @@ impl Engine for MVCCEngine {
         let schemas = self.schemas.read().unwrap();
         let default_schema = schemas.get(DEFAULT_SCHEMA);
         Ok(default_schema.is_some_and(|s| s.contains_key(&table_name.to_lowercase())))
+    }
+
+    fn view_exists(&self, view_name: &str) -> Result<bool> {
+        MVCCEngine::view_exists(self, view_name)
     }
 
     fn index_exists(&self, index_name: &str, table_name: &str) -> Result<bool> {

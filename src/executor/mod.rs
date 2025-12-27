@@ -78,6 +78,18 @@ use crate::parser::Parser;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::{Engine, QueryResult, Table, Transaction};
 
+/// DDL operations for transactional undo
+#[derive(Debug, Clone)]
+pub(crate) enum DeferredDdlOperation {
+    CreateTable {
+        name: String,
+    }, // Undo by dropping
+    DropTable {
+        name: String,
+        schema: crate::core::Schema,
+    }, // Undo by recreating
+}
+
 pub use context::{ExecutionContext, TimeoutGuard};
 pub use expression::{
     CompileContext, CompileError, CompiledEvaluator, ExecuteContext, ExprCompiler, ExprVM,
@@ -122,6 +134,8 @@ struct ActiveTransaction {
     transaction: Box<dyn Transaction>,
     /// Tables accessed within this transaction (cached for proper commit/rollback)
     tables: FxHashMap<String, Box<dyn Table>>,
+    /// DDL operations to undo on rollback
+    ddl_undo_log: Vec<DeferredDdlOperation>,
 }
 
 /// SQL Query Executor
