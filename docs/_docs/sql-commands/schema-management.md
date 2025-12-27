@@ -36,6 +36,94 @@ When creating tables, you can specify the following constraints:
 
 **Note**: For uniqueness constraints, use `CREATE UNIQUE INDEX` after table creation.
 
+## Database Schemas
+
+OxiBase supports database schemas as namespaces to organize database objects such as tables, views, and indexes. This allows for logical grouping and isolation of related database entities.
+
+### Creating Schemas
+
+Use `CREATE SCHEMA` to create a new database schema:
+
+```sql
+CREATE SCHEMA sales;
+CREATE SCHEMA IF NOT EXISTS analytics;
+```
+
+The `IF NOT EXISTS` clause prevents an error if the schema already exists.
+
+### Dropping Schemas
+
+Use `DROP SCHEMA` to remove a database schema:
+
+```sql
+DROP SCHEMA sales;
+DROP SCHEMA IF EXISTS analytics;
+```
+
+The `IF EXISTS` clause prevents an error if the schema does not exist. Note that a schema can only be dropped if it is empty (contains no objects).
+
+### Using Schemas
+
+Use `USE SCHEMA` to set the current schema for subsequent operations:
+
+```sql
+USE SCHEMA sales;
+
+-- Create table in the current schema
+CREATE TABLE customers (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- Query table in current schema
+SELECT * FROM customers;
+
+-- Reference table with explicit schema qualifier
+SELECT * FROM sales.customers;
+```
+
+### Schema-Qualified Names
+
+Tables and other objects can be referenced using schema-qualified names with the format `schema.object`:
+
+```sql
+-- Create table in specific schema
+CREATE TABLE sales.orders (
+    id INTEGER PRIMARY KEY,
+    customer_id INTEGER
+);
+
+-- Query across schemas
+SELECT c.name, o.total
+FROM sales.customers c
+JOIN sales.orders o ON c.id = o.customer_id;
+```
+
+### Default Schema
+
+For backward compatibility, all existing tables and objects belong to the default (unnamed) schema. When no schema is specified, operations default to the current schema, which starts as the default schema.
+
+### Schema Concepts
+
+- **Namespaces**: Schemas provide logical separation of database objects
+- **Organization**: Group related tables, views, and indexes together
+- **Qualification**: Use `schema.object` syntax for explicit object references
+- **Current Schema**: The `USE SCHEMA` statement sets the active schema for unqualified references
+- **Isolation**: Objects in different schemas are separate unless explicitly qualified
+
+### Best Practices
+
+- Use descriptive schema names that reflect their purpose (e.g., `sales`, `inventory`, `analytics`)
+- Organize related objects into logical schemas
+- Use schema-qualified names in scripts and applications for clarity
+- Consider schema permissions for multi-user environments (future feature)
+
+### Limitations
+
+- Schema operations are DDL statements and follow transaction semantics
+- The current schema setting may not persist across database connections
+- Schema-qualified names are supported in most SQL statements but may have limitations in complex queries
+
 ### Altering Tables
 
 Tables can be modified after creation using `ALTER TABLE` statements:

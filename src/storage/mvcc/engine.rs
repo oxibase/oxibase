@@ -248,6 +248,9 @@ impl ViewDefinition {
     }
 }
 
+/// Default schema name for backward compatibility
+const DEFAULT_SCHEMA: &str = "";
+
 /// MVCC Storage Engine
 ///
 /// Provides multi-version concurrency control with snapshot isolation.
@@ -256,8 +259,9 @@ pub struct MVCCEngine {
     path: String,
     /// Configuration
     config: RwLock<Config>,
-    /// Table schemas (Arc-wrapped for safe sharing with transactions)
-    schemas: Arc<RwLock<FxHashMap<String, Schema>>>,
+    /// Table schemas organized by schema (Arc-wrapped for safe sharing with transactions)
+    /// Outer map: schema_name -> Inner map: table_name -> Schema
+    pub(crate) schemas: Arc<RwLock<FxHashMap<String, FxHashMap<String, Schema>>>>,
     /// Version stores for each table (Arc-wrapped for safe sharing with transactions)
     version_stores: Arc<RwLock<FxHashMap<String, Arc<VersionStore>>>>,
     /// Transaction registry
@@ -474,7 +478,8 @@ impl MVCCEngine {
         // Store the schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            schemas.insert(table_name_lower.clone(), schema);
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+            default_schema.insert(table_name_lower.clone(), schema);
         }
         {
             let mut stores = self.version_stores.write().unwrap();
@@ -548,7 +553,8 @@ impl MVCCEngine {
 
                     {
                         let mut schemas = self.schemas.write().unwrap();
-                        schemas.insert(table_name.clone(), schema);
+                        let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+                        default_schema.insert(table_name.clone(), schema);
                     }
                     {
                         let mut stores = self.version_stores.write().unwrap();
@@ -562,7 +568,9 @@ impl MVCCEngine {
                 // Remove schema and version store
                 {
                     let mut schemas = self.schemas.write().unwrap();
-                    schemas.remove(&table_name);
+                    if let Some(default_schema) = schemas.get_mut(DEFAULT_SCHEMA) {
+                        default_schema.remove(&table_name);
+                    }
                 }
                 {
                     let mut stores = self.version_stores.write().unwrap();
@@ -1154,7 +1162,9 @@ impl MVCCEngine {
 
         {
             let schemas = self.schemas.read().unwrap();
-            if schemas.contains_key(&table_name) {
+            let empty_map = FxHashMap::default();
+            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+            if default_schema.contains_key(&table_name) {
                 return Err(Error::TableAlreadyExists);
             }
         }
@@ -1172,7 +1182,8 @@ impl MVCCEngine {
         // Store schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            schemas.insert(table_name.clone(), schema.clone());
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+            default_schema.insert(table_name.clone(), schema.clone());
         }
         {
             let mut stores = self.version_stores.write().unwrap();
@@ -1201,7 +1212,9 @@ impl MVCCEngine {
         // Check if table exists
         {
             let schemas = self.schemas.read().unwrap();
-            if !schemas.contains_key(&table_name) {
+            let empty_map = FxHashMap::default();
+            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+            if !default_schema.contains_key(&table_name) {
                 return Err(Error::TableNotFound);
             }
         }
@@ -1220,7 +1233,9 @@ impl MVCCEngine {
         // Remove schema
         {
             let mut schemas = self.schemas.write().unwrap();
-            schemas.remove(&table_name);
+            if let Some(default_schema) = schemas.get_mut(DEFAULT_SCHEMA) {
+                default_schema.remove(&table_name);
+            }
         }
 
         Ok(())
@@ -1254,7 +1269,8 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let schema = schemas
+        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
 
@@ -1307,7 +1323,8 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let schema = schemas
+        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
 
@@ -1355,7 +1372,8 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let schema = schemas
+        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
 
@@ -1391,7 +1409,8 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let schema = schemas
+        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
 
@@ -1434,7 +1453,8 @@ impl MVCCEngine {
 
         // Get and modify schema
         let mut schemas = self.schemas.write().unwrap();
-        let schema = schemas
+        let default_schema = schemas.get_mut(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        let schema = default_schema
             .get_mut(&table_name_lower)
             .ok_or(Error::TableNotFound)?;
 
@@ -1468,10 +1488,12 @@ impl MVCCEngine {
         // Check if old table exists
         {
             let schemas = self.schemas.read().unwrap();
-            if !schemas.contains_key(&old_name_lower) {
+            let empty_map = FxHashMap::default();
+            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+            if !default_schema.contains_key(&old_name_lower) {
                 return Err(Error::TableNotFound);
             }
-            if schemas.contains_key(&new_name_lower) {
+            if default_schema.contains_key(&new_name_lower) {
                 return Err(Error::TableAlreadyExists);
             }
         }
@@ -1479,9 +1501,11 @@ impl MVCCEngine {
         // Update schemas map
         {
             let mut schemas = self.schemas.write().unwrap();
-            if let Some(mut schema) = schemas.remove(&old_name_lower) {
-                schema.table_name = new_name.to_string();
-                schemas.insert(new_name_lower.clone(), schema);
+            if let Some(default_schema) = schemas.get_mut(DEFAULT_SCHEMA) {
+                if let Some(mut schema) = default_schema.remove(&old_name_lower) {
+                    schema.table_name = new_name.to_string();
+                    default_schema.insert(new_name_lower.clone(), schema);
+                }
             }
         }
 
@@ -1557,7 +1581,9 @@ impl MVCCEngine {
 
         // Check if a table with the same name exists
         let schemas = self.schemas.read().unwrap();
-        if schemas.contains_key(&name_lower) {
+        let empty_map = FxHashMap::default();
+        let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+        if default_schema.contains_key(&name_lower) {
             return Err(Error::internal(format!(
                 "cannot create view '{}': a table with the same name exists",
                 name
@@ -1707,7 +1733,8 @@ impl Engine for MVCCEngine {
         }
 
         let schemas = self.schemas.read().unwrap();
-        Ok(schemas.contains_key(&table_name.to_lowercase()))
+        let default_schema = schemas.get(DEFAULT_SCHEMA);
+        Ok(default_schema.map_or(false, |s| s.contains_key(&table_name.to_lowercase())))
     }
 
     fn index_exists(&self, index_name: &str, table_name: &str) -> Result<bool> {
@@ -1746,7 +1773,8 @@ impl Engine for MVCCEngine {
         }
 
         let schemas = self.schemas.read().unwrap();
-        schemas
+        let default_schema = schemas.get(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
+        default_schema
             .get(&table_name.to_lowercase())
             .cloned()
             .ok_or(Error::TableNotFound)
@@ -1853,7 +1881,8 @@ impl Engine for MVCCEngine {
         let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S%.3f").to_string();
 
         // Phase 1: Write all snapshots to temp files
-        for (table_name, schema) in schemas.iter() {
+        if let Some(default_schema) = schemas.get(DEFAULT_SCHEMA) {
+            for (table_name, schema) in default_schema.iter() {
             if let Some(store) = stores.get(table_name) {
                 // Create table-specific snapshot directory
                 let table_snapshot_dir = snapshot_dir.join(table_name);
@@ -1988,6 +2017,7 @@ impl Engine for MVCCEngine {
                 }
             }
         }
+        }
 
         // Phase 3: Cleanup - if anything failed, remove all temp files
         if !all_succeeded {
@@ -2037,15 +2067,17 @@ impl Engine for MVCCEngine {
         let keep_count = pm.keep_count();
         if keep_count > 0 {
             for (_, _, table_name) in &pending_snapshots {
-                if let Some(schema) = schemas.get(table_name) {
-                    let disk_store =
-                        super::snapshot::DiskVersionStore::new(&snapshot_dir, table_name, schema);
-                    if let Ok(disk_store) = disk_store {
-                        if let Err(e) = disk_store.cleanup_old_snapshots(keep_count) {
-                            eprintln!(
-                                "Warning: Failed to cleanup old snapshots for {}: {}",
-                                table_name, e
-                            );
+                if let Some(default_schema) = schemas.get(DEFAULT_SCHEMA) {
+                    if let Some(schema) = default_schema.get(table_name) {
+                        let disk_store =
+                            super::snapshot::DiskVersionStore::new(&snapshot_dir, table_name, schema);
+                        if let Ok(disk_store) = disk_store {
+                            if let Err(e) = disk_store.cleanup_old_snapshots(keep_count) {
+                                eprintln!(
+                                    "Warning: Failed to cleanup old snapshots for {}: {}",
+                                    table_name, e
+                                );
+                            }
                         }
                     }
                 }
@@ -2431,7 +2463,7 @@ impl Drop for CleanupHandle {
 /// from transactions without raw pointers.
 struct EngineOperations {
     /// Shared reference to schemas
-    schemas: Arc<RwLock<FxHashMap<String, Schema>>>,
+    schemas: Arc<RwLock<FxHashMap<String, FxHashMap<String, Schema>>>>,
     /// Shared reference to version stores
     version_stores: Arc<RwLock<FxHashMap<String, Arc<VersionStore>>>>,
     /// Shared reference to registry
@@ -2458,7 +2490,7 @@ impl EngineOperations {
         }
     }
 
-    fn schemas(&self) -> &RwLock<FxHashMap<String, Schema>> {
+    fn schemas(&self) -> &Arc<RwLock<FxHashMap<String, FxHashMap<String, Schema>>>> {
         &self.schemas
     }
 
@@ -2536,8 +2568,9 @@ impl TransactionEngineOperations for EngineOperations {
 
         // Store schema and version store
         {
-            let mut schemas = self.schemas().write().unwrap();
-            schemas.insert(table_name.clone(), schema);
+            let mut schemas = (*self.schemas()).write().unwrap();
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
+            default_schema.insert(table_name.clone(), schema);
         }
         {
             let mut stores = self.version_stores().write().unwrap();
@@ -2574,8 +2607,10 @@ impl TransactionEngineOperations for EngineOperations {
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {
-        let schemas = self.schemas().read().unwrap();
-        Ok(schemas.keys().cloned().collect())
+        let schemas = (*self.schemas()).read().unwrap();
+        let empty_map = FxHashMap::default();
+        let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+        Ok(default_schema.keys().cloned().collect())
     }
 
     fn rename_table(&self, old_name: &str, new_name: &str) -> Result<()> {
@@ -2584,21 +2619,25 @@ impl TransactionEngineOperations for EngineOperations {
 
         // Check if old table exists and new name doesn't exist
         {
-            let schemas = self.schemas().read().unwrap();
-            if !schemas.contains_key(&old_name_lower) {
+            let schemas = (*self.schemas()).read().unwrap();
+            let empty_map = FxHashMap::default();
+            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+            if !default_schema.contains_key(&old_name_lower) {
                 return Err(Error::TableNotFound);
             }
-            if schemas.contains_key(&new_name_lower) {
+            if default_schema.contains_key(&new_name_lower) {
                 return Err(Error::TableAlreadyExists);
             }
         }
 
         // Rename in schemas
         {
-            let mut schemas = self.schemas().write().unwrap();
-            if let Some(mut schema) = schemas.remove(&old_name_lower) {
-                schema.table_name = new_name.to_string();
-                schemas.insert(new_name_lower.clone(), schema);
+            let mut schemas = (*self.schemas()).write().unwrap();
+            if let Some(default_schema) = schemas.get_mut(DEFAULT_SCHEMA) {
+                if let Some(mut schema) = default_schema.remove(&old_name_lower) {
+                    schema.table_name = new_name.to_string();
+                    default_schema.insert(new_name_lower.clone(), schema);
+                }
             }
         }
 

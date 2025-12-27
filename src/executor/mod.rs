@@ -451,6 +451,9 @@ impl Executor {
             Statement::DropView(stmt) => self.execute_drop_view(stmt, &ctx),
             Statement::CreateColumnarIndex(stmt) => self.execute_create_columnar_index(stmt, &ctx),
             Statement::DropColumnarIndex(stmt) => self.execute_drop_columnar_index(stmt, &ctx),
+            Statement::CreateSchema(stmt) => self.execute_create_schema(stmt, &ctx),
+            Statement::DropSchema(stmt) => self.execute_drop_schema(stmt, &ctx),
+            Statement::UseSchema(stmt) => self.execute_use_schema(stmt, &ctx),
 
             // DML statements
             Statement::Insert(stmt) => self.execute_insert(stmt, &ctx),
