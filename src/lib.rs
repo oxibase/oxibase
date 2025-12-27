@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # Stoolap - High-performance embedded SQL database
+
+//! # Oxibase - Modern Mainframe Database
 //!
-//! Stoolap is a modern embedded SQL database written in pure Rust. It provides
+//! Oxibase is a research platform focused on bringing computation as close as possible to the data itself. It provides
 //! full ACID transactions with MVCC, a sophisticated cost-based query optimizer,
 //! and features that rival established databases like PostgreSQL and DuckDB.
 //!

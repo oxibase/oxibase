@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license docs docs-build lib-doc help
+.PHONY: all lint test build coverage license docs docs-build lib-doc release help
 
 .PHONY: help
 help:
@@ -43,3 +43,20 @@ docs-build:## Build the Jekyll documentation site
 
 lib-doc:## Generate Rust documentation
 	cargo doc
+
+release:## Release a new version (usage: make release VERSION=1.2.3, or omit VERSION for patch bump)
+	@if [ -z "$(VERSION)" ]; then \
+		CURRENT_VERSION=$$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/'); \
+		MAJOR=$$(echo $$CURRENT_VERSION | cut -d. -f1); \
+		MINOR=$$(echo $$CURRENT_VERSION | cut -d. -f2); \
+		PATCH=$$(echo $$CURRENT_VERSION | cut -d. -f3); \
+		NEW_PATCH=$$((PATCH + 1)); \
+		VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH"; \
+		echo "No VERSION provided, bumping patch to $$VERSION"; \
+	fi; \
+	echo "Updating version to $$VERSION"; \
+	sed -i '' 's/^version = ".*"/version = "$$VERSION"/' Cargo.toml; \
+	git add Cargo.toml; \
+	git commit -m "Bump version to $$VERSION"; \
+	git tag -a v$$VERSION -m "Release version $$VERSION"; \
+	echo "Release prepared. Run 'git push && git push --tags' to publish"
