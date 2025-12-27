@@ -62,8 +62,14 @@ jobs:
     - name: Cache
       uses: Swatinem/rust-cache@v2
 
-    - name: Run tests
-      run: cargo test
+    - name: Install cargo-nextest
+      uses: baptiste0928/cargo-install@v3
+      with:
+        crate: cargo-nextest
+        locked: true
+
+     - name: Run tests
+       run: cargo nextest run --profile ci
 
   coverage:
     name: Code Coverage

@@ -15,7 +15,7 @@ lint:## Check formatting and run clippy
 	cargo clippy --all-targets --all-features -- -D warnings
 
 test:## Run all tests
-	cargo test
+	cargo nextest run --show-progress only
 
 build:## Build in release mode
 	cargo build --release
