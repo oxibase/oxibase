@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license docs docs-build lib-doc release help
+.PHONY: all lint test build coverage license docs docs-build lib-doc release help run-memory run-files
 
 .PHONY: help
 help:
@@ -62,3 +62,9 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 	git push; \
 	git push --tags;
 	echo "Release prepared."
+
+run-memory: build## Run oxibase with in-memory database
+	./target/release/oxibase -d memory://
+
+run-files: build## Run oxibase with file-based database
+	./target/release/oxibase -d file://./examples/oxibase.db
