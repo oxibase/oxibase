@@ -68,8 +68,8 @@ jobs:
         crate: cargo-nextest
         locked: true
 
-     - name: Run tests
-       run: cargo nextest run --profile ci
+    - name: Run tests
+      run: cargo nextest run --profile ci
 
   coverage:
     name: Code Coverage
