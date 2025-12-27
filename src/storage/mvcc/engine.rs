@@ -478,7 +478,7 @@ impl MVCCEngine {
         // Store the schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
             default_schema.insert(table_name_lower.clone(), schema);
         }
         {
@@ -1182,7 +1182,7 @@ impl MVCCEngine {
         // Store schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
+            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_insert_with(FxHashMap::default);
             default_schema.insert(table_name.clone(), schema.clone());
         }
         {
@@ -1897,10 +1897,29 @@ impl Engine for MVCCEngine {
         // Phase 1: Write all snapshots to temp files
         if let Some(default_schema) = schemas.get(DEFAULT_SCHEMA) {
             for (table_name, schema) in default_schema.iter() {
-                if let Some(store) = stores.get(table_name) {
-                    // Create table-specific snapshot directory
-                    let table_snapshot_dir = snapshot_dir.join(table_name);
-                    if let Err(e) = std::fs::create_dir_all(&table_snapshot_dir) {
+            if let Some(store) = stores.get(table_name) {
+                // Create table-specific snapshot directory
+                let table_snapshot_dir = snapshot_dir.join(table_name);
+                if let Err(e) = std::fs::create_dir_all(&table_snapshot_dir) {
+                    eprintln!(
+                        "Warning: Failed to create snapshot directory for {}: {}",
+                        table_name, e
+                    );
+                    all_succeeded = false;
+                    break;
+                }
+
+                // Write to .tmp file first, will rename after all succeed
+                let final_path = table_snapshot_dir.join(format!("snapshot-{}.bin", timestamp));
+                let temp_path = table_snapshot_dir.join(format!("snapshot-{}.bin.tmp", timestamp));
+
+                // Create snapshot writer for temp file with captured LSN
+                let mut writer = match super::snapshot::SnapshotWriter::with_source_lsn(
+                    &temp_path,
+                    snapshot_lsn,
+                ) {
+                    Ok(w) => w,
+                    Err(e) => {
                         eprintln!(
                             "Warning: Failed to create snapshot directory for {}: {}",
                             table_name, e
@@ -2033,6 +2052,7 @@ impl Engine for MVCCEngine {
                     }
                 }
             }
+        }
         }
 
         // Phase 3: Cleanup - if anything failed, remove all temp files
