@@ -1828,7 +1828,8 @@ impl Parser {
             self.parse_drop_table_statement().map(Statement::DropTable)
         } else if self.peek_token_is_keyword("SCHEMA") {
             self.next_token();
-            self.parse_drop_schema_statement().map(Statement::DropSchema)
+            self.parse_drop_schema_statement()
+                .map(Statement::DropSchema)
         } else if self.peek_token_is_keyword("INDEX") {
             self.next_token();
             self.parse_drop_index_statement().map(Statement::DropIndex)
@@ -2076,10 +2077,7 @@ impl Parser {
         }
         let schema_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
 
-        Some(UseSchemaStatement {
-            token,
-            schema_name,
-        })
+        Some(UseSchemaStatement { token, schema_name })
     }
 
     /// Parse an ALTER statement
