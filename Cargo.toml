@@ -1,13 +1,13 @@
 [package]
 name = "oxibase"
-version = "0.1.3"
+version = "$VERSION"
 edition = "2021"
-authors = ["OxiBase Contributors"]
-description = "High-performance embedded SQL database with MVCC, time-travel queries, and full ACID compliance"
+authors = ["oxibase Contributors"]
+description = "Autonomous relational database management system with MVCC, time-travel queries, and full ACID compliance"
 license = "Apache-2.0"
 repository = "https://github.com/oxibase/oxibase"
-homepage = "https://oxibase.io"
-documentation = "https://oxibase.io/docs/"
+homepage = "https://oxibase.xyz"
+documentation = "https://oxibase.xyz/"
 readme = "README.md"
 keywords = ["database", "sql", "embedded", "mvcc", "acid"]
 categories = ["database", "database-implementations"]
