@@ -212,6 +212,77 @@ CROSS JOIN (
 WHERE current.product_id = historical.product_id;
 ```
 
+### Transaction-Based Version Lookup Algorithm
+
+```mermaid
+flowchart TD
+    Start["Start: row_id, as_of_txn_id"]
+    GetChain["Get version chain<br/>from versions map"]
+    CheckClosed{"Database<br/>closed?"}
+    ReturnNone1["Return None"]
+    
+    Current["current = chain head"]
+    CheckVersion{"version.txn_id<br/><= as_of_txn_id?"}
+    
+    CheckDeleted{"deleted_at_txn_id != 0<br/>AND deleted_at_txn_id<br/><= as_of_txn_id?"}
+    
+    ReturnNone2["Return None<br/>(row was deleted)"]
+    ReturnVersion["Return version.clone()"]
+    
+    NextVersion["current = prev"]
+    CheckNext{"prev exists?"}
+    ReturnNone3["Return None<br/>(no matching version)"]
+    
+    Start --> CheckClosed
+    CheckClosed -->|"Yes"| ReturnNone1
+    CheckClosed -->|"No"| GetChain
+    GetChain --> Current
+    
+    Current --> CheckVersion
+    CheckVersion -->|"No"| NextVersion
+    CheckVersion -->|"Yes"| CheckDeleted
+    
+    CheckDeleted -->|"Yes"| ReturnNone2
+    CheckDeleted -->|"No"| ReturnVersion
+    
+    NextVersion --> CheckNext
+    CheckNext -->|"Yes"| Current
+    CheckNext -->|"No"| ReturnNone3
+```
+
+### Timestamp-Based Version Lookup Algorithm
+
+```mermaid
+flowchart TD
+    Start["Start: row_id, as_of_timestamp"]
+    GetChain["Get version chain"]
+    Current["current = chain head"]
+    
+    CheckTime{"version.create_time<br/><= as_of_timestamp?"}
+    CheckDeleted{"deleted_at_txn_id<br/>!= 0?"}
+    
+    ReturnNone1["Return None<br/>(deleted)"]
+    ReturnVersion["Return version.clone()"]
+    
+    NextVersion["current = prev"]
+    CheckNext{"prev exists?"}
+    ReturnNone2["Return None"]
+    
+    Start --> GetChain
+    GetChain --> Current
+    Current --> CheckTime
+    
+    CheckTime -->|"No"| NextVersion
+    CheckTime -->|"Yes"| CheckDeleted
+    
+    CheckDeleted -->|"Yes"| ReturnNone1
+    CheckDeleted -->|"No"| ReturnVersion
+    
+    NextVersion --> CheckNext
+    CheckNext -->|"Yes"| Current
+    CheckNext -->|"No"| ReturnNone2
+```
+
 ## Future Enhancements
 
 The AS OF feature is the foundation for OxiBase's planned "Git for Data" functionality, which will include:
