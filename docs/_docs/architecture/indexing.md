@@ -261,6 +261,141 @@ ANALYZE orders;
 
 *For low cardinality columns
 
+## Index Consistency Under MVCC
+
+Indexes are updated **before** commit to detect unique constraint violations early:
+
+```mermaid
+sequenceDiagram
+    participant Txn as Transaction (txn_id=50)
+    participant Table as MVCCTable
+    participant TVS as TransactionVersionStore
+    participant VS as VersionStore
+    participant Idx as BTreeIndex
+
+    Txn->>Table: put(row_id=10, data)
+    Table->>VS: get_visible_version(10, txn_id=50)
+    VS-->>Table: old_version
+    Table->>TVS: insert_local_version(10, new_version)
+    Table-->>Txn: Ok
+
+    Txn->>Table: commit()
+
+    Note over Table,Idx: Index Update Phase (BEFORE commit to VersionStore)
+    Table->>TVS: iter_local_with_old()
+    TVS-->>Table: (row_id, new_version, old_version)
+
+    Table->>Idx: remove(old_values, row_id)
+    Table->>Idx: add(new_values, row_id)
+
+    alt Unique constraint violated
+        Idx-->>Table: Error::UniqueConstraint
+        Table->>TVS: rollback()
+        Table-->>Txn: Error::UniqueConstraint
+    else No conflicts
+        Table->>TVS: commit()
+        TVS->>VS: add_versions_batch(local_versions)
+        VS->>VS: mark_zone_maps_stale()
+        Table-->>Txn: Ok
+    end
+```
+
+**Index-Version Consistency Guarantees:**
+
+1. **Atomic index updates**: All indexes are updated within the same transaction commit phase
+2. **Rollback safety**: If any index update fails (e.g., unique constraint), all changes are discarded via `rollback()`
+3. **Visibility consistency**: Indexes contain entries only for committed versions. Uncommitted rows in `local_versions` are not indexed until commit succeeds
+
+## BTreeIndex Internal Structure
+
+The `BTreeIndex` maintains dual data structures for optimal performance across different query types:
+
+| Data Structure | Type | Purpose | Complexity |
+|----------------|------|---------|------------|
+| `sorted_values` | `RwLock<BTreeMap<Value, RowIdSet>>` | Range queries, MIN/MAX | O(log n + k) |
+| `value_to_rows` | `RwLock<AHashMap<Value, RowIdSet>>` | Equality lookups | O(1) |
+| `row_to_value` | `RwLock<FxHashMap<i64, Value>>` | Removal by row_id | O(1) |
+| `cached_min` | `RwLock<Option<Value>>` | MIN aggregate | O(1) |
+| `cached_max` | `RwLock<Option<Value>>` | MAX aggregate | O(1) |
+
+The dual-index strategy (BTreeMap + HashMap) trades memory (~2x for unique values) for optimal query performance: O(1) equality via hash lookup and O(log n + k) range queries via sorted iteration.
+
+## HashIndex Characteristics
+
+The `HashIndex` is designed for high-cardinality TEXT columns where equality queries dominate:
+
+**Advantages:**
+- O(1) exact match via `ahash` (faster than SipHash)
+- Avoids O(strlen) string comparisons in B-tree traversal
+- `SmallVec<[i64; 4]>` reduces allocations for unique indexes
+
+**Limitations:**
+- Does **NOT** support range queries
+- Does **NOT** support ORDER BY optimization
+- Requires exact match on all indexed columns (no partial key lookups)
+
+**Triple-lock write pattern:**
+```
+add() acquires:
+  1. hash_to_rows: Write
+  2. row_to_hash: Write
+  3. hash_to_values: Write
+```
+
+This ensures atomicity but serializes concurrent writes. Read operations (`find`) only acquire a single read lock for minimal contention.
+
+## BitmapIndex Implementation
+
+Bitmap indexes use Roaring bitmaps for compressed, efficient boolean operations:
+
+**Key Features:**
+- **Roaring Bitmap**: Industry-standard bitmap implementation (used by Lucene, Druid, Spark)
+- **Compression**: Automatic run-length encoding for consecutive bits
+- **Fast Operations**: AND, OR, NOT operations are highly optimized
+- **Memory Efficient**: Low memory footprint for low-cardinality columns
+
+**Use Cases:**
+- Boolean flags and status columns
+- Enum-like TEXT columns with few distinct values
+- Multi-column filtering with AND/OR conditions
+
+## Performance Optimizations
+
+### Batch Operations for Reduced Lock Contention
+
+Batch APIs reduce lock acquisition overhead by processing multiple rows in a single critical section:
+
+| Operation | Traditional (Per-Row) | Batch API | Improvement |
+|-----------|----------------------|-----------|-------------|
+| **Insert 1000 rows** | 1000 lock acquisitions | 1 lock acquisition | ~100x reduction |
+| **Index updates on commit** | N × M locks (rows × indexes) | 1 traversal | Single-pass |
+| **Visibility check for SELECT** | N locks (one per row) | 1 lock (batch fetch) | O(1) contention |
+
+### Lock-Free Read Path
+
+Read operations (`SELECT` queries) never acquire write locks, achieving true MVCC non-blocking reads:
+
+1. **Version traversal**: Uses read-only references to Arc-wrapped version chains
+2. **Visibility checking**: Compares transaction IDs without modifying state
+3. **Index lookups**: BTree and Hash indexes use `RwLock::read()` for concurrent readers
+
+## Index Update Optimization
+
+The commit process uses `iter_local_with_old()` which provides both the new version and the old version without requiring an extra lookup:
+
+```rust
+// For each modified row:
+if is_deleted {
+    index.remove(old_values, row_id, row_id)
+} else if old_values != new_values {
+    index.remove(old_values, row_id, row_id)  // Remove old
+    index.add(new_values, row_id, row_id)      // Add new
+}
+// Same values: no index update needed
+```
+
+This optimization ensures index updates are performed in a single pass during commit, avoiding redundant lookups and ensuring consistency.
+
 ## Implementation Notes
 
 OxiBase's indexes are implemented in:

@@ -89,6 +89,37 @@ graph LR
     Storage --> Result
 ```
 
+#### Single-Column Index Usage Flow
+
+```mermaid
+graph TD
+    Predicate["WHERE Predicate"]
+    Extract["collect_comparisons<br/>Extract column comparisons"]
+    
+    subgraph "Index Selection"
+        CheckEq["Equality?<br/>col = value"]
+        CheckRange["Range?<br/>col > value"]
+        CheckIn["IN List?<br/>col IN (...)"]
+        CheckLike["Prefix LIKE?<br/>col LIKE 'abc%'"]
+    end
+    
+    IndexLookup["Index Lookup"]
+    Results["Filtered row_ids"]
+    
+    Predicate --> Extract
+    Extract --> CheckEq
+    Extract --> CheckRange
+    Extract --> CheckIn
+    Extract --> CheckLike
+    
+    CheckEq -->|"get_row_ids_equal"| IndexLookup
+    CheckRange -->|"get_row_ids_in_range"| IndexLookup
+    CheckIn -->|"get_row_ids_in"| IndexLookup
+    CheckLike -->|"find_range (prefix scan)"| IndexLookup
+    
+    IndexLookup --> Results
+```
+
 ### Example
 
 ```sql
@@ -266,6 +297,58 @@ graph TD
     Arena --> Filter
     Filter --> Collect
     Collect --> Results["Filtered Results<br/>3-5x faster"]
+```
+
+## LIMIT and TOP-N Optimization
+
+### LIMIT Pushdown
+
+For queries with LIMIT but no ORDER BY, the optimizer enables true early termination by pushing LIMIT directly to the storage layer:
+
+```mermaid
+graph TD
+    Query["SELECT * FROM users<br/>LIMIT 100"]
+    
+    Check["Has ORDER BY?"]
+    
+    Ordered["Sorted LIMIT<br/>get_visible_rows_with_limit<br/>• Scan all rows<br/>• Sort by row_id<br/>• Take first 100"]
+    
+    Unordered["Unordered LIMIT<br/>get_visible_rows_with_limit_unordered<br/>• Early termination<br/>• Stop after 100 rows<br/>• 50x faster"]
+    
+    Query --> Check
+    Check -->|"No"| Unordered
+    Check -->|"Yes"| Ordered
+```
+
+### TOP-N Heap Optimization
+
+For `ORDER BY ... LIMIT N` queries, the optimizer uses a bounded heap instead of full sorting:
+
+```mermaid
+graph TD
+    Query["SELECT * FROM users<br/>ORDER BY age DESC<br/>LIMIT 10"]
+    
+    Detect["Detect ORDER BY + LIMIT"]
+    
+    TopN["TopNResult<br/>Bounded heap of size 10"]
+    
+    subgraph "Processing"
+        Scan["Scan rows"]
+        Compare["Compare with heap top"]
+        Insert["Insert if smaller<br/>Evict largest"]
+    end
+    
+    Query --> Detect
+    Detect --> TopN
+    TopN --> Scan
+    Scan --> Compare
+    Compare -->|"Better than top"| Insert
+    Insert --> Scan
+    
+    Compare -->|"Worse than top"| Skip["Skip row"]
+    Skip --> Scan
+    
+    Scan --> Results["10 best rows<br/>O(n log k) vs O(n log n)<br/>5-50x faster"]
 ```
 
 ## Viewing Query Plans

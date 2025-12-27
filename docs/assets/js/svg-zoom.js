@@ -66,6 +66,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 display: none;
                 color: #333;
                 transition: background 0.1s; /* Only animate background, not position */
+                height: 32px;
+                width: 32px;
             }
             .svg-pan-expand-btn:hover {
                 background: white;

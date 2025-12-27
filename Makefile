@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license docs docs-build help
+.PHONY: all lint test build coverage license docs docs-build lib-doc help
 
 .PHONY: help
 help:
@@ -40,3 +40,6 @@ docs:## Serve the Jekyll documentation site
 
 docs-build:## Build the Jekyll documentation site
 	cd docs && bundle exec jekyll build
+
+lib-doc:## Generate Rust documentation
+	cargo doc

@@ -28,6 +28,72 @@ OxiBase includes a parallel execution engine optimized for analytical queries. T
 - **Parallel Operations** - Parallelizes filter, join, sort, and distinct operations
 - **Work-Stealing** - Optimal load balancing across CPU cores
 
+### Layered Architecture
+
+```mermaid
+graph TB
+    subgraph "Public API Layer"
+        Database["Database<br/>api::Database"]
+        Transaction["Transaction<br/>api::Transaction"]
+    end
+    
+    subgraph "Query Execution System"
+        Parser["SQL Parser<br/>parser module<br/>AST generation"]
+        Router["Query Router<br/>Executor::execute_select"]
+        
+        subgraph "Feature Detection"
+            CTEDetect["CTE Detection<br/>has_cte"]
+            SubqueryDetect["Subquery Detection<br/>process_where_subqueries"]
+            AggDetect["Aggregation Detection<br/>has_aggregation"]
+            WindowDetect["Window Detection<br/>has_window_functions"]
+        end
+        
+        subgraph "Execution Engines"
+            QueryExec["Query Executor<br/>execute_select_internal"]
+            CTEExec["CTE Engine<br/>execute_select_with_ctes"]
+            AggExec["Aggregation Engine<br/>execute_select_with_aggregation"]
+            WindowExec["Window Engine<br/>execute_select_with_windows"]
+        end
+        
+        ExprVM["Expression VM<br/>ExprVM, Program<br/>Bytecode evaluation"]
+        
+        Optimizer["Query Optimizer<br/>optimizer module<br/>Cost-based decisions"]
+    end
+    
+    subgraph "Storage Layer"
+        MVCCEngine["MVCCEngine<br/>Transaction management"]
+        VersionStore["VersionStore<br/>MVCC row storage"]
+        Indexes["Index Subsystem<br/>BTree, Hash, Bitmap"]
+    end
+    
+    Database -->|"execute/query"| Parser
+    Transaction -->|"execute/query"| Parser
+    
+    Parser -->|"SelectStatement AST"| Router
+    
+    Router --> CTEDetect
+    Router --> SubqueryDetect
+    Router --> AggDetect
+    Router --> WindowDetect
+    
+    CTEDetect -->|"WITH clause"| CTEExec
+    SubqueryDetect -->|"EXISTS, IN"| QueryExec
+    AggDetect -->|"GROUP BY"| AggExec
+    WindowDetect -->|"OVER clause"| WindowExec
+    
+    QueryExec --> ExprVM
+    AggExec --> ExprVM
+    WindowExec --> ExprVM
+    CTEExec --> QueryExec
+    
+    QueryExec --> Optimizer
+    Optimizer -->|"Access plans"| VersionStore
+    
+    QueryExec --> VersionStore
+    VersionStore --> Indexes
+    VersionStore -.->|"MVCC visibility"| MVCCEngine
+```
+
 ## Optimization Techniques
 
 OxiBase employs several optimization techniques to improve query performance:

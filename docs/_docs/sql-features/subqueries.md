@@ -363,6 +363,22 @@ For correlated subqueries (those that reference the outer query):
 
 This means correlated subqueries may be executed multiple times (once per outer row), so they can be slower for large datasets. Consider using JOINs for better performance when possible.
 
+#### Outer Row Context Building
+
+```mermaid
+graph TB
+    OuterQuery["Outer Query Scan"]
+    OuterRow["Build Outer Row Context<br/>(FxHashMap&lt;String, Value&gt;)"]
+    ColumnMap["ColumnKeyMapping<br/>Pre-computed name mappings"]
+    SubqueryExec["Execute Correlated Subquery<br/>with outer_row context"]
+    
+    OuterQuery -->|"for each row"| OuterRow
+    ColumnMap -->|"reused per row"| OuterRow
+    OuterRow -->|"ExecutionContext::with_outer_row()"| SubqueryExec
+    
+    OuterRow -.->|"Keys:<br/>- col_lower: 'id'<br/>- qualified: 'c.id'<br/>- unqualified: 'id'"| SubqueryExec
+```
+
 ## Examples
 
 ### Example 1: Delete Orders from High-Value Customers
