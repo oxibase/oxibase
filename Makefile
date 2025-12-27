@@ -59,8 +59,8 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 	git add Cargo.toml; \
 	git commit -m "Bump version to $$VERSION"; \
 	git tag -a v$$VERSION -m "Release version $$VERSION"; \
-	git push; \
-	git push --tags;
+	git push origin HEAD; \
+	git push origin v$$VERSION;
 	cargo publish;
 	gh release create v$$VERSION --generate-notes;
 	echo "Release completed."
