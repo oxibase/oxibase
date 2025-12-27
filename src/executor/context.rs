@@ -19,6 +19,9 @@
 
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
+
+/// Default schema name
+const DEFAULT_SCHEMA: &str = "";
 use std::collections::{BinaryHeap, HashMap};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -266,8 +269,8 @@ pub struct ExecutionContext {
     auto_commit: bool,
     /// Cancellation flag
     cancelled: Arc<AtomicBool>,
-    /// Current database/schema name - wrapped in Arc for cheap cloning
-    current_database: Arc<Option<String>>,
+    /// Current schema name - wrapped in Arc for cheap cloning
+    current_schema: Arc<Option<String>>,
     /// Session variables (SET key = value) - wrapped in Arc for cheap cloning
     session_vars: Arc<HashMap<String, Value>>,
     /// Query timeout in milliseconds (0 = no timeout)
@@ -308,7 +311,7 @@ impl ExecutionContext {
             named_params: Arc::new(FxHashMap::default()),
             auto_commit: true,
             cancelled: Arc::new(AtomicBool::new(false)),
-            current_database: Arc::new(None),
+            current_schema: Arc::new(Some(DEFAULT_SCHEMA.to_string())),
             session_vars: Arc::new(HashMap::new()),
             timeout_ms: 0,
             view_depth: 0,
@@ -423,13 +426,13 @@ impl ExecutionContext {
     }
 
     /// Get the current database/schema name
-    pub fn current_database(&self) -> Option<&str> {
-        self.current_database.as_ref().as_deref()
+    pub fn current_schema(&self) -> Option<&str> {
+        self.current_schema.as_ref().as_deref()
     }
 
     /// Set the current database/schema name
-    pub fn set_current_database(&mut self, database: impl Into<String>) {
-        self.current_database = Arc::new(Some(database.into()));
+    pub fn set_current_schema(&mut self, schema: impl Into<String>) {
+        self.current_schema = Arc::new(Some(schema.into()));
     }
 
     /// Get a session variable
@@ -471,7 +474,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth + 1,
@@ -491,7 +494,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -526,7 +529,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(), // Arc clone = cheap
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(), // Arc clone = cheap
-            current_database: self.current_database.clone(), // Arc clone = cheap
+            current_schema: self.current_schema.clone(), // Arc clone = cheap
             session_vars: self.session_vars.clone(), // Arc clone = cheap
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -561,7 +564,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -590,7 +593,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -884,7 +887,7 @@ impl ExecutionContextBuilder {
 
     /// Set the current database
     pub fn database(mut self, database: impl Into<String>) -> Self {
-        self.ctx.current_database = Arc::new(Some(database.into()));
+        self.ctx.current_schema = Arc::new(Some(database.into()));
         self
     }
 
@@ -1001,7 +1004,7 @@ mod tests {
         assert_eq!(ctx.get_param(2), Some(&Value::Integer(2)));
         assert_eq!(ctx.get_named_param("name"), Some(&Value::text("test")));
         assert!(!ctx.auto_commit());
-        assert_eq!(ctx.current_database(), Some("mydb"));
+        assert_eq!(ctx.current_schema(), Some("mydb"));
         assert_eq!(ctx.timeout_ms(), 5000);
     }
 }
