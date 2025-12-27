@@ -2077,10 +2077,7 @@ impl Parser {
         }
         let schema_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
 
-        Some(UseSchemaStatement {
-            token,
-            schema_name,
-        })
+        Some(UseSchemaStatement { token, schema_name })
     }
 
     /// Parse an ALTER statement
