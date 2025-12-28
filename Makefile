@@ -61,6 +61,7 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 	git push origin HEAD; \
 	git push origin v$$VERSION;
 	cargo publish;
+	echo "DEBUG: VERSION=$$VERSION"; \
 	gh release create v$$VERSION --generate-notes;
 	echo "Release completed."
 
