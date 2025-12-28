@@ -491,7 +491,20 @@ impl Parser {
         }
 
         let token = self.cur_token.clone();
-        let name = Identifier::new(token.clone(), self.cur_token.literal.clone());
+        let first_ident = Identifier::new(token.clone(), self.cur_token.literal.clone());
+
+        // Check for qualified name (schema.table)
+        let table_name = if self.peek_token_is_punctuator(".") {
+            self.next_token(); // consume .
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            let second_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            // Create Identifier with full qualified name
+            Identifier::new(first_ident.token.clone(), format!("{}.{}", first_ident.value, second_ident.value))
+        } else {
+            first_ident
+        };
 
         // Check for AS OF clause (temporal queries)
         let as_of = if self.peek_token_is_keyword("AS") {
@@ -570,7 +583,7 @@ impl Parser {
 
         Some(Expression::TableSource(SimpleTableSource {
             token,
-            name,
+            name: table_name,
             alias,
             as_of,
         }))
@@ -848,10 +861,7 @@ impl Parser {
         }
 
         // Parse table name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
 
         // Parse optional column list
         let mut columns = Vec::new();
@@ -1118,10 +1128,7 @@ impl Parser {
         let token = self.cur_token.clone();
 
         // Parse table name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
 
         // Expect SET
         if !self.expect_keyword("SET") {
@@ -1186,10 +1193,7 @@ impl Parser {
         }
 
         // Parse table name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
 
         // Parse optional alias (AS alias or just alias)
         let alias = if self.peek_token_is_keyword("AS") {
@@ -1299,6 +1303,30 @@ impl Parser {
         }
     }
 
+    /// Parse a table name (simple or qualified)
+    fn parse_table_name(&mut self) -> Option<TableName> {
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let first_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+        // Check for qualified name (schema.table)
+        if self.peek_token_is_punctuator(".") {
+            self.next_token(); // consume .
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            let second_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            Some(TableName::Qualified(QualifiedIdentifier {
+                token: first_ident.token.clone(),
+                qualifier: Box::new(first_ident),
+                name: Box::new(second_ident),
+            }))
+        } else {
+            Some(TableName::Simple(first_ident))
+        }
+    }
+
     /// Parse a CREATE TABLE statement
     fn parse_create_table_statement(&mut self) -> Option<CreateTableStatement> {
         let token = self.cur_token.clone();
@@ -1318,10 +1346,7 @@ impl Parser {
         };
 
         // Parse table name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
 
         // Check for AS SELECT (CREATE TABLE ... AS SELECT ...)
         if self.peek_token_is_keyword("AS") {
@@ -1868,10 +1893,7 @@ impl Parser {
         };
 
         // Parse table name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
 
         Some(DropTableStatement {
             token,
@@ -2414,11 +2436,7 @@ impl Parser {
             // Check for TABLE or VIEW
             if self.peek_token_is_keyword("TABLE") {
                 self.next_token();
-                if !self.expect_peek(TokenType::Identifier) {
-                    return None;
-                }
-                let table_name =
-                    Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+                let table_name = self.parse_table_name()?;
                 Some(Statement::ShowCreateTable(ShowCreateTableStatement {
                     token,
                     table_name,
@@ -2667,7 +2685,7 @@ mod tests {
         let stmt = parse_stmt("INSERT INTO users (id, name) VALUES (1, 'Alice')").unwrap();
         match stmt {
             Statement::Insert(insert) => {
-                assert_eq!(insert.table_name.value, "users");
+                assert_eq!(insert.table_name.value(), "users");
                 assert_eq!(insert.columns.len(), 2);
                 assert_eq!(insert.values.len(), 1);
             }
@@ -2680,7 +2698,7 @@ mod tests {
         let stmt = parse_stmt("UPDATE users SET name = 'Bob' WHERE id = 1").unwrap();
         match stmt {
             Statement::Update(update) => {
-                assert_eq!(update.table_name.value, "users");
+                assert_eq!(update.table_name.value(), "users");
                 assert_eq!(update.updates.len(), 1);
                 assert!(update.where_clause.is_some());
             }
@@ -2693,7 +2711,7 @@ mod tests {
         let stmt = parse_stmt("DELETE FROM users WHERE id = 1").unwrap();
         match stmt {
             Statement::Delete(delete) => {
-                assert_eq!(delete.table_name.value, "users");
+                assert_eq!(delete.table_name.value(), "users");
                 assert!(delete.where_clause.is_some());
             }
             _ => panic!("expected DeleteStatement"),
@@ -2706,7 +2724,7 @@ mod tests {
             parse_stmt("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)").unwrap();
         match stmt {
             Statement::CreateTable(create) => {
-                assert_eq!(create.table_name.value, "users");
+                assert_eq!(create.table_name.value(), "users");
                 assert_eq!(create.columns.len(), 2);
             }
             _ => panic!("expected CreateTableStatement"),
@@ -2718,7 +2736,7 @@ mod tests {
         let stmt = parse_stmt("DROP TABLE IF EXISTS users").unwrap();
         match stmt {
             Statement::DropTable(drop) => {
-                assert_eq!(drop.table_name.value, "users");
+                assert_eq!(drop.table_name.value(), "users");
                 assert!(drop.if_exists);
             }
             _ => panic!("expected DropTableStatement"),
@@ -2730,7 +2748,7 @@ mod tests {
         let stmt = parse_stmt("CREATE SCHEMA IF NOT EXISTS myschema").unwrap();
         match stmt {
             Statement::CreateSchema(create) => {
-                assert_eq!(create.schema_name.value, "myschema");
+                assert_eq!(create.schema_name.value(), "myschema");
                 assert!(create.if_not_exists);
             }
             _ => panic!("expected CreateSchemaStatement"),
@@ -2742,7 +2760,7 @@ mod tests {
         let stmt = parse_stmt("DROP SCHEMA IF EXISTS myschema").unwrap();
         match stmt {
             Statement::DropSchema(drop) => {
-                assert_eq!(drop.schema_name.value, "myschema");
+                assert_eq!(drop.schema_name.value(), "myschema");
                 assert!(drop.if_exists);
             }
             _ => panic!("expected DropSchemaStatement"),
@@ -2754,7 +2772,7 @@ mod tests {
         let stmt = parse_stmt("USE SCHEMA myschema").unwrap();
         match stmt {
             Statement::UseSchema(use_stmt) => {
-                assert_eq!(use_stmt.schema_name.value, "myschema");
+                assert_eq!(use_stmt.schema_name.value(), "myschema");
             }
             _ => panic!("expected UseSchemaStatement"),
         }
@@ -2783,7 +2801,7 @@ mod tests {
                 assert!(select.with.is_some());
                 let with = select.with.as_ref().unwrap();
                 assert_eq!(with.ctes.len(), 1);
-                assert_eq!(with.ctes[0].name.value, "temp");
+                assert_eq!(with.ctes[0].name.value(), "temp");
             }
             _ => panic!("expected SelectStatement"),
         }

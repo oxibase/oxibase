@@ -594,7 +594,7 @@ pub fn get_table_alias_from_expr(expr: &Expression) -> Option<String> {
             ts.alias
                 .as_ref()
                 .map(|a| a.value.clone())
-                .unwrap_or_else(|| ts.name.value.clone()),
+                .unwrap_or_else(|| ts.name.value().clone()),
         ),
         Expression::SubquerySource(ss) => ss.alias.as_ref().map(|a| a.value.clone()),
         _ => None,

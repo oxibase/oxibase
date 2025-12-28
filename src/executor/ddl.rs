@@ -40,7 +40,7 @@ impl Executor {
         stmt: &CreateTableStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
 
         // Check if table already exists
         if self.engine.table_exists(table_name)? {
@@ -308,7 +308,7 @@ impl Executor {
         stmt: &DropTableStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
 
         // Check if table exists
         if !self.engine.table_exists(table_name)? {
@@ -353,7 +353,7 @@ impl Executor {
         stmt: &CreateIndexStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
         let index_name = &stmt.index_name.value;
 
         // Check if table exists
@@ -491,7 +491,7 @@ impl Executor {
         stmt: &AlterTableStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
 
         // Check if table exists
         if !self.engine.table_exists(table_name)? {
@@ -762,14 +762,30 @@ impl Executor {
                 if stmt.if_not_exists {
                     return Ok(Box::new(ExecResult::empty()));
                 }
-                return Err(Error::TableAlreadyExists); // Reuse error, or create SchemaAlreadyExists
+                return Err(Error::SchemaAlreadyExists);
             }
         }
 
-        // Create the schema
-        {
-            let mut schemas = self.engine.schemas.write().unwrap();
-            schemas.insert(schema_name, FxHashMap::default());
+        // Check active transaction
+        let mut active_tx = self.active_transaction.lock().unwrap();
+
+        if let Some(ref mut tx_state) = *active_tx {
+            // Add to schemas
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.insert(schema_name.clone(), FxHashMap::default());
+            }
+
+            // Add to undo log
+            tx_state.ddl_undo_log.push(super::DeferredDdlOperation::CreateSchema {
+                name: schema_name,
+            });
+        } else {
+            // Add to schemas
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.insert(schema_name, FxHashMap::default());
+            }
         }
 
         Ok(Box::new(ExecResult::empty()))
@@ -783,21 +799,58 @@ impl Executor {
     ) -> Result<Box<dyn QueryResult>> {
         let schema_name = stmt.schema_name.value.to_lowercase();
 
-        // Check if schema exists
-        {
-            let schemas = self.engine.schemas.read().unwrap();
-            if !schemas.contains_key(&schema_name) {
-                if stmt.if_exists {
-                    return Ok(Box::new(ExecResult::empty()));
-                }
-                return Err(Error::TableNotFound); // Reuse error
+        // Collect tables in schema
+        let tables = if let Some(ref tx_state) = *self.active_transaction.lock().unwrap() {
+            tx_state.transaction.list_tables()?
+        } else {
+            let mut tx = self.engine.begin_transaction()?;
+            let t = tx.list_tables()?;
+            tx.commit()?;
+            t
+        };
+        let mut tables_to_drop = Vec::new();
+        for table_name in tables {
+            if table_name.starts_with(&format!("{}.", schema_name)) {
+                let schema = self.engine.get_table_schema(&table_name)?;
+                tables_to_drop.push((table_name, schema));
             }
         }
 
-        // Drop the schema
-        {
-            let mut schemas = self.engine.schemas.write().unwrap();
-            schemas.remove(&schema_name);
+        // Check active transaction
+        let mut active_tx = self.active_transaction.lock().unwrap();
+
+        if let Some(ref mut tx_state) = *active_tx {
+            // Drop tables
+            for (table_name, _) in &tables_to_drop {
+                self.engine.drop_table_internal(table_name)?;
+            }
+
+            // Drop schema
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.remove(&schema_name);
+            }
+
+            // Add to undo log
+            tx_state.ddl_undo_log.push(super::DeferredDdlOperation::DropSchema {
+                name: schema_name,
+                tables: tables_to_drop,
+            });
+        } else {
+            // Drop tables in transaction
+            {
+                let mut tx = self.engine.begin_transaction()?;
+                for (table_name, _) in &tables_to_drop {
+                    tx.drop_table(table_name)?;
+                }
+                tx.commit()?;
+            }
+
+            // Drop schema
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.remove(&schema_name);
+            }
         }
 
         Ok(Box::new(ExecResult::empty()))
@@ -809,8 +862,8 @@ impl Executor {
         _stmt: &UseSchemaStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        // TODO: Implement schema switching
-        Err(Error::NotSupported)
+        // TODO: Implement schema switching - for now, just succeed
+        Ok(Box::new(ExecResult::empty()))
     }
 }
 

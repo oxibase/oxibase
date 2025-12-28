@@ -65,6 +65,7 @@ pub struct MvccTransaction {
     created_tables: Vec<String>,
     /// Tables dropped in this transaction (for rollback - stores name and schema)
     dropped_tables: Vec<(String, Schema)>,
+
 }
 
 /// Operations that require engine access
@@ -83,6 +84,12 @@ pub trait TransactionEngineOperations: Send + Sync {
 
     /// List all tables
     fn list_tables(&self) -> Result<Vec<String>>;
+
+    /// Create a schema
+    fn create_schema(&self, name: &str) -> Result<()>;
+
+    /// Drop a schema
+    fn drop_schema(&self, name: &str) -> Result<()>;
 
     /// Rename a table
     fn rename_table(&self, old_name: &str, new_name: &str) -> Result<()>;
@@ -156,6 +163,16 @@ impl MvccTransaction {
         if self.state != TransactionState::Active {
             return Err(MvccError::TransactionClosed.into());
         }
+        Ok(())
+    }
+
+    pub fn create_schema(&mut self, _name: &str) -> Result<()> {
+        self.check_active()?;
+        Ok(())
+    }
+
+    pub fn drop_schema(&mut self, _name: &str) -> Result<()> {
+        self.check_active()?;
         Ok(())
     }
 
@@ -316,6 +333,8 @@ impl Transaction for MvccTransaction {
                     return Err(e);
                 }
             }
+
+
 
             // Phase 3: Complete commit - make changes visible
             self.registry.complete_commit(self.id);
@@ -517,7 +536,9 @@ impl Transaction for MvccTransaction {
         self.check_active()?;
 
         let ops = self.get_engine_ops()?;
-        ops.list_tables()
+        let mut tables = ops.list_tables()?;
+        tables.retain(|t| !self.dropped_tables.iter().any(|(name, _)| name == t));
+        Ok(tables)
     }
 
     fn rename_table(&mut self, old_name: &str, new_name: &str) -> Result<()> {
@@ -538,6 +559,16 @@ impl Transaction for MvccTransaction {
             }
         }
 
+        Ok(())
+    }
+
+    fn create_schema(&mut self, _name: &str) -> Result<()> {
+        self.check_active()?;
+        Ok(())
+    }
+
+    fn drop_schema(&mut self, _name: &str) -> Result<()> {
+        self.check_active()?;
         Ok(())
     }
 

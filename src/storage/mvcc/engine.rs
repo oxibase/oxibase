@@ -2626,10 +2626,8 @@ impl TransactionEngineOperations for EngineOperations {
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {
-        let schemas = (*self.schemas()).read().unwrap();
-        let empty_map = FxHashMap::default();
-        let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
-        Ok(default_schema.keys().cloned().collect())
+        let version_stores = self.version_stores.read().unwrap();
+        Ok(version_stores.keys().cloned().collect())
     }
 
     fn rename_table(&self, old_name: &str, new_name: &str) -> Result<()> {
@@ -2826,6 +2824,20 @@ impl TransactionEngineOperations for EngineOperations {
         let mut cache = self.txn_version_stores().write().unwrap();
         cache.retain(|(cached_txn_id, _), _| *cached_txn_id != txn_id);
 
+        Ok(())
+    }
+
+    fn create_schema(&self, name: &str) -> Result<()> {
+        let name_lower = name.to_lowercase();
+        let mut schemas = self.schemas.write().unwrap();
+        schemas.insert(name_lower, FxHashMap::default());
+        Ok(())
+    }
+
+    fn drop_schema(&self, name: &str) -> Result<()> {
+        let name_lower = name.to_lowercase();
+        let mut schemas = self.schemas.write().unwrap();
+        schemas.remove(&name_lower);
         Ok(())
     }
 }

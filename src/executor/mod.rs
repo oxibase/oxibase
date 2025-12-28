@@ -88,6 +88,13 @@ pub(crate) enum DeferredDdlOperation {
         name: String,
         schema: crate::core::Schema,
     }, // Undo by recreating
+    CreateSchema {
+        name: String,
+    }, // Undo by dropping
+    DropSchema {
+        name: String,
+        tables: Vec<(String, crate::core::Schema)>,
+    }, // Undo by recreating
 }
 
 pub use context::{ExecutionContext, TimeoutGuard};

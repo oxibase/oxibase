@@ -59,7 +59,7 @@ fn test_create_table_with_all_types() {
     let stmt = parse_ok(sql);
     match stmt {
         Statement::CreateTable(create) => {
-            assert_eq!(create.table_name.value, "employees");
+            assert_eq!(create.table_name.value(), "employees");
             assert_eq!(create.columns.len(), 8);
 
             let expected = [
