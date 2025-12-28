@@ -4779,7 +4779,8 @@ impl Executor {
                                 let mut schemas = self.engine.schemas.write().unwrap();
                                 let mut table_map = FxHashMap::default();
                                 for (qualified_table_name, schema) in &tables {
-                                    let simple_table_name = qualified_table_name[(name.len() + 1)..].to_string();
+                                    let simple_table_name =
+                                        qualified_table_name[(name.len() + 1)..].to_string();
                                     table_map.insert(simple_table_name, schema.clone());
                                 }
                                 schemas.insert(name.clone(), table_map);

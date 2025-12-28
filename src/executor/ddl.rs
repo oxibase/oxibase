@@ -777,9 +777,9 @@ impl Executor {
             }
 
             // Add to undo log
-            tx_state.ddl_undo_log.push(super::DeferredDdlOperation::CreateSchema {
-                name: schema_name,
-            });
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::CreateSchema { name: schema_name });
         } else {
             // Add to schemas
             {
@@ -832,10 +832,12 @@ impl Executor {
             }
 
             // Add to undo log
-            tx_state.ddl_undo_log.push(super::DeferredDdlOperation::DropSchema {
-                name: schema_name,
-                tables: tables_to_drop,
-            });
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::DropSchema {
+                    name: schema_name,
+                    tables: tables_to_drop,
+                });
         } else {
             // Drop tables in transaction
             {

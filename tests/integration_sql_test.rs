@@ -1229,8 +1229,11 @@ fn test_schema_management() {
     // Insert data into schema-qualified tables
     db.execute("INSERT INTO sales.customers VALUES (1, 'Alice')", ())
         .expect("Failed to insert into sales.customers");
-    db.execute("INSERT INTO marketing.campaigns VALUES (1, 'Spring Sale', 50000.0)", ())
-        .expect("Failed to insert into marketing.campaigns");
+    db.execute(
+        "INSERT INTO marketing.campaigns VALUES (1, 'Spring Sale', 50000.0)",
+        (),
+    )
+    .expect("Failed to insert into marketing.campaigns");
 
     // Query schema-qualified tables
     let count: i64 = db
@@ -1260,8 +1263,11 @@ fn test_schema_management() {
     db.execute("USE SCHEMA marketing", ())
         .expect("Failed to switch to marketing schema");
 
-    db.execute("INSERT INTO marketing.campaigns VALUES (2, 'Winter Promo', 30000.0)", ())
-        .expect("Failed to insert into marketing.campaigns");
+    db.execute(
+        "INSERT INTO marketing.campaigns VALUES (2, 'Winter Promo', 30000.0)",
+        (),
+    )
+    .expect("Failed to insert into marketing.campaigns");
 
     let count: i64 = db
         .query_one("SELECT COUNT(*) FROM marketing.campaigns", ())
@@ -1283,7 +1289,10 @@ fn test_schema_management() {
 
     // Drop schema (should fail if not empty)
     let result = db.execute("DROP SCHEMA sales", ());
-    assert!(result.is_err(), "DROP SCHEMA should fail if schema is not empty");
+    assert!(
+        result.is_err(),
+        "DROP SCHEMA should fail if schema is not empty"
+    );
 
     // Drop tables first
     db.execute("DROP TABLE sales.customers", ())
@@ -1299,5 +1308,8 @@ fn test_schema_management() {
 
     // Verify schemas are gone
     let result = db.query("SELECT * FROM sales.customers", ());
-    assert!(result.is_err(), "sales.customers should not exist after schema drop");
+    assert!(
+        result.is_err(),
+        "sales.customers should not exist after schema drop"
+    );
 }

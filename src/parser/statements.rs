@@ -499,9 +499,13 @@ impl Parser {
             if !self.expect_peek(TokenType::Identifier) {
                 return None;
             }
-            let second_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            let second_ident =
+                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
             // Create Identifier with full qualified name
-            Identifier::new(first_ident.token.clone(), format!("{}.{}", first_ident.value, second_ident.value))
+            Identifier::new(
+                first_ident.token.clone(),
+                format!("{}.{}", first_ident.value, second_ident.value),
+            )
         } else {
             first_ident
         };
@@ -1316,7 +1320,8 @@ impl Parser {
             if !self.expect_peek(TokenType::Identifier) {
                 return None;
             }
-            let second_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            let second_ident =
+                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
             Some(TableName::Qualified(QualifiedIdentifier {
                 token: first_ident.token.clone(),
                 qualifier: Box::new(first_ident),

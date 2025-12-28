@@ -321,7 +321,10 @@ fn test_drop_schema_rollback() {
 
     // Verify gone within transaction
     let result = db.query("SELECT * FROM persist_schema.data", ());
-    assert!(result.is_err(), "Table should not exist after DROP within transaction");
+    assert!(
+        result.is_err(),
+        "Table should not exist after DROP within transaction"
+    );
 
     // Rollback transaction
     db.execute("ROLLBACK", ())
