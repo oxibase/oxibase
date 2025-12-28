@@ -3740,7 +3740,7 @@ impl Executor {
                         .alias
                         .as_ref()
                         .map(|a| a.value.clone())
-                        .unwrap_or_else(|| ts.name.value.clone());
+                        .unwrap_or_else(|| ts.name.value().clone());
                     let qualified_columns: Vec<String> = columns
                         .iter()
                         .map(|col| format!("{}.{}", table_alias, col))
@@ -3790,7 +3790,7 @@ impl Executor {
                         .alias
                         .as_ref()
                         .map(|a| a.value.clone())
-                        .unwrap_or_else(|| ts.name.value.clone());
+                        .unwrap_or_else(|| ts.name.value().clone());
                     let qualified_columns: Vec<String> = columns
                         .iter()
                         .map(|col| format!("{}.{}", table_alias, col))
@@ -3824,7 +3824,7 @@ impl Executor {
                     .alias
                     .as_ref()
                     .map(|a| a.value.clone())
-                    .unwrap_or_else(|| ts.name.value.clone());
+                    .unwrap_or_else(|| ts.name.value().clone());
 
                 let qualified_columns: Vec<String> = columns
                     .iter()
@@ -4767,6 +4767,26 @@ impl Executor {
                         } => {
                             // Undo DropTable by recreating it
                             let _ = self.engine.create_table(schema);
+                        }
+                        super::DeferredDdlOperation::CreateSchema { name } => {
+                            // Undo CreateSchema by dropping it
+                            let mut schemas = self.engine.schemas.write().unwrap();
+                            schemas.remove(&name);
+                        }
+                        super::DeferredDdlOperation::DropSchema { name, tables } => {
+                            // Undo DropSchema by recreating schema and tables
+                            {
+                                let mut schemas = self.engine.schemas.write().unwrap();
+                                let mut table_map = FxHashMap::default();
+                                for (qualified_table_name, schema) in &tables {
+                                    let simple_table_name = qualified_table_name[(name.len() + 1)..].to_string();
+                                    table_map.insert(simple_table_name, schema.clone());
+                                }
+                                schemas.insert(name.clone(), table_map);
+                            }
+                            for (_qualified, schema) in tables {
+                                let _ = self.engine.create_table(schema);
+                            }
                         }
                     }
                 }

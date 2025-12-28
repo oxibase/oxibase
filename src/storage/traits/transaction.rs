@@ -99,6 +99,12 @@ pub trait Transaction: Send {
     /// Renames a table
     fn rename_table(&mut self, old_name: &str, new_name: &str) -> Result<()>;
 
+    /// Creates a schema
+    fn create_schema(&mut self, name: &str) -> Result<()>;
+
+    /// Drops a schema
+    fn drop_schema(&mut self, name: &str) -> Result<()>;
+
     // ---- Index Operations ----
 
     /// Creates an index on a table

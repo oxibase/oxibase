@@ -79,7 +79,7 @@ impl Executor {
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
-        let table_name = &stmt.table_name.value_lower;
+        let table_name = &stmt.table_name.value_lower();
 
         // Check if there's an active explicit transaction
         let mut active_tx = self.active_transaction.lock().unwrap();
@@ -481,7 +481,7 @@ impl Executor {
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
-        let table_name = &stmt.table_name.value_lower;
+        let table_name = &stmt.table_name.value_lower();
 
         // Check if there's an active explicit transaction
         let mut active_tx = self.active_transaction.lock().unwrap();
@@ -824,7 +824,7 @@ impl Executor {
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
-        let table_name = &stmt.table_name.value_lower;
+        let table_name = &stmt.table_name.value_lower();
         // Use alias if provided, otherwise use table name
         let effective_name = stmt
             .alias
@@ -1097,7 +1097,7 @@ impl Executor {
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
-        let table_name = &stmt.table_name.value_lower;
+        let table_name = &stmt.table_name.value_lower();
 
         // Check if there's an active explicit transaction
         let mut active_tx = self.active_transaction.lock().unwrap();

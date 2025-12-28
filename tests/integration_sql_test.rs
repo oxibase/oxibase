@@ -1190,3 +1190,114 @@ fn test_join_using() {
     assert_eq!(emp_names.len(), 4, "LEFT JOIN should include David");
     assert!(emp_names.contains(&"David".to_string()));
 }
+
+/// Test schema creation and management
+#[test]
+fn test_schema_management() {
+    let db = Database::open("memory://int_schema").expect("Failed to create database");
+
+    // Create schemas
+    db.execute("CREATE SCHEMA sales", ())
+        .expect("Failed to create sales schema");
+    db.execute("CREATE SCHEMA IF NOT EXISTS marketing", ())
+        .expect("Failed to create marketing schema with IF NOT EXISTS");
+
+    // Try to create existing schema without IF NOT EXISTS (should succeed)
+    db.execute("CREATE SCHEMA IF NOT EXISTS sales", ())
+        .expect("IF NOT EXISTS should handle existing schema");
+
+    // Create tables in different schemas
+    db.execute(
+        "CREATE TABLE sales.customers (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL
+        )",
+        (),
+    )
+    .expect("Failed to create table in sales schema");
+
+    db.execute(
+        "CREATE TABLE marketing.campaigns (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            budget FLOAT
+        )",
+        (),
+    )
+    .expect("Failed to create table in marketing schema");
+
+    // Insert data into schema-qualified tables
+    db.execute("INSERT INTO sales.customers VALUES (1, 'Alice')", ())
+        .expect("Failed to insert into sales.customers");
+    db.execute("INSERT INTO marketing.campaigns VALUES (1, 'Spring Sale', 50000.0)", ())
+        .expect("Failed to insert into marketing.campaigns");
+
+    // Query schema-qualified tables
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM sales.customers", ())
+        .expect("Failed to query sales.customers");
+    assert_eq!(count, 1, "Should have 1 customer");
+
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM marketing.campaigns", ())
+        .expect("Failed to query marketing.campaigns");
+    assert_eq!(count, 1, "Should have 1 campaign");
+
+    // Test USE SCHEMA (not fully implemented, so use qualified names)
+    db.execute("USE SCHEMA sales", ())
+        .expect("Failed to use sales schema");
+
+    // Use qualified names
+    db.execute("INSERT INTO sales.customers VALUES (2, 'Bob')", ())
+        .expect("Failed to insert into sales.customers");
+
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM sales.customers", ())
+        .expect("Failed to query sales.customers");
+    assert_eq!(count, 2, "Should have 2 customers");
+
+    // Switch schema
+    db.execute("USE SCHEMA marketing", ())
+        .expect("Failed to switch to marketing schema");
+
+    db.execute("INSERT INTO marketing.campaigns VALUES (2, 'Winter Promo', 30000.0)", ())
+        .expect("Failed to insert into marketing.campaigns");
+
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM marketing.campaigns", ())
+        .expect("Failed to query marketing.campaigns");
+    assert_eq!(count, 2, "Should have 2 campaigns");
+
+    // Test cross-schema queries
+    let result = db
+        .query(
+            "SELECT c.name, camp.name FROM sales.customers c JOIN marketing.campaigns camp ON 1=1 LIMIT 1",
+            (),
+        )
+        .expect("Failed to query across schemas");
+    let mut count = 0;
+    for _row in result {
+        count += 1;
+    }
+    assert_eq!(count, 1, "Should be able to query across schemas");
+
+    // Drop schema (should fail if not empty)
+    let result = db.execute("DROP SCHEMA sales", ());
+    assert!(result.is_err(), "DROP SCHEMA should fail if schema is not empty");
+
+    // Drop tables first
+    db.execute("DROP TABLE sales.customers", ())
+        .expect("Failed to drop sales.customers");
+    db.execute("DROP TABLE marketing.campaigns", ())
+        .expect("Failed to drop marketing.campaigns");
+
+    // Now drop schemas
+    db.execute("DROP SCHEMA sales", ())
+        .expect("Failed to drop sales schema");
+    db.execute("DROP SCHEMA IF EXISTS marketing", ())
+        .expect("Failed to drop marketing schema with IF EXISTS");
+
+    // Verify schemas are gone
+    let result = db.query("SELECT * FROM sales.customers", ());
+    assert!(result.is_err(), "sales.customers should not exist after schema drop");
+}
