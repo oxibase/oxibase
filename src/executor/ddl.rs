@@ -42,6 +42,14 @@ impl Executor {
     ) -> Result<Box<dyn QueryResult>> {
         let table_name = &stmt.table_name.value();
 
+        // Check if schema exists for qualified table names
+        if let Some(schema_name) = stmt.table_name.schema() {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema_name.to_lowercase()) {
+                return Err(Error::SchemaNotFound(schema_name));
+            }
+        }
+
         // Check if table already exists
         if self.engine.table_exists(table_name)? {
             if stmt.if_not_exists {

@@ -45,6 +45,10 @@ pub enum Error {
     #[error("schema already exists")]
     SchemaAlreadyExists,
 
+    /// Schema not found
+    #[error("schema not found: {0}")]
+    SchemaNotFound(String),
+
     /// Table has been closed and cannot be used
 
     #[error("table closed")]

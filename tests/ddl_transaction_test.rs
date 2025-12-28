@@ -334,3 +334,23 @@ fn test_drop_schema_rollback() {
     let result = db.query("SELECT * FROM persist_schema.data", ());
     assert!(result.is_ok(), "Table should be restored after rollback");
 }
+
+#[test]
+fn test_create_table_nonexistent_schema() {
+    let db = Database::open("memory://ddl_nonexistent_schema").expect("Failed to create database");
+
+    // Try to create a table in a schema that doesn't exist
+    let result = db.execute(
+        "CREATE TABLE nonexistent_schema.test_table (
+            id INTEGER PRIMARY KEY,
+            name TEXT
+        )",
+        (),
+    );
+
+    // Should fail because schema doesn't exist
+    assert!(
+        result.is_err(),
+        "Creating table in non-existent schema should fail"
+    );
+}
