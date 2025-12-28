@@ -768,7 +768,7 @@ impl Executor {
                         if let Some(ref alias) = source.alias {
                             Some(alias.value.to_lowercase())
                         } else {
-                            Some(source.name.value.to_lowercase())
+                            Some(source.name.value().to_lowercase())
                         }
                     }
                     Expression::Aliased(aliased) => Some(aliased.alias.value.to_lowercase()),

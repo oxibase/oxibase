@@ -2109,11 +2109,11 @@ impl Executor {
 
         let table_source = Expression::TableSource(SimpleTableSource {
             token: dummy_token(&info.inner_table, TokenType::Identifier),
-            name: Identifier {
+            name: TableName::Simple(Identifier {
                 token: dummy_token(&info.inner_table, TokenType::Identifier),
                 value: info.inner_table.clone(),
                 value_lower: info.inner_table.to_lowercase(),
-            },
+            }),
             alias: info.inner_alias.as_ref().map(|a| Identifier {
                 token: dummy_token(a, TokenType::Identifier),
                 value: a.clone(),

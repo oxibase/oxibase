@@ -1090,7 +1090,7 @@ impl fmt::Display for WindowDefinition {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SimpleTableSource {
     pub token: Token,
-    pub name: Identifier,
+    pub name: TableName,
     pub alias: Option<Identifier>,
     pub as_of: Option<AsOfClause>,
 }
@@ -2397,10 +2397,10 @@ mod tests {
             with: None,
             table_expr: Some(Box::new(Expression::TableSource(SimpleTableSource {
                 token: make_token(TokenType::Identifier, "users"),
-                name: Identifier::new(
+                name: TableName::Simple(Identifier::new(
                     make_token(TokenType::Identifier, "users"),
                     "users".to_string(),
-                ),
+                )),
                 alias: None,
                 as_of: None,
             }))),

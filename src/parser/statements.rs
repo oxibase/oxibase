@@ -501,13 +501,13 @@ impl Parser {
             }
             let second_ident =
                 Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
-            // Create Identifier with full qualified name
-            Identifier::new(
-                first_ident.token.clone(),
-                format!("{}.{}", first_ident.value, second_ident.value),
-            )
+            TableName::Qualified(QualifiedIdentifier {
+                token: first_ident.token.clone(),
+                qualifier: Box::new(first_ident),
+                name: Box::new(second_ident),
+            })
         } else {
-            first_ident
+            TableName::Simple(first_ident)
         };
 
         // Check for AS OF clause (temporal queries)
