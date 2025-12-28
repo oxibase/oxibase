@@ -536,7 +536,7 @@ impl ExecutionContext {
             query_depth: self.query_depth,
             outer_row: self.outer_row.clone(),
             outer_columns: self.outer_columns.clone(),
-            cte_data: self.cte_data.clone(),
+            cte_data: Some(cte_data),
             transaction_id: self.transaction_id,
         }
     }
@@ -566,7 +566,7 @@ impl ExecutionContext {
             outer_row: self.outer_row.clone(),
             outer_columns: self.outer_columns.clone(),
             cte_data: self.cte_data.clone(),
-            transaction_id: self.transaction_id,
+            transaction_id: Some(txn_id),
         }
     }
 

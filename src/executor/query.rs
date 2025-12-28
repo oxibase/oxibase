@@ -4688,7 +4688,7 @@ impl Executor {
     pub(crate) fn execute_commit_stmt(
         &self,
         _stmt: &CommitStatement,
-        ctx: &ExecutionContext,
+        _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let mut active_tx = self.active_transaction.lock().unwrap();
 
@@ -4709,7 +4709,7 @@ impl Executor {
     pub(crate) fn execute_rollback_stmt(
         &self,
         stmt: &RollbackStatement,
-        ctx: &ExecutionContext,
+        _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let mut active_tx = self.active_transaction.lock().unwrap();
 
@@ -4761,7 +4761,10 @@ impl Executor {
                             // Undo CreateTable by dropping it
                             let _ = self.engine.drop_table_internal(&name);
                         }
-                        super::DeferredDdlOperation::DropTable { name, schema } => {
+                        super::DeferredDdlOperation::DropTable {
+                            name: _name,
+                            schema,
+                        } => {
                             // Undo DropTable by recreating it
                             let _ = self.engine.create_table(schema);
                         }
