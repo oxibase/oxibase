@@ -354,3 +354,49 @@ fn test_create_table_nonexistent_schema() {
         "Creating table in non-existent schema should fail"
     );
 }
+
+#[test]
+fn test_create_view_nonexistent_schema() {
+    let db =
+        Database::open("memory://ddl_view_nonexistent_schema").expect("Failed to create database");
+
+    // Try to create a view in a schema that doesn't exist
+    let result = db.execute(
+        "CREATE VIEW nonexistent_schema.test_view AS SELECT 1 as col",
+        (),
+    );
+
+    // Should fail because schema doesn't exist
+    assert!(
+        result.is_err(),
+        "Creating view in non-existent schema should fail"
+    );
+}
+
+#[test]
+fn test_create_index_nonexistent_schema() {
+    let db =
+        Database::open("memory://ddl_index_nonexistent_schema").expect("Failed to create database");
+
+    // Create a schema and table first
+    db.execute("CREATE SCHEMA test_schema", ())
+        .expect("Failed to create schema");
+
+    db.execute(
+        "CREATE TABLE test_schema.test_table (
+            id INTEGER PRIMARY KEY,
+            name TEXT
+        )",
+        (),
+    )
+    .expect("Failed to create table");
+
+    // Try to create an index on the table using a qualified name with non-existent schema
+    let result = db.execute("CREATE INDEX idx ON nonexistent_schema.test_table (id)", ());
+
+    // Should fail because the schema in the table name doesn't exist
+    assert!(
+        result.is_err(),
+        "Creating index on table in non-existent schema should fail"
+    );
+}

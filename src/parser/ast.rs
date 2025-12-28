@@ -1899,7 +1899,7 @@ impl fmt::Display for IndexMethod {
 pub struct CreateIndexStatement {
     pub token: Token,
     pub index_name: Identifier,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub columns: Vec<Identifier>,
     pub is_unique: bool,
     pub if_not_exists: bool,
@@ -2000,7 +2000,7 @@ impl fmt::Display for DropColumnarIndexStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateViewStatement {
     pub token: Token,
-    pub view_name: Identifier,
+    pub view_name: TableName,
     pub query: Box<SelectStatement>,
     pub if_not_exists: bool,
 }

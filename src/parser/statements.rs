@@ -1679,10 +1679,7 @@ impl Parser {
         }
 
         // Parse table name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
 
         // Expect (
         if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
@@ -1807,10 +1804,7 @@ impl Parser {
         };
 
         // Parse view name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let view_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let view_name = self.parse_table_name()?;
 
         // Expect AS
         if !self.expect_keyword("AS") {

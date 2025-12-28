@@ -361,6 +361,14 @@ impl Executor {
         stmt: &CreateIndexStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
+        // Check if schema exists for qualified table names
+        if let Some(schema) = stmt.table_name.schema() {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema.to_lowercase()) {
+                return Err(Error::SchemaNotFound(schema));
+            }
+        }
+
         let table_name = &stmt.table_name.value();
         let index_name = &stmt.index_name.value;
 
@@ -642,7 +650,15 @@ impl Executor {
         stmt: &CreateViewStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let view_name = &stmt.view_name.value;
+        // Check if schema exists for qualified view names
+        if let Some(schema) = stmt.view_name.schema() {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema.to_lowercase()) {
+                return Err(Error::SchemaNotFound(schema));
+            }
+        }
+
+        let view_name = &stmt.view_name.value();
 
         // Check if a table with the same name exists
         if self.engine.table_exists(view_name)? {
