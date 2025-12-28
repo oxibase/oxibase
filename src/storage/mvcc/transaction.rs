@@ -65,7 +65,6 @@ pub struct MvccTransaction {
     created_tables: Vec<String>,
     /// Tables dropped in this transaction (for rollback - stores name and schema)
     dropped_tables: Vec<(String, Schema)>,
-
 }
 
 /// Operations that require engine access
@@ -333,8 +332,6 @@ impl Transaction for MvccTransaction {
                     return Err(e);
                 }
             }
-
-
 
             // Phase 3: Complete commit - make changes visible
             self.registry.complete_commit(self.id);
