@@ -306,7 +306,7 @@ impl Executor {
     pub(crate) fn execute_drop_table(
         &self,
         stmt: &DropTableStatement,
-        ctx: &ExecutionContext,
+        _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let table_name = &stmt.table_name.value;
 
