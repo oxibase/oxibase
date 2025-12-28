@@ -202,7 +202,7 @@ impl Transaction {
 
         match statement {
             Statement::Insert(stmt) => {
-                let table_name = &stmt.table_name.value;
+                let table_name = &stmt.table_name.value();
                 let mut table = tx.get_table(table_name)?;
 
                 let mut total_inserted = 0i64;
@@ -227,7 +227,7 @@ impl Transaction {
                     compile_expression, ExecuteContext, ExprVM, RowFilter, SharedProgram,
                 };
 
-                let table_name = &stmt.table_name.value;
+                let table_name = &stmt.table_name.value();
                 let mut table = tx.get_table(table_name)?;
                 // Get column names owned to avoid borrow conflict with table.update()
                 let columns: Vec<String> = table.schema().column_names_owned().to_vec();
@@ -316,7 +316,7 @@ impl Transaction {
                 )))
             }
             Statement::Delete(stmt) => {
-                let table_name = &stmt.table_name.value;
+                let table_name = &stmt.table_name.value();
                 let mut table = tx.get_table(table_name)?;
 
                 // Convert WHERE clause to Expression if present
@@ -360,7 +360,7 @@ impl Transaction {
 
                 // Get table name
                 let table_name = match table_expr.as_ref() {
-                    Expression::TableSource(ts) => &ts.name.value,
+                    Expression::TableSource(ts) => &ts.name.value(),
                     Expression::Identifier(id) => &id.value,
                     _ => {
                         return Err(Error::NotSupportedMessage(

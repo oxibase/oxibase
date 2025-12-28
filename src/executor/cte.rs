@@ -1012,7 +1012,7 @@ impl Executor {
         match expr {
             Expression::CteReference(cte_ref) => Some(cte_ref.name.value.clone()),
             Expression::TableSource(simple_table_source) => {
-                Some(simple_table_source.name.value.clone())
+                Some(simple_table_source.name.value().clone())
             }
             Expression::Identifier(id) => Some(id.value.clone()),
             _ => None,
@@ -1036,7 +1036,7 @@ impl Executor {
                 if let Some(ref alias) = simple_table_source.alias {
                     Some(alias.value.clone())
                 } else {
-                    Some(simple_table_source.name.value.clone())
+                    Some(simple_table_source.name.value().clone())
                 }
             }
             Expression::Identifier(id) => Some(id.value.clone()),
@@ -1386,7 +1386,7 @@ impl Executor {
     fn expr_references_cte(&self, expr: &Expression, cte_name: &str) -> bool {
         match expr {
             Expression::CteReference(cte_ref) => cte_ref.name.value.eq_ignore_ascii_case(cte_name),
-            Expression::TableSource(ts) => ts.name.value.eq_ignore_ascii_case(cte_name),
+            Expression::TableSource(ts) => ts.name.value().eq_ignore_ascii_case(cte_name),
             Expression::Identifier(id) => id.value.eq_ignore_ascii_case(cte_name),
             Expression::JoinSource(js) => {
                 self.expr_references_cte(&js.left, cte_name)
@@ -1447,7 +1447,7 @@ impl Executor {
                 }
             }
             Expression::TableSource(ts) => {
-                let name = ts.name.value.to_lowercase();
+                let name = ts.name.value().to_lowercase();
                 if let Some(count) = ref_counts.get_mut(&name) {
                     *count += 1;
                 }
@@ -1515,10 +1515,13 @@ impl Executor {
                 }
             }
             Expression::TableSource(ts) => {
-                let name = ts.name.value.to_lowercase();
+                let name = ts.name.value().to_lowercase();
                 if let Some(cte) = cte_defs.get(&name) {
                     // Convert to SubquerySource preserving alias
-                    let alias = ts.alias.clone().unwrap_or_else(|| ts.name.clone());
+                    let alias = ts
+                        .alias
+                        .clone()
+                        .unwrap_or_else(|| Identifier::new(ts.token.clone(), ts.name.value()));
                     Expression::SubquerySource(SubqueryTableSource {
                         token: Token::new(TokenType::Punctuator, "(", Position::new(0, 0, 0)),
                         subquery: cte.query.clone(),

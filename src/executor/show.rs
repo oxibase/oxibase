@@ -74,7 +74,7 @@ impl Executor {
         stmt: &ShowCreateTableStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
         let tx = self.engine.begin_transaction()?;
         let table = tx.get_table(table_name)?;
         let schema = table.schema();
@@ -173,7 +173,7 @@ impl Executor {
         stmt: &ShowIndexesStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
 
         // Get a table reference to access indexes
         let tx = self.engine.begin_transaction()?;
@@ -230,7 +230,7 @@ impl Executor {
         stmt: &DescribeStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
         let tx = self.engine.begin_transaction()?;
         let table = tx.get_table(table_name)?;
         let schema = table.schema();

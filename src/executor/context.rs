@@ -24,7 +24,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::core::{Result, Row, Value};
+/// Default schema name
+const DEFAULT_SCHEMA: &str = "public";
+
+use crate::core::{Result, Row, Schema, Value};
 
 // Cache for scalar subquery results to avoid re-execution.
 // Thread-local to avoid synchronization overhead.
@@ -266,8 +269,8 @@ pub struct ExecutionContext {
     auto_commit: bool,
     /// Cancellation flag
     cancelled: Arc<AtomicBool>,
-    /// Current database/schema name - wrapped in Arc for cheap cloning
-    current_database: Arc<Option<String>>,
+    /// Current schema name - wrapped in Arc for cheap cloning
+    current_schema: Arc<Option<String>>,
     /// Session variables (SET key = value) - wrapped in Arc for cheap cloning
     session_vars: Arc<HashMap<String, Value>>,
     /// Query timeout in milliseconds (0 = no timeout)
@@ -294,6 +297,8 @@ pub struct ExecutionContext {
 /// Type alias for CTE data map to reduce type complexity
 type CteDataMap = FxHashMap<String, (Vec<String>, Vec<Row>)>;
 
+use crate::storage::traits::Engine;
+
 impl Default for ExecutionContext {
     fn default() -> Self {
         Self::new()
@@ -308,7 +313,7 @@ impl ExecutionContext {
             named_params: Arc::new(FxHashMap::default()),
             auto_commit: true,
             cancelled: Arc::new(AtomicBool::new(false)),
-            current_database: Arc::new(None),
+            current_schema: Arc::new(Some(DEFAULT_SCHEMA.to_string())),
             session_vars: Arc::new(HashMap::new()),
             timeout_ms: 0,
             view_depth: 0,
@@ -320,7 +325,7 @@ impl ExecutionContext {
         }
     }
 
-    /// Create an execution context with positional parameters
+    /// Create an execution context with parameters
     pub fn with_params(params: Vec<Value>) -> Self {
         Self {
             params: Arc::new(params),
@@ -329,9 +334,7 @@ impl ExecutionContext {
     }
 
     /// Create an execution context with named parameters
-    /// Accepts std::collections::HashMap for API compatibility
     pub fn with_named_params(named_params: std::collections::HashMap<String, Value>) -> Self {
-        // Convert HashMap to FxHashMap (more efficient for lookups)
         let fx_params: FxHashMap<String, Value> = named_params.into_iter().collect();
         Self {
             named_params: Arc::new(fx_params),
@@ -339,7 +342,6 @@ impl ExecutionContext {
         }
     }
 
-    /// Get a positional parameter by index (1-based)
     pub fn get_param(&self, index: usize) -> Option<&Value> {
         if index == 0 || index > self.params.len() {
             None
@@ -348,118 +350,84 @@ impl ExecutionContext {
         }
     }
 
-    /// Get a named parameter by name
     pub fn get_named_param(&self, name: &str) -> Option<&Value> {
         self.named_params.get(name)
     }
 
-    /// Get all positional parameters
-    pub fn params(&self) -> &[Value] {
-        &self.params
-    }
-
-    /// Get the params Arc for zero-copy sharing.
-    /// Used by evaluator bridge to avoid cloning params.
-    pub fn params_arc(&self) -> &Arc<Vec<Value>> {
-        &self.params
-    }
-
-    /// Get all named parameters
-    pub fn named_params(&self) -> &FxHashMap<String, Value> {
-        &self.named_params
-    }
-
-    /// Get the named_params Arc for zero-copy sharing.
-    /// Used by evaluator bridge to avoid cloning params.
-    pub fn named_params_arc(&self) -> &Arc<FxHashMap<String, Value>> {
-        &self.named_params
-    }
-
-    /// Get the number of positional parameters
     pub fn param_count(&self) -> usize {
         self.params.len()
     }
 
-    /// Set positional parameters
-    pub fn set_params(&mut self, params: Vec<Value>) {
-        self.params = Arc::new(params);
+    pub fn params(&self) -> &[Value] {
+        &self.params
     }
 
-    /// Add a positional parameter
-    pub fn add_param(&mut self, value: Value) {
-        Arc::make_mut(&mut self.params).push(value);
+    pub fn named_params(&self) -> &FxHashMap<String, Value> {
+        &self.named_params
     }
 
-    /// Set a named parameter
-    pub fn set_named_param(&mut self, name: impl Into<String>, value: Value) {
-        Arc::make_mut(&mut self.named_params).insert(name.into(), value);
+    pub fn named_params_arc(&self) -> &Arc<FxHashMap<String, Value>> {
+        &self.named_params
     }
 
-    /// Check if auto-commit is enabled
     pub fn auto_commit(&self) -> bool {
         self.auto_commit
     }
 
-    /// Set auto-commit mode
-    pub fn set_auto_commit(&mut self, auto_commit: bool) {
-        self.auto_commit = auto_commit;
-    }
-
-    /// Check if the query has been cancelled
-    pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::Relaxed)
-    }
-
-    /// Cancel the query
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Relaxed);
     }
 
-    /// Get a cancellation handle that can be used from another thread
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Relaxed)
+    }
+
     pub fn cancellation_handle(&self) -> CancellationHandle {
         CancellationHandle {
             cancelled: self.cancelled.clone(),
         }
     }
 
-    /// Get the current database/schema name
-    pub fn current_database(&self) -> Option<&str> {
-        self.current_database.as_ref().as_deref()
+    pub fn current_schema(&self) -> Option<&str> {
+        self.current_schema.as_deref()
     }
 
-    /// Set the current database/schema name
-    pub fn set_current_database(&mut self, database: impl Into<String>) {
-        self.current_database = Arc::new(Some(database.into()));
+    pub fn set_current_schema(&mut self, schema: Option<String>) {
+        self.current_schema = Arc::new(schema);
     }
 
-    /// Get a session variable
+    pub fn session_vars(&self) -> &HashMap<String, Value> {
+        &self.session_vars
+    }
+
     pub fn get_session_var(&self, name: &str) -> Option<&Value> {
         self.session_vars.get(name)
     }
 
-    /// Set a session variable
     pub fn set_session_var(&mut self, name: impl Into<String>, value: Value) {
-        Arc::make_mut(&mut self.session_vars).insert(name.into(), value);
+        let mut vars = (*self.session_vars).clone();
+        vars.insert(name.into(), value);
+        self.session_vars = Arc::new(vars);
     }
 
-    /// Get the query timeout in milliseconds
     pub fn timeout_ms(&self) -> u64 {
         self.timeout_ms
     }
 
-    /// Set the query timeout in milliseconds
-    pub fn set_timeout_ms(&mut self, timeout_ms: u64) {
-        self.timeout_ms = timeout_ms;
-    }
-
-    /// Check if a timeout has been set
-    pub fn has_timeout(&self) -> bool {
-        self.timeout_ms > 0
-    }
-
-    /// Get the current view nesting depth
     pub fn view_depth(&self) -> usize {
         self.view_depth
+    }
+
+    pub fn view_exists(&self, engine: &dyn Engine, view_name: &str) -> Result<bool> {
+        engine.view_exists(view_name)
+    }
+
+    pub fn table_exists(&self, engine: &dyn Engine, table_name: &str) -> Result<bool> {
+        engine.table_exists(table_name)
+    }
+
+    pub fn get_table_schema(&self, engine: &dyn Engine, table_name: &str) -> Result<Schema> {
+        engine.get_table_schema(table_name)
     }
 
     /// Create a new context with incremented view depth.
@@ -471,7 +439,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth + 1,
@@ -491,7 +459,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -526,7 +494,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(), // Arc clone = cheap
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(), // Arc clone = cheap
-            current_database: self.current_database.clone(), // Arc clone = cheap
+            current_schema: self.current_schema.clone(), // Arc clone = cheap
             session_vars: self.session_vars.clone(), // Arc clone = cheap
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -561,7 +529,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -590,7 +558,7 @@ impl ExecutionContext {
             named_params: self.named_params.clone(),
             auto_commit: self.auto_commit,
             cancelled: self.cancelled.clone(),
-            current_database: self.current_database.clone(),
+            current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
             view_depth: self.view_depth,
@@ -884,7 +852,7 @@ impl ExecutionContextBuilder {
 
     /// Set the current database
     pub fn database(mut self, database: impl Into<String>) -> Self {
-        self.ctx.current_database = Arc::new(Some(database.into()));
+        self.ctx.current_schema = Arc::new(Some(database.into()));
         self
     }
 
@@ -1001,7 +969,7 @@ mod tests {
         assert_eq!(ctx.get_param(2), Some(&Value::Integer(2)));
         assert_eq!(ctx.get_named_param("name"), Some(&Value::text("test")));
         assert!(!ctx.auto_commit());
-        assert_eq!(ctx.current_database(), Some("mydb"));
+        assert_eq!(ctx.current_schema(), Some("mydb"));
         assert_eq!(ctx.timeout_ms(), 5000);
     }
 }

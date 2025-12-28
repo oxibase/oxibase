@@ -836,7 +836,7 @@ impl Executor {
     pub(crate) fn estimate_table_expression_rows(&self, expr: &Expression) -> Option<u64> {
         match expr {
             Expression::TableSource(table_source) => {
-                let table_name = &table_source.name.value_lower;
+                let table_name = &table_source.name.value_lower();
                 self.get_query_planner()
                     .get_table_stats(table_name)
                     .map(|stats| stats.row_count)

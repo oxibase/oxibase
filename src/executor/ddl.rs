@@ -26,6 +26,7 @@
 use crate::core::{DataType, Error, Result, SchemaBuilder, Value};
 use crate::parser::ast::*;
 use crate::storage::traits::{Engine, QueryResult};
+use rustc_hash::FxHashMap;
 
 use super::context::ExecutionContext;
 use super::expression::ExpressionEval;
@@ -39,7 +40,15 @@ impl Executor {
         stmt: &CreateTableStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
+
+        // Check if schema exists for qualified table names
+        if let Some(schema_name) = stmt.table_name.schema() {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema_name.to_lowercase()) {
+                return Err(Error::SchemaNotFound(schema_name));
+            }
+        }
 
         // Check if table already exists
         if self.engine.table_exists(table_name)? {
@@ -154,11 +163,33 @@ impl Executor {
         // Check if there's an active transaction
         let mut active_tx = self.active_transaction.lock().unwrap();
 
-        if let Some(ref mut tx_state) = *active_tx {
-            // Use the active transaction for DDL (allows rollback)
-            let table = tx_state.transaction.create_table(table_name, schema)?;
+        if let Some(ref mut _tx_state) = *active_tx {
+            // Transactional DDL: Create table immediately but log for undo
+            self.engine.create_table(schema.clone())?;
 
-            // Create unique indexes for columns with UNIQUE constraint
+            if let Some(ref mut tx_state) = *active_tx {
+                tx_state
+                    .ddl_undo_log
+                    .push(super::DeferredDdlOperation::CreateTable {
+                        name: table_name.clone(),
+                    });
+            }
+
+            // Create indexes within the same transaction context if possible,
+            // but for now we'll do them separately or assume they are part of the table creation
+            // Note: Since we use engine.create_table directly, it's global.
+            // But we need to make sure indexes are also undone if we rollback.
+        } else {
+            // No active transaction - use direct engine call (auto-committed)
+            self.engine.create_table(schema)?;
+        }
+
+        // Create unique indexes for columns with UNIQUE constraint (shared logic)
+        let needs_indexes = !unique_columns.is_empty() || !table_unique_constraints.is_empty();
+        if needs_indexes {
+            let mut tx = self.engine.begin_transaction()?;
+            let table = tx.get_table(table_name)?;
+
             for col_name in &unique_columns {
                 let index_name = format!("unique_{}_{}", table_name, col_name);
                 table.create_index(&index_name, &[col_name.as_str()], true)?;
@@ -191,54 +222,8 @@ impl Executor {
                 self.engine
                     .record_create_index(table_name, &index_name, col_names, true, idx_type);
             }
-        } else {
-            // No active transaction - use direct engine call (auto-committed)
-            self.engine.create_table(schema)?;
 
-            // Create unique indexes for columns with UNIQUE constraint
-            let needs_indexes = !unique_columns.is_empty() || !table_unique_constraints.is_empty();
-            if needs_indexes {
-                let tx = self.engine.begin_transaction()?;
-                let table = tx.get_table(table_name)?;
-
-                for col_name in &unique_columns {
-                    let index_name = format!("unique_{}_{}", table_name, col_name);
-                    table.create_index(&index_name, &[col_name.as_str()], true)?;
-                    // Get index type for WAL persistence
-                    let idx_type = table
-                        .get_index(&index_name)
-                        .map(|idx| idx.index_type())
-                        .unwrap_or(crate::core::IndexType::BTree);
-                    // Record index creation to WAL for persistence
-                    self.engine.record_create_index(
-                        table_name,
-                        &index_name,
-                        std::slice::from_ref(col_name),
-                        true,
-                        idx_type,
-                    );
-                }
-
-                // Create multi-column unique indexes from table-level constraints
-                for (i, col_names) in table_unique_constraints.iter().enumerate() {
-                    let index_name = format!("unique_{}_{}", table_name, i);
-                    let col_refs: Vec<&str> = col_names.iter().map(|s| s.as_str()).collect();
-                    table.create_index(&index_name, &col_refs, true)?;
-                    // Get index type for WAL persistence
-                    let idx_type = table
-                        .get_index(&index_name)
-                        .map(|idx| idx.index_type())
-                        .unwrap_or(crate::core::IndexType::BTree);
-                    // Record index creation to WAL for persistence
-                    self.engine.record_create_index(
-                        table_name,
-                        &index_name,
-                        col_names,
-                        true,
-                        idx_type,
-                    );
-                }
-            }
+            tx.commit()?;
         }
 
         Ok(Box::new(ExecResult::empty()))
@@ -331,7 +316,7 @@ impl Executor {
         stmt: &DropTableStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
 
         // Check if table exists
         if !self.engine.table_exists(table_name)? {
@@ -344,16 +329,24 @@ impl Executor {
         // Check if there's an active transaction
         let mut active_tx = self.active_transaction.lock().unwrap();
 
-        if let Some(ref mut tx_state) = *active_tx {
-            // WARNING: DROP TABLE within a transaction has limited rollback support.
-            // On rollback, the table schema will be recreated but DATA WILL BE LOST.
-            // This is because table data is immediately deleted and cannot be recovered.
-            // For recoverable data deletion, use DELETE FROM or TRUNCATE instead.
+        if let Some(ref mut _tx_state) = *active_tx {
+            // Transactional DDL: Get schema before dropping, then drop immediately
+            let schema = self.engine.get_table_schema(table_name)?;
+            self.engine.drop_table_internal(table_name)?;
+
+            if let Some(ref mut tx_state) = *active_tx {
+                tx_state
+                    .ddl_undo_log
+                    .push(super::DeferredDdlOperation::DropTable {
+                        name: table_name.clone(),
+                        schema,
+                    });
+            }
+
             eprintln!(
                 "Warning: DROP TABLE '{}' within transaction - data cannot be recovered on rollback",
                 table_name
             );
-            tx_state.transaction.drop_table(table_name)?;
         } else {
             // No active transaction - use engine method directly (auto-committed with WAL)
             self.engine.drop_table_internal(table_name)?;
@@ -368,7 +361,15 @@ impl Executor {
         stmt: &CreateIndexStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        // Check if schema exists for qualified table names
+        if let Some(schema) = stmt.table_name.schema() {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema.to_lowercase()) {
+                return Err(Error::SchemaNotFound(schema));
+            }
+        }
+
+        let table_name = &stmt.table_name.value();
         let index_name = &stmt.index_name.value;
 
         // Check if table exists
@@ -506,7 +507,7 @@ impl Executor {
         stmt: &AlterTableStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value;
+        let table_name = &stmt.table_name.value();
 
         // Check if table exists
         if !self.engine.table_exists(table_name)? {
@@ -649,7 +650,15 @@ impl Executor {
         stmt: &CreateViewStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let view_name = &stmt.view_name.value;
+        // Check if schema exists for qualified view names
+        if let Some(schema) = stmt.view_name.schema() {
+            let schemas = self.engine.schemas.read().unwrap();
+            if !schemas.contains_key(&schema.to_lowercase()) {
+                return Err(Error::SchemaNotFound(schema));
+            }
+        }
+
+        let view_name = &stmt.view_name.value();
 
         // Check if a table with the same name exists
         if self.engine.table_exists(view_name)? {
@@ -760,6 +769,127 @@ impl Executor {
         }
 
         Ok(Value::null(target_type))
+    }
+
+    /// Execute a CREATE SCHEMA statement
+    pub(crate) fn execute_create_schema(
+        &self,
+        stmt: &CreateSchemaStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let schema_name = stmt.schema_name.value.to_lowercase();
+
+        // Check if schema already exists
+        {
+            let schemas = self.engine.schemas.read().unwrap();
+            if schemas.contains_key(&schema_name) {
+                if stmt.if_not_exists {
+                    return Ok(Box::new(ExecResult::empty()));
+                }
+                return Err(Error::SchemaAlreadyExists);
+            }
+        }
+
+        // Check active transaction
+        let mut active_tx = self.active_transaction.lock().unwrap();
+
+        if let Some(ref mut tx_state) = *active_tx {
+            // Add to schemas
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.insert(schema_name.clone(), FxHashMap::default());
+            }
+
+            // Add to undo log
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::CreateSchema { name: schema_name });
+        } else {
+            // Add to schemas
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.insert(schema_name, FxHashMap::default());
+            }
+        }
+
+        Ok(Box::new(ExecResult::empty()))
+    }
+
+    /// Execute a DROP SCHEMA statement
+    pub(crate) fn execute_drop_schema(
+        &self,
+        stmt: &DropSchemaStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let schema_name = stmt.schema_name.value.to_lowercase();
+
+        // Collect tables in schema
+        let tables = if let Some(ref tx_state) = *self.active_transaction.lock().unwrap() {
+            tx_state.transaction.list_tables()?
+        } else {
+            let mut tx = self.engine.begin_transaction()?;
+            let t = tx.list_tables()?;
+            tx.commit()?;
+            t
+        };
+        let mut tables_to_drop = Vec::new();
+        for table_name in tables {
+            if table_name.starts_with(&format!("{}.", schema_name)) {
+                let schema = self.engine.get_table_schema(&table_name)?;
+                tables_to_drop.push((table_name, schema));
+            }
+        }
+
+        // Check active transaction
+        let mut active_tx = self.active_transaction.lock().unwrap();
+
+        if let Some(ref mut tx_state) = *active_tx {
+            // Drop tables
+            for (table_name, _) in &tables_to_drop {
+                self.engine.drop_table_internal(table_name)?;
+            }
+
+            // Drop schema
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.remove(&schema_name);
+            }
+
+            // Add to undo log
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::DropSchema {
+                    name: schema_name,
+                    tables: tables_to_drop,
+                });
+        } else {
+            // Drop tables in transaction
+            {
+                let mut tx = self.engine.begin_transaction()?;
+                for (table_name, _) in &tables_to_drop {
+                    tx.drop_table(table_name)?;
+                }
+                tx.commit()?;
+            }
+
+            // Drop schema
+            {
+                let mut schemas = self.engine.schemas.write().unwrap();
+                schemas.remove(&schema_name);
+            }
+        }
+
+        Ok(Box::new(ExecResult::empty()))
+    }
+
+    /// Execute a USE SCHEMA statement
+    pub(crate) fn execute_use_schema(
+        &self,
+        _stmt: &UseSchemaStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // TODO: Implement schema switching - for now, just succeed
+        Ok(Box::new(ExecResult::empty()))
     }
 }
 

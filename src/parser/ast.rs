@@ -221,6 +221,14 @@ impl Identifier {
             value_lower,
         }
     }
+
+    pub fn value(&self) -> String {
+        self.value.clone()
+    }
+
+    pub fn value_lower(&self) -> String {
+        self.value_lower.clone()
+    }
 }
 
 impl fmt::Display for Identifier {
@@ -240,6 +248,49 @@ pub struct QualifiedIdentifier {
 impl fmt::Display for QualifiedIdentifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}.{}", self.qualifier, self.name)
+    }
+}
+
+/// Table name (simple or qualified)
+#[derive(Debug, Clone, PartialEq)]
+pub enum TableName {
+    Simple(Identifier),
+    Qualified(QualifiedIdentifier),
+}
+
+impl fmt::Display for TableName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TableName::Simple(id) => write!(f, "{}", id),
+            TableName::Qualified(qi) => write!(f, "{}", qi),
+        }
+    }
+}
+
+impl TableName {
+    pub fn value(&self) -> String {
+        match self {
+            TableName::Simple(id) => id.value.clone(),
+            TableName::Qualified(qi) => format!("{}.{}", qi.qualifier.value, qi.name.value),
+        }
+    }
+
+    pub fn value_lower(&self) -> String {
+        self.value().to_lowercase()
+    }
+
+    pub fn schema(&self) -> Option<String> {
+        match self {
+            TableName::Simple(_) => None,
+            TableName::Qualified(qi) => Some(qi.qualifier.value.clone()),
+        }
+    }
+
+    pub fn table(&self) -> String {
+        match self {
+            TableName::Simple(id) => id.value.clone(),
+            TableName::Qualified(qi) => qi.name.value.clone(),
+        }
     }
 }
 
@@ -1039,7 +1090,7 @@ impl fmt::Display for WindowDefinition {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SimpleTableSource {
     pub token: Token,
-    pub name: Identifier,
+    pub name: TableName,
     pub alias: Option<Identifier>,
     pub as_of: Option<AsOfClause>,
 }
@@ -1224,6 +1275,9 @@ pub enum Statement {
     DropColumnarIndex(DropColumnarIndexStatement),
     CreateView(CreateViewStatement),
     DropView(DropViewStatement),
+    CreateSchema(CreateSchemaStatement),
+    DropSchema(DropSchemaStatement),
+    UseSchema(UseSchemaStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1258,6 +1312,9 @@ impl fmt::Display for Statement {
             Statement::DropColumnarIndex(s) => write!(f, "{}", s),
             Statement::CreateView(s) => write!(f, "{}", s),
             Statement::DropView(s) => write!(f, "{}", s),
+            Statement::CreateSchema(s) => write!(f, "{}", s),
+            Statement::DropSchema(s) => write!(f, "{}", s),
+            Statement::UseSchema(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -1490,7 +1547,7 @@ impl fmt::Display for SelectStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct InsertStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub columns: Vec<Identifier>,
     /// VALUES clause rows (None if using SELECT)
     pub values: Vec<Vec<Expression>>,
@@ -1548,7 +1605,7 @@ impl fmt::Display for InsertStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UpdateStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub updates: HashMap<String, Expression>,
     pub where_clause: Option<Box<Expression>>,
     /// RETURNING clause expressions
@@ -1579,7 +1636,7 @@ impl fmt::Display for UpdateStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeleteStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     /// Optional table alias (e.g., DELETE FROM users AS u)
     pub alias: Option<Identifier>,
     pub where_clause: Option<Box<Expression>>,
@@ -1608,7 +1665,7 @@ impl fmt::Display for DeleteStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateTableStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub if_not_exists: bool,
     pub columns: Vec<ColumnDefinition>,
     /// Table-level constraints (UNIQUE(cols), CHECK(expr), etc.)
@@ -1732,7 +1789,7 @@ pub enum ColumnOrConstraint {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DropTableStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub if_exists: bool,
 }
 
@@ -1842,7 +1899,7 @@ impl fmt::Display for IndexMethod {
 pub struct CreateIndexStatement {
     pub token: Token,
     pub index_name: Identifier,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub columns: Vec<Identifier>,
     pub is_unique: bool,
     pub if_not_exists: bool,
@@ -1943,7 +2000,7 @@ impl fmt::Display for DropColumnarIndexStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateViewStatement {
     pub token: Token,
-    pub view_name: Identifier,
+    pub view_name: TableName,
     pub query: Box<SelectStatement>,
     pub if_not_exists: bool,
 }
@@ -1975,6 +2032,57 @@ impl fmt::Display for DropViewStatement {
         }
         result.push_str(&self.view_name.to_string());
         write!(f, "{}", result)
+    }
+}
+
+/// CREATE SCHEMA statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateSchemaStatement {
+    pub token: Token,
+    pub schema_name: Identifier,
+    pub if_not_exists: bool,
+}
+
+impl fmt::Display for CreateSchemaStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE SCHEMA ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        result.push_str(&self.schema_name.to_string());
+        write!(f, "{}", result)
+    }
+}
+
+/// DROP SCHEMA statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropSchemaStatement {
+    pub token: Token,
+    pub schema_name: Identifier,
+    pub if_exists: bool,
+}
+
+impl fmt::Display for DropSchemaStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("DROP SCHEMA ");
+        if self.if_exists {
+            result.push_str("IF EXISTS ");
+        }
+        result.push_str(&self.schema_name.to_string());
+        write!(f, "{}", result)
+    }
+}
+
+/// USE SCHEMA statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct UseSchemaStatement {
+    pub token: Token,
+    pub schema_name: Identifier,
+}
+
+impl fmt::Display for UseSchemaStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "USE SCHEMA {}", self.schema_name)
     }
 }
 
@@ -2097,7 +2205,7 @@ impl fmt::Display for ShowViewsStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShowCreateTableStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
 }
 
 impl fmt::Display for ShowCreateTableStatement {
@@ -2289,10 +2397,10 @@ mod tests {
             with: None,
             table_expr: Some(Box::new(Expression::TableSource(SimpleTableSource {
                 token: make_token(TokenType::Identifier, "users"),
-                name: Identifier::new(
+                name: TableName::Simple(Identifier::new(
                     make_token(TokenType::Identifier, "users"),
                     "users".to_string(),
-                ),
+                )),
                 alias: None,
                 as_of: None,
             }))),
@@ -2312,10 +2420,10 @@ mod tests {
     fn test_create_table_display() {
         let stmt = CreateTableStatement {
             token: make_token(TokenType::Keyword, "CREATE"),
-            table_name: Identifier::new(
+            table_name: TableName::Simple(Identifier::new(
                 make_token(TokenType::Identifier, "users"),
                 "users".to_string(),
-            ),
+            )),
             if_not_exists: true,
             columns: vec![
                 ColumnDefinition {
@@ -2348,10 +2456,10 @@ mod tests {
     fn test_insert_statement_display() {
         let stmt = InsertStatement {
             token: make_token(TokenType::Keyword, "INSERT"),
-            table_name: Identifier::new(
+            table_name: TableName::Simple(Identifier::new(
                 make_token(TokenType::Identifier, "users"),
                 "users".to_string(),
-            ),
+            )),
             columns: vec![
                 Identifier::new(make_token(TokenType::Identifier, "id"), "id".to_string()),
                 Identifier::new(

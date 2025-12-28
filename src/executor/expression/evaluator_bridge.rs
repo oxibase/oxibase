@@ -1318,7 +1318,7 @@ impl<'a> CompiledEvaluator<'a> {
                 }
             }
             Expression::TableSource(ts) => {
-                ts.name.value_lower.hash(hasher);
+                ts.name.value_lower().hash(hasher);
                 if let Some(ref alias) = ts.alias {
                     true.hash(hasher);
                     alias.value_lower.hash(hasher);

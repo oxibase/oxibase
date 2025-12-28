@@ -553,7 +553,7 @@ impl Executor {
         let (inner_table, inner_alias) = match subquery.table_expr.as_ref().map(|b| b.as_ref()) {
             Some(Expression::TableSource(ts)) => {
                 let alias = ts.alias.as_ref().map(|a| a.value.clone());
-                (ts.name.value.clone(), alias)
+                (ts.name.value().clone(), alias)
             }
             _ => return None,
         };
@@ -1537,7 +1537,7 @@ impl Executor {
                 if let Some(ref alias) = ts.alias {
                     tables.push(alias.value.to_lowercase());
                 } else {
-                    tables.push(ts.name.value.to_lowercase());
+                    tables.push(ts.name.value().to_lowercase());
                 }
             }
             Expression::JoinSource(js) => {
@@ -1759,7 +1759,7 @@ impl Executor {
         let (inner_table, inner_alias) = match subquery.table_expr.as_ref().map(|b| b.as_ref()) {
             Some(Expression::TableSource(ts)) => {
                 let alias = ts.alias.as_ref().map(|a| a.value.clone());
-                (ts.name.value.clone(), alias)
+                (ts.name.value().clone(), alias)
             }
             _ => return None, // Can't optimize subquery joins or derived tables
         };
@@ -2109,11 +2109,11 @@ impl Executor {
 
         let table_source = Expression::TableSource(SimpleTableSource {
             token: dummy_token(&info.inner_table, TokenType::Identifier),
-            name: Identifier {
+            name: TableName::Simple(Identifier {
                 token: dummy_token(&info.inner_table, TokenType::Identifier),
                 value: info.inner_table.clone(),
                 value_lower: info.inner_table.to_lowercase(),
-            },
+            }),
             alias: info.inner_alias.as_ref().map(|a| Identifier {
                 token: dummy_token(a, TokenType::Identifier),
                 value: a.clone(),

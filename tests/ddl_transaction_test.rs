@@ -243,3 +243,160 @@ fn test_mixed_ddl_and_dml_rollback() {
         .expect("Should be able to query existing table");
     assert_eq!(value, "original", "Value should be rolled back to original");
 }
+
+#[test]
+fn test_create_schema_rollback() {
+    let db = Database::open("memory://schema_create_rollback").expect("Failed to create database");
+
+    // Begin transaction
+    db.execute("BEGIN", ())
+        .expect("Failed to begin transaction");
+
+    // Create schema within transaction
+    db.execute("CREATE SCHEMA test_schema", ())
+        .expect("Failed to create schema");
+
+    // Create table in the new schema
+    db.execute(
+        "CREATE TABLE test_schema.users (
+            id INTEGER PRIMARY KEY,
+            name TEXT
+        )",
+        (),
+    )
+    .expect("Failed to create table in schema");
+
+    // Insert data
+    db.execute("INSERT INTO test_schema.users VALUES (1, 'test')", ())
+        .expect("Failed to insert");
+
+    // Verify schema and table exist within transaction
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM test_schema.users", ())
+        .expect("Table should exist within transaction");
+    assert_eq!(count, 1, "Should have 1 row within transaction");
+
+    // Rollback transaction
+    db.execute("ROLLBACK", ())
+        .expect("Failed to rollback transaction");
+
+    // Verify schema and table no longer exist after rollback
+    let result = db.query("SELECT * FROM test_schema.users", ());
+    assert!(result.is_err(), "Table should not exist after rollback");
+}
+
+#[test]
+fn test_drop_schema_rollback() {
+    let db = Database::open("memory://schema_drop_rollback").expect("Failed to create database");
+
+    // Create schema outside transaction
+    db.execute("CREATE SCHEMA persist_schema", ())
+        .expect("Failed to create schema");
+
+    // Create table in schema
+    db.execute(
+        "CREATE TABLE persist_schema.data (
+            id INTEGER PRIMARY KEY,
+            value TEXT
+        )",
+        (),
+    )
+    .expect("Failed to create table");
+
+    // Insert data
+    db.execute("INSERT INTO persist_schema.data VALUES (1, 'test')", ())
+        .expect("Failed to insert");
+
+    // Verify exists
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM persist_schema.data", ())
+        .expect("Table should exist");
+    assert_eq!(count, 1, "Should have 1 row");
+
+    // Begin transaction and drop schema
+    db.execute("BEGIN", ())
+        .expect("Failed to begin transaction");
+    db.execute("DROP SCHEMA persist_schema", ())
+        .expect("Failed to drop schema");
+
+    // Verify gone within transaction
+    let result = db.query("SELECT * FROM persist_schema.data", ());
+    assert!(
+        result.is_err(),
+        "Table should not exist after DROP within transaction"
+    );
+
+    // Rollback transaction
+    db.execute("ROLLBACK", ())
+        .expect("Failed to rollback transaction");
+
+    // Verify schema and table are restored after rollback
+    let result = db.query("SELECT * FROM persist_schema.data", ());
+    assert!(result.is_ok(), "Table should be restored after rollback");
+}
+
+#[test]
+fn test_create_table_nonexistent_schema() {
+    let db = Database::open("memory://ddl_nonexistent_schema").expect("Failed to create database");
+
+    // Try to create a table in a schema that doesn't exist
+    let result = db.execute(
+        "CREATE TABLE nonexistent_schema.test_table (
+            id INTEGER PRIMARY KEY,
+            name TEXT
+        )",
+        (),
+    );
+
+    // Should fail because schema doesn't exist
+    assert!(
+        result.is_err(),
+        "Creating table in non-existent schema should fail"
+    );
+}
+
+#[test]
+fn test_create_view_nonexistent_schema() {
+    let db =
+        Database::open("memory://ddl_view_nonexistent_schema").expect("Failed to create database");
+
+    // Try to create a view in a schema that doesn't exist
+    let result = db.execute(
+        "CREATE VIEW nonexistent_schema.test_view AS SELECT 1 as col",
+        (),
+    );
+
+    // Should fail because schema doesn't exist
+    assert!(
+        result.is_err(),
+        "Creating view in non-existent schema should fail"
+    );
+}
+
+#[test]
+fn test_create_index_nonexistent_schema() {
+    let db =
+        Database::open("memory://ddl_index_nonexistent_schema").expect("Failed to create database");
+
+    // Create a schema and table first
+    db.execute("CREATE SCHEMA test_schema", ())
+        .expect("Failed to create schema");
+
+    db.execute(
+        "CREATE TABLE test_schema.test_table (
+            id INTEGER PRIMARY KEY,
+            name TEXT
+        )",
+        (),
+    )
+    .expect("Failed to create table");
+
+    // Try to create an index on the table using a qualified name with non-existent schema
+    let result = db.execute("CREATE INDEX idx ON nonexistent_schema.test_table (id)", ());
+
+    // Should fail because the schema in the table name doesn't exist
+    assert!(
+        result.is_err(),
+        "Creating index on table in non-existent schema should fail"
+    );
+}

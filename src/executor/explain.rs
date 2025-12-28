@@ -279,7 +279,7 @@ impl Executor {
             Expression::TableSource(simple) => {
                 // Try to get the table and analyze access plan
                 if let Ok(tx) = self.engine.begin_transaction() {
-                    if let Ok(table) = tx.get_table(&simple.name.value) {
+                    if let Ok(table) = tx.get_table(&simple.name.value()) {
                         // Build storage expression from WHERE clause for analysis
                         let storage_expr = if let Some(where_expr) = where_clause {
                             let schema = table.schema();
@@ -560,7 +560,7 @@ impl Executor {
             Expression::TableSource(simple) => {
                 // Try to get the table and analyze access plan
                 if let Ok(tx) = self.engine.begin_transaction() {
-                    if let Ok(table) = tx.get_table(&simple.name.value) {
+                    if let Ok(table) = tx.get_table(&simple.name.value()) {
                         // Build storage expression from WHERE clause for analysis
                         let storage_expr = if let Some(where_expr) = where_clause {
                             let schema = table.schema();
@@ -756,7 +756,7 @@ pub(crate) fn is_equality_condition(expr: &Expression) -> bool {
 /// Extract table name from a table expression (for statistics lookup)
 pub(crate) fn extract_table_name(expr: &Expression) -> Option<String> {
     match expr {
-        Expression::TableSource(simple) => Some(simple.name.value.clone()),
+        Expression::TableSource(simple) => Some(simple.name.value().clone()),
         Expression::JoinSource(join) => extract_table_name(&join.left),
         Expression::SubquerySource(_) => None, // Can't get stats for subquery
         _ => None,

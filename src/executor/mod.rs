@@ -78,6 +78,25 @@ use crate::parser::Parser;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::{Engine, QueryResult, Table, Transaction};
 
+/// DDL operations for transactional undo
+#[derive(Debug, Clone)]
+pub(crate) enum DeferredDdlOperation {
+    CreateTable {
+        name: String,
+    }, // Undo by dropping
+    DropTable {
+        name: String,
+        schema: crate::core::Schema,
+    }, // Undo by recreating
+    CreateSchema {
+        name: String,
+    }, // Undo by dropping
+    DropSchema {
+        name: String,
+        tables: Vec<(String, crate::core::Schema)>,
+    }, // Undo by recreating
+}
+
 pub use context::{ExecutionContext, TimeoutGuard};
 pub use expression::{
     CompileContext, CompileError, CompiledEvaluator, ExecuteContext, ExprCompiler, ExprVM,
@@ -122,6 +141,8 @@ struct ActiveTransaction {
     transaction: Box<dyn Transaction>,
     /// Tables accessed within this transaction (cached for proper commit/rollback)
     tables: FxHashMap<String, Box<dyn Table>>,
+    /// DDL operations to undo on rollback
+    ddl_undo_log: Vec<DeferredDdlOperation>,
 }
 
 /// SQL Query Executor
@@ -451,6 +472,9 @@ impl Executor {
             Statement::DropView(stmt) => self.execute_drop_view(stmt, &ctx),
             Statement::CreateColumnarIndex(stmt) => self.execute_create_columnar_index(stmt, &ctx),
             Statement::DropColumnarIndex(stmt) => self.execute_drop_columnar_index(stmt, &ctx),
+            Statement::CreateSchema(stmt) => self.execute_create_schema(stmt, &ctx),
+            Statement::DropSchema(stmt) => self.execute_drop_schema(stmt, &ctx),
+            Statement::UseSchema(stmt) => self.execute_use_schema(stmt, &ctx),
 
             // DML statements
             Statement::Insert(stmt) => self.execute_insert(stmt, &ctx),

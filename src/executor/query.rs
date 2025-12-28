@@ -486,7 +486,7 @@ impl Executor {
                                 .alias
                                 .as_ref()
                                 .map(|a| a.value.to_lowercase())
-                                .or_else(|| Some(source.name.value.to_lowercase())),
+                                .or_else(|| Some(source.name.value().to_lowercase())),
                             crate::parser::ast::Expression::Aliased(aliased) => {
                                 Some(aliased.alias.value.to_lowercase())
                             }
@@ -752,7 +752,7 @@ impl Executor {
         match table_expr {
             Expression::TableSource(table_source) => {
                 // Check if this is a CTE from context (for subqueries referencing outer CTEs)
-                let table_name = &table_source.name.value_lower;
+                let table_name = &table_source.name.value_lower();
                 if let Some((columns, rows)) = ctx.get_cte(table_name) {
                     // Execute query against CTE data
                     return self.execute_query_on_memory_result(
@@ -967,7 +967,7 @@ impl Executor {
         ctx: &ExecutionContext,
     ) -> Result<(Box<dyn QueryResult>, Vec<String>, bool)> {
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
-        let table_name = &table_source.name.value_lower;
+        let table_name = &table_source.name.value_lower();
 
         // Check if there's an active explicit transaction
         let active_tx = self.active_transaction.lock().unwrap();
@@ -3733,14 +3733,14 @@ impl Executor {
         match expr {
             Expression::TableSource(ts) => {
                 // Check if this is a CTE from context (for subqueries referencing outer CTEs)
-                let table_name = &ts.name.value_lower;
+                let table_name = &ts.name.value_lower();
                 if let Some((columns, rows)) = ctx.get_cte(table_name) {
                     // Get the alias for column prefixing
                     let table_alias = ts
                         .alias
                         .as_ref()
                         .map(|a| a.value.clone())
-                        .unwrap_or_else(|| ts.name.value.clone());
+                        .unwrap_or_else(|| ts.name.value().clone());
                     let qualified_columns: Vec<String> = columns
                         .iter()
                         .map(|col| format!("{}.{}", table_alias, col))
@@ -3790,7 +3790,7 @@ impl Executor {
                         .alias
                         .as_ref()
                         .map(|a| a.value.clone())
-                        .unwrap_or_else(|| ts.name.value.clone());
+                        .unwrap_or_else(|| ts.name.value().clone());
                     let qualified_columns: Vec<String> = columns
                         .iter()
                         .map(|col| format!("{}.{}", table_alias, col))
@@ -3824,7 +3824,7 @@ impl Executor {
                     .alias
                     .as_ref()
                     .map(|a| a.value.clone())
-                    .unwrap_or_else(|| ts.name.value.clone());
+                    .unwrap_or_else(|| ts.name.value().clone());
 
                 let qualified_columns: Vec<String> = columns
                     .iter()
@@ -4678,6 +4678,7 @@ impl Executor {
         *active_tx = Some(ActiveTransaction {
             transaction,
             tables: FxHashMap::default(),
+            ddl_undo_log: Vec::new(),
         });
 
         Ok(Box::new(ExecResult::empty()))
@@ -4694,6 +4695,9 @@ impl Executor {
         if let Some(mut tx_state) = active_tx.take() {
             // Commit the transaction - it will commit all tables via commit_all_tables()
             tx_state.transaction.commit()?;
+
+            // DDL operations were already executed during transaction, nothing more to do
+
             Ok(Box::new(ExecResult::empty()))
         } else {
             // No active transaction - this is a no-op (auto-commit mode)
@@ -4746,8 +4750,48 @@ impl Executor {
                 for (_name, mut table) in tx_state.tables.drain() {
                     table.rollback();
                 }
-                // Then rollback the transaction
+
+                // Rollback the transaction
                 tx_state.transaction.rollback()?;
+
+                // Undo DDL operations (LIFO order)
+                while let Some(op) = tx_state.ddl_undo_log.pop() {
+                    match op {
+                        super::DeferredDdlOperation::CreateTable { name } => {
+                            // Undo CreateTable by dropping it
+                            let _ = self.engine.drop_table_internal(&name);
+                        }
+                        super::DeferredDdlOperation::DropTable {
+                            name: _name,
+                            schema,
+                        } => {
+                            // Undo DropTable by recreating it
+                            let _ = self.engine.create_table(schema);
+                        }
+                        super::DeferredDdlOperation::CreateSchema { name } => {
+                            // Undo CreateSchema by dropping it
+                            let mut schemas = self.engine.schemas.write().unwrap();
+                            schemas.remove(&name);
+                        }
+                        super::DeferredDdlOperation::DropSchema { name, tables } => {
+                            // Undo DropSchema by recreating schema and tables
+                            {
+                                let mut schemas = self.engine.schemas.write().unwrap();
+                                let mut table_map = FxHashMap::default();
+                                for (qualified_table_name, schema) in &tables {
+                                    let simple_table_name =
+                                        qualified_table_name[(name.len() + 1)..].to_string();
+                                    table_map.insert(simple_table_name, schema.clone());
+                                }
+                                schemas.insert(name.clone(), table_map);
+                            }
+                            for (_qualified, schema) in tables {
+                                let _ = self.engine.create_table(schema);
+                            }
+                        }
+                    }
+                }
+
                 Ok(Box::new(ExecResult::empty()))
             } else {
                 // No active transaction - this is a no-op
@@ -6601,7 +6645,7 @@ impl Executor {
             _ => return None,
         };
 
-        let table_name = &table_source.name.value_lower;
+        let table_name = &table_source.name.value_lower();
 
         // Check if it's a CTE (CTEs don't have indexes)
         // We can't check CTEs here without context, but we'll verify when we try to get the table

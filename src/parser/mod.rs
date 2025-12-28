@@ -65,6 +65,7 @@ pub use ast::{
     CommonTableExpression,
     CreateColumnarIndexStatement,
     CreateIndexStatement,
+    CreateSchemaStatement,
     CreateTableStatement,
     CreateViewStatement,
     CteReference,
@@ -72,6 +73,7 @@ pub use ast::{
     DistinctExpression,
     DropColumnarIndexStatement,
     DropIndexStatement,
+    DropSchemaStatement,
     DropTableStatement,
     DropViewStatement,
     ExistsExpression,
@@ -114,6 +116,7 @@ pub use ast::{
     StringLiteral,
     SubqueryTableSource,
     UpdateStatement,
+    UseSchemaStatement,
     WhenClause,
     WindowExpression,
     // Window
@@ -237,7 +240,7 @@ mod tests {
         assert_eq!(statements.len(), 1);
         match &statements[0] {
             Statement::Insert(s) => {
-                assert_eq!(s.table_name.value, "users");
+                assert_eq!(s.table_name.value(), "users");
                 assert_eq!(s.columns.len(), 2);
                 assert_eq!(s.values.len(), 1);
             }
@@ -253,7 +256,7 @@ mod tests {
         assert_eq!(statements.len(), 1);
         match &statements[0] {
             Statement::Update(s) => {
-                assert_eq!(s.table_name.value, "users");
+                assert_eq!(s.table_name.value(), "users");
                 assert!(s.where_clause.is_some());
             }
             _ => panic!("Expected UPDATE statement"),
@@ -268,7 +271,7 @@ mod tests {
         assert_eq!(statements.len(), 1);
         match &statements[0] {
             Statement::Delete(s) => {
-                assert_eq!(s.table_name.value, "users");
+                assert_eq!(s.table_name.value(), "users");
                 assert!(s.where_clause.is_some());
             }
             _ => panic!("Expected DELETE statement"),
@@ -283,7 +286,7 @@ mod tests {
         assert_eq!(statements.len(), 1);
         match &statements[0] {
             Statement::CreateTable(s) => {
-                assert_eq!(s.table_name.value, "users");
+                assert_eq!(s.table_name.value(), "users");
                 assert_eq!(s.columns.len(), 2);
             }
             _ => panic!("Expected CREATE TABLE statement"),
