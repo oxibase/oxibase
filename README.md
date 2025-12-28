@@ -322,6 +322,25 @@ WHERE c.country = 'US';
 | `TIMESTAMP` | Date and time         | `'2024-01-15 10:30:00'` |
 | `JSON`      | JSON data             | `'{"key": "value"}'`    |
 
+## Object Support
+
+| Object Type | Status | Notes |
+|-------------|--------|-------|
+| Schemas | Missing | No CREATE SCHEMA/DROP SCHEMA support |
+| User-defined Functions | Missing | No CREATE FUNCTION/DROP FUNCTION |
+| Stored Procedures | Missing | No CREATE PROCEDURE/DROP PROCEDURE |
+| Materialized Views | Missing | No CREATE MATERIALIZED VIEW |
+| Custom Types/Domains | Missing | No CREATE TYPE/CREATE DOMAIN |
+| Rules | Missing | No CREATE RULE/DROP RULE |
+| Extensions | Missing | No CREATE EXTENSION |
+| Foreign Data Wrappers | Missing | No foreign table support |
+| Aggregates | Missing | No custom aggregate functions |
+| Operators | Missing | No custom operator definitions |
+| Event Triggers | Missing | No DDL event triggers |
+| Tablespaces | Missing | No CREATE TABLESPACE |
+| Roles/Users | Missing | No user/role management |
+| Publications/Subscriptions | Missing | No logical replication support |
+
 ## Built-in Functions
 
 ### String Functions

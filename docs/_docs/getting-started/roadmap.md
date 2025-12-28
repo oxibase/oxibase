@@ -40,6 +40,25 @@ graph TD;
     F[Unikernel Compilation<br/>OS-free, bootable images] --> E
 ```
 
+## Current Object Support
+
+| Object Type | Status | Notes |
+|-------------|--------|-------|
+| Schemas | Missing | No CREATE SCHEMA/DROP SCHEMA support |
+| User-defined Functions | Missing | No CREATE FUNCTION/DROP FUNCTION |
+| Stored Procedures | Missing | No CREATE PROCEDURE/DROP PROCEDURE |
+| Materialized Views | Missing | No CREATE MATERIALIZED VIEW |
+| Custom Types/Domains | Missing | No CREATE TYPE/CREATE DOMAIN |
+| Rules | Missing | No CREATE RULE/DROP RULE |
+| Extensions | Missing | No CREATE EXTENSION |
+| Foreign Data Wrappers | Missing | No foreign table support |
+| Aggregates | Missing | No custom aggregate functions |
+| Operators | Missing | No custom operator definitions |
+| Event Triggers | Missing | No DDL event triggers |
+| Tablespaces | Missing | No CREATE TABLESPACE |
+| Roles/Users | Missing | No user/role management |
+| Publications/Subscriptions | Missing | No logical replication support |
+
 ### Embedded Scripting Languages
 
 Embed scripting languages (e.g., Rhai, Python, TypeScript) into Oxibase for database-stored functions and triggers. This enables a FaaS-like experience where developers focus on data and business logic. Functions run within transactions, with debugger support for seamless DDL schema creation and function development.
