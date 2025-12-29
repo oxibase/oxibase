@@ -33,16 +33,16 @@ fn test_function_persistence_basic() {
     // Query the system table directly to verify persistence
     let name: String = db
         .query_one(
-            "SELECT name FROM _sys_functions WHERE name = 'test_add'",
+            "SELECT name FROM _sys_functions WHERE name = 'TEST_ADD'",
             (),
         )
         .expect("Failed to query function");
 
-    assert_eq!(name, "test_add");
+    assert_eq!(name, "TEST_ADD");
 
     let return_type: String = db
         .query_one(
-            "SELECT return_type FROM _sys_functions WHERE name = 'test_add'",
+            "SELECT return_type FROM _sys_functions WHERE name = 'TEST_ADD'",
             (),
         )
         .expect("Failed to query return type");
@@ -51,7 +51,7 @@ fn test_function_persistence_basic() {
 
     let language: String = db
         .query_one(
-            "SELECT language FROM _sys_functions WHERE name = 'test_add'",
+            "SELECT language FROM _sys_functions WHERE name = 'TEST_ADD'",
             (),
         )
         .expect("Failed to query language");
@@ -61,7 +61,7 @@ fn test_function_persistence_basic() {
     // Verify parameters column is JSON type
     let param_type: String = db
         .query_one(
-            "SELECT JSON_TYPE(parameters) FROM _sys_functions WHERE name = 'test_add'",
+            "SELECT JSON_TYPE(parameters) FROM _sys_functions WHERE name = 'TEST_ADD'",
             (),
         )
         .expect("Failed to query parameters type");
@@ -198,7 +198,7 @@ fn test_show_functions() {
     let result = db
         .query("SHOW FUNCTIONS", ())
         .expect("Failed to execute SHOW FUNCTIONS");
-    let mut rows: Vec<_> = result.collect();
+    let rows: Vec<_> = result.collect();
     assert_eq!(rows.len(), 0);
 
     // Create some functions
@@ -240,7 +240,10 @@ fn test_show_functions() {
     assert_eq!(row.get::<String>(1).unwrap(), "(a INTEGER, b INTEGER)");
     assert_eq!(row.get::<String>(2).unwrap(), "INTEGER");
     assert_eq!(row.get::<String>(3).unwrap(), "DENO");
-    assert!(row.get::<String>(4).unwrap().contains("arguments[0] + arguments[1]"));
+    assert!(row
+        .get::<String>(4)
+        .unwrap()
+        .contains("arguments[0] + arguments[1]"));
 
     // Check second function (GREET)
     let row = &rows[1];

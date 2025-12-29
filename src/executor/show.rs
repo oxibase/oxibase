@@ -337,12 +337,15 @@ impl Executor {
         _stmt: &ShowFunctionsStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
+        // Ensure the functions table exists before querying
+        self.ensure_functions_table_exists()?;
+
         // Execute equivalent SELECT query to leverage existing execution path
         let sql = "SELECT name, parameters, return_type, language, code FROM _sys_functions ORDER BY name";
         let mut parser = Parser::new(sql);
-        let program = parser.parse_program().map_err(|e| {
-            Error::internal(format!("Failed to parse SHOW FUNCTIONS query: {}", e))
-        })?;
+        let program = parser
+            .parse_program()
+            .map_err(|e| Error::internal(format!("Failed to parse SHOW FUNCTIONS query: {}", e)))?;
 
         let stmt = match program.statements.into_iter().next() {
             Some(Statement::Select(s)) => s,
@@ -359,7 +362,7 @@ impl Executor {
             let name = row.get(0).unwrap().clone();
             let parameters_value = row.get(1).unwrap();
             let parameters_json = match parameters_value {
-                Value::Text(s) => s.as_ref(),
+                Value::Json(s) => s.as_ref(),
                 _ => "",
             };
             let return_type = row.get(2).unwrap().clone();
@@ -371,12 +374,15 @@ impl Executor {
                 "()".to_string()
             } else {
                 // Parse JSON and format as (param1 type1, param2 type2)
-                if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(parameters_json) {
+                if let Ok(parsed) = serde_json::from_str::<Vec<serde_json::Value>>(parameters_json)
+                {
                     let params: Vec<String> = parsed
                         .iter()
                         .filter_map(|p| {
                             if let (Some(name), Some(dtype)) = (p.get("name"), p.get("data_type")) {
-                                if let (Some(name_str), Some(dtype_str)) = (name.as_str(), dtype.as_str()) {
+                                if let (Some(name_str), Some(dtype_str)) =
+                                    (name.as_str(), dtype.as_str())
+                                {
                                     Some(format!("{} {}", name_str, dtype_str))
                                 } else {
                                     None

@@ -725,12 +725,12 @@ impl Executor {
         self.ensure_functions_table_exists()?;
 
         // Check if function already exists
-        let function_name = &stmt.function_name.value;
-        if self.function_exists(function_name)? {
+        let function_name_upper = stmt.function_name.value.to_uppercase();
+        if self.function_exists(&function_name_upper)? {
             if stmt.if_not_exists {
                 return Ok(Box::new(EmptyResult::new()));
             }
-            return Err(Error::FunctionAlreadyExists(function_name.clone()));
+            return Err(Error::FunctionAlreadyExists(function_name_upper.clone()));
         }
 
         // Convert parameters to simplified format
@@ -746,7 +746,7 @@ impl Executor {
         // Create stored function record
         let stored_function = StoredFunction {
             id: 0, // Will be set by database
-            name: function_name.clone(),
+            name: function_name_upper.clone(),
             parameters: stored_parameters,
             return_type: stmt.return_type.clone(),
             language: stmt.language.clone(),
@@ -759,7 +759,7 @@ impl Executor {
         // Register the function in the global registry
         let registry = global_registry();
         registry.register_user_defined(
-            stmt.function_name.value.clone(),
+            function_name_upper.clone(),
             stmt.body.clone(),
             FunctionSignature::new(
                 // TODO: Map return_type string to FunctionDataType
@@ -775,7 +775,7 @@ impl Executor {
     }
 
     /// Ensure the functions system table exists
-    fn ensure_functions_table_exists(&self) -> Result<()> {
+    pub(crate) fn ensure_functions_table_exists(&self) -> Result<()> {
         // Check if table exists first - need a transaction
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
@@ -823,7 +823,7 @@ impl Executor {
         let values = vec![
             Value::Null(DataType::Integer),                // id (auto-increment)
             Value::Text(Arc::from(function.name.clone())), // name
-            Value::Text(Arc::from(parameters_json)),       // parameters
+            Value::Json(Arc::from(parameters_json)),       // parameters
             Value::Text(Arc::from(function.return_type.clone())), // return_type
             Value::Text(Arc::from(function.language.clone())), // language
             Value::Text(Arc::from(function.code.clone())), // code
