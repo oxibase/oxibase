@@ -295,6 +295,49 @@ impl TableName {
     }
 }
 
+/// Function name (simple or qualified)
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionName {
+    Simple(Identifier),
+    Qualified(QualifiedIdentifier),
+}
+
+impl fmt::Display for FunctionName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FunctionName::Simple(id) => write!(f, "{}", id),
+            FunctionName::Qualified(qi) => write!(f, "{}", qi),
+        }
+    }
+}
+
+impl FunctionName {
+    pub fn value(&self) -> String {
+        match self {
+            FunctionName::Simple(id) => id.value.clone(),
+            FunctionName::Qualified(qi) => format!("{}.{}", qi.qualifier.value, qi.name.value),
+        }
+    }
+
+    pub fn value_lower(&self) -> String {
+        self.value().to_lowercase()
+    }
+
+    pub fn schema(&self) -> Option<String> {
+        match self {
+            FunctionName::Simple(_) => None,
+            FunctionName::Qualified(qi) => Some(qi.qualifier.value.clone()),
+        }
+    }
+
+    pub fn function(&self) -> String {
+        match self {
+            FunctionName::Simple(id) => id.value.clone(),
+            FunctionName::Qualified(qi) => qi.name.value.clone(),
+        }
+    }
+}
+
 /// Integer literal
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntegerLiteral {
@@ -1280,6 +1323,7 @@ pub enum Statement {
     DropSchema(DropSchemaStatement),
     UseSchema(UseSchemaStatement),
     CreateFunction(CreateFunctionStatement),
+    DropFunction(DropFunctionStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1320,6 +1364,7 @@ impl fmt::Display for Statement {
             Statement::DropSchema(s) => write!(f, "{}", s),
             Statement::UseSchema(s) => write!(f, "{}", s),
             Statement::CreateFunction(s) => write!(f, "{}", s),
+            Statement::DropFunction(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -2071,6 +2116,25 @@ impl fmt::Display for CreateFunctionStatement {
             self.language,
             self.body.replace("'", "''")
         ));
+        write!(f, "{}", result)
+    }
+}
+
+/// DROP FUNCTION statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropFunctionStatement {
+    pub token: Token,
+    pub function_name: FunctionName,
+    pub if_exists: bool,
+}
+
+impl fmt::Display for DropFunctionStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("DROP FUNCTION ");
+        if self.if_exists {
+            result.push_str("IF EXISTS ");
+        }
+        result.push_str(&self.function_name.to_string());
         write!(f, "{}", result)
     }
 }

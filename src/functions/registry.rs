@@ -288,6 +288,18 @@ impl FunctionRegistry {
         Ok(())
     }
 
+    /// Unregister a user-defined function
+    pub fn unregister_user_defined(&self, name: &str) -> crate::core::Result<()> {
+        let mut udf_registry = self.user_defined_functions.write().unwrap();
+        udf_registry.unregister(name)?;
+
+        // Remove from function info cache
+        let mut infos = self.function_info.write().unwrap();
+        infos.remove(&name.to_uppercase());
+
+        Ok(())
+    }
+
     /// Get a new instance of an aggregate function by name
     pub fn get_aggregate(&self, name: &str) -> Option<Box<dyn AggregateFunction>> {
         // OPTIMIZATION: Fast path - if name is already uppercase, avoid allocation

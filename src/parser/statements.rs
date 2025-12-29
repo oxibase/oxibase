@@ -2012,9 +2012,12 @@ impl Parser {
         } else if self.peek_token_is_keyword("VIEW") {
             self.next_token();
             self.parse_drop_view_statement().map(Statement::DropView)
+        } else if self.peek_token_is_keyword("FUNCTION") {
+            self.next_token();
+            self.parse_drop_function_statement().map(Statement::DropFunction)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, or VIEW after DROP at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after DROP at {}",
                 self.cur_token.position
             ));
             None
@@ -2042,6 +2045,35 @@ impl Parser {
         Some(DropTableStatement {
             token,
             table_name,
+            if_exists,
+        })
+    }
+
+    /// Parse a DROP FUNCTION statement
+    fn parse_drop_function_statement(&mut self) -> Option<DropFunctionStatement> {
+        let token = self.cur_token.clone();
+
+        // Check for IF EXISTS
+        let if_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse function name (simple identifier for Phase 1)
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let function_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let function_name = FunctionName::Simple(function_name);
+
+        Some(DropFunctionStatement {
+            token,
+            function_name,
             if_exists,
         })
     }

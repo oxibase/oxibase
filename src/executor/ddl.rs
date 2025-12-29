@@ -774,6 +774,32 @@ impl Executor {
         Ok(Box::new(EmptyResult::new()))
     }
 
+    /// Execute a DROP FUNCTION statement
+    pub(crate) fn execute_drop_function(
+        &self,
+        stmt: &DropFunctionStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let function_name = stmt.function_name.function();
+
+        // Check if function exists
+        if !self.function_exists(&function_name)? {
+            if stmt.if_exists {
+                return Ok(Box::new(EmptyResult::new()));
+            }
+            return Err(Error::FunctionNotFound(function_name.clone()));
+        }
+
+        // Delete function from system table
+        self.delete_function(&function_name)?;
+
+        // Unregister the function from the global registry
+        let registry = global_registry();
+        registry.unregister_user_defined(&function_name)?;
+
+        Ok(Box::new(EmptyResult::new()))
+    }
+
     /// Ensure the functions system table exists
     pub(crate) fn ensure_functions_table_exists(&self) -> Result<()> {
         // Check if table exists first - need a transaction
@@ -793,7 +819,10 @@ impl Executor {
     /// Check if a function exists in the system table
     fn function_exists(&self, function_name: &str) -> Result<bool> {
         let tx = self.engine.begin_transaction()?;
-        let table = tx.get_table(SYS_FUNCTIONS)?;
+        let table = match tx.get_table(SYS_FUNCTIONS) {
+            Ok(table) => table,
+            Err(_) => return Ok(false), // Table doesn't exist, so function doesn't exist
+        };
 
         // Query for function by name (name is at index 1 in the schema)
         let mut scanner = table.scan(&[], None)?;
@@ -833,6 +862,38 @@ impl Executor {
         table.insert(row)?;
         tx.commit()?;
 
+        Ok(())
+    }
+
+    /// Delete a function from the system table
+    fn delete_function(&self, function_name: &str) -> Result<()> {
+        let mut tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table(SYS_FUNCTIONS)?;
+
+        // Find the function ID by name
+        let mut scanner = table.scan(&[], None)?;
+        let mut function_id: Option<Value> = None;
+
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Text(name)) = row.get(1) {
+                if name.eq_ignore_ascii_case(function_name) {
+                    function_id = row.get(0).cloned(); // ID is at index 0
+                    break;
+                }
+            }
+        }
+
+        if let Some(id_value) = function_id {
+            // Delete by ID using WHERE expression
+            use crate::storage::expression::{ComparisonExpr, Expression as StorageExpr};
+            let mut id_expr = ComparisonExpr::new("id", crate::core::Operator::Eq, id_value);
+            let schema = table.schema();
+            id_expr.prepare_for_schema(schema);
+            table.delete(Some(&id_expr))?;
+        }
+
+        tx.commit()?;
         Ok(())
     }
 

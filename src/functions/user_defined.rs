@@ -181,6 +181,15 @@ impl UserDefinedFunctionRegistry {
         self.functions.contains_key(&name.to_uppercase())
     }
 
+    /// Unregister a user-defined function
+    pub fn unregister(&mut self, name: &str) -> Result<()> {
+        let key = name.to_uppercase();
+        if self.functions.remove(&key).is_none() {
+            return Err(Error::FunctionNotFound(name.to_string()));
+        }
+        Ok(())
+    }
+
     /// List all user-defined functions
     pub fn list(&self) -> Vec<String> {
         self.functions.keys().cloned().collect()
