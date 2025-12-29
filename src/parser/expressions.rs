@@ -666,7 +666,7 @@ impl Parser {
                 // For function calls, use only the base function name since functions are global
                 // but accept qualified syntax for consistency
                 qi.name.value.to_uppercase()
-            },
+            }
             _ => {
                 self.add_error(format!(
                     "left side of '(' must be an identifier at {}",

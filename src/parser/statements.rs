@@ -2011,7 +2011,8 @@ impl Parser {
             self.parse_drop_view_statement().map(Statement::DropView)
         } else if self.peek_token_is_keyword("FUNCTION") {
             self.next_token();
-            self.parse_drop_function_statement().map(Statement::DropFunction)
+            self.parse_drop_function_statement()
+                .map(Statement::DropFunction)
         } else {
             self.add_error(format!(
                 "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after DROP at {}",

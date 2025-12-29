@@ -273,7 +273,10 @@ fn test_drop_function_basic() {
 
     // Verify it's in system table
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions WHERE name = 'DROP_ME'", ())
+        .query_one(
+            "SELECT COUNT(*) FROM _sys_functions WHERE name = 'DROP_ME'",
+            (),
+        )
         .expect("Failed to count functions");
     assert_eq!(count, 1);
 
@@ -283,7 +286,10 @@ fn test_drop_function_basic() {
 
     // Verify it's removed from system table
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions WHERE name = 'DROP_ME'", ())
+        .query_one(
+            "SELECT COUNT(*) FROM _sys_functions WHERE name = 'DROP_ME'",
+            (),
+        )
         .expect("Failed to count functions after drop");
     assert_eq!(count, 0);
 
@@ -301,7 +307,8 @@ fn test_drop_function_if_exists_exists() {
     db.execute(
         "CREATE FUNCTION if_exists_func() RETURNS TEXT LANGUAGE DENO AS 'return \"exists\";'",
         (),
-    ).expect("Failed to create function");
+    )
+    .expect("Failed to create function");
 
     // Drop with IF EXISTS (should succeed)
     db.execute("DROP FUNCTION IF EXISTS if_exists_func", ())
@@ -309,7 +316,10 @@ fn test_drop_function_if_exists_exists() {
 
     // Verify it's gone
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions WHERE name = 'IF_EXISTS_FUNC'", ())
+        .query_one(
+            "SELECT COUNT(*) FROM _sys_functions WHERE name = 'IF_EXISTS_FUNC'",
+            (),
+        )
         .expect("Failed to count functions");
     assert_eq!(count, 0);
 }
@@ -340,7 +350,10 @@ fn test_drop_function_not_exists_error() {
 
     // Try to drop non-existent function without IF EXISTS (should fail)
     let result = db.execute("DROP FUNCTION nonexistent_func", ());
-    assert!(result.is_err(), "DROP without IF EXISTS should fail for non-existent function");
+    assert!(
+        result.is_err(),
+        "DROP without IF EXISTS should fail for non-existent function"
+    );
 }
 
 /// Test DROP FUNCTION removes function from registry
@@ -352,18 +365,24 @@ fn test_drop_function_registry_cleanup() {
     db.execute(
         "CREATE FUNCTION keep_func() RETURNS INTEGER LANGUAGE DENO AS 'return 1;'",
         (),
-    ).expect("Failed to create keep_func");
+    )
+    .expect("Failed to create keep_func");
 
     db.execute(
         "CREATE FUNCTION remove_func() RETURNS INTEGER LANGUAGE DENO AS 'return 2;'",
         (),
-    ).expect("Failed to create remove_func");
+    )
+    .expect("Failed to create remove_func");
 
     // Verify both work
-    let result1: i64 = db.query_one("SELECT keep_func()", ()).expect("Failed to call keep_func");
+    let result1: i64 = db
+        .query_one("SELECT keep_func()", ())
+        .expect("Failed to call keep_func");
     assert_eq!(result1, 1);
 
-    let result2: i64 = db.query_one("SELECT remove_func()", ()).expect("Failed to call remove_func");
+    let result2: i64 = db
+        .query_one("SELECT remove_func()", ())
+        .expect("Failed to call remove_func");
     assert_eq!(result2, 2);
 
     // Drop one function
@@ -371,12 +390,17 @@ fn test_drop_function_registry_cleanup() {
         .expect("Failed to drop remove_func");
 
     // Verify keep_func still works
-    let result1: i64 = db.query_one("SELECT keep_func()", ()).expect("keep_func should still work");
+    let result1: i64 = db
+        .query_one("SELECT keep_func()", ())
+        .expect("keep_func should still work");
     assert_eq!(result1, 1);
 
     // Verify remove_func is gone from registry (can't be called)
     let result = db.query_one::<i64, _>("SELECT remove_func()", ());
-    assert!(result.is_err(), "remove_func should not be callable after DROP");
+    assert!(
+        result.is_err(),
+        "remove_func should not be callable after DROP"
+    );
 
     // Verify only one function remains in system table
     let count: i64 = db
@@ -428,11 +452,17 @@ fn test_drop_function_persistence_restart() {
 
         // Function should not exist after restart (proves DROP was persisted)
         let result = db.query_one::<i64, _>("SELECT temp_drop_func(5)", ());
-        assert!(result.is_err(), "Function should remain dropped after restart");
+        assert!(
+            result.is_err(),
+            "Function should remain dropped after restart"
+        );
 
         // System table should be empty or not have the function
         let count: i64 = db
-            .query_one("SELECT COUNT(*) FROM _sys_functions WHERE name = 'TEMP_DROP_FUNC'", ())
+            .query_one(
+                "SELECT COUNT(*) FROM _sys_functions WHERE name = 'TEMP_DROP_FUNC'",
+                (),
+            )
             .expect("Failed to count functions after restart");
         assert_eq!(count, 0);
     }
@@ -457,12 +487,18 @@ fn test_create_function_schema_qualified() {
 
     // Verify it's stored with schema
     let schema: Option<String> = db
-        .query_one("SELECT schema FROM _sys_functions WHERE name = 'ADD_NUMS'", ())
+        .query_one(
+            "SELECT schema FROM _sys_functions WHERE name = 'ADD_NUMS'",
+            (),
+        )
         .expect("Failed to query schema");
     assert_eq!(schema, Some("MYSCHEMA".to_string()));
 
     let name: String = db
-        .query_one("SELECT name FROM _sys_functions WHERE name = 'ADD_NUMS'", ())
+        .query_one(
+            "SELECT name FROM _sys_functions WHERE name = 'ADD_NUMS'",
+            (),
+        )
         .expect("Failed to query name");
     assert_eq!(name, "ADD_NUMS");
 }
@@ -532,14 +568,18 @@ fn test_functions_remain_global() {
     db.execute(
         "CREATE FUNCTION schema1.func() RETURNS TEXT LANGUAGE DENO AS 'return \"schema1\";'",
         (),
-    ).expect("Failed to create function with schema1");
+    )
+    .expect("Failed to create function with schema1");
 
     // Try to create function with same name but different schema (should fail)
     let result = db.execute(
         "CREATE FUNCTION schema2.func() RETURNS TEXT LANGUAGE DENO AS 'return \"schema2\";'",
         (),
     );
-    assert!(result.is_err(), "Should not allow duplicate function names even with different schemas");
+    assert!(
+        result.is_err(),
+        "Should not allow duplicate function names even with different schemas"
+    );
 
     // Function should be accessible with any schema qualification
     let result1: String = db
