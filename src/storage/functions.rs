@@ -27,11 +27,13 @@ pub const SYS_FUNCTIONS: &str = "_sys_functions";
 pub const CREATE_FUNCTIONS_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS _sys_functions (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    name TEXT NOT NULL UNIQUE,
+    schema TEXT,
+    name TEXT NOT NULL,
     parameters JSON NOT NULL,
     return_type TEXT NOT NULL,
     language TEXT NOT NULL,
-    code TEXT NOT NULL
+    code TEXT NOT NULL,
+    UNIQUE(schema, name)
 )
 "#;
 
@@ -51,6 +53,7 @@ pub struct StoredParameter {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoredFunction {
     pub id: i64,
+    pub schema: Option<String>,
     pub name: String,
     pub parameters: Vec<StoredParameter>, // Simplified parameter representation
     pub return_type: String,

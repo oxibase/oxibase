@@ -2080,7 +2080,7 @@ pub struct DropViewStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CreateFunctionStatement {
     pub token: Token,
-    pub function_name: Identifier,
+    pub function_name: FunctionName,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: String,
     pub language: String,

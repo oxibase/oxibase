@@ -1909,10 +1909,7 @@ impl Parser {
         };
 
         // Function name
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let function_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let function_name = self.parse_function_name()?;
 
         // Parameters
         if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
@@ -2049,6 +2046,31 @@ impl Parser {
         })
     }
 
+    /// Parse a function name (simple or qualified)
+    fn parse_function_name(&mut self) -> Option<FunctionName> {
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let first_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+        // Check for qualified name (schema.function)
+        if self.peek_token_is_punctuator(".") {
+            self.next_token(); // consume .
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            let second_ident =
+                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            Some(FunctionName::Qualified(QualifiedIdentifier {
+                token: first_ident.token.clone(),
+                qualifier: Box::new(first_ident),
+                name: Box::new(second_ident),
+            }))
+        } else {
+            Some(FunctionName::Simple(first_ident))
+        }
+    }
+
     /// Parse a DROP FUNCTION statement
     fn parse_drop_function_statement(&mut self) -> Option<DropFunctionStatement> {
         let token = self.cur_token.clone();
@@ -2064,12 +2086,8 @@ impl Parser {
             false
         };
 
-        // Parse function name (simple identifier for Phase 1)
-        if !self.expect_peek(TokenType::Identifier) {
-            return None;
-        }
-        let function_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
-        let function_name = FunctionName::Simple(function_name);
+        // Parse function name (simple or qualified)
+        let function_name = self.parse_function_name()?;
 
         Some(DropFunctionStatement {
             token,

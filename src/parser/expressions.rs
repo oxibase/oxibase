@@ -660,8 +660,13 @@ impl Parser {
 
     /// Parse a function call
     fn parse_function_call(&mut self, left: Expression) -> Option<Expression> {
-        let left_ident = match left {
-            Expression::Identifier(id) => id,
+        let function_name = match &left {
+            Expression::Identifier(id) => id.value.to_uppercase(),
+            Expression::QualifiedIdentifier(qi) => {
+                // For function calls, use only the base function name since functions are global
+                // but accept qualified syntax for consistency
+                qi.name.value.to_uppercase()
+            },
             _ => {
                 self.add_error(format!(
                     "left side of '(' must be an identifier at {}",
@@ -671,9 +676,15 @@ impl Parser {
             }
         };
 
+        let token = match &left {
+            Expression::Identifier(id) => id.token.clone(),
+            Expression::QualifiedIdentifier(qi) => qi.token.clone(),
+            _ => unreachable!(), // We checked this above
+        };
+
         let mut call = FunctionCall {
-            token: left_ident.token.clone(),
-            function: left_ident.value.to_uppercase(),
+            token,
+            function: function_name,
             arguments: Vec::new(),
             is_distinct: false,
             order_by: Vec::new(),

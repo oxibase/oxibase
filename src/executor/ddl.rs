@@ -725,7 +725,7 @@ impl Executor {
         self.ensure_functions_table_exists()?;
 
         // Check if function already exists
-        let function_name_upper = stmt.function_name.value.to_uppercase();
+        let function_name_upper = stmt.function_name.function().to_uppercase();
         if self.function_exists(&function_name_upper)? {
             if stmt.if_not_exists {
                 return Ok(Box::new(EmptyResult::new()));
@@ -746,6 +746,7 @@ impl Executor {
         // Create stored function record
         let stored_function = StoredFunction {
             id: 0, // Will be set by database
+            schema: stmt.function_name.schema().map(|s| s.to_uppercase()),
             name: function_name_upper.clone(),
             parameters: stored_parameters,
             return_type: stmt.return_type.clone(),
@@ -824,11 +825,11 @@ impl Executor {
             Err(_) => return Ok(false), // Table doesn't exist, so function doesn't exist
         };
 
-        // Query for function by name (name is at index 1 in the schema)
+        // Query for function by name (name is now at index 2, schema at index 1)
         let mut scanner = table.scan(&[], None)?;
         while scanner.next() {
             let row = scanner.row();
-            if let Some(Value::Text(name)) = row.get(1) {
+            if let Some(Value::Text(name)) = row.get(2) {
                 if name.eq_ignore_ascii_case(function_name) {
                     return Ok(true);
                 }
@@ -849,8 +850,14 @@ impl Executor {
         })?;
 
         // Create row with values in schema order (id is auto-increment, set to NULL)
+        let schema_value = match &function.schema {
+            Some(schema) => Value::Text(Arc::from(schema.clone())),
+            None => Value::Null(DataType::Text),
+        };
+
         let values = vec![
             Value::Null(DataType::Integer),                // id (auto-increment)
+            schema_value,                                  // schema
             Value::Text(Arc::from(function.name.clone())), // name
             Value::Json(Arc::from(parameters_json)),       // parameters
             Value::Text(Arc::from(function.return_type.clone())), // return_type
@@ -876,7 +883,7 @@ impl Executor {
 
         while scanner.next() {
             let row = scanner.row();
-            if let Some(Value::Text(name)) = row.get(1) {
+            if let Some(Value::Text(name)) = row.get(2) {
                 if name.eq_ignore_ascii_case(function_name) {
                     function_id = row.get(0).cloned(); // ID is at index 0
                     break;

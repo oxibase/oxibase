@@ -437,3 +437,123 @@ fn test_drop_function_persistence_restart() {
         assert_eq!(count, 0);
     }
 }
+
+/// Test CREATE FUNCTION with schema-qualified names
+#[test]
+fn test_create_function_schema_qualified() {
+    let db = Database::open("memory://create_schema_func").expect("Failed to create database");
+
+    // Create function with schema-qualified name
+    db.execute(
+        "CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + arguments[1];'",
+        (),
+    ).expect("Failed to create schema-qualified function");
+
+    // Verify function exists and works
+    let result: i64 = db
+        .query_one("SELECT myschema.add_nums(3, 4)", ())
+        .expect("Failed to call schema-qualified function");
+    assert_eq!(result, 7);
+
+    // Verify it's stored with schema
+    let schema: Option<String> = db
+        .query_one("SELECT schema FROM _sys_functions WHERE name = 'ADD_NUMS'", ())
+        .expect("Failed to query schema");
+    assert_eq!(schema, Some("MYSCHEMA".to_string()));
+
+    let name: String = db
+        .query_one("SELECT name FROM _sys_functions WHERE name = 'ADD_NUMS'", ())
+        .expect("Failed to query name");
+    assert_eq!(name, "ADD_NUMS");
+}
+
+/// Test DROP FUNCTION with schema-qualified names
+#[test]
+fn test_drop_function_schema_qualified() {
+    let db = Database::open("memory://drop_schema_func").expect("Failed to create database");
+
+    // Create function with schema-qualified name
+    db.execute(
+        "CREATE FUNCTION test_schema.multiply(x INTEGER, y INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] * arguments[1];'",
+        (),
+    ).expect("Failed to create schema-qualified function");
+
+    // Verify it works
+    let result: i64 = db
+        .query_one("SELECT test_schema.multiply(5, 6)", ())
+        .expect("Failed to call function");
+    assert_eq!(result, 30);
+
+    // Drop with schema-qualified name
+    db.execute("DROP FUNCTION test_schema.multiply", ())
+        .expect("Failed to drop schema-qualified function");
+
+    // Verify function is gone
+    let result = db.query_one::<i64, _>("SELECT test_schema.multiply(5, 6)", ());
+    assert!(result.is_err(), "Function should not exist after DROP");
+
+    // Verify system table is empty
+    let count: i64 = db
+        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .expect("Failed to count functions");
+    assert_eq!(count, 0);
+}
+
+/// Test function invocation with schema-qualified names
+#[test]
+fn test_function_call_schema_qualified() {
+    let db = Database::open("memory://call_schema_func").expect("Failed to create database");
+
+    // Create function with schema-qualified name
+    db.execute(
+        "CREATE FUNCTION db.calc_power(base INTEGER, exp INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return Math.pow(arguments[0], arguments[1]);'",
+        (),
+    ).expect("Failed to create function");
+
+    // Call with schema qualification
+    let result: f64 = db
+        .query_one("SELECT db.calc_power(2, 3)", ())
+        .expect("Failed to call with schema qualification");
+    assert_eq!(result, 8.0);
+
+    // Call without schema qualification (should still work since functions are global)
+    let result2: f64 = db
+        .query_one("SELECT calc_power(3, 2)", ())
+        .expect("Failed to call without schema qualification");
+    assert_eq!(result2, 9.0);
+}
+
+/// Test that functions remain global despite schema qualification
+#[test]
+fn test_functions_remain_global() {
+    let db = Database::open("memory://global_funcs").expect("Failed to create database");
+
+    // Create function with different schema qualifications
+    db.execute(
+        "CREATE FUNCTION schema1.func() RETURNS TEXT LANGUAGE DENO AS 'return \"schema1\";'",
+        (),
+    ).expect("Failed to create function with schema1");
+
+    // Try to create function with same name but different schema (should fail)
+    let result = db.execute(
+        "CREATE FUNCTION schema2.func() RETURNS TEXT LANGUAGE DENO AS 'return \"schema2\";'",
+        (),
+    );
+    assert!(result.is_err(), "Should not allow duplicate function names even with different schemas");
+
+    // Function should be accessible with any schema qualification
+    let result1: String = db
+        .query_one("SELECT schema1.func()", ())
+        .expect("Failed to call with original schema");
+    assert_eq!(result1, "schema1");
+
+    let result2: String = db
+        .query_one("SELECT schema2.func()", ())
+        .expect("Failed to call with different schema");
+    assert_eq!(result2, "schema1"); // Should return the original function
+
+    let result3: String = db
+        .query_one("SELECT func()", ())
+        .expect("Failed to call without schema");
+    assert_eq!(result3, "schema1"); // Should work without schema
+}
