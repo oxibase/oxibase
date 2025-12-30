@@ -259,8 +259,7 @@ impl Cli {
                     let full_query = self.current_query.trim().to_string();
                     if full_query.ends_with(';') {
                         // Add to history
-                        let history_entry = full_query.replace('\n', "\\n");
-                        let _ = self.editor.add_history_entry(&history_entry);
+                        let _ = self.editor.add_history_entry(&full_query);
 
                         self.in_multi_line = false;
 
