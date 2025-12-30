@@ -7,11 +7,51 @@ nav_order: 4
 
 # User-Defined Functions
 
-OxiBase supports user-defined functions written in JavaScript and TypeScript that execute using the Deno runtime. This allows you to extend the database with custom logic while maintaining security and performance.
+OxiBase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language), with optional support for JavaScript/TypeScript (via Deno) and Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
 
 ## Overview
 
-User-defined functions (UDFs) enable you to create custom scalar functions that can be called from SQL queries. These functions run in a secure, isolated JavaScript environment with no access to the file system, network, or system resources by default.
+User-defined functions (UDFs) enable you to create custom scalar functions that can be called from SQL queries. Functions run in secure, isolated environments with controlled access to system resources.
+
+## Scripting Backends
+
+OxiBase supports multiple scripting backends, each optimized for different use cases:
+
+### Rhai Backend (Default)
+- **Language**: `LANGUAGE RHAI`
+- **Description**: Lightweight, fast scripting language written in Rust
+- **Performance**: Excellent performance for simple calculations and logic
+- **Availability**: Always enabled
+- **Use Case**: General-purpose scripting, high-performance requirements
+
+### Deno Backend (Optional)
+- **Language**: `LANGUAGE DENO` or `LANGUAGE JAVASCRIPT`
+- **Description**: Full JavaScript/TypeScript runtime with modern ES features
+- **Performance**: Good performance with rich ecosystem support
+- **Availability**: Enable with `--features deno`
+- **Use Case**: Complex logic, JSON processing, date manipulation
+
+### Python Backend (Optional)
+- **Language**: `LANGUAGE PYTHON`
+- **Description**: Python scripting with access to standard library
+- **Performance**: Good performance with extensive libraries
+- **Availability**: Enable with `--features python`
+- **Use Case**: Scientific computing, data processing, ML/AI integration
+
+## Enabling Optional Backends
+
+To use JavaScript/TypeScript or Python functions, enable the corresponding feature flags:
+
+```bash
+# Enable JavaScript/TypeScript support
+cargo build --features deno
+
+# Enable Python support
+cargo build --features python
+
+# Enable both
+cargo build --features deno,python
+```
 
 ## Functions vs Stored Procedures
 
@@ -100,7 +140,7 @@ LANGUAGE DENO AS 'JavaScript code here';
 - `function_name`: The name of the function (must be unique)
 - `param1, param2, ...`: Parameter names and their data types
 - `return_type`: The data type of the return value
-- `LANGUAGE DENO`: Specifies that the function uses JavaScript/TypeScript
+- `LANGUAGE RHAI|DENO|PYTHON`: Specifies the scripting backend to use
 - `AS 'code'`: The JavaScript/TypeScript code that implements the function
 
 ### Supported Return Data Types
@@ -124,7 +164,19 @@ Functions must return exactly one value and declare their return type in the `CR
 
 ### Argument Access
 
-Function arguments are accessible through the JavaScript `arguments` array:
+Arguments are accessed differently depending on the backend:
+
+#### Rhai Backend
+Arguments are accessible as `arg0`, `arg1`, `arg2`, etc.:
+
+```sql
+CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
+RETURNS INTEGER
+LANGUAGE RHAI AS 'arg0 + arg1';
+```
+
+#### Deno Backend
+Arguments are accessible through the JavaScript `arguments` array:
 
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
@@ -132,10 +184,38 @@ RETURNS INTEGER
 LANGUAGE DENO AS 'return arguments[0] + arguments[1];';
 ```
 
+#### Python Backend
+Arguments are accessible through the `args` tuple:
+
+```sql
+CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
+RETURNS INTEGER
+LANGUAGE PYTHON AS 'return args[0] + args[1]';
+```
+
 ### Return Values
 
-Functions can return any JavaScript value that can be converted to an OxiBase data type:
+Functions return values using backend-specific syntax:
 
+#### Rhai Backend
+```sql
+-- Return a string
+CREATE FUNCTION greet(name TEXT)
+RETURNS TEXT
+LANGUAGE RHAI AS '"Hello, " + arg0 + "!"';
+
+-- Return a number
+CREATE FUNCTION square(x INTEGER)
+RETURNS INTEGER
+LANGUAGE RHAI AS 'arg0 * arg0';
+
+-- Return a boolean
+CREATE FUNCTION is_even(n INTEGER)
+RETURNS BOOLEAN
+LANGUAGE RHAI AS 'arg0 % 2 == 0';
+```
+
+#### Deno Backend
 ```sql
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
@@ -156,6 +236,24 @@ LANGUAGE DENO AS 'return arguments[0] % 2 === 0;';
 CREATE FUNCTION create_person(name TEXT, age INTEGER)
 RETURNS JSON
 LANGUAGE DENO AS 'return { name: arguments[0], age: arguments[1] };';
+```
+
+#### Python Backend
+```sql
+-- Return a string
+CREATE FUNCTION greet(name TEXT)
+RETURNS TEXT
+LANGUAGE PYTHON AS 'return f"Hello, {args[0]}!"';
+
+-- Return a number
+CREATE FUNCTION square(x INTEGER)
+RETURNS INTEGER
+LANGUAGE PYTHON AS 'return args[0] * args[0]';
+
+-- Return a boolean
+CREATE FUNCTION is_even(n INTEGER)
+RETURNS BOOLEAN
+LANGUAGE PYTHON AS 'return args[0] % 2 == 0';
 ```
 
 ### JavaScript Features
@@ -205,24 +303,90 @@ FROM employees;
 
 ## Security Considerations
 
-User-defined functions execute in a secure sandbox:
+All backends execute in secure sandboxes with controlled access:
 
+### Rhai Backend
+- **No file system access** - Pure computation only
+- **No network access** - Cannot make HTTP requests
+- **Memory isolation** - Each call runs in isolated context
+- **Limited runtime** - Execution time limits prevent abuse
+
+### Deno Backend
 - **No file system access** - Cannot read or write files
 - **No network access** - Cannot make HTTP requests or open sockets
 - **No system access** - Cannot execute system commands or access environment variables
 - **Limited runtime** - Functions have execution time limits to prevent abuse
 - **Memory isolation** - Each function call runs in its own JavaScript context
 
+### Python Backend
+- **No file system access** - Cannot read or write files
+- **No network access** - Cannot make HTTP requests
+- **Limited system access** - Cannot execute system commands
+- **Memory isolation** - Each call runs in isolated context
+- **Limited runtime** - Execution time limits prevent abuse
+
 ## Performance Characteristics
 
-- Each function call creates a new JavaScript runtime instance
-- Suitable for most applications but may not be optimal for high-frequency calls
-- Consider caching results at the application level if needed
+Performance varies by backend:
+
+### Rhai Backend
+- **Runtime Creation**: Minimal overhead (microseconds)
+- **Execution Speed**: Fastest for simple calculations
+- **Memory Usage**: Low memory footprint
+- **Best For**: High-frequency calls, simple logic
+
+### Deno Backend
+- **Runtime Creation**: Moderate overhead (~milliseconds)
+- **Execution Speed**: Good for complex logic
+- **Memory Usage**: Higher memory usage
+- **Best For**: Complex algorithms, JSON processing
+
+### Python Backend
+- **Runtime Creation**: Moderate overhead (~milliseconds)
+- **Execution Speed**: Good for numerical computing
+- **Memory Usage**: Moderate memory usage
+- **Best For**: Scientific computing, data processing
+
+### General Guidelines
+- **Rhai** is recommended for most use cases due to its speed and low overhead
+- Each function call creates a new runtime instance for isolation
+- Consider caching results at the application level for expensive operations
 - Runtime creation overhead is typically acceptable for OLTP workloads
 
 ## Examples
 
-### String Processing
+### Basic Arithmetic (Rhai)
+
+```sql
+CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
+RETURNS INTEGER
+LANGUAGE RHAI AS 'arg0 + arg1';
+
+CREATE FUNCTION calculate_area(width INTEGER, height INTEGER)
+RETURNS INTEGER
+LANGUAGE RHAI AS 'width * height';
+
+SELECT add_numbers(5, 3) as sum, calculate_area(10, 20) as area;
+-- Result: sum = 8, area = 200
+```
+
+### String Processing (Rhai)
+
+```sql
+CREATE FUNCTION slugify(text TEXT)
+RETURNS TEXT
+LANGUAGE RHAI AS '
+    arg0
+        .to_lower()
+        .replace(re("[^a-z0-9]+"), "-")
+        .replace(re("^-+|-+$"), "")
+';
+
+SELECT slugify('Hello, World! How are you?') as slug;
+-- Result: "hello-world-how-are-you"
+```
+
+### String Processing (Deno)
 
 ```sql
 CREATE FUNCTION slugify(text TEXT)
@@ -238,9 +402,18 @@ SELECT slugify('Hello, World! How are you?') as slug;
 -- Result: "hello-world-how-are-you"
 ```
 
-### Date Calculations
+### Date Calculations (Rhai)
 
 ```sql
+CREATE FUNCTION days_until(date TEXT)
+RETURNS INTEGER
+LANGUAGE RHAI AS '
+    // Simple date difference calculation
+    // Note: Rhai has limited date support, consider Deno for complex date operations
+    30  // Placeholder - use Deno for real date calculations
+';
+
+-- For complex date operations, use Deno:
 CREATE FUNCTION days_until(date TIMESTAMP)
 RETURNS INTEGER
 LANGUAGE DENO AS '
@@ -253,7 +426,7 @@ LANGUAGE DENO AS '
 SELECT days_until('2024-12-31') as days_remaining;
 ```
 
-### JSON Processing
+### JSON Processing (Deno)
 
 ```sql
 CREATE FUNCTION extract_field(json_doc JSON, field TEXT)
@@ -265,6 +438,58 @@ LANGUAGE DENO AS '
 
 SELECT extract_field(metadata, 'version') as version
 FROM documents;
+```
+
+### Mathematical Functions (Rhai)
+
+```sql
+CREATE FUNCTION fibonacci(n INTEGER)
+RETURNS INTEGER
+LANGUAGE RHAI AS '
+    if arg0 <= 1 { arg0 }
+    else {
+        let a = 0;
+        let b = 1;
+        for i in 2..=arg0 {
+            let temp = a + b;
+            a = b;
+            b = temp;
+        }
+        b
+    }
+';
+
+CREATE FUNCTION factorial(n INTEGER)
+RETURNS INTEGER
+LANGUAGE RHAI AS '
+    if arg0 <= 1 { 1 }
+    else { arg0 * factorial(arg0 - 1) }
+';
+
+SELECT fibonacci(10) as fib, factorial(5) as fact;
+-- Result: fib = 55, fact = 120
+```
+
+### Data Validation (Deno)
+
+```sql
+CREATE FUNCTION validate_email(email TEXT)
+RETURNS BOOLEAN
+LANGUAGE DENO AS '
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(arguments[0]);
+';
+
+CREATE FUNCTION is_strong_password(password TEXT)
+RETURNS BOOLEAN
+LANGUAGE DENO AS '
+    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+    return strongRegex.test(arguments[0]);
+';
+
+SELECT validate_email('user@example.com') as valid_email,
+       is_strong_password('MyPass123') as strong_password;
 ```
 
 ## Error Handling
@@ -282,22 +507,55 @@ LANGUAGE DENO AS '
 ';
 ```
 
+## Backend-Specific Considerations
+
+### Rhai Backend
+- **Syntax**: Simple, Rust-like syntax with automatic type inference
+- **Features**: Basic arithmetic, string operations, conditionals, loops
+- **Limitations**: Limited standard library, no built-in JSON parsing
+- **Performance**: Excellent for numerical computations and simple logic
+
+### Deno Backend
+- **Syntax**: Full JavaScript/TypeScript with modern ES features
+- **Features**: Rich standard library, JSON support, date/time operations
+- **Limitations**: Higher memory usage and startup time
+- **Performance**: Good for complex algorithms and data processing
+
+### Python Backend
+- **Syntax**: Standard Python syntax
+- **Features**: Extensive standard library, good for numerical computing
+- **Limitations**: Moderate startup time, higher memory usage
+- **Performance**: Good for algorithms requiring complex data structures
+
 ## Limitations
 
 - Only scalar functions are supported (not aggregate or window functions)
 - Functions cannot access database state directly
 - Maximum execution time per function call is limited
 - Memory usage per function is bounded
-- No access to external modules or npm packages
+- No access to external modules or packages (backend-specific limitations apply)
+- Rhai has a smaller standard library compared to JavaScript/Python
 
 ## Best Practices
 
-1. **Keep functions simple** - Complex logic is better handled in application code
-2. **Validate inputs** - JavaScript functions should handle edge cases
-3. **Use appropriate return types** - Match the function's purpose with the correct data type
-4. **Test thoroughly** - User-defined functions should be well-tested
-5. **Consider performance** - Avoid functions in performance-critical query paths
-6. **Document your functions** - Use meaningful names and consider adding comments
+1. **Choose the right backend**:
+   - Use **Rhai** for simple, high-performance calculations
+   - Use **Deno** for complex logic, JSON processing, or date operations
+   - Use **Python** for scientific computing or when you need extensive libraries
+
+2. **Keep functions simple** - Complex logic is better handled in application code
+
+3. **Validate inputs** - Functions should handle edge cases and invalid inputs gracefully
+
+4. **Use appropriate return types** - Match the function's purpose with the correct data type
+
+5. **Test thoroughly** - User-defined functions should be well-tested across all backends
+
+6. **Consider performance** - Rhai is fastest, but choose based on your specific needs
+
+7. **Document your functions** - Use meaningful names and consider adding comments
+
+8. **Handle errors appropriately** - Different backends have different error handling patterns
 
 ## Dropping Functions
 
