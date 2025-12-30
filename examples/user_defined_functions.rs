@@ -1,11 +1,11 @@
 // Copyright 2025 Oxibase Contributors
 //
-// Example demonstrating user-defined functions with Deno
+// Example demonstrating user-defined functions with Rhai
 //
 // This example shows how to create and use user-defined functions
-// written in JavaScript/TypeScript that execute using the Deno runtime.
+// written in Rhai scripting language.
 //
-// User-defined functions access their arguments via the 'arguments' array.
+// User-defined functions access their arguments via variables arg0, arg1, etc.
 
 use oxibase::{Database, Result};
 
@@ -15,7 +15,7 @@ fn main() -> Result<()> {
 
     // Create a user-defined function that returns a string
     db.execute(
-        "CREATE FUNCTION hello() RETURNS TEXT LANGUAGE DENO AS 'return \"Hello, World!\";'",
+        "CREATE FUNCTION hello() RETURNS TEXT LANGUAGE RHAI AS 'return \"Hello, World!\";'",
         (),
     )?;
 
@@ -25,7 +25,7 @@ fn main() -> Result<()> {
 
     // Create a function that adds two numbers
     db.execute(
-        r#"CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + arguments[1];'"#,
+        r#"CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 + arg1'"#,
         (),
     )?;
 
@@ -34,7 +34,7 @@ fn main() -> Result<()> {
 
     // Create a greeting function
     db.execute(
-        "CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'",
+        r#"CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE RHAI AS '"Hello, " + arg0 + "!";'"#,
         (),
     )?;
 

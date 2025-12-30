@@ -297,6 +297,7 @@ impl Executor {
                 registry.register_user_defined(
                     name.to_string(),
                     code.to_string(),
+                    "rhai".to_string(), // Default to Rhai for persisted functions
                     FunctionSignature::new(
                         // TODO: Map return_type string to FunctionDataType
                         FunctionDataType::Unknown,

@@ -762,6 +762,7 @@ impl Executor {
         registry.register_user_defined(
             function_name_upper.clone(),
             stmt.body.clone(),
+            stmt.language.clone(),
             FunctionSignature::new(
                 // TODO: Map return_type string to FunctionDataType
                 FunctionDataType::Unknown,

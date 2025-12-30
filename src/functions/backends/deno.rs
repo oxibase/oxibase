@@ -1,0 +1,157 @@
+// Copyright 2025 Oxibase Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//! Deno scripting backend for user-defined functions
+
+use super::ScriptingBackend;
+use crate::core::{Error, Result, Value};
+
+#[cfg(feature = "deno")]
+use deno_runtime::deno_core::{serde_v8, v8, JsRuntime, RuntimeOptions};
+
+/// Deno scripting backend
+#[cfg(feature = "deno")]
+pub struct DenoBackend {
+    // Runtime will be created per execution for isolation
+}
+
+#[cfg(feature = "deno")]
+impl DenoBackend {
+    /// Create a new Deno backend
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[cfg(feature = "deno")]
+impl ScriptingBackend for DenoBackend {
+    fn name(&self) -> &'static str {
+        "deno"
+    }
+
+    fn supported_languages(&self) -> &[&'static str] {
+        &["deno", "javascript", "js", "typescript", "ts"]
+    }
+
+    fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
+        // Create a new JavaScript runtime for each function call
+        let mut runtime = JsRuntime::new(RuntimeOptions {
+            ..Default::default()
+        });
+
+        // Convert args to JavaScript values
+        let js_args_vec: Vec<serde_json::Value> = args
+            .iter()
+            .map(|v| match v {
+                Value::Null(_) => serde_json::Value::Null,
+                Value::Integer(i) => serde_json::json!(i),
+                Value::Float(f) => serde_json::json!(f),
+                Value::Text(s) => serde_json::json!(s.as_ref()),
+                Value::Boolean(b) => serde_json::json!(b),
+                Value::Timestamp(ts) => serde_json::json!(ts.to_rfc3339()),
+                Value::Json(j) => serde_json::from_str(j).unwrap_or(serde_json::Value::Null),
+            })
+            .collect();
+
+        let js_args = serde_json::to_string(&js_args_vec)
+            .map_err(|e| Error::internal(format!("Failed to serialize arguments: {}", e)))?;
+
+        // Execute the function call
+        let script = format!(
+            "
+            globalThis.__user_function = function() {{
+                {}
+            }};
+            globalThis.__user_function.apply(null, {})
+        ",
+            code, js_args
+        );
+
+        let result = runtime
+            .execute_script("<user_function>", script)
+            .map_err(|e| Error::internal(format!("Function execution failed: {}", e)))?;
+
+        // Extract the result
+        let scope = &mut runtime.handle_scope();
+        let local = v8::Local::new(scope, result);
+
+        // Try to deserialize as JSON first
+        match serde_v8::from_v8::<serde_json::Value>(scope, local) {
+            Ok(json_value) => match json_value {
+                serde_json::Value::String(s) => Ok(Value::Text(s.into())),
+                serde_json::Value::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        Ok(Value::Integer(i))
+                    } else if let Some(f) = n.as_f64() {
+                        Ok(Value::Float(f))
+                    } else {
+                        Ok(Value::Float(0.0)) // fallback
+                    }
+                }
+                serde_json::Value::Bool(b) => Ok(Value::Boolean(b)),
+                serde_json::Value::Null => Ok(Value::Null(crate::core::types::DataType::Null)),
+                _ => Ok(Value::Json(json_value.to_string().into())),
+            },
+            Err(_) => {
+                // Fallback: try to convert as string
+                if local.is_string() {
+                    let string = serde_v8::from_v8::<String>(scope, local).map_err(|e| {
+                        Error::internal(format!("Failed to deserialize string result: {}", e))
+                    })?;
+                    Ok(Value::Text(string.into()))
+                } else {
+                    Err(Error::internal("Failed to deserialize function result"))
+                }
+            }
+        }
+    }
+
+    fn validate_code(&self, code: &str) -> Result<()> {
+        // For now, we'll do basic validation by attempting to create a runtime
+        // In the future, we could add proper AST parsing/validation
+        let _runtime = JsRuntime::new(RuntimeOptions::default());
+        // TODO: Add actual syntax validation
+        Ok(())
+    }
+}
+
+/// Stub implementation when Deno feature is not enabled
+#[cfg(not(feature = "deno"))]
+pub struct DenoBackend;
+
+#[cfg(not(feature = "deno"))]
+impl DenoBackend {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[cfg(not(feature = "deno"))]
+impl ScriptingBackend for DenoBackend {
+    fn name(&self) -> &'static str {
+        "deno"
+    }
+
+    fn supported_languages(&self) -> &[&'static str] {
+        &["deno", "javascript", "js", "typescript", "ts"]
+    }
+
+    fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
+        Err(Error::internal("Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support"))
+    }
+
+    fn validate_code(&self, _code: &str) -> Result<()> {
+        Err(Error::internal("Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support"))
+    }
+}

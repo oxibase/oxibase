@@ -12,24 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! User-defined functions using Deno runtime
+//! User-defined functions with pluggable scripting backends
 //!
 //! This module provides support for user-defined scalar functions written in
-//! JavaScript/TypeScript that execute using the Deno runtime.
+//! various scripting languages using pluggable backends.
 
-use deno_runtime::deno_core::{serde_v8, v8, JsRuntime, RuntimeOptions};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use super::backends::BackendRegistry;
 use super::{FunctionInfo, FunctionSignature, ScalarFunction};
-use crate::core::types::DataType;
 use crate::core::{Error, Result, Value};
 
-/// User-defined scalar function that executes JavaScript code using Deno
+/// User-defined scalar function with pluggable scripting backends
 pub struct UserDefinedScalarFunction {
     name: String,
     code: String,
+    language: String,
     signature: FunctionSignature,
+    backend_registry: Arc<BackendRegistry>,
 }
 
 impl UserDefinedScalarFunction {
@@ -37,12 +38,16 @@ impl UserDefinedScalarFunction {
     pub fn new(
         name: impl Into<String>,
         code: impl Into<String>,
+        language: impl Into<String>,
         signature: FunctionSignature,
+        backend_registry: Arc<BackendRegistry>,
     ) -> Self {
         Self {
             name: name.into(),
             code: code.into(),
+            language: language.into(),
             signature,
+            backend_registry,
         }
     }
 }
@@ -62,83 +67,21 @@ impl ScalarFunction for UserDefinedScalarFunction {
     }
 
     fn evaluate(&self, args: &[Value]) -> Result<Value> {
-        // Create a new JavaScript runtime for each function call
-        let mut runtime = JsRuntime::new(RuntimeOptions {
-            ..Default::default()
-        });
+        // Get the appropriate backend for this function's language
+        let backend = self.backend_registry.get_backend(&self.language)
+            .ok_or_else(|| Error::internal(format!("No backend available for language: {}", self.language)))?;
 
-        // Convert args to JavaScript values
-        let js_args_vec: Vec<serde_json::Value> = args
-            .iter()
-            .map(|v| match v {
-                Value::Null(_) => serde_json::Value::Null,
-                Value::Integer(i) => serde_json::json!(i),
-                Value::Float(f) => serde_json::json!(f),
-                Value::Text(s) => serde_json::json!(s.as_ref()),
-                Value::Boolean(b) => serde_json::json!(b),
-                Value::Timestamp(ts) => serde_json::json!(ts.to_rfc3339()),
-                Value::Json(j) => serde_json::from_str(j).unwrap_or(serde_json::Value::Null),
-            })
-            .collect();
-
-        let js_args = serde_json::to_string(&js_args_vec)
-            .map_err(|e| Error::internal(format!("Failed to serialize arguments: {}", e)))?;
-
-        // Execute the function call
-        let script = format!(
-            "
-            globalThis.__user_function = function() {{
-                {}
-            }};
-            globalThis.__user_function.apply(null, {})
-        ",
-            self.code, js_args
-        );
-
-        let result = runtime
-            .execute_script("<user_function>", script)
-            .map_err(|e| Error::internal(format!("Function execution failed: {}", e)))?;
-
-        // Extract the result
-        let scope = &mut runtime.handle_scope();
-        let local = v8::Local::new(scope, result);
-
-        // Try to deserialize as JSON first
-        match serde_v8::from_v8::<serde_json::Value>(scope, local) {
-            Ok(json_value) => match json_value {
-                serde_json::Value::String(s) => Ok(Value::Text(Arc::from(s.as_str()))),
-                serde_json::Value::Number(n) => {
-                    if let Some(i) = n.as_i64() {
-                        Ok(Value::Integer(i))
-                    } else if let Some(f) = n.as_f64() {
-                        Ok(Value::Float(f))
-                    } else {
-                        Ok(Value::Float(0.0)) // fallback
-                    }
-                }
-                serde_json::Value::Bool(b) => Ok(Value::Boolean(b)),
-                serde_json::Value::Null => Ok(Value::Null(DataType::Null)),
-                _ => Ok(Value::Json(Arc::from(json_value.to_string().as_str()))),
-            },
-            Err(_) => {
-                // Fallback: try to convert as string
-                if local.is_string() {
-                    let string = serde_v8::from_v8::<String>(scope, local).map_err(|e| {
-                        Error::internal(format!("Failed to deserialize string result: {}", e))
-                    })?;
-                    Ok(Value::Text(Arc::from(string.as_str())))
-                } else {
-                    Err(Error::internal("Failed to deserialize function result"))
-                }
-            }
-        }
+        // Execute using the backend
+        backend.execute(&self.code, args)
     }
 
     fn clone_box(&self) -> Box<dyn ScalarFunction> {
         Box::new(Self {
             name: self.name.clone(),
             code: self.code.clone(),
+            language: self.language.clone(),
             signature: self.signature.clone(),
+            backend_registry: self.backend_registry.clone(),
         })
     }
 }
@@ -146,12 +89,14 @@ impl ScalarFunction for UserDefinedScalarFunction {
 /// Registry for user-defined functions
 pub struct UserDefinedFunctionRegistry {
     functions: HashMap<String, Arc<UserDefinedScalarFunction>>,
+    backend_registry: Arc<BackendRegistry>,
 }
 
 impl UserDefinedFunctionRegistry {
-    pub fn new() -> Self {
+    pub fn new(backend_registry: Arc<BackendRegistry>) -> Self {
         Self {
             functions: HashMap::new(),
+            backend_registry,
         }
     }
 
@@ -160,12 +105,20 @@ impl UserDefinedFunctionRegistry {
         &mut self,
         name: String,
         code: String,
+        language: String,
         signature: FunctionSignature,
     ) -> Result<()> {
+        // Validate that the backend exists for this language
+        if !self.backend_registry.is_language_supported(&language) {
+            return Err(Error::internal(format!("Unsupported language: {}", language)));
+        }
+
         let udf = Arc::new(UserDefinedScalarFunction::new(
             name.clone(),
             code,
+            language,
             signature,
+            self.backend_registry.clone(),
         ));
         self.functions.insert(name.to_uppercase(), udf);
         Ok(())
@@ -198,6 +151,7 @@ impl UserDefinedFunctionRegistry {
 
 impl Default for UserDefinedFunctionRegistry {
     fn default() -> Self {
-        Self::new()
+        // This should not be used directly - backend registry is required
+        panic!("UserDefinedFunctionRegistry::default() should not be called directly. Use new() with a backend registry.");
     }
 }

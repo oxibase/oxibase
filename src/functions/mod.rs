@@ -22,6 +22,7 @@
 //! - [`FunctionRegistry`] - Registry for function lookup and validation
 
 pub mod aggregate;
+pub mod backends;
 pub mod registry;
 pub mod scalar;
 pub mod user_defined;
@@ -322,15 +323,20 @@ mod tests {
 
     #[test]
     fn test_user_defined_function_creation() {
+        use super::backends::create_backend_registry;
+        let backend_registry = std::sync::Arc::new(create_backend_registry());
+
         let udf = user_defined::UserDefinedScalarFunction::new(
             "test_func",
-            "return args[0] + args[1];",
+            "return arg0 + arg1;",
+            "rhai",
             FunctionSignature::new(
                 FunctionDataType::Integer,
                 vec![FunctionDataType::Integer, FunctionDataType::Integer],
                 2,
                 2,
             ),
+            backend_registry,
         );
 
         assert_eq!(udf.name(), "test_func");
@@ -338,12 +344,15 @@ mod tests {
 
     #[test]
     fn test_user_defined_function_registry() {
-        let mut registry = user_defined::UserDefinedFunctionRegistry::new();
+        use super::backends::create_backend_registry;
+        let backend_registry = std::sync::Arc::new(create_backend_registry());
+        let mut registry = user_defined::UserDefinedFunctionRegistry::new(backend_registry);
 
         registry
             .register(
                 "add".to_string(),
-                "return args[0] + args[1];".to_string(),
+                "return arg0 + arg1;".to_string(),
+                "rhai".to_string(),
                 FunctionSignature::new(
                     FunctionDataType::Integer,
                     vec![FunctionDataType::Integer, FunctionDataType::Integer],

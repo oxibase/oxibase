@@ -64,8 +64,10 @@ crc32fast = "1.4"
 # Compression
 lz4_flex = "0.11"
 
-# Deno runtime for user-defined functions
-deno_runtime = "0.212"
+# Scripting backends for user-defined functions
+rhai = { version = "1.17", features = ["sync"] }
+deno_runtime = { version = "0.212", optional = true }
+rustpython-vm = { version = "0.3", optional = true }
 
 # Utilities
 bytes = "1.5"
@@ -95,10 +97,13 @@ tempfile = "3.9"
 #duckdb = { version = "1.1", features = ["bundled"] }
 
 [features]
-default = ["cli"]
+default = ["cli", "rhai"]
 cli = ["clap", "rustyline", "comfy-table", "dirs"]
 pg-server = ["tokio"]
 simd = []  # Enable SIMD optimizations
+rhai = []  # Rhai scripting backend (always enabled)
+deno = ["deno_runtime"]  # Deno JavaScript/TypeScript backend
+python = ["rustpython-vm"]  # Python backend
 
 [profile.release]
 lto = true

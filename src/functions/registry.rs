@@ -52,6 +52,7 @@ use super::scalar::{
     SubstringFunction, TanFunction, TimeTruncFunction, ToCharFunction, TrimFunction, TruncFunction,
     TruncateFunction, TypeOfFunction, UpperFunction, VersionFunction, YearFunction,
 };
+use super::backends::create_backend_registry;
 use super::user_defined::UserDefinedFunctionRegistry;
 use super::window::{
     CumeDistFunction, DenseRankFunction, FirstValueFunction, LagFunction, LastValueFunction,
@@ -91,11 +92,12 @@ impl Default for FunctionRegistry {
 impl FunctionRegistry {
     /// Create a new function registry with all built-in functions registered
     pub fn new() -> Self {
+        let backend_registry = Arc::new(create_backend_registry());
         let registry = Self {
             aggregate_functions: RwLock::new(HashMap::new()),
             scalar_functions: RwLock::new(HashMap::new()),
             window_functions: RwLock::new(HashMap::new()),
-            user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new()),
+            user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new(backend_registry)),
             function_info: RwLock::new(HashMap::new()),
         };
 
@@ -269,10 +271,11 @@ impl FunctionRegistry {
         &self,
         name: String,
         code: String,
+        language: String,
         signature: FunctionSignature,
     ) -> crate::core::Result<()> {
         let mut udf_registry = self.user_defined_functions.write().unwrap();
-        udf_registry.register(name.clone(), code, signature.clone())?;
+        udf_registry.register(name.clone(), code, language, signature.clone())?;
 
         // Add to function info cache
         let info = FunctionInfo::new(
