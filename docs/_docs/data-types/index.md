@@ -7,4 +7,4 @@ nav_order: 3
 
 # Data Types
 
-Explore the data types supported by OxiBase, including JSON support and date/time handling.
+Explore the data types supported by Oxibase, including JSON support and date/time handling.

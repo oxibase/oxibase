@@ -22,7 +22,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes OxiBase's transaction API for executing multiple database operations as atomic units of work with ACID guarantees. Transactions ensure data consistency by allowing operations to be committed together or rolled back entirely if errors occur.
+This document describes Oxibase's transaction API for executing multiple database operations as atomic units of work with ACID guarantees. Transactions ensure data consistency by allowing operations to be committed together or rolled back entirely if errors occur.
 
 For information about the underlying MVCC storage implementation that enables transactions, see [MVCC Architecture](#4.1). For basic query execution without transactions, see [Database API](#2.1).
 
@@ -224,7 +224,7 @@ tx.commit()?; // Returns Err(Error::UniqueConstraint)
 
 ### Isolation
 
-OxiBase provides snapshot isolation using Multi-Version Concurrency Control (MVCC). Each transaction sees a consistent snapshot of the database from its start time.
+Oxibase provides snapshot isolation using Multi-Version Concurrency Control (MVCC). Each transaction sees a consistent snapshot of the database from its start time.
 
 **Supported Isolation Levels:**
 
@@ -499,7 +499,7 @@ tx.rollback()?; // Schema recreated, but data is gone
 
 ### Concurrent Transaction Limits
 
-OxiBase supports concurrent transactions, but performance degrades with:
+Oxibase supports concurrent transactions, but performance degrades with:
 - High write contention on same rows
 - Many concurrent transactions (> 100 active)
 - Large read-write transaction overlap

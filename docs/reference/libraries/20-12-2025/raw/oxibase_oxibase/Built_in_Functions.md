@@ -19,7 +19,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-OxiBase provides 101+ built-in functions for data transformation, calculation, and analysis. Functions are organized into three main categories: **scalar functions** (operate on single values), **aggregate functions** (operate on groups of rows), and **window functions** (operate on partitioned sets with frames). All functions are invoked through the `FunctionRegistry` and evaluated by the Expression VM during query execution.
+Oxibase provides 101+ built-in functions for data transformation, calculation, and analysis. Functions are organized into three main categories: **scalar functions** (operate on single values), **aggregate functions** (operate on groups of rows), and **window functions** (operate on partitioned sets with frames). All functions are invoked through the `FunctionRegistry` and evaluated by the Expression VM during query execution.
 
 For information about how functions are compiled and executed, see [Expression Evaluation](#3.2). For details on aggregate function execution with GROUP BY, see [Aggregation and GROUP BY](#3.4). For window function execution with OVER clauses, see [Window Functions](#3.5).
 
@@ -353,7 +353,7 @@ SELECT JSON_EXTRACT('{"items": [1, 2, 3]}', '$.items[2]');  -- 3
 **Implementation Details:**
 - Path parsing handles both `$.path` and `path` syntax (dollar prefix optional)
 - Returns `NULL` if path not found or JSON invalid
-- Automatically converts JSON types to OxiBase `Value` types (numbers, strings, booleans)
+- Automatically converts JSON types to Oxibase `Value` types (numbers, strings, booleans)
 - Complex objects/arrays returned as JSON strings
 
 **Sources:** [src/functions/scalar/utility.rs:361-430](), [src/functions/scalar/utility.rs:432-495]()

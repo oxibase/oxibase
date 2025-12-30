@@ -7,15 +7,15 @@ nav_order: 7
 
 # CAST Operations
 
-This document explains type casting in OxiBase based on the implementation and test files.
+This document explains type casting in Oxibase based on the implementation and test files.
 
 ## Overview
 
-OxiBase supports both explicit type casting using the CAST function and implicit type conversion in certain contexts. Type casting allows you to convert a value from one data type to another.
+Oxibase supports both explicit type casting using the CAST function and implicit type conversion in certain contexts. Type casting allows you to convert a value from one data type to another.
 
 ## Supported Data Types
 
-OxiBase supports casting between these data types:
+Oxibase supports casting between these data types:
 
 - `INTEGER` or `INT`: 64-bit signed integers
 - `FLOAT`: 64-bit floating-point numbers
@@ -160,7 +160,7 @@ SELECT CAST(NULL AS BOOLEAN);                  -- Returns FALSE
 
 ## Implicit Type Conversion
 
-OxiBase performs implicit type conversion in these contexts:
+Oxibase performs implicit type conversion in these contexts:
 
 1. **Arithmetic operations**: When mixing numeric types
    ```sql
@@ -199,7 +199,7 @@ As shown in the test files, casting NULL values follows these rules:
 
 ## Implementation Details
 
-OxiBase implements CAST operations in various components:
+Oxibase implements CAST operations in various components:
 
 - The parser (`src/parser/`) recognizes CAST expressions
 - The scalar function implementation (`src/functions/scalar/cast.rs`) handles the CAST logic

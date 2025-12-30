@@ -19,7 +19,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This page documents the core row storage and versioning mechanisms in OxiBase's MVCC storage engine. It covers how row versions are stored, chained, and accessed for multi-version concurrency control.
+This page documents the core row storage and versioning mechanisms in Oxibase's MVCC storage engine. It covers how row versions are stored, chained, and accessed for multi-version concurrency control.
 
 For transaction lifecycle management and visibility rules, see [MVCC Architecture](#4.1). For index structures that accelerate lookups, see [Index System](#4.3). For durability and crash recovery, see [Persistence and Recovery](#4.4).
 
@@ -442,7 +442,7 @@ if is_deleted {
 
 ## Row Normalization for Schema Evolution
 
-OxiBase supports `ALTER TABLE ADD COLUMN` and `DROP COLUMN`. To handle rows written before schema changes, `normalize_row_to_schema()` adapts historical rows:
+Oxibase supports `ALTER TABLE ADD COLUMN` and `DROP COLUMN`. To handle rows written before schema changes, `normalize_row_to_schema()` adapts historical rows:
 
 ```mermaid
 graph LR
@@ -549,7 +549,7 @@ Uses `get_multi_column_index(&["customer_id", "status"])` for single index looku
 
 ## Write-Write Conflict Detection
 
-OxiBase uses **optimistic concurrency control** with conflict detection at commit time:
+Oxibase uses **optimistic concurrency control** with conflict detection at commit time:
 
 ```mermaid
 sequenceDiagram

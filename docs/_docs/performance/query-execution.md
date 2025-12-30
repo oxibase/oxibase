@@ -1,17 +1,17 @@
 ---
 layout: default
-title: Query Execution and Optimization in OxiBase
+title: Query Execution and Optimization in Oxibase
 parent: Performance
 nav_order: 4
 ---
 
-# Query Execution and Optimization in OxiBase
+# Query Execution and Optimization in Oxibase
 
-This document describes how OxiBase executes SQL queries, its optimization techniques, and how to write efficient queries for the best performance.
+This document describes how Oxibase executes SQL queries, its optimization techniques, and how to write efficient queries for the best performance.
 
 ## Query Execution Pipeline
 
-OxiBase processes SQL queries through a multi-stage pipeline:
+Oxibase processes SQL queries through a multi-stage pipeline:
 
 1. **Parsing** - SQL text is parsed into an abstract syntax tree (AST)
 2. **Validation** - The AST is validated for correctness
@@ -22,7 +22,7 @@ OxiBase processes SQL queries through a multi-stage pipeline:
 
 ## Parallel Execution Engine
 
-OxiBase includes a parallel execution engine optimized for analytical queries. This engine uses Rayon's work-stealing scheduler for optimal performance:
+Oxibase includes a parallel execution engine optimized for analytical queries. This engine uses Rayon's work-stealing scheduler for optimal performance:
 
 - **Batch Processing** - Processes multiple rows at once to reduce interpretation overhead
 - **Parallel Operations** - Parallelizes filter, join, sort, and distinct operations
@@ -96,7 +96,7 @@ graph TB
 
 ## Optimization Techniques
 
-OxiBase employs several optimization techniques to improve query performance:
+Oxibase employs several optimization techniques to improve query performance:
 
 ### Filter Pushdown
 
@@ -109,7 +109,7 @@ SELECT * FROM users WHERE age > 30;
 
 ### Index Utilization
 
-OxiBase automatically selects appropriate indexes for queries:
+Oxibase automatically selects appropriate indexes for queries:
 
 ```sql
 -- Will use index on email if available
@@ -118,10 +118,10 @@ SELECT * FROM users WHERE email = 'user@example.com';
 
 ### Join Optimization
 
-OxiBase optimizes join operations based on table statistics and available indexes:
+Oxibase optimizes join operations based on table statistics and available indexes:
 
 ```sql
--- OxiBase will choose an appropriate join algorithm
+-- Oxibase will choose an appropriate join algorithm
 SELECT u.name, o.order_date 
 FROM users u
 JOIN orders o ON u.id = o.user_id
@@ -149,7 +149,7 @@ WHERE SUBSTRING(description, 1, 100) LIKE '%special%';
 
 ## Query Cache
 
-OxiBase implements a query cache to improve performance for repeated queries:
+Oxibase implements a query cache to improve performance for repeated queries:
 
 - **Parameterized Queries** - Results of prepared statements with different parameters can be cached
 - **Automatic Invalidation** - Cache entries are invalidated when underlying data changes
@@ -157,7 +157,7 @@ OxiBase implements a query cache to improve performance for repeated queries:
 
 ## Query Explain
 
-You can use the `EXPLAIN` command to understand how OxiBase executes a query:
+You can use the `EXPLAIN` command to understand how Oxibase executes a query:
 
 ```sql
 EXPLAIN SELECT users.name, orders.total 
@@ -175,7 +175,7 @@ The output shows:
 
 ## Profiling Queries
 
-For deeper performance analysis, OxiBase provides query profiling:
+For deeper performance analysis, Oxibase provides query profiling:
 
 ```sql
 SET profiling = ON;
@@ -187,7 +187,7 @@ This provides detailed timing information for each step of query execution.
 
 ## Best Practices for Query Performance
 
-To get the best performance from OxiBase:
+To get the best performance from Oxibase:
 
 1. **Use Appropriate Indexes**
    - Create indexes on columns used in WHERE, JOIN, and ORDER BY clauses
@@ -202,7 +202,7 @@ To get the best performance from OxiBase:
 
 3. **Leverage Prepared Statements**
    - Use prepared statements for repeated queries
-   - This allows OxiBase to cache execution plans
+   - This allows Oxibase to cache execution plans
 
 4. **Optimize JOIN Operations**
    - Join tables from smallest to largest when possible
@@ -217,7 +217,7 @@ To get the best performance from OxiBase:
 
 ### Window Functions
 
-OxiBase supports window functions for analytical queries:
+Oxibase supports window functions for analytical queries:
 
 ```sql
 SELECT name, department, salary,
@@ -227,7 +227,7 @@ FROM employees;
 
 ### Aggregation Optimization
 
-OxiBase optimizes aggregation operations for efficient execution:
+Oxibase optimizes aggregation operations for efficient execution:
 
 ```sql
 -- Uses optimized aggregation algorithms
@@ -238,7 +238,7 @@ GROUP BY department;
 
 ### Parallel Execution
 
-OxiBase can execute certain operations in parallel:
+Oxibase can execute certain operations in parallel:
 
 ```sql
 -- May use parallel execution for large tables
@@ -247,7 +247,7 @@ SELECT * FROM large_table WHERE complex_condition;
 
 ## Implementation Details
 
-OxiBase's query execution is implemented with the following components:
+Oxibase's query execution is implemented with the following components:
 
 - **Parser (src/parser/)** - SQL parsing implementation (lexer, AST, parser)
 - **Executor (src/executor/)** - Query execution engine

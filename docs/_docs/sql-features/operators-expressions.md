@@ -7,7 +7,7 @@ nav_order: 6
 
 # Operators and Expressions
 
-OxiBase supports a comprehensive set of SQL operators for building expressions in SELECT, WHERE, HAVING, and other clauses.
+Oxibase supports a comprehensive set of SQL operators for building expressions in SELECT, WHERE, HAVING, and other clauses.
 
 ## Comparison Operators
 

@@ -5,9 +5,9 @@ parent: Getting Started
 nav_order: 5
 ---
 
-# Quick Start: Using Subqueries in OxiBase
+# Quick Start: Using Subqueries in Oxibase
 
-This guide provides a quick introduction to using subqueries in OxiBase SQL statements.
+This guide provides a quick introduction to using subqueries in Oxibase SQL statements.
 
 ## What are Subqueries?
 
@@ -164,7 +164,7 @@ JOIN (
 
 ## Supported Features
 
-OxiBase fully supports:
+Oxibase fully supports:
 - ✅ IN and NOT IN subqueries
 - ✅ EXISTS and NOT EXISTS operators
 - ✅ Scalar subqueries (returning single values)

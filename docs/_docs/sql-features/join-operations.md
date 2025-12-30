@@ -7,15 +7,15 @@ nav_order: 2
 
 # JOIN Operations
 
-This document explains JOIN operations in OxiBase, their syntax, and how to use them effectively based on the implementation and test files.
+This document explains JOIN operations in Oxibase, their syntax, and how to use them effectively based on the implementation and test files.
 
 ## Overview
 
-OxiBase supports SQL JOIN operations to combine data from multiple tables based on related columns. These operations are fundamental for relational data operations and complex queries.
+Oxibase supports SQL JOIN operations to combine data from multiple tables based on related columns. These operations are fundamental for relational data operations and complex queries.
 
 ## Supported JOIN Types
 
-OxiBase supports the following JOIN types:
+Oxibase supports the following JOIN types:
 
 ### INNER JOIN
 
@@ -39,7 +39,7 @@ LEFT JOIN orders AS o ON c.id = o.customer_id;
 
 ## JOIN Syntax
 
-The basic syntax for JOIN operations in OxiBase is:
+The basic syntax for JOIN operations in Oxibase is:
 
 ```sql
 SELECT column1, column2, ...
@@ -176,7 +176,7 @@ ORDER BY e.id;
 Based on the implementation and test files:
 
 - **Indexing Join Columns**: For optimal performance, create indexes on columns used in JOIN conditions
-- **Parallel Processing**: OxiBase uses parallel execution for large joins
+- **Parallel Processing**: Oxibase uses parallel execution for large joins
 - **Join Order**: The order of joined tables can impact performance
 - **Column Selection**: Only select columns you need to minimize data transfer
 - **Filter Early**: Apply WHERE conditions before joins when possible to reduce the number of rows processed

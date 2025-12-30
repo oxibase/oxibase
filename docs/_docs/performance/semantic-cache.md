@@ -7,7 +7,7 @@ nav_order: 3
 
 # Semantic Query Cache
 
-OxiBase implements semantic query caching, an intelligent result caching system that can answer new queries by filtering cached results from previous queries. This goes beyond simple query result caching by understanding the relationship between queries.
+Oxibase implements semantic query caching, an intelligent result caching system that can answer new queries by filtering cached results from previous queries. This goes beyond simple query result caching by understanding the relationship between queries.
 
 ## Overview
 
@@ -17,7 +17,7 @@ Traditional query caches require exact query matches. Semantic caching understan
 
 ### Predicate Subsumption
 
-When Query A caches results, and Query B has a stricter predicate that is a subset of Query A's predicate, OxiBase can answer Query B by filtering the cached results.
+When Query A caches results, and Query B has a stricter predicate that is a subset of Query A's predicate, Oxibase can answer Query B by filtering the cached results.
 
 ### Example
 

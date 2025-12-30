@@ -205,7 +205,7 @@ Sources: [src/api/database.rs:971-979]()
 
 ## Query Result Implementations
 
-OxiBase uses multiple `QueryResult` implementations optimized for different scenarios.
+Oxibase uses multiple `QueryResult` implementations optimized for different scenarios.
 
 ### Result Type Hierarchy
 

@@ -21,7 +21,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-This page documents the `Database` struct, which is the primary entry point for interacting with OxiBase. The Database API provides methods for opening connections, executing SQL queries, managing parameters, and controlling transactions. For transaction-specific operations like commit and rollback, see [Transactions](#2.2). For working with query result sets, see [Query Results](#2.3).
+This page documents the `Database` struct, which is the primary entry point for interacting with Oxibase. The Database API provides methods for opening connections, executing SQL queries, managing parameters, and controlling transactions. For transaction-specific operations like commit and rollback, see [Transactions](#2.2). For working with query result sets, see [Query Results](#2.3).
 
 **Sources:** [src/api/database.rs:1-887]()
 
@@ -69,7 +69,7 @@ graph TB
 
 ### Basic Usage
 
-OxiBase supports two storage modes via Data Source Name (DSN) strings:
+Oxibase supports two storage modes via Data Source Name (DSN) strings:
 
 | DSN Scheme | Description | Persistence | Example |
 |------------|-------------|-------------|---------|
@@ -251,7 +251,7 @@ pub fn query<P: Params>(&self, sql: &str, params: P) -> Result<Rows>
 
 ## Parameter Binding
 
-OxiBase supports three parameter styles to prevent SQL injection:
+Oxibase supports three parameter styles to prevent SQL injection:
 
 ### Positional Parameters
 
@@ -643,7 +643,7 @@ let active: bool = db.query_one("SELECT active FROM users WHERE id = $1", (1,))?
 
 ## Error Handling
 
-All Database methods return `Result<T, Error>` where `Error` is OxiBase's unified error type:
+All Database methods return `Result<T, Error>` where `Error` is Oxibase's unified error type:
 
 ```rust
 use oxibase::{Database, Error};

@@ -15,13 +15,13 @@ The following files were used as context for generating this wiki page:
 
 
 
-This guide provides essential information for developers contributing to OxiBase. It covers the development environment setup, code standards, CI/CD pipeline, and project structure. For detailed information about the module organization and internal architecture, see [Module Organization](#7.2). For build instructions and test execution, see [Building and Testing](#7.1).
+This guide provides essential information for developers contributing to Oxibase. It covers the development environment setup, code standards, CI/CD pipeline, and project structure. For detailed information about the module organization and internal architecture, see [Module Organization](#7.2). For build instructions and test execution, see [Building and Testing](#7.1).
 
 ## Development Environment Setup
 
 ### Prerequisites
 
-OxiBase requires:
+Oxibase requires:
 - **Rust toolchain**: Stable channel with `rustfmt` and `clippy` components
 - **Platform-specific dependencies**:
   - Linux: Standard GNU toolchain

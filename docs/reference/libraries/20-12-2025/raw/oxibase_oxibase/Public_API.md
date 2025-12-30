@@ -21,7 +21,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-The Public API layer provides user-facing interfaces for interacting with OxiBase. This layer wraps the internal query executor and storage engine, exposing a simple, ergonomic Rust API for database operations.
+The Public API layer provides user-facing interfaces for interacting with Oxibase. This layer wraps the internal query executor and storage engine, exposing a simple, ergonomic Rust API for database operations.
 
 For detailed information about specific components:
 - Database connection management: see [Database API](#2.1)
@@ -440,7 +440,7 @@ graph TB
 
 ## Error Handling
 
-All API methods return `Result<T, Error>` where `Error` is OxiBase's unified error type:
+All API methods return `Result<T, Error>` where `Error` is Oxibase's unified error type:
 
 | Error Variant | When Raised | Example |
 |---------------|-------------|---------|

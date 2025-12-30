@@ -7,4 +7,4 @@ nav_order: 4
 
 # SQL Commands
 
-Reference for SQL commands supported by OxiBase, including schema management and pragma commands.
+Reference for SQL commands supported by Oxibase, including schema management and pragma commands.

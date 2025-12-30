@@ -14,7 +14,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-This document describes the window function execution system in OxiBase. Window functions perform calculations across sets of table rows that are related to the current row, without collapsing rows like aggregate functions with GROUP BY.
+This document describes the window function execution system in Oxibase. Window functions perform calculations across sets of table rows that are related to the current row, without collapsing rows like aggregate functions with GROUP BY.
 
 For aggregate functions with GROUP BY, see [Aggregation and GROUP BY](#3.4). For the overall query execution pipeline, see [Query Execution Pipeline](#3.1).
 

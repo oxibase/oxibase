@@ -20,7 +20,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This page documents OxiBase's time-travel query capabilities, which allow querying historical data as it existed at a specific point in time or transaction. This feature leverages the underlying MVCC (Multi-Version Concurrency Control) architecture to provide point-in-time snapshots without additional storage overhead.
+This page documents Oxibase's time-travel query capabilities, which allow querying historical data as it existed at a specific point in time or transaction. This feature leverages the underlying MVCC (Multi-Version Concurrency Control) architecture to provide point-in-time snapshots without additional storage overhead.
 
 For information about the MVCC architecture that enables time-travel queries, see [MVCC Architecture](#4.1). For details on transaction isolation levels, see [Transactions](#2.2).
 
@@ -35,7 +35,7 @@ Time-travel queries enable applications to query data as it appeared in the past
 - **Compliance**: Proving data values at regulatory reporting dates
 - **Debugging**: Understanding how data changed over time
 
-OxiBase provides two time-travel mechanisms:
+Oxibase provides two time-travel mechanisms:
 
 | Mechanism | Syntax | Use Case |
 |-----------|--------|----------|
@@ -48,7 +48,7 @@ Sources: [README.md:175-194]()
 
 ## MVCC Foundation
 
-Time-travel queries are a natural consequence of OxiBase's MVCC storage engine. The system maintains **version chains** for each row, with each version linked to its predecessor via an `Arc<VersionChainEntry>` pointer. This design provides O(1) cloning of version chains and enables efficient historical lookups.
+Time-travel queries are a natural consequence of Oxibase's MVCC storage engine. The system maintains **version chains** for each row, with each version linked to its predecessor via an `Arc<VersionChainEntry>` pointer. This design provides O(1) cloning of version chains and enables efficient historical lookups.
 
 ```mermaid
 graph TB
@@ -376,7 +376,7 @@ Sources: [src/storage/mvcc/version_store.rs:597-625]()
 
 ### 2. No VACUUM Integration
 
-OxiBase currently does not implement version chain compaction. All historical versions are retained indefinitely, causing unbounded memory growth on long-running databases with frequent updates.
+Oxibase currently does not implement version chain compaction. All historical versions are retained indefinitely, causing unbounded memory growth on long-running databases with frequent updates.
 
 **Future work**: Implement `VACUUM` to remove versions older than a configurable retention period.
 

@@ -8,7 +8,7 @@ nav_nav_order: 1
 
 # Installation Guide
 
-This guide walks you through the process of installing OxiBase on different platforms and environments.
+This guide walks you through the process of installing Oxibase on different platforms and environments.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ This guide walks you through the process of installing OxiBase on different plat
 
 ### Method 1: Using Cargo (Recommended)
 
-The easiest way to install OxiBase is via Cargo:
+The easiest way to install Oxibase is via Cargo:
 
 ```bash
 cargo install oxibase
@@ -30,7 +30,7 @@ This command downloads the source code, compiles it, and installs the binary int
 
 ### Method 2: Add as Dependency
 
-To use OxiBase as a library in your Rust project:
+To use Oxibase as a library in your Rust project:
 
 ```toml
 [dependencies]
@@ -80,12 +80,12 @@ On Windows:
 
 1. Build from source as described above
 2. The binary will be at `.\target\release\oxibase.exe`
-3. Place the executable in a suitable location, such as `C:\Program Files\OxiBase`
+3. Place the executable in a suitable location, such as `C:\Program Files\Oxibase`
 4. Add the directory to your PATH through System Properties > Advanced > Environment Variables
 
-## Using OxiBase as a Library
+## Using Oxibase as a Library
 
-To use OxiBase in your Rust application:
+To use Oxibase in your Rust application:
 
 ```toml
 [dependencies]
@@ -119,25 +119,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-See the [API Reference](api-reference) for complete documentation of the OxiBase API.
+See the [API Reference](api-reference) for complete documentation of the Oxibase API.
 
 ## Verifying Installation
 
-To verify that OxiBase CLI was installed correctly:
+To verify that Oxibase CLI was installed correctly:
 
 ```bash
 oxibase --version
 ```
 
-This should display the version number of your OxiBase installation.
+This should display the version number of your Oxibase installation.
 
 ## Next Steps
 
-After installing OxiBase, you can:
+After installing Oxibase, you can:
 
 - Follow the [Quick Start Tutorial](quickstart) to create your first database using the CLI
 - Learn about [Connection Strings](connection-strings) to configure your database
-- Check the [API Reference](api-reference) for using OxiBase in your Rust applications
+- Check the [API Reference](api-reference) for using Oxibase in your Rust applications
 - Check the [SQL Commands](sql-commands) reference for working with data
 
 ## Troubleshooting

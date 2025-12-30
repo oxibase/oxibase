@@ -25,7 +25,7 @@ For information about how indexes are used during query execution, see [Query Ex
 
 ## Index Types Overview
 
-OxiBase provides three index types, each optimized for different query patterns and column characteristics:
+Oxibase provides three index types, each optimized for different query patterns and column characteristics:
 
 | Index Type | Implementation | Best For | Time Complexity | Supports Range | Supports ORDER BY |
 |------------|---------------|----------|-----------------|----------------|-------------------|

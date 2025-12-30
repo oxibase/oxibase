@@ -7,11 +7,11 @@ nav_order: 7
 
 # Persistence
 
-OxiBase provides durable storage through a combination of Write-Ahead Logging (WAL) and periodic snapshots. This architecture ensures data durability while maintaining high performance.
+Oxibase provides durable storage through a combination of Write-Ahead Logging (WAL) and periodic snapshots. This architecture ensures data durability while maintaining high performance.
 
 ## Overview
 
-OxiBase's persistence layer consists of two main components:
+Oxibase's persistence layer consists of two main components:
 
 1. **Write-Ahead Log (WAL)**: Records all changes before they're applied to memory
 2. **Snapshots**: Periodic full copies of the database state
@@ -227,7 +227,7 @@ The filename includes the Unix timestamp of creation for easy sorting.
 
 ## Recovery Process
 
-When opening a database, OxiBase performs recovery automatically:
+When opening a database, Oxibase performs recovery automatically:
 
 ### 2-Phase Recovery Algorithm
 
@@ -267,7 +267,7 @@ graph TD
 
 ### WAL Replay Process
 
-During WAL replay, OxiBase:
+During WAL replay, Oxibase:
 
 1. **Validates checksums** on each WAL entry for corruption detection
 2. **Applies operations** in strict commit order using LSN sequencing
@@ -504,7 +504,7 @@ A persistent database creates this directory structure:
 ### Corrupt WAL
 
 If WAL corruption is detected during recovery:
-- OxiBase attempts to recover up to the last valid entry
+- Oxibase attempts to recover up to the last valid entry
 - Corrupted entries at the end are discarded
 - A warning is logged
 

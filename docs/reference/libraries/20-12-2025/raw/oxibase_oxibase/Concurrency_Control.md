@@ -19,7 +19,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes OxiBase's Multi-Version Concurrency Control (MVCC) implementation, which provides transactional isolation without traditional locking. It covers the versioning strategy, visibility checking, conflict detection, and isolation levels.
+This document describes Oxibase's Multi-Version Concurrency Control (MVCC) implementation, which provides transactional isolation without traditional locking. It covers the versioning strategy, visibility checking, conflict detection, and isolation levels.
 
 For information about the overall MVCC architecture and storage layer components, see [MVCC Architecture](#4.1). For details on transaction APIs and user-facing behavior, see [Transactions](#2.2). For query optimization strategies that leverage MVCC, see [Query Optimization](#6.1).
 
@@ -27,7 +27,7 @@ For information about the overall MVCC architecture and storage layer components
 
 ## MVCC Core Concepts
 
-OxiBase implements snapshot isolation using version chains. Each row maintains a linked list of versions, with each version tagged by the transaction ID that created it and optionally marked with a deletion transaction ID.
+Oxibase implements snapshot isolation using version chains. Each row maintains a linked list of versions, with each version tagged by the transaction ID that created it and optionally marked with a deletion transaction ID.
 
 **Key Components:**
 
@@ -169,7 +169,7 @@ For `AS OF TIMESTAMP` queries, visibility is determined by `version.create_time 
 
 ## Isolation Levels
 
-OxiBase supports multiple isolation levels through the `IsolationLevel` enum:
+Oxibase supports multiple isolation levels through the `IsolationLevel` enum:
 
 | Isolation Level | Behavior | Write Conflict Detection |
 |----------------|----------|-------------------------|

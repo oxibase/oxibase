@@ -18,13 +18,13 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This page provides a high-level introduction to OxiBase: what it is, its design philosophy, current capabilities, and architectural vision. For detailed technical information about specific subsystems, see their dedicated pages: [Architecture Overview](#1.2) for system layers and components, [Getting Started](#1.1) for installation and basic usage, and the subsystem-specific pages for in-depth implementation details.
+This page provides a high-level introduction to Oxibase: what it is, its design philosophy, current capabilities, and architectural vision. For detailed technical information about specific subsystems, see their dedicated pages: [Architecture Overview](#1.2) for system layers and components, [Getting Started](#1.1) for installation and basic usage, and the subsystem-specific pages for in-depth implementation details.
 
 ---
 
-## What is OxiBase?
+## What is Oxibase?
 
-OxiBase is an embedded SQL database engine written entirely in Rust. It provides ACID-compliant transactional storage with multi-version concurrency control (MVCC), supporting both in-memory and persistent operation modes. The system offers a comprehensive SQL implementation including advanced features like window functions, recursive CTEs, and time-travel queries.
+Oxibase is an embedded SQL database engine written entirely in Rust. It provides ACID-compliant transactional storage with multi-version concurrency control (MVCC), supporting both in-memory and persistent operation modes. The system offers a comprehensive SQL implementation including advanced features like window functions, recursive CTEs, and time-travel queries.
 
 **Current State:** A fully functional embedded SQL library that can be used as a Rust dependency or standalone executable.
 
@@ -36,7 +36,7 @@ Sources: [README.md:20-80]()
 
 ## System Entry Points
 
-The following diagram shows the primary ways to interact with OxiBase and their corresponding code locations:
+The following diagram shows the primary ways to interact with Oxibase and their corresponding code locations:
 
 ```mermaid
 graph TB
@@ -231,7 +231,7 @@ Sources: [README.md:158-173](), [README.md:177-194](), [README.md:196-216](), [R
 
 ## Expression Evaluation Architecture
 
-OxiBase uses a bytecode-based expression evaluator for all SQL expressions (WHERE clauses, SELECT projections, computed columns):
+Oxibase uses a bytecode-based expression evaluator for all SQL expressions (WHERE clauses, SELECT projections, computed columns):
 
 ```mermaid
 graph LR
@@ -272,7 +272,7 @@ Sources: [README.md:324-346]()
 
 ### Time-Travel Queries
 
-OxiBase's MVCC implementation enables querying historical data at any point in time:
+Oxibase's MVCC implementation enables querying historical data at any point in time:
 
 ```sql
 -- Query data as it existed at a specific timestamp
@@ -319,7 +319,7 @@ Sources: [README.md:296-311]()
 
 ### Production-Ready Features
 
-OxiBase currently provides a complete embedded SQL database suitable for:
+Oxibase currently provides a complete embedded SQL database suitable for:
 - **Single-node applications** requiring ACID transactions
 - **Analytical workloads** with complex queries (CTEs, window functions)
 - **Time-series data** with historical query capabilities
@@ -396,7 +396,7 @@ This wiki is organized into the following main sections:
 - **[Storage Engine](#4)**: MVCC, indexes, persistence, and recovery
 - **[SQL Feature Reference](#5)**: Comprehensive SQL syntax and function reference
 - **[Advanced Topics](#6)**: Optimization strategies, concurrency control, future architecture
-- **[Development Guide](#7)**: Building, testing, and contributing to OxiBase
+- **[Development Guide](#7)**: Building, testing, and contributing to Oxibase
 
 For new users, start with [Getting Started](#1.1) for installation and basic usage examples.
 

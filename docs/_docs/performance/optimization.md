@@ -5,9 +5,9 @@ parent: Performance
 nav_order: 1
 ---
 
-# Performance Optimization in OxiBase
+# Performance Optimization in Oxibase
 
-This document provides guidelines and best practices for optimizing performance in OxiBase, including database design, query optimization, and system configuration.
+This document provides guidelines and best practices for optimizing performance in Oxibase, including database design, query optimization, and system configuration.
 
 ## Database Design Optimization
 
@@ -39,7 +39,7 @@ CREATE INDEX idx_product_category_price ON products (category_id, price);
 
 ### Recent Performance Improvements
 
-OxiBase includes significant performance optimizations:
+Oxibase includes significant performance optimizations:
 
 - **Hash-Based IN Subqueries** - Up to 2048x faster for large IN lists
 - **Array-Based Row Storage** - Eliminated map allocations throughout query execution
@@ -108,7 +108,7 @@ for id in 1..=100 {
 
 ## Parallel Execution
 
-OxiBase's parallel execution engine processes data using Rayon's work-stealing scheduler:
+Oxibase's parallel execution engine processes data using Rayon's work-stealing scheduler:
 
 - **Automatic Parallelization** - Operations exceeding thresholds are automatically parallelized
 - **Work-Stealing** - Optimal load balancing across CPU cores
@@ -149,7 +149,7 @@ INSERT INTO products (name, price, category_id) VALUES
 
 ## Performance Monitoring
 
-OxiBase provides several performance monitoring features:
+Oxibase provides several performance monitoring features:
 
 - **EXPLAIN** - Shows the query execution plan
 - **EXPLAIN ANALYZE** - Shows the plan with actual runtime statistics
@@ -168,11 +168,11 @@ See [EXPLAIN](../sql-features/explain) for detailed documentation.
 
 ## Implementation-Specific Optimizations
 
-OxiBase includes several specialized optimizations:
+Oxibase includes several specialized optimizations:
 
 ### Parallel Processing
 
-OxiBase uses Rayon for parallel query execution:
+Oxibase uses Rayon for parallel query execution:
 
 - **Parallel Filtering** - Predicate evaluation across multiple threads
 - **Parallel Aggregation** - Concurrent aggregation operations with DashMap
@@ -180,7 +180,7 @@ OxiBase uses Rayon for parallel query execution:
 
 ### Custom Data Structures
 
-OxiBase uses specialized data structures for better performance:
+Oxibase uses specialized data structures for better performance:
 
 - **DashMap** - Concurrent hash tables for parallel operations
 - **Efficient Index Structures** - B-tree, Hash, and Bitmap indexes
@@ -190,7 +190,7 @@ OxiBase uses specialized data structures for better performance:
 
 ### Expression Pushdown
 
-OxiBase pushes down expressions to minimize data processing:
+Oxibase pushes down expressions to minimize data processing:
 
 ```sql
 -- Filter and projection will be pushed down to the storage layer
@@ -199,7 +199,7 @@ SELECT name, price FROM products WHERE price > 100;
 
 ### Join Algorithms
 
-OxiBase selects among several join algorithms:
+Oxibase selects among several join algorithms:
 
 - **Hash Join** - For equality joins with large tables
 - **Merge Join** - For pre-sorted data
@@ -207,7 +207,7 @@ OxiBase selects among several join algorithms:
 
 ### Parallel Execution
 
-OxiBase can execute some operations in parallel:
+Oxibase can execute some operations in parallel:
 
 - **Parallel scans** - Multiple segments scanned concurrently
 - **Parallel aggregations** - Divided work for faster aggregations
@@ -215,7 +215,7 @@ OxiBase can execute some operations in parallel:
 
 ## CTE and Subquery Optimization
 
-OxiBase includes advanced optimizations for CTEs and subqueries:
+Oxibase includes advanced optimizations for CTEs and subqueries:
 
 ### Common Table Expressions (CTEs)
 

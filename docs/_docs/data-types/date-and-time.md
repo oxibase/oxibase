@@ -7,11 +7,11 @@ nav_order: 2
 
 # Date and Time Handling
 
-This document explains how to work with dates and times in OxiBase based on the implementation and test files.
+This document explains how to work with dates and times in Oxibase based on the implementation and test files.
 
 ## TIMESTAMP Data Type
 
-OxiBase uses the `TIMESTAMP` data type for storing date and time values. When defining a table schema, you can use this type for any columns that need to store temporal data:
+Oxibase uses the `TIMESTAMP` data type for storing date and time values. When defining a table schema, you can use this type for any columns that need to store temporal data:
 
 ```sql
 CREATE TABLE events (
@@ -24,7 +24,7 @@ CREATE TABLE events (
 
 ## Supported Date and Time Formats
 
-Based on the implementation, OxiBase recognizes various date and time formats:
+Based on the implementation, Oxibase recognizes various date and time formats:
 
 ### ISO 8601 Format
 ```
@@ -116,7 +116,7 @@ The interval parameter accepts duration strings like:
 
 ## Date and Time Arithmetic with INTERVAL
 
-OxiBase supports PostgreSQL-style INTERVAL literals for date and time arithmetic:
+Oxibase supports PostgreSQL-style INTERVAL literals for date and time arithmetic:
 
 ### INTERVAL Syntax
 
@@ -216,7 +216,7 @@ ORDER BY time_bucket;
 
 ## Time Zone Handling
 
-OxiBase normalizes timestamps to UTC internally for consistent storage and comparison. When you provide a timestamp without a timezone specification, it is interpreted as being in UTC.
+Oxibase normalizes timestamps to UTC internally for consistent storage and comparison. When you provide a timestamp without a timezone specification, it is interpreted as being in UTC.
 
 ```sql
 -- These are equivalent
@@ -255,7 +255,7 @@ SELECT * FROM events WHERE event_date >= '2023-05-01';
 
 ## Limitations
 
-Based on the implementation, OxiBase has the following limitations for date and time handling:
+Based on the implementation, Oxibase has the following limitations for date and time handling:
 
 1. **Limited Time Zone Support**: While timestamps are normalized to UTC internally, there are no explicit functions for time zone conversion.
 

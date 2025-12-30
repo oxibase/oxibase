@@ -5,11 +5,11 @@ parent: Performance
 nav_order: 5
 ---
 
-# Parallel Execution in OxiBase
+# Parallel Execution in Oxibase
 
 ## Overview
 
-OxiBase's query execution engine is designed to accelerate SQL query processing by operating on data in parallel batches, allowing for better CPU utilization across multiple cores. This document explains the architecture and components of the parallel execution system.
+Oxibase's query execution engine is designed to accelerate SQL query processing by operating on data in parallel batches, allowing for better CPU utilization across multiple cores. This document explains the architecture and components of the parallel execution system.
 
 ## Key Concepts
 
@@ -24,7 +24,7 @@ Key characteristics:
 
 ### Parallelization Thresholds
 
-OxiBase automatically parallelizes operations based on data size:
+Oxibase automatically parallelizes operations based on data size:
 
 | Operation | Threshold | Description |
 |-----------|-----------|-------------|
@@ -113,7 +113,7 @@ Parallel execution provides the greatest benefit for:
 
 ## Best Practices
 
-For optimal performance with OxiBase's parallel execution:
+For optimal performance with Oxibase's parallel execution:
 
 1. **Ensure sufficient data**: Parallel overhead only pays off for larger datasets
 2. **Use appropriate indexes**: Even with parallelism, indexes are still important
@@ -124,7 +124,7 @@ For optimal performance with OxiBase's parallel execution:
 
 ### Rayon Integration
 
-OxiBase uses Rayon for parallel execution:
+Oxibase uses Rayon for parallel execution:
 
 - Work-stealing scheduler for optimal load balancing
 - Automatic thread pool management

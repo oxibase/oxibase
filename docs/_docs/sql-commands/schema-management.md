@@ -1,17 +1,17 @@
 ---
 layout: default
-title: Schema Management in OxiBase
+title: Schema Management in Oxibase
 parent: SQL Commands
 nav_order: 2
 ---
 
-# Schema Management in OxiBase
+# Schema Management in Oxibase
 
-This document covers OxiBase's schema management capabilities, including table creation, alteration, and handling of primary keys, indexes, and data types.
+This document covers Oxibase's schema management capabilities, including table creation, alteration, and handling of primary keys, indexes, and data types.
 
 ## Tables and Schemas
 
-OxiBase provides standard SQL DDL (Data Definition Language) statements for managing database schemas.
+Oxibase provides standard SQL DDL (Data Definition Language) statements for managing database schemas.
 
 ### Creating Tables
 
@@ -38,7 +38,7 @@ When creating tables, you can specify the following constraints:
 
 ## Database Schemas
 
-OxiBase supports database schemas as namespaces to organize database objects such as tables, views, and indexes. This allows for logical grouping and isolation of related database entities.
+Oxibase supports database schemas as namespaces to organize database objects such as tables, views, and indexes. This allows for logical grouping and isolation of related database entities.
 
 ### Creating Schemas
 
@@ -141,7 +141,7 @@ ALTER TABLE users RENAME TO system_users;
 
 ## Data Types
 
-OxiBase supports the following data types:
+Oxibase supports the following data types:
 
 ### Numeric Types
 - **INTEGER** - Signed integer number
@@ -181,7 +181,7 @@ CREATE TABLE order_items (
 
 ## Indexes
 
-OxiBase provides several index types for optimizing queries.
+Oxibase provides several index types for optimizing queries.
 
 ### Creating Indexes
 
@@ -198,7 +198,7 @@ CREATE INDEX idx_name_created ON products (name, created_at);
 
 ### Index Types
 
-OxiBase supports multiple index implementations:
+Oxibase supports multiple index implementations:
 
 1. **B-tree Indexes** - For numeric and timestamp columns, supporting equality and range queries
 2. **Hash Indexes** - For text and JSON columns, optimized for equality lookups
@@ -213,7 +213,7 @@ DROP INDEX idx_user_email;
 
 ## Schema Information
 
-OxiBase provides system tables and commands to query schema information:
+Oxibase provides system tables and commands to query schema information:
 
 ### SHOW Commands
 
@@ -230,7 +230,7 @@ SHOW INDEXES FROM users;
 
 ## Implementation Details
 
-Under the hood, OxiBase's schema management is implemented with the following components:
+Under the hood, Oxibase's schema management is implemented with the following components:
 
 - Table metadata is stored in a structured format that tracks column definitions, constraints, and indexes
 - Schema changes are performed atomically, ensuring consistency

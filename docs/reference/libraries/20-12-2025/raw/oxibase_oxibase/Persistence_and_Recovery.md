@@ -16,13 +16,13 @@ The following files were used as context for generating this wiki page:
 
 
 
-This document describes OxiBase's durability guarantees and crash recovery mechanisms. The system uses a combination of Write-Ahead Logging (WAL) and periodic snapshots to ensure data is never lost after a transaction commits. Recovery uses a two-phase algorithm to guarantee that only committed transactions are visible after a crash.
+This document describes Oxibase's durability guarantees and crash recovery mechanisms. The system uses a combination of Write-Ahead Logging (WAL) and periodic snapshots to ensure data is never lost after a transaction commits. Recovery uses a two-phase algorithm to guarantee that only committed transactions are visible after a crash.
 
 For transaction semantics and MVCC implementation details, see [MVCC Architecture](#4.1). For the `MVCCEngine` API and table management, see [Version Store and Tables](#4.2).
 
 ## System Overview
 
-OxiBase achieves durability through three mechanisms:
+Oxibase achieves durability through three mechanisms:
 
 | Component | Purpose | Format |
 |-----------|---------|--------|
@@ -259,7 +259,7 @@ graph LR
 
 ### Two-Phase Recovery Algorithm
 
-OxiBase uses a two-phase recovery algorithm to ensure only committed transactions are visible after a crash. This is critical because a crash may occur after some WAL entries are written but before the corresponding `Commit` entry.
+Oxibase uses a two-phase recovery algorithm to ensure only committed transactions are visible after a crash. This is critical because a crash may occur after some WAL entries are written but before the corresponding `Commit` entry.
 
 ```mermaid
 graph TB

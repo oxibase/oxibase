@@ -7,11 +7,11 @@ nav_order: 2
 
 # Storage Engine
 
-This document provides a detailed overview of OxiBase's storage engine, including its design principles, components, and how data is stored and retrieved.
+This document provides a detailed overview of Oxibase's storage engine, including its design principles, components, and how data is stored and retrieved.
 
 ## Storage Engine Design
 
-OxiBase's storage engine is designed with the following principles:
+Oxibase's storage engine is designed with the following principles:
 
 - **Memory-optimized** - Prioritizes in-memory performance with optional persistence
 - **MVCC-based** - Uses multi-version concurrency control for transaction isolation
@@ -134,7 +134,7 @@ sequenceDiagram
 
 ### Table Structure
 
-Tables in OxiBase are composed of:
+Tables in Oxibase are composed of:
 
 - **Metadata** - Schema information, column definitions, and indexes
 - **Row Data** - The primary data storage, organized by row
@@ -144,7 +144,7 @@ Tables in OxiBase are composed of:
 
 ### Data Types
 
-OxiBase supports a variety of data types, each with optimized storage:
+Oxibase supports a variety of data types, each with optimized storage:
 
 - **INTEGER** - 64-bit signed integers
 - **FLOAT** - 64-bit floating-point numbers
@@ -156,7 +156,7 @@ OxiBase supports a variety of data types, each with optimized storage:
 
 ### Version Management
 
-OxiBase tracks different versions of data for transaction isolation:
+Oxibase tracks different versions of data for transaction isolation:
 
 - Each change creates a new version rather than overwriting
 - Versions are associated with transaction IDs
@@ -197,7 +197,7 @@ For more details, see the [MVCC Implementation](mvcc-implementation) and [Transa
 
 ### Version Chain Management
 
-OxiBase implements MVCC by maintaining linked version chains for each row. Each `VersionChainEntry` contains a `RowVersion` and an `Arc` pointer to the previous version, enabling O(1) chain cloning for snapshot isolation.
+Oxibase implements MVCC by maintaining linked version chains for each row. Each `VersionChainEntry` contains a `RowVersion` and an `Arc` pointer to the previous version, enabling O(1) chain cloning for snapshot isolation.
 
 ```mermaid
 graph LR
@@ -259,7 +259,7 @@ The `TransactionVersionStore` buffers uncommitted changes within a transaction, 
 
 ### Index Architecture
 
-OxiBase provides three index types, each optimized for different query patterns. The `MVCCTable` automatically selects the optimal index type based on column data types.
+Oxibase provides three index types, each optimized for different query patterns. The `MVCCTable` automatically selects the optimal index type based on column data types.
 
 ```mermaid
 graph TB

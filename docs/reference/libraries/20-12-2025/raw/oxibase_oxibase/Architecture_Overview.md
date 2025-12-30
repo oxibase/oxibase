@@ -22,13 +22,13 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes the high-level architecture of OxiBase: its layered structure, major components, module organization, and how data flows through the system during query execution. It provides a conceptual map of the codebase to help developers understand where different functionality lives and how the pieces fit together.
+This document describes the high-level architecture of Oxibase: its layered structure, major components, module organization, and how data flows through the system during query execution. It provides a conceptual map of the codebase to help developers understand where different functionality lives and how the pieces fit together.
 
-For details on using OxiBase as a library or CLI tool, see [Getting Started](#1.1). For implementation details of specific subsystems, see the Query Execution System ([Section 3](#3)), Storage Engine ([Section 4](#4)), and SQL Feature Reference ([Section 5](#5)).
+For details on using Oxibase as a library or CLI tool, see [Getting Started](#1.1). For implementation details of specific subsystems, see the Query Execution System ([Section 3](#3)), Storage Engine ([Section 4](#4)), and SQL Feature Reference ([Section 5](#5)).
 
 ## Three-Tier Layered Architecture
 
-OxiBase follows a classic three-tier database architecture with clear separation of concerns:
+Oxibase follows a classic three-tier database architecture with clear separation of concerns:
 
 ```mermaid
 graph TB
@@ -79,7 +79,7 @@ graph TB
 
 ### API Layer
 
-The API layer provides the user-facing interface for interacting with OxiBase. It handles connection management, transaction lifecycle, and result streaming.
+The API layer provides the user-facing interface for interacting with Oxibase. It handles connection management, transaction lifecycle, and result streaming.
 
 **Key Components:**
 - `Database` - Entry point for opening databases and executing queries ([api/database.rs]())
@@ -260,7 +260,7 @@ flowchart TD
 
 ## Core Type System
 
-OxiBase uses a strongly-typed value system with runtime type checking:
+Oxibase uses a strongly-typed value system with runtime type checking:
 
 ```mermaid
 graph TB
@@ -382,7 +382,7 @@ Each table can have multiple indexes of different types optimized for different 
 
 ## Expression Evaluation System
 
-OxiBase uses a compile-once, execute-many bytecode VM for expression evaluation:
+Oxibase uses a compile-once, execute-many bytecode VM for expression evaluation:
 
 ```mermaid
 graph LR
@@ -455,7 +455,7 @@ The VM executes a stack-based instruction set defined in [executor/expression/in
 
 ## Concurrency Model
 
-OxiBase uses multiple strategies for concurrent execution:
+Oxibase uses multiple strategies for concurrent execution:
 
 ```mermaid
 graph TB
@@ -498,7 +498,7 @@ graph TB
 
 **Isolation Levels:**
 
-OxiBase supports two isolation levels defined in [core/types.rs:1-100]():
+Oxibase supports two isolation levels defined in [core/types.rs:1-100]():
 
 1. **Read Committed**: Each statement sees data committed before it started. Implemented via snapshot-at-statement-start in [storage/mvcc/visibility.rs:1-200]().
 2. **Snapshot Isolation**: Entire transaction sees consistent snapshot. Prevents phantom reads but allows write skew. Implemented via snapshot-at-transaction-start in [storage/mvcc/transaction.rs:1-500]().

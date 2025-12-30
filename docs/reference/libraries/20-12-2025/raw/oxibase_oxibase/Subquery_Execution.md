@@ -14,13 +14,13 @@ The following files were used as context for generating this wiki page:
 
 
 
-This document describes how OxiBase executes subqueries within SQL statements. A subquery is a SELECT statement nested within another query, appearing in expressions, WHERE clauses, or FROM clauses. This page covers the execution strategies, optimizations, and transformations applied to subqueries to achieve efficient evaluation.
+This document describes how Oxibase executes subqueries within SQL statements. A subquery is a SELECT statement nested within another query, appearing in expressions, WHERE clauses, or FROM clauses. This page covers the execution strategies, optimizations, and transformations applied to subqueries to achieve efficient evaluation.
 
 For information about the overall query execution pipeline, see [Query Execution Pipeline](#3.1). For details on expression evaluation, see [Expression Evaluation](#3.2). For CTE (WITH clause) execution, see [Common Table Expressions](#3.6).
 
 ## Subquery Types
 
-OxiBase supports four primary types of subqueries, each with different execution characteristics:
+Oxibase supports four primary types of subqueries, each with different execution characteristics:
 
 | Subquery Type | Returns | Example | Use Case |
 |--------------|---------|---------|----------|
@@ -99,7 +99,7 @@ SELECT * FROM products WHERE price < ANY (SELECT price FROM premium_products)
 SELECT * FROM employees WHERE salary > ALL (SELECT salary FROM interns)
 ```
 
-**Optimization:** OxiBase converts these to simpler comparisons using MIN/MAX:
+**Optimization:** Oxibase converts these to simpler comparisons using MIN/MAX:
 - `x > ALL (values)` → `x > MAX(values)`
 - `x < ANY (values)` → `x < MAX(values)`
 - `x = ANY (values)` → `x IN (values)`
@@ -170,7 +170,7 @@ graph TB
 
 ## Execution Strategies
 
-OxiBase uses multiple execution strategies for subqueries, selecting the optimal approach based on query characteristics.
+Oxibase uses multiple execution strategies for subqueries, selecting the optimal approach based on query characteristics.
 
 ### Strategy 1: Direct Execution
 
@@ -196,7 +196,7 @@ graph LR
 
 ### Strategy 2: Index-Nested-Loop for EXISTS
 
-For correlated EXISTS with indexed correlation columns, OxiBase probes the index directly instead of executing a full query.
+For correlated EXISTS with indexed correlation columns, Oxibase probes the index directly instead of executing a full query.
 
 ```mermaid
 graph TB
@@ -236,7 +236,7 @@ graph TB
 
 ### Strategy 3: Semi-Join Optimization for EXISTS
 
-For correlated EXISTS that can be decorrelated, OxiBase transforms the subquery into a hash set lookup.
+For correlated EXISTS that can be decorrelated, Oxibase transforms the subquery into a hash set lookup.
 
 **Transformation example:**
 ```sql
@@ -326,13 +326,13 @@ graph LR
     CheckCache -->|"hit"| TransformToInHashSet
 ```
 
-**Key implementation note:** The query uses `distinct: false` because collecting into `AHashSet` provides deduplication. Using DISTINCT in the query is slower in OxiBase due to additional hashing overhead.
+**Key implementation note:** The query uses `distinct: false` because collecting into `AHashSet` provides deduplication. Using DISTINCT in the query is slower in Oxibase due to additional hashing overhead.
 
 **Sources:** [src/executor/subquery.rs:2082-2169]()
 
 ## Caching Architecture
 
-OxiBase employs aggressive caching to avoid redundant subquery execution. All caches are scoped to a single top-level query execution and cleared at the start of each new query.
+Oxibase employs aggressive caching to avoid redundant subquery execution. All caches are scoped to a single top-level query execution and cleared at the start of each new query.
 
 ### Cache Types and Keys
 

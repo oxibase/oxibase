@@ -7,7 +7,7 @@ nav_order: 10
 
 # Parameter Binding
 
-OxiBase supports parameterized queries using positional parameters (`$1`, `$2`, etc.) to prevent SQL injection and improve performance through query plan reuse.
+Oxibase supports parameterized queries using positional parameters (`$1`, `$2`, etc.) to prevent SQL injection and improve performance through query plan reuse.
 
 ## Syntax
 
@@ -70,7 +70,7 @@ db.execute("INSERT INTO users VALUES ($1, $2, $3)", params![3, name, age])?;
 
 ### Named Parameters
 
-OxiBase also supports named parameters with the `:name` syntax:
+Oxibase also supports named parameters with the `:name` syntax:
 
 ```rust
 use oxibase::{Database, named_params};

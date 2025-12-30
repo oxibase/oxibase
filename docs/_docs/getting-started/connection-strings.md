@@ -7,11 +7,11 @@ nav_order: 3
 
 # Connection String Reference
 
-This document provides information about OxiBase connection string formats and their usage.
+This document provides information about Oxibase connection string formats and their usage.
 
 ## Connection String Basics
 
-OxiBase connection strings follow a URL-like format:
+Oxibase connection strings follow a URL-like format:
 
 ```
 scheme://[path][?options]
@@ -24,7 +24,7 @@ Where:
 
 ## Storage Modes
 
-OxiBase supports two storage modes:
+Oxibase supports two storage modes:
 
 ### In-Memory Mode (memory://)
 

@@ -7,7 +7,7 @@ nav_order: 2
 
 # Query Optimizer
 
-OxiBase includes a sophisticated cost-based query optimizer that analyzes queries and chooses efficient execution plans. The optimizer uses table statistics, index information, and cost models to make intelligent decisions.
+Oxibase includes a sophisticated cost-based query optimizer that analyzes queries and chooses efficient execution plans. The optimizer uses table statistics, index information, and cost models to make intelligent decisions.
 
 ## Overview
 
@@ -208,7 +208,7 @@ WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id);
 
 ## Adaptive Query Execution
 
-OxiBase implements Adaptive Query Execution (AQE), which can adjust the execution plan at runtime based on actual data characteristics.
+Oxibase implements Adaptive Query Execution (AQE), which can adjust the execution plan at runtime based on actual data characteristics.
 
 ### How AQE Works
 

@@ -7,7 +7,7 @@ nav_order: 6
 
 # Expression Pushdown
 
-This document explains OxiBase's expression pushdown optimization, which moves filtering operations closer to the data to improve query performance.
+This document explains Oxibase's expression pushdown optimization, which moves filtering operations closer to the data to improve query performance.
 
 ## What is Expression Pushdown?
 
@@ -31,11 +31,11 @@ Depending on the query, expression pushdown can provide:
 - 2-10x improvement in query execution time
 - Significant memory usage reduction
 
-## How Expression Pushdown Works in OxiBase
+## How Expression Pushdown Works in Oxibase
 
 ### Pushdown Levels
 
-OxiBase implements expression pushdown at multiple levels:
+Oxibase implements expression pushdown at multiple levels:
 
 1. **Storage Level Pushdown** - Expressions pushed directly to storage
 2. **Index Level Pushdown** - Expressions leveraging indexes (B-tree, Hash, Bitmap)
@@ -57,7 +57,7 @@ When processing a query with filtering conditions:
 
 ## Expression Types
 
-Not all expressions can be pushed down. OxiBase categorizes expressions by pushdown eligibility:
+Not all expressions can be pushed down. Oxibase categorizes expressions by pushdown eligibility:
 
 ### Fully Pushable Expressions
 
@@ -121,7 +121,7 @@ Expressions are translated from SQL syntax to storage-level predicates:
 
 ### Expression Evaluation System
 
-OxiBase uses a compile-once, execute-many bytecode VM for expression evaluation:
+Oxibase uses a compile-once, execute-many bytecode VM for expression evaluation:
 
 ```mermaid
 graph LR
@@ -188,7 +188,7 @@ graph LR
 
 ### Specialized Expression Types
 
-OxiBase implements specialized expression types for efficient pushdown:
+Oxibase implements specialized expression types for efficient pushdown:
 
 - **SimpleExpression** - Basic comparison operations
 - **BetweenExpression** - Range checks
@@ -202,7 +202,7 @@ These expression types are implemented in `src/storage/expression/`.
 
 ### Storage-Level Implementation
 
-At the storage level, OxiBase implements optimized filtering:
+At the storage level, Oxibase implements optimized filtering:
 
 - **Index-Based Filtering** - Filter operations using B-tree, Hash, and Bitmap indexes
 - **Parallel Evaluation** - Multi-threaded predicate evaluation using Rayon
@@ -213,7 +213,7 @@ At the storage level, OxiBase implements optimized filtering:
 
 ### Filter Pushdown Levels
 
-OxiBase implements pushdown at multiple architectural levels:
+Oxibase implements pushdown at multiple architectural levels:
 
 1. **Storage Level Pushdown** - Expressions pushed directly to storage with MVCC visibility checks
 2. **Index Level Pushdown** - B-tree, Hash, and Bitmap indexes filter data during index scans
@@ -401,7 +401,7 @@ WHERE LOWER(name) LIKE '%organic%';
 
 ## Implementation Details
 
-OxiBase's expression pushdown is implemented in several components:
+Oxibase's expression pushdown is implemented in several components:
 
 - **src/executor/query.rs** - High-level pushdown decisions
 - **src/executor/planner.rs** - Query planning with pushdown
@@ -535,7 +535,7 @@ To maximize the benefits of expression pushdown:
 
 ### Custom Expressions
 
-OxiBase allows for specialized expression types:
+Oxibase allows for specialized expression types:
 
 ```sql
 -- Range expressions are highly optimized

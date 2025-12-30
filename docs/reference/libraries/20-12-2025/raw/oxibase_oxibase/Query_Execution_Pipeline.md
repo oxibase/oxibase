@@ -17,7 +17,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes the core SELECT query execution pipeline in OxiBase, covering how SELECT statements are processed from parsed AST to final results. It focuses on the table scanning strategies, optimization paths, and data flow through the execution layers.
+This document describes the core SELECT query execution pipeline in Oxibase, covering how SELECT statements are processed from parsed AST to final results. It focuses on the table scanning strategies, optimization paths, and data flow through the execution layers.
 
 For information about:
 - Expression evaluation (WHERE clauses, function calls): see [Expression Evaluation](#3.2)

@@ -18,7 +18,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-The Query Execution System is the core of OxiBase's query processing pipeline. This document provides an overview of how SQL queries are parsed, analyzed, optimized, and executed. It covers the high-level architecture, execution flow, feature detection, and result processing.
+The Query Execution System is the core of Oxibase's query processing pipeline. This document provides an overview of how SQL queries are parsed, analyzed, optimized, and executed. It covers the high-level architecture, execution flow, feature detection, and result processing.
 
 For detailed information on specific subsystems:
 - Core SELECT execution, table scans, joins, and optimization strategies: see [Query Execution Pipeline](#3.1)

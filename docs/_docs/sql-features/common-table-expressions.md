@@ -126,7 +126,7 @@ SELECT * FROM top_customers;
 
 ## Recursive CTEs
 
-OxiBase supports recursive CTEs using the `WITH RECURSIVE` syntax. Recursive CTEs are useful for hierarchical data, generating sequences, and graph traversal.
+Oxibase supports recursive CTEs using the `WITH RECURSIVE` syntax. Recursive CTEs are useful for hierarchical data, generating sequences, and graph traversal.
 
 ### Basic Syntax
 
@@ -210,7 +210,7 @@ SELECT n, fib_n as fibonacci FROM fib;
 
 ## Performance Considerations
 
-1. **Materialization**: In OxiBase, CTEs are evaluated once and their results are stored in memory for the duration of the query
+1. **Materialization**: In Oxibase, CTEs are evaluated once and their results are stored in memory for the duration of the query
 2. **No Indexes**: CTE results don't have indexes, so filtering should be done in the CTE definition when possible
 3. **Memory Usage**: Large CTEs consume memory, so be mindful of the result set size
 
@@ -287,7 +287,7 @@ ORDER BY os.order_count DESC;
 
 ## Full CTE Support
 
-OxiBase provides comprehensive support for Common Table Expressions (CTEs) with the following features:
+Oxibase provides comprehensive support for Common Table Expressions (CTEs) with the following features:
 
 ### Supported Features
 - Single and multiple CTEs in SELECT statements

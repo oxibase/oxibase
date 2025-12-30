@@ -7,7 +7,7 @@ nav_order: 1
 
 # SQL Commands
 
-This document provides a comprehensive reference to SQL commands supported by OxiBase.
+This document provides a comprehensive reference to SQL commands supported by Oxibase.
 
 ## Data Manipulation Language (DML)
 
@@ -72,7 +72,7 @@ HAVING COUNT(*) > 5;
 
 #### JOIN Operations
 
-OxiBase supports all standard JOIN types:
+Oxibase supports all standard JOIN types:
 
 ```sql
 -- INNER JOIN
@@ -552,7 +552,7 @@ ON table_name (column_name [, column_name...]);
 
 #### Index Type Selection
 
-OxiBase automatically selects the optimal index type based on column data type:
+Oxibase automatically selects the optimal index type based on column data type:
 
 | Data Type | Index Type | Best For |
 |-----------|------------|----------|
@@ -763,7 +763,7 @@ ROW_NUMBER WINDOW
 
 ### INFORMATION_SCHEMA
 
-OxiBase provides standard SQL metadata access through `information_schema` virtual tables. These tables behave like regular SQL tables and support full query capabilities including WHERE, ORDER BY, LIMIT, and joins.
+Oxibase provides standard SQL metadata access through `information_schema` virtual tables. These tables behave like regular SQL tables and support full query capabilities including WHERE, ORDER BY, LIMIT, and joins.
 
 #### Available Tables
 
@@ -997,7 +997,7 @@ See [Parameter Binding](../sql-features/parameter-binding) for detailed document
 
 ## Notes
 
-1. **Transactions**: OxiBase provides MVCC-based transactions for concurrent operations
+1. **Transactions**: Oxibase provides MVCC-based transactions for concurrent operations
 2. **NULL Handling**: Follows standard SQL NULL semantics; use IS NULL or IS NOT NULL for testing
 3. **Type Conversion**: Explicit CAST is recommended for clarity
 4. **Case Sensitivity**: SQL keywords are case-insensitive; identifiers are case-sensitive

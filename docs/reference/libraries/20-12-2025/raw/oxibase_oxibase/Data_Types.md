@@ -21,7 +21,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes the six data types supported by OxiBase and their implementation: `INTEGER`, `FLOAT`, `TEXT`, `BOOLEAN`, `TIMESTAMP`, and `JSON`. It covers the runtime representation (`Value` enum), schema-level representation (`DataType` enum), storage encoding, NULL handling, and type conversion rules.
+This document describes the six data types supported by Oxibase and their implementation: `INTEGER`, `FLOAT`, `TEXT`, `BOOLEAN`, `TIMESTAMP`, and `JSON`. It covers the runtime representation (`Value` enum), schema-level representation (`DataType` enum), storage encoding, NULL handling, and type conversion rules.
 
 For information about built-in functions that operate on these types, see [Built-in Functions](#5.2). For DDL operations that define table schemas with these types, see [DDL Operations](#5.3).
 
@@ -29,7 +29,7 @@ For information about built-in functions that operate on these types, see [Built
 
 ## Supported Data Types
 
-OxiBase supports six fundamental data types that cover the majority of use cases in analytical and transactional workloads:
+Oxibase supports six fundamental data types that cover the majority of use cases in analytical and transactional workloads:
 
 | Type | Storage | Size | Description | Example Literals |
 |------|---------|------|-------------|------------------|
@@ -109,7 +109,7 @@ graph TB
 
 ## The `Value` Enum: Runtime Representation
 
-The `Value` enum is the core runtime type that represents all data values in OxiBase. It is defined in the `core` module and used throughout the execution and storage layers.
+The `Value` enum is the core runtime type that represents all data values in Oxibase. It is defined in the `core` module and used throughout the execution and storage layers.
 
 ### Value Variants
 
@@ -233,7 +233,7 @@ The `DataType` enum is used in:
 
 ## NULL Handling
 
-NULL is a first-class value in OxiBase, represented as `Value::Null`. It follows standard SQL semantics:
+NULL is a first-class value in Oxibase, represented as `Value::Null`. It follows standard SQL semantics:
 
 ### NULL Comparison Rules
 
@@ -270,7 +270,7 @@ NULL is a first-class value in OxiBase, represented as `Value::Null`. It follows
 
 ## Type Conversions and Casting
 
-OxiBase supports explicit type conversion using the `CAST` function and implicit conversions in certain contexts.
+Oxibase supports explicit type conversion using the `CAST` function and implicit conversions in certain contexts.
 
 ```mermaid
 graph TD
@@ -577,7 +577,7 @@ The `Value` enum is optimized for 64-bit architectures:
 
 ## Summary
 
-OxiBase's type system provides:
+Oxibase's type system provides:
 
 - **Six fundamental types** covering analytical and transactional workloads
 - **NULL-aware semantics** following SQL standards

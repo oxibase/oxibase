@@ -6,7 +6,7 @@ nav_exclude: true
 
 <div style="text-align: center;"><img src="assets/img/logo.svg" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
 
-OxiBase is a relation database operating system (DBOS) that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer.
+Oxibase is a relation database operating system (DBOS) that provides full ACID transactions with MVCC, a sophisticated cost-based query optimizer.
 
 - **Multiple Index Types**: B-tree, Hash, and Bitmap indexes with automatic type selection
 - **Multi-Column Indexes**: Composite indexes for complex query patterns
@@ -18,11 +18,11 @@ OxiBase is a relation database operating system (DBOS) that provides full ACID t
 
 ## Roadmap Overview
 
-OxiBase is evolving into a distributed, autonomous database system that bridges embedded logic with global resilience. The roadmap outlines the journey from a single-node, scriptable database to a self-managing, AI-enhanced platform.
+Oxibase is evolving into a distributed, autonomous database system that bridges embedded logic with global resilience. The roadmap outlines the journey from a single-node, scriptable database to a self-managing, AI-enhanced platform.
 
 **Phase 1: Foundation** - Establishing core capabilities through parallel efforts: embedded scripting languages for stored functions and triggers, declarative schema migrations, TUI manager, web server exposure for REST/GraphQL, Postgres wire protocol server, deterministic simulator, and unikernel compilation. These prepare for horizontal scaling.
 
-**Phase 2: Single Node Efficiency** - Unifying operational needs into OxiBase itself with self-monitoring, multiple storage backends, data lifecycle management, and separation of compute & storage.
+**Phase 2: Single Node Efficiency** - Unifying operational needs into Oxibase itself with self-monitoring, multiple storage backends, data lifecycle management, and separation of compute & storage.
 
 **Phase 3: Distributed System** - Achieving infinite horizontal scale and global resilience through multi-master consensus, data rebalancing/sharding, geo-sharding, and gossip protocols.
 

@@ -19,11 +19,11 @@ The following files were used as context for generating this wiki page:
 
 
 
-This guide provides quick start instructions for installing and using OxiBase. It covers installation methods, basic usage patterns as both a library and command-line tool, and your first queries. For detailed API documentation, see [Database API](#2.1). For architectural concepts, see [Architecture Overview](#1.2).
+This guide provides quick start instructions for installing and using Oxibase. It covers installation methods, basic usage patterns as both a library and command-line tool, and your first queries. For detailed API documentation, see [Database API](#2.1). For architectural concepts, see [Architecture Overview](#1.2).
 
 ## Installation
 
-OxiBase can be used as a Rust library or as a standalone command-line tool. Multiple installation methods are available depending on your use case.
+Oxibase can be used as a Rust library or as a standalone command-line tool. Multiple installation methods are available depending on your use case.
 
 ### Installation Methods
 
@@ -35,7 +35,7 @@ OxiBase can be used as a Rust library or as a standalone command-line tool. Mult
 
 #### As a Rust Library
 
-Add OxiBase to your `Cargo.toml`:
+Add Oxibase to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -60,7 +60,7 @@ The compiled binary will be available at `target/release/oxibase` (or `oxibase.e
 
 #### Platform Support
 
-OxiBase builds and runs on:
+Oxibase builds and runs on:
 
 - **Linux**: `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`
 - **macOS**: `x86_64-apple-darwin`, `aarch64-apple-darwin` (Apple Silicon)
@@ -423,7 +423,7 @@ db.execute("DELETE FROM employees WHERE id = 2", ())?;
 
 ## Indexes
 
-OxiBase automatically selects optimal index types based on query patterns, but you can specify them explicitly:
+Oxibase automatically selects optimal index types based on query patterns, but you can specify them explicitly:
 
 ```rust
 // B-tree index (default) - for range queries and sorting
@@ -448,14 +448,14 @@ Index types are defined in the `IndexType` enum:
 
 ## Next Steps
 
-Now that you have OxiBase running, explore these topics:
+Now that you have Oxibase running, explore these topics:
 
 - **[Database API](#2.1)**: Detailed API documentation for `Database`, connection management, and DSN options
 - **[Transactions](#2.2)**: ACID guarantees, isolation levels (Read Committed, Snapshot), and commit/rollback behavior
 - **[Query Results](#2.3)**: Working with `Rows` iterator, type conversion, and result streaming
 - **[SQL Feature Reference](#5)**: Comprehensive guide to supported SQL features
 - **[Time-Travel Queries](#5.4)**: Query historical data with `AS OF TIMESTAMP` and `AS OF TRANSACTION`
-- **[Architecture Overview](#1.2)**: Understanding OxiBase's internal architecture and component interactions
+- **[Architecture Overview](#1.2)**: Understanding Oxibase's internal architecture and component interactions
 
 For advanced query features:
 - **[Window Functions](#3.5)**: `ROW_NUMBER`, `RANK`, `LAG`, `LEAD`, and analytical queries

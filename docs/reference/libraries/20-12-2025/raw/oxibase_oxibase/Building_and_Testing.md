@@ -18,13 +18,13 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes the build system, testing infrastructure, and CI/CD pipeline for OxiBase. It covers how to build the project locally, run tests, understand the continuous integration setup, and generate release artifacts. For information about the codebase structure and module organization, see [Module Organization](#7.2).
+This document describes the build system, testing infrastructure, and CI/CD pipeline for Oxibase. It covers how to build the project locally, run tests, understand the continuous integration setup, and generate release artifacts. For information about the codebase structure and module organization, see [Module Organization](#7.2).
 
 ---
 
 ## Build System Overview
 
-OxiBase uses Cargo, Rust's standard build tool and package manager. The build configuration is defined in [Cargo.toml:1-117]().
+Oxibase uses Cargo, Rust's standard build tool and package manager. The build configuration is defined in [Cargo.toml:1-117]().
 
 ### Package Configuration
 
@@ -79,7 +79,7 @@ Sources: [Cargo.toml:30-92]()
 
 ### Feature Flags
 
-OxiBase uses Cargo features to conditionally compile functionality:
+Oxibase uses Cargo features to conditionally compile functionality:
 
 | Feature | Default | Description | Dependencies |
 |---------|---------|-------------|--------------|
@@ -466,7 +466,7 @@ Sources: [.github/workflows/ci.yml:123-183]()
 
 ### Coverage Measurement
 
-OxiBase uses `cargo-llvm-cov` for code coverage, which provides:
+Oxibase uses `cargo-llvm-cov` for code coverage, which provides:
 - **Source-based coverage**: Tracks which lines of code are executed
 - **Branch coverage**: Tracks which branches in conditionals are taken
 - **Function coverage**: Tracks which functions are called
@@ -652,7 +652,7 @@ Sources: [.github/workflows/ci.yml:123-183](), [Cargo.toml:100-106]()
 
 ## Summary
 
-The OxiBase build and testing infrastructure provides:
+The Oxibase build and testing infrastructure provides:
 
 | Component | Tool | Purpose |
 |-----------|------|---------|
@@ -663,6 +663,6 @@ The OxiBase build and testing infrastructure provides:
 | **CI/CD** | GitHub Actions | Automated testing and artifact generation |
 | **Platforms** | Multi-target | Linux, macOS, Windows (x86_64 and ARM64) |
 
-The CI pipeline ensures code quality through comprehensive checks on every commit, with test results visible within minutes of pushing code. Multi-platform artifact generation enables easy distribution of OxiBase binaries.
+The CI pipeline ensures code quality through comprehensive checks on every commit, with test results visible within minutes of pushing code. Multi-platform artifact generation enables easy distribution of Oxibase binaries.
 
 Sources: [.github/workflows/ci.yml:1-183](), [Cargo.toml:1-117]()

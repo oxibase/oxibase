@@ -18,7 +18,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes OxiBase's planned evolution from an embedded SQL database into a distributed "Modern Mainframe" architecture. It outlines the transformation from a single-process MVCC storage engine into a self-managing, unikernel-based distributed system capable of millions of transactions per second.
+This document describes Oxibase's planned evolution from an embedded SQL database into a distributed "Modern Mainframe" architecture. It outlines the transformation from a single-process MVCC storage engine into a self-managing, unikernel-based distributed system capable of millions of transactions per second.
 
 For information about the current embedded architecture, see [Architecture Overview](#1.2). For current MVCC implementation details, see [MVCC Architecture](#4.1). For current storage engine features, see [Storage Engine](#4).
 
@@ -28,7 +28,7 @@ For information about the current embedded architecture, see [Architecture Overv
 
 ## Architectural Philosophy
 
-The Modern Mainframe paradigm rejects the separation of "application server" and "database server" inherited from hardware constraints that no longer exist. Instead, OxiBase positions the database as the active computational core, co-locating logic and data to eliminate network latency and serialization overhead.
+The Modern Mainframe paradigm rejects the separation of "application server" and "database server" inherited from hardware constraints that no longer exist. Instead, Oxibase positions the database as the active computational core, co-locating logic and data to eliminate network latency and serialization overhead.
 
 ### Infrastructure as Data
 
@@ -36,7 +36,7 @@ The fundamental principle: cluster configuration, sharding protocols, access con
 
 ### Unikernel-First Design
 
-By compiling OxiBase into specialized machine images containing only database and application logic, the system eliminates general-purpose OS overhead. The application becomes synonymous with the kernel, with no intermediary user space layer.
+By compiling Oxibase into specialized machine images containing only database and application logic, the system eliminates general-purpose OS overhead. The application becomes synonymous with the kernel, with no intermediary user space layer.
 
 **Sources**: [README.md:39-69]()
 
@@ -105,7 +105,7 @@ The core innovation embeds `wasmtime` (WebAssembly runtime) directly into the da
 graph TB
     Client["SQL Client"]
     
-    subgraph "OxiBase Kernel"
+    subgraph "Oxibase Kernel"
         Parser["SQL Parser"]
         
         CreateFunc["CREATE FUNCTION handler"]
@@ -567,7 +567,7 @@ graph TB
     
     CloudAPI["Cloud Provider API<br/>POST /run-instances"]
     
-    NewNode["New OxiBase<br/>Unikernel Node"]
+    NewNode["New Oxibase<br/>Unikernel Node"]
     
     SWIM["SWIM Gossip<br/>Auto-discovery"]
     
@@ -636,7 +636,7 @@ graph TB
 - Anomaly detection in streaming data
 
 **Zero-Copy GPU Access**:
-For unikernels, GPU memory can be mapped directly into the OxiBase address space via PCI passthrough. No copying data over PCIe to user-space and back.
+For unikernels, GPU memory can be mapped directly into the Oxibase address space via PCI passthrough. No copying data over PCIe to user-space and back.
 
 **Sources**: [../../../../roadmap.md:98-102](), [../../../../roadmap.md:104-109]()
 
@@ -744,7 +744,7 @@ Based on the phased roadmap:
 
 ```mermaid
 gantt
-    title "OxiBase Evolution Timeline"
+    title "Oxibase Evolution Timeline"
     dateFormat YYYY-MM
     
     section "Phase 1: Server"

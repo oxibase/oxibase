@@ -19,7 +19,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This document describes OxiBase's Multi-Version Concurrency Control (MVCC) architecture, which provides transaction management, isolation, and visibility checking. It covers the core components that enable concurrent transactions to read and write data without blocking each other through version-based isolation.
+This document describes Oxibase's Multi-Version Concurrency Control (MVCC) architecture, which provides transaction management, isolation, and visibility checking. It covers the core components that enable concurrent transactions to read and write data without blocking each other through version-based isolation.
 
 For details on version storage implementation and row-level operations, see [Version Store and Tables](#4.2). For index implementation details, see [Index System](#4.3). For durability and crash recovery mechanisms, see [Persistence and Recovery](#4.4).
 
@@ -452,7 +452,7 @@ Sources: [src/storage/mvcc/version_store.rs:72-82](), [src/storage/mvcc/version_
 
 ### Snapshot Isolation Implementation
 
-OxiBase implements **Snapshot Isolation** through:
+Oxibase implements **Snapshot Isolation** through:
 
 1. **Begin Timestamp:** Each transaction gets a `begin_seq` from `TransactionRegistry.next_seq`
 2. **Commit Timestamp:** Each committing transaction gets a `commit_seq` from `TransactionRegistry.next_seq`

@@ -18,7 +18,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This page documents the query optimization techniques used in OxiBase to efficiently execute SQL queries. It covers index selection, predicate pushdown, LIMIT optimization, subquery transformation, join algorithm selection, and storage-layer optimizations.
+This page documents the query optimization techniques used in Oxibase to efficiently execute SQL queries. It covers index selection, predicate pushdown, LIMIT optimization, subquery transformation, join algorithm selection, and storage-layer optimizations.
 
 For information about the query execution pipeline and operators, see [Query Execution Pipeline](#3.1). For details on the expression evaluation VM, see [Expression Evaluation](#3.2). For index data structures, see [Index System](#4.3).
 
@@ -26,7 +26,7 @@ For information about the query execution pipeline and operators, see [Query Exe
 
 ## Optimization Architecture
 
-OxiBase's optimizer operates at multiple layers of the execution stack, transforming logical query plans into efficient physical execution plans. The optimization process occurs in several phases:
+Oxibase's optimizer operates at multiple layers of the execution stack, transforming logical query plans into efficient physical execution plans. The optimization process occurs in several phases:
 
 ```mermaid
 graph TD
@@ -170,7 +170,7 @@ graph TD
 
 ### Type-Based Index Selection
 
-When creating indexes without explicit type specification, OxiBase automatically selects the optimal index type based on column data types:
+When creating indexes without explicit type specification, Oxibase automatically selects the optimal index type based on column data types:
 
 | Data Type | Index Type | Rationale |
 |-----------|-----------|-----------|
@@ -492,7 +492,7 @@ The semi-join avoids executing the full subquery and stops as soon as a match is
 
 ### Adaptive Query Execution (AQE)
 
-OxiBase uses Adaptive Query Execution to select join algorithms dynamically based on runtime statistics:
+Oxibase uses Adaptive Query Execution to select join algorithms dynamically based on runtime statistics:
 
 ```mermaid
 graph TD
@@ -748,7 +748,7 @@ graph TD
 
 ## Key Takeaways
 
-1. **Multi-Layered Optimization:** OxiBase optimizes at parse time, planning time, and execution time through Adaptive Query Execution.
+1. **Multi-Layered Optimization:** Oxibase optimizes at parse time, planning time, and execution time through Adaptive Query Execution.
 
 2. **Index-First Strategy:** The optimizer aggressively uses indexes, with type-based selection and multi-column index support.
 
@@ -758,4 +758,4 @@ graph TD
 
 5. **Adaptive Algorithms:** Join algorithms, sort strategies, and scan methods adapt based on runtime characteristics and data distribution.
 
-The combination of these techniques allows OxiBase to execute complex analytical queries efficiently, often achieving 10-100x speedups over naive execution strategies.
+The combination of these techniques allows Oxibase to execute complex analytical queries efficiently, often achieving 10-100x speedups over naive execution strategies.

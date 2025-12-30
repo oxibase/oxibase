@@ -7,7 +7,7 @@ nav_order: 3
 
 # Aggregate Functions
 
-OxiBase supports standard SQL aggregate functions that operate on multiple rows to calculate a single result. These functions are typically used with GROUP BY clauses for summarizing data.
+Oxibase supports standard SQL aggregate functions that operate on multiple rows to calculate a single result. These functions are typically used with GROUP BY clauses for summarizing data.
 
 ## Basic Aggregate Functions
 
@@ -293,7 +293,7 @@ See [ROLLUP, CUBE, and GROUPING SETS](../sql-features/rollup-cube) for detailed 
 
 ## NULL Handling
 
-OxiBase follows standard SQL NULL handling for aggregate functions:
+Oxibase follows standard SQL NULL handling for aggregate functions:
 
 - NULL values are ignored by most aggregate functions (SUM, AVG, MIN, MAX)
 - COUNT(*) includes all rows regardless of NULL values

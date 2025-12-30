@@ -17,7 +17,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-The Storage Engine is the foundation of OxiBase's data persistence and transaction management. It implements Multi-Version Concurrency Control (MVCC) for snapshot isolation, manages row versioning and visibility, coordinates multiple index types, and handles Write-Ahead Logging (WAL) for crash recovery.
+The Storage Engine is the foundation of Oxibase's data persistence and transaction management. It implements Multi-Version Concurrency Control (MVCC) for snapshot isolation, manages row versioning and visibility, coordinates multiple index types, and handles Write-Ahead Logging (WAL) for crash recovery.
 
 For information about how SQL queries are executed on top of the storage layer, see [Query Execution System](#3). For details on the expression evaluation that filters rows, see [Expression Evaluation](#3.2). For specifics on MVCC transaction semantics and isolation levels, see [MVCC Architecture](#4.1).
 
@@ -142,7 +142,7 @@ sequenceDiagram
 
 ## Version Chain Management
 
-OxiBase implements MVCC by maintaining linked version chains for each row. Each `VersionChainEntry` contains a `RowVersion` and an `Arc` pointer to the previous version, enabling O(1) chain cloning for snapshot isolation.
+Oxibase implements MVCC by maintaining linked version chains for each row. Each `VersionChainEntry` contains a `RowVersion` and an `Arc` pointer to the previous version, enabling O(1) chain cloning for snapshot isolation.
 
 ```mermaid
 graph LR
@@ -208,7 +208,7 @@ The `TransactionVersionStore` buffers uncommitted changes within a transaction, 
 
 ## Index Architecture
 
-OxiBase provides three index types, each optimized for different query patterns. The `MVCCTable` automatically selects the optimal index type based on column data types.
+Oxibase provides three index types, each optimized for different query patterns. The `MVCCTable` automatically selects the optimal index type based on column data types.
 
 ```mermaid
 graph TB

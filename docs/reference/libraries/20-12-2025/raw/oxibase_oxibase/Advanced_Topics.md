@@ -15,11 +15,11 @@ The following files were used as context for generating this wiki page:
 
 
 
-This section covers advanced technical concepts for developers and contributors working on OxiBase internals. Topics include query execution optimizations, MVCC implementation details, and internal performance techniques. For specific optimization algorithms, see [Query Optimization](#6.1). For MVCC isolation mechanisms, see [Concurrency Control](#6.2). For the planned distributed architecture, see [Future Vision: Modern Mainframe](#6.3).
+This section covers advanced technical concepts for developers and contributors working on Oxibase internals. Topics include query execution optimizations, MVCC implementation details, and internal performance techniques. For specific optimization algorithms, see [Query Optimization](#6.1). For MVCC isolation mechanisms, see [Concurrency Control](#6.2). For the planned distributed architecture, see [Future Vision: Modern Mainframe](#6.3).
 
 ## Fast Path Optimizations
 
-OxiBase implements numerous "fast paths" that bypass general-purpose query execution when specific patterns are detected. These optimizations occur during the `execute_select_internal` phase and can reduce query latency by 10-100x for matching patterns.
+Oxibase implements numerous "fast paths" that bypass general-purpose query execution when specific patterns are detected. These optimizations occur during the `execute_select_internal` phase and can reduce query latency by 10-100x for matching patterns.
 
 ### Primary Key Direct Lookup
 
@@ -86,7 +86,7 @@ Sources: [src/executor/query.rs:1210-1217]()
 
 ### ORDER BY + LIMIT Optimization (TOP-N)
 
-When `ORDER BY` is present with `LIMIT`, OxiBase uses different strategies based on whether indexed columns are referenced.
+When `ORDER BY` is present with `LIMIT`, Oxibase uses different strategies based on whether indexed columns are referenced.
 
 **Indexed ORDER BY:** [src/executor/query.rs:1228-1246]()
 
@@ -143,7 +143,7 @@ Sources: [src/executor/query.rs:1287-1367](), [src/storage/mvcc/version_store.rs
 
 ## Index Selection Strategies
 
-OxiBase automatically selects optimal index types based on column data types and query patterns. The selection logic balances lookup performance with memory overhead.
+Oxibase automatically selects optimal index types based on column data types and query patterns. The selection logic balances lookup performance with memory overhead.
 
 ### Index Type Auto-Selection
 
@@ -262,7 +262,7 @@ Sources: [src/executor/query.rs:1181-1206](), [src/storage/mvcc/version_store.rs
 
 ## Semantic Query Caching
 
-OxiBase caches entire query results with subsumption-based invalidation, enabling ~100x speedup for repeated read-heavy workloads.
+Oxibase caches entire query results with subsumption-based invalidation, enabling ~100x speedup for repeated read-heavy workloads.
 
 ### Cache Eligibility
 
@@ -376,7 +376,7 @@ Sources: [src/storage/mvcc/version_store.rs:313-329](), [src/storage/mvcc/versio
 
 ## Compiled Filters
 
-To eliminate virtual dispatch overhead during filter evaluation, OxiBase compiles storage expressions into specialized enums.
+To eliminate virtual dispatch overhead during filter evaluation, Oxibase compiles storage expressions into specialized enums.
 
 ### CompiledFilter Design
 
@@ -548,7 +548,7 @@ Sources: [src/executor/expression/eval.rs](), [src/executor/parallel.rs]()
 
 ## MVCC Implementation Details
 
-Multi-Version Concurrency Control enables snapshot isolation by maintaining multiple versions of each row. OxiBase uses Arc-based version chains for efficient snapshot cloning.
+Multi-Version Concurrency Control enables snapshot isolation by maintaining multiple versions of each row. Oxibase uses Arc-based version chains for efficient snapshot cloning.
 
 ### Version Chain Structure
 
@@ -596,7 +596,7 @@ Sources: [src/storage/mvcc/version_store.rs:110-119](), [src/storage/mvcc/versio
 
 ### Write-Set Tracking
 
-To detect write-write conflicts, OxiBase tracks which rows a transaction has read.
+To detect write-write conflicts, Oxibase tracks which rows a transaction has read.
 
 **WriteSetEntry:** [src/storage/mvcc/version_store.rs:122-130]()
 
@@ -644,7 +644,7 @@ Sources: [src/storage/mvcc/version_store.rs:1357-1386]()
 
 ### Row-Level Locking
 
-OxiBase implements optimistic locking with conflict detection at commit time.
+Oxibase implements optimistic locking with conflict detection at commit time.
 
 **Lock-Free Reads:** Transactions read rows without locks. The MVCC visibility rules ensure each transaction sees a consistent snapshot.
 

@@ -5,13 +5,13 @@ parent: Architecture
 nav_order: 1
 ---
 
-# OxiBase Architecture
+# Oxibase Architecture
 
-This document provides a high-level overview of OxiBase's architecture, including its major components and how they interact.
+This document provides a high-level overview of Oxibase's architecture, including its major components and how they interact.
 
 ## System Overview
 
-OxiBase is a high-performance embedded SQL database written in pure Rust. Its architecture prioritizes:
+Oxibase is a high-performance embedded SQL database written in pure Rust. Its architecture prioritizes:
 
 - Memory-first design with optional disk persistence
 - Full ACID transactions with MVCC
@@ -22,7 +22,7 @@ OxiBase is a high-performance embedded SQL database written in pure Rust. Its ar
 
 ## Core Components
 
-OxiBase's architecture consists of the following major components:
+Oxibase's architecture consists of the following major components:
 
 ### Client Interface
 
@@ -125,7 +125,7 @@ When a query is executed, it flows through the system as follows:
 
 ### In-Memory Mode
 
-In memory-only mode, OxiBase operates entirely in RAM:
+In memory-only mode, Oxibase operates entirely in RAM:
 
 - All data structures reside in memory
 - No disk I/O for data access
@@ -134,7 +134,7 @@ In memory-only mode, OxiBase operates entirely in RAM:
 
 ### Persistent Mode
 
-In persistent mode, OxiBase uses disk storage with memory caching:
+In persistent mode, Oxibase uses disk storage with memory caching:
 
 - Data is stored on disk with WAL for durability
 - Write-ahead logging ensures crash recovery
@@ -143,7 +143,7 @@ In persistent mode, OxiBase uses disk storage with memory caching:
 
 ## Concurrency Model
 
-OxiBase uses MVCC for concurrency:
+Oxibase uses MVCC for concurrency:
 
 - **True MVCC** - Full version chains with history
 - **Optimistic Concurrency Control** - Transactions validate at commit time
@@ -179,7 +179,7 @@ src/
 
 ## Architectural Principles
 
-OxiBase's architecture is guided by the following principles:
+Oxibase's architecture is guided by the following principles:
 
 1. **Performance First** - Optimize for speed and memory efficiency
 2. **Memory Safety** - Pure Rust with minimal unsafe code (FFI and hot paths only)

@@ -5,13 +5,13 @@ parent: Getting Started
 nav_order: 4
 ---
 
-# OxiBase API Reference
+# Oxibase API Reference
 
-This document provides a comprehensive reference for the OxiBase Rust API.
+This document provides a comprehensive reference for the Oxibase Rust API.
 
 ## Database API
 
-The `Database` struct is the main entry point for using OxiBase.
+The `Database` struct is the main entry point for using Oxibase.
 
 ### Opening a Database
 

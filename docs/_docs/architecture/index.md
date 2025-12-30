@@ -7,17 +7,17 @@ nav_order: 2
 
 # Architecture
 
-Learn about the internal architecture of OxiBase, including storage engines, indexing, MVCC, and transaction isolation.
+Learn about the internal architecture of Oxibase, including storage engines, indexing, MVCC, and transaction isolation.
 
 ## Purpose and Scope
 
-This section describes the high-level architecture of OxiBase: its layered structure, major components, module organization, and how data flows through the system during query execution. It provides a conceptual map of the codebase to help developers understand where different functionality lives and how the pieces fit together.
+This section describes the high-level architecture of Oxibase: its layered structure, major components, module organization, and how data flows through the system during query execution. It provides a conceptual map of the codebase to help developers understand where different functionality lives and how the pieces fit together.
 
-For details on using OxiBase as a library or CLI tool, see [Getting Started](../getting-started/index.md). For implementation details of specific subsystems, see the [Storage Engine](storage-engine.md), [MVCC Implementation](mvcc-implementation.md), and related pages.
+For details on using Oxibase as a library or CLI tool, see [Getting Started](../getting-started/index.md). For implementation details of specific subsystems, see the [Storage Engine](storage-engine.md), [MVCC Implementation](mvcc-implementation.md), and related pages.
 
 ## Three-Tier Layered Architecture
 
-OxiBase follows a classic three-tier database architecture with clear separation of concerns:
+Oxibase follows a classic three-tier database architecture with clear separation of concerns:
 
 ```mermaid
 graph TB
@@ -66,7 +66,7 @@ graph TB
 
 ### API Layer
 
-The API layer provides the user-facing interface for interacting with OxiBase. It handles connection management, transaction lifecycle, and result streaming.
+The API layer provides the user-facing interface for interacting with Oxibase. It handles connection management, transaction lifecycle, and result streaming.
 
 **Key Components:**
 - `Database` - Entry point for opening databases and executing queries (api/database.rs)
@@ -237,7 +237,7 @@ flowchart TD
 
 ## Core Type System
 
-OxiBase uses a strongly-typed value system with runtime type checking:
+Oxibase uses a strongly-typed value system with runtime type checking:
 
 ```mermaid
 graph TB

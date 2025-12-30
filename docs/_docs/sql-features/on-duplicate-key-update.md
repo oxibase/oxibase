@@ -7,11 +7,11 @@ nav_order: 11
 
 # ON DUPLICATE KEY UPDATE
 
-This document explains the ON DUPLICATE KEY UPDATE feature in OxiBase based on the implementation and test files.
+This document explains the ON DUPLICATE KEY UPDATE feature in Oxibase based on the implementation and test files.
 
 ## Overview
 
-OxiBase supports the ON DUPLICATE KEY UPDATE clause for INSERT statements. This feature allows you to insert a new row or update an existing one if the insertion would violate a unique constraint (primary key or unique index), all in a single statement.
+Oxibase supports the ON DUPLICATE KEY UPDATE clause for INSERT statements. This feature allows you to insert a new row or update an existing one if the insertion would violate a unique constraint (primary key or unique index), all in a single statement.
 
 ## Syntax
 
@@ -112,7 +112,7 @@ ON DUPLICATE KEY UPDATE
 
 ## How It Works
 
-1. OxiBase attempts the INSERT operation normally
+1. Oxibase attempts the INSERT operation normally
 2. If a unique constraint violation occurs:
    - The system identifies the conflicting row
    - Instead of returning an error, it performs an UPDATE on that row
@@ -137,11 +137,11 @@ This feature is particularly useful for:
 
 4. **Column Selection**: Only specify columns that need updating in the ON DUPLICATE KEY UPDATE clause for better performance.
 
-5. **No Inserted Value Reference**: Unlike some databases, OxiBase doesn't provide special syntax to reference values from the failed insert (like MySQL's VALUES() function).
+5. **No Inserted Value Reference**: Unlike some databases, Oxibase doesn't provide special syntax to reference values from the failed insert (like MySQL's VALUES() function).
 
 ## Implementation Details
 
-Internally, OxiBase:
+Internally, Oxibase:
 
 1. Attempts the INSERT operation
 2. Catches unique constraint violations

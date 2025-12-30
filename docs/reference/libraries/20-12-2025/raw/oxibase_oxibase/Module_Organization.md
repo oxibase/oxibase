@@ -19,7 +19,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-This page documents the codebase structure of OxiBase, including the module hierarchy, dependencies between modules, key types exported from each module, and how the modules map to system architecture layers.
+This page documents the codebase structure of Oxibase, including the module hierarchy, dependencies between modules, key types exported from each module, and how the modules map to system architecture layers.
 
 For information about building and testing the codebase, see [Building and Testing](#7.1). For high-level system architecture concepts, see [Architecture Overview](#1.2).
 
@@ -27,7 +27,7 @@ For information about building and testing the codebase, see [Building and Testi
 
 ## Module Structure
 
-OxiBase is organized into eight top-level modules under `src/`, each serving a distinct architectural role. The codebase follows a strict layered architecture where higher-level modules depend on lower-level modules but never the reverse.
+Oxibase is organized into eight top-level modules under `src/`, each serving a distinct architectural role. The codebase follows a strict layered architecture where higher-level modules depend on lower-level modules but never the reverse.
 
 ```mermaid
 graph TB
@@ -93,7 +93,7 @@ The modules are organized into distinct architectural layers, with strict depend
 
 **`common/` - Shared Utilities**
 
-Provides reusable data structures and utilities with no dependencies on other OxiBase modules.
+Provides reusable data structures and utilities with no dependencies on other Oxibase modules.
 
 | Component | Purpose |
 |-----------|---------|
@@ -861,7 +861,7 @@ graph TB
 
 ### External Dependencies
 
-OxiBase uses carefully selected external crates for specific functionality.
+Oxibase uses carefully selected external crates for specific functionality.
 
 **Core Dependencies:**
 
@@ -910,7 +910,7 @@ OxiBase uses carefully selected external crates for specific functionality.
 
 ## Feature Flags
 
-OxiBase uses Cargo features to enable optional functionality.
+Oxibase uses Cargo features to enable optional functionality.
 
 ```mermaid
 graph LR
@@ -962,7 +962,7 @@ oxibase = { version = "0.1", features = ["pg-server"] }
 
 ## Build Profiles
 
-OxiBase defines custom build profiles optimized for different use cases.
+Oxibase defines custom build profiles optimized for different use cases.
 
 | Profile | LTO | Codegen Units | Debug Symbols | Use Case |
 |---------|-----|---------------|---------------|----------|
@@ -995,7 +995,7 @@ debug = false           # No debug symbols for tests
 
 ## Code Organization Best Practices
 
-The OxiBase codebase follows these organizational principles:
+The Oxibase codebase follows these organizational principles:
 
 ### 1. Strict Layering
 - Lower layers never import from higher layers

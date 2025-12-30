@@ -21,7 +21,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-This page documents Data Definition Language (DDL) operations in OxiBase: creating and modifying database schemas, tables, indexes, and views. For data manipulation operations (INSERT, UPDATE, DELETE), see the Query Execution System documentation. For information about data types used in DDL statements, see [Data Types](#5.1).
+This page documents Data Definition Language (DDL) operations in Oxibase: creating and modifying database schemas, tables, indexes, and views. For data manipulation operations (INSERT, UPDATE, DELETE), see the Query Execution System documentation. For information about data types used in DDL statements, see [Data Types](#5.1).
 
 ## DDL Execution Pipeline
 
@@ -83,7 +83,7 @@ Sources: [src/executor/ddl.rs:1-765]()
 
 ## CREATE TABLE
 
-The `CREATE TABLE` statement defines a new table with columns, data types, and constraints. OxiBase supports both standard table creation and `CREATE TABLE AS SELECT` for creating tables from query results.
+The `CREATE TABLE` statement defines a new table with columns, data types, and constraints. Oxibase supports both standard table creation and `CREATE TABLE AS SELECT` for creating tables from query results.
 
 ### Basic Syntax
 
@@ -200,7 +200,7 @@ SELECT * FROM orders WHERE amount > 1000;
 
 ### CREATE TABLE AS SELECT
 
-OxiBase supports creating tables from SELECT query results. The schema is inferred from the result columns and data types from the first row.
+Oxibase supports creating tables from SELECT query results. The schema is inferred from the result columns and data types from the first row.
 
 ```mermaid
 graph TB
@@ -241,7 +241,7 @@ Sources: [src/executor/ddl.rs:247-326]()
 
 ### PRIMARY KEY Restrictions
 
-**Important:** OxiBase currently only supports INTEGER PRIMARY KEY. This is validated at table creation time and will return an error for other types.
+**Important:** Oxibase currently only supports INTEGER PRIMARY KEY. This is validated at table creation time and will return an error for other types.
 
 ```sql
 -- Valid: INTEGER PRIMARY KEY
@@ -284,7 +284,7 @@ Sources: [src/executor/ddl.rs:328-363]()
 
 ## CREATE INDEX
 
-Creates an index on one or more columns to improve query performance. OxiBase supports three index types: BTree, Hash, and Bitmap.
+Creates an index on one or more columns to improve query performance. Oxibase supports three index types: BTree, Hash, and Bitmap.
 
 ### Syntax
 
@@ -359,7 +359,7 @@ CREATE INDEX IF NOT EXISTS idx_status ON orders(status);
 
 ### UNIQUE Indexes
 
-When a column has a `UNIQUE` constraint in `CREATE TABLE`, OxiBase automatically creates a unique index with the naming convention `unique_{table}_{column}`:
+When a column has a `UNIQUE` constraint in `CREATE TABLE`, Oxibase automatically creates a unique index with the naming convention `unique_{table}_{column}`:
 
 ```sql
 -- This CREATE TABLE statement...
@@ -394,7 +394,7 @@ DROP INDEX idx_email ON users;
 DROP INDEX IF EXISTS idx_status ON orders;
 ```
 
-**Note:** The table name is required in OxiBase's DROP INDEX syntax.
+**Note:** The table name is required in Oxibase's DROP INDEX syntax.
 
 Sources: [src/executor/ddl.rs:458-501]()
 
@@ -544,9 +544,9 @@ Sources: [src/executor/ddl.rs:646-681]()
 
 ## Data Type Mapping
 
-OxiBase's `parse_data_type` function accepts standard SQL type names and aliases, normalizing them to core data types:
+Oxibase's `parse_data_type` function accepts standard SQL type names and aliases, normalizing them to core data types:
 
-| SQL Type Syntax | OxiBase Type | Notes |
+| SQL Type Syntax | Oxibase Type | Notes |
 |-----------------|--------------|-------|
 | `INTEGER`, `INT`, `BIGINT`, `SMALLINT`, `TINYINT` | `DataType::Integer` | 64-bit signed |
 | `FLOAT`, `DOUBLE`, `REAL`, `DECIMAL`, `NUMERIC` | `DataType::Float` | 64-bit float |

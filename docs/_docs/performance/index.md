@@ -7,4 +7,4 @@ nav_order: 7
 
 # Performance
 
-Guides for optimizing OxiBase performance, including query execution, parallel processing, and caching.
+Guides for optimizing Oxibase performance, including query execution, parallel processing, and caching.

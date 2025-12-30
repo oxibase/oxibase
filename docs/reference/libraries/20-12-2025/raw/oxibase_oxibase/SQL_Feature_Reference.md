@@ -19,7 +19,7 @@ The following files were used as context for generating this wiki page:
 
 
 
-This page provides a comprehensive reference of SQL features supported by OxiBase, including syntax, examples, and behavior. It covers query types, transaction control, index management, and advanced SQL constructs.
+This page provides a comprehensive reference of SQL features supported by Oxibase, including syntax, examples, and behavior. It covers query types, transaction control, index management, and advanced SQL constructs.
 
 For detailed information on specific topics:
 - Data type specifications and behavior: see [Data Types](#5.1)
@@ -33,7 +33,7 @@ For implementation details of query execution, see [Query Execution System](#3).
 
 ## SQL Language Coverage
 
-OxiBase implements a substantial subset of SQL:2016 with extensions for temporal queries and modern analytical features. The implementation is based on a custom SQL parser and executor designed for embedded use.
+Oxibase implements a substantial subset of SQL:2016 with extensions for temporal queries and modern analytical features. The implementation is based on a custom SQL parser and executor designed for embedded use.
 
 ### Supported SQL Categories
 
@@ -241,7 +241,7 @@ Sources: [README.md:156-173]()
 
 ## Transaction Control
 
-OxiBase provides full ACID transaction support with two isolation levels.
+Oxibase provides full ACID transaction support with two isolation levels.
 
 ### Transaction Commands
 
@@ -292,7 +292,7 @@ Sources: [README.md:158-173]()
 
 ## Index Management
 
-OxiBase supports three index types, each optimized for specific access patterns.
+Oxibase supports three index types, each optimized for specific access patterns.
 
 ### Index Type Selection
 
@@ -363,7 +363,7 @@ Sources: [README.md:196-216]()
 
 ## Query Optimization Commands
 
-OxiBase includes a cost-based optimizer that uses table statistics to choose optimal execution plans.
+Oxibase includes a cost-based optimizer that uses table statistics to choose optimal execution plans.
 
 ### ANALYZE
 
@@ -424,7 +424,7 @@ Sources: [README.md:307-311]()
 
 ## Time-Travel Queries
 
-OxiBase's MVCC architecture enables querying historical data at any point in time or transaction.
+Oxibase's MVCC architecture enables querying historical data at any point in time or transaction.
 
 ### AS OF TIMESTAMP
 
@@ -849,7 +849,7 @@ Sources: [README.md:86-100]()
 
 ## SQL Standard Compliance
 
-OxiBase implements SQL features based on practical needs rather than strict standard compliance.
+Oxibase implements SQL features based on practical needs rather than strict standard compliance.
 
 **Implemented SQL:2016 Features:**
 - Core DML (SELECT, INSERT, UPDATE, DELETE)
@@ -924,7 +924,7 @@ Sources: [README.md:299-311]()
 
 ## Error Handling
 
-SQL errors in OxiBase are returned as `Result<T, Error>` where `Error` is defined in `core::Error`.
+SQL errors in Oxibase are returned as `Result<T, Error>` where `Error` is defined in `core::Error`.
 
 **Common Error Categories:**
 - **Syntax Errors:** Invalid SQL syntax

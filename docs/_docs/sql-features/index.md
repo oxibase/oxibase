@@ -7,4 +7,4 @@ nav_order: 6
 
 # SQL Features
 
-Advanced SQL features supported by OxiBase, including CTEs, subqueries, joins, and more.
+Advanced SQL features supported by Oxibase, including CTEs, subqueries, joins, and more.

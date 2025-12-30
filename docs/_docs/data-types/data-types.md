@@ -1,17 +1,17 @@
 ---
 layout: default
-title: Data Types in OxiBase
+title: Data Types in Oxibase
 parent: Data Types
 nav_order: 1
 ---
 
-# Data Types in OxiBase
+# Data Types in Oxibase
 
-This document provides information about the data types supported in OxiBase, based on evidence from test files and implementations.
+This document provides information about the data types supported in Oxibase, based on evidence from test files and implementations.
 
 ## Supported Data Types
 
-OxiBase supports the following data types:
+Oxibase supports the following data types:
 
 ### INTEGER
 
@@ -148,7 +148,7 @@ Features:
 
 ## Column Constraints
 
-OxiBase supports several column constraints:
+Oxibase supports several column constraints:
 
 ### PRIMARY KEY
 
@@ -241,7 +241,7 @@ Note: CHECK must be specified as a column constraint (inline with column definit
 
 ## NULL Values
 
-OxiBase fully supports NULL values:
+Oxibase fully supports NULL values:
 
 ```sql
 -- Column definition with nullable columns
@@ -266,7 +266,7 @@ Features:
 
 ## Type Conversions
 
-OxiBase supports type casting between compatible types:
+Oxibase supports type casting between compatible types:
 
 ```sql
 -- Explicit CAST

@@ -16,7 +16,7 @@ The following files were used as context for generating this wiki page:
 
 ## Purpose and Scope
 
-This page describes the Common Table Expression (CTE) execution system in OxiBase, which implements SQL `WITH` clauses. CTEs provide a way to define temporary named result sets that can be referenced within the scope of a query.
+This page describes the Common Table Expression (CTE) execution system in Oxibase, which implements SQL `WITH` clauses. CTEs provide a way to define temporary named result sets that can be referenced within the scope of a query.
 
 This page covers:
 - Basic and chained CTE execution

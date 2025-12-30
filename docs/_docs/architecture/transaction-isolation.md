@@ -5,13 +5,13 @@ parent: Architecture
 nav_order: 5
 ---
 
-# Transaction Isolation in OxiBase
+# Transaction Isolation in Oxibase
 
-OxiBase implements Multi-Version Concurrency Control (MVCC) to provide transaction isolation with minimal locking overhead. This document explains how transactions work in OxiBase and the available isolation levels.
+Oxibase implements Multi-Version Concurrency Control (MVCC) to provide transaction isolation with minimal locking overhead. This document explains how transactions work in Oxibase and the available isolation levels.
 
 ## Implemented Isolation Levels
 
-OxiBase currently supports two isolation levels:
+Oxibase currently supports two isolation levels:
 
 1. **READ COMMITTED** - The default isolation level where a transaction only sees data that has been committed by other transactions. Each query within the transaction may see different versions of data as other transactions commit.
 
@@ -19,7 +19,7 @@ OxiBase currently supports two isolation levels:
 
 ## Setting Isolation Levels
 
-OxiBase provides multiple ways to control transaction isolation levels:
+Oxibase provides multiple ways to control transaction isolation levels:
 
 ### Connection-level Default Isolation Level
 
@@ -51,7 +51,7 @@ BEGIN TRANSACTION ISOLATION LEVEL SNAPSHOT;
 
 ### Programmatic Transaction Control
 
-When using the OxiBase driver programmatically:
+When using the Oxibase driver programmatically:
 
 ```go
 // Use connection default (affected by SET ISOLATIONLEVEL)
@@ -67,7 +67,7 @@ tx, err := db.BeginTx(context.Background(), &sql.TxOptions{
 
 ## MVCC Implementation
 
-OxiBase's MVCC implementation uses a combination of techniques to provide efficient transaction isolation:
+Oxibase's MVCC implementation uses a combination of techniques to provide efficient transaction isolation:
 
 ### Component Architecture
 
@@ -326,7 +326,7 @@ During rollback:
 
 ## Concurrency Control
 
-OxiBase uses optimistic concurrency control with lock-free design:
+Oxibase uses optimistic concurrency control with lock-free design:
 
 1. Transactions proceed without acquiring any locks
 2. Multiple writers can work concurrently on different rows
@@ -392,7 +392,7 @@ pub struct WriteSetEntry {
 
 ### Write-Write Conflict Detection
 
-For SNAPSHOT isolation, OxiBase implements write-write conflict detection to prevent lost updates:
+For SNAPSHOT isolation, Oxibase implements write-write conflict detection to prevent lost updates:
 
 - When a transaction begins, it records a begin timestamp
 - When rows are modified, write timestamps are tracked
@@ -451,7 +451,7 @@ Conflicts are detected in the following scenarios:
 
 ## Implementation Details
 
-The transaction isolation in OxiBase is implemented in the following key components:
+The transaction isolation in Oxibase is implemented in the following key components:
 
 - `src/storage/mvcc/engine.rs` - Contains the transaction creation and management logic
 - `src/storage/mvcc/transaction.rs` - Implements the transaction interface with isolation level management
@@ -542,7 +542,7 @@ In this example, both transactions read the same initial value (1000) but Connec
 
 ### Snapshot Isolation Implementation
 
-OxiBase implements **Snapshot Isolation** through:
+Oxibase implements **Snapshot Isolation** through:
 
 1. **Begin Timestamp:** Each transaction gets a `begin_seq` from `TransactionRegistry.next_seq`
 2. **Commit Timestamp:** Each committing transaction gets a `commit_seq` from `TransactionRegistry.next_seq`
