@@ -123,16 +123,15 @@ impl Executor {
             for (pos, col) in schema.columns.iter().enumerate() {
                 let ordinal = (pos + 1) as i64;
 
-                // Get data type string
-                let data_type = format!("{:?}", col.data_type);
-
                 // Get default value
                 let default_value = col.default_expr.as_ref().and_then(|expr| {
                     let expr_str = expr.to_string();
-                    if !expr_str.is_empty() && expr_str != "NULL" {
-                        Some(expr_str)
-                    } else {
+                    let trimmed = expr_str.trim();
+                    // Skip empty strings (after trim), and "NULL" literals
+                    if trimmed.is_empty() || trimmed == "NULL" {
                         None
+                    } else {
+                        Some(trimmed.to_string())
                     }
                 });
 

@@ -764,8 +764,7 @@ impl Executor {
                 }
 
                 // Check if this is an information_schema table
-                if table_name.starts_with("information_schema.") {
-                    let schema_table = &table_name["information_schema.".len()..];
+                if let Some(schema_table) = table_name.strip_prefix("information_schema.") {
                     let mut result = self.execute_information_schema_table(schema_table, stmt, ctx)?;
                     let columns = result.columns().to_vec();
                     let mut rows = Vec::new();
