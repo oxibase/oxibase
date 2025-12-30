@@ -26,7 +26,7 @@ use rustyline::history::DefaultHistory;
 use rustyline::{Config, DefaultEditor, EditMode, Editor};
 
 use oxibase::api::{Database, Transaction as ApiTransaction};
-use oxibase::common::version::{MAJOR, MINOR, PATCH};
+use oxibase::common::version::version;
 use oxibase::Value;
 
 /// Version string constant
@@ -196,7 +196,6 @@ impl Cli {
     }
 
     fn run(&mut self) -> io::Result<()> {
-        println!("Oxibase v{}.{}.{}", MAJOR, MINOR, PATCH);
         println!("Enter SQL commands, 'help' for assistance, or 'exit' to quit.");
         println!("Use Up/Down arrows for history, Ctrl+R to search history.");
         if self.json_output {
@@ -723,6 +722,9 @@ fn main() {
             std::process::exit(1);
         }
     };
+
+    // Print version info
+    println!("Oxibase v{}", version());
 
     if !args.quiet {
         println!("Connected to database: {}", db_path);

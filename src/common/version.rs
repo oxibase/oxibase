@@ -17,14 +17,30 @@
 //!
 //! This module provides version constants and build information.
 
+/// Const function to parse version component from string
+const fn parse_version_component(s: &str) -> u32 {
+    let bytes = s.as_bytes();
+    let mut result = 0u32;
+    let mut i = 0;
+    while i < bytes.len() {
+        let digit = bytes[i] - b'0';
+        if digit > 9 {
+            panic!("Invalid digit in version");
+        }
+        result = result * 10 + digit as u32;
+        i += 1;
+    }
+    result
+}
+
 /// Major version number
-pub const MAJOR: u32 = 0;
+pub const MAJOR: u32 = parse_version_component(env!("CARGO_PKG_VERSION_MAJOR"));
 
 /// Minor version number
-pub const MINOR: u32 = 1;
+pub const MINOR: u32 = parse_version_component(env!("CARGO_PKG_VERSION_MINOR"));
 
 /// Patch version number
-pub const PATCH: u32 = 0;
+pub const PATCH: u32 = parse_version_component(env!("CARGO_PKG_VERSION_PATCH"));
 
 use std::sync::OnceLock;
 
@@ -130,21 +146,33 @@ mod tests {
 
     #[test]
     fn test_version_constants() {
-        assert_eq!(MAJOR, 0);
-        assert_eq!(MINOR, 1);
-        assert_eq!(PATCH, 0);
+        // Verify that the parsed constants match the environment variables
+        assert_eq!(
+            MAJOR,
+            parse_version_component(env!("CARGO_PKG_VERSION_MAJOR"))
+        );
+        assert_eq!(
+            MINOR,
+            parse_version_component(env!("CARGO_PKG_VERSION_MINOR"))
+        );
+        assert_eq!(
+            PATCH,
+            parse_version_component(env!("CARGO_PKG_VERSION_PATCH"))
+        );
     }
 
     #[test]
     fn test_version_string() {
-        assert_eq!(version(), "0.1.0");
+        let v = version();
+        let expected = format!("{}.{}.{}", MAJOR, MINOR, PATCH);
+        assert_eq!(v, expected);
     }
 
     #[test]
     fn test_version_info() {
         let info = version_info();
         assert!(info.contains("oxibase"));
-        assert!(info.contains("0.1.0"));
+        assert!(info.contains(version()));
     }
 
     #[test]
@@ -190,7 +218,7 @@ mod tests {
         let v: SemVer = "1.2.3".parse().unwrap();
         assert_eq!(v, SemVer::new(1, 2, 3));
 
-        let v: SemVer = "0.1.0".parse().unwrap();
+        let v: SemVer = version().parse().unwrap();
         assert_eq!(v, SemVer::current());
     }
 
