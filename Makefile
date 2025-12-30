@@ -5,25 +5,32 @@
 .PHONY: all lint test build coverage license docs docs-build lib-doc release help run-memory run-files
 
 .PHONY: help
+# [other] Display help
 help:
 	@./help.sh ./Makefile
 
-all: lint test build## Run lint, test, and build (default target)
+# [dev] Run lint, test, and build (default target)
+all: lint test build
 
-lint:## Check formatting and run clippy
+# [dev] Check formatting and run clippy
+lint:
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
-test:## Run all tests
+# [dev] Run all tests
+test:
 	cargo nextest run --show-progress only
 
-build:## Build in release mode
+# [dev] Build in release mode
+build:
 	cargo build --release
 
-coverage:## Generate coverage report (requires cargo-llvm-cov)
+# [dev] Generate coverage report (requires cargo-llvm-cov)
+coverage:
 	cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
-license:## Check license headers
+# [dev] Check license headers
+license:
 	@missing_license=""; \
 	for file in $$(find . -name "*.rs" -not -path "./target/*" -not -path "./.git/*"); do \
 		if ! grep -q "Copyright.* Contributors" "$$file"; then \
@@ -35,16 +42,20 @@ license:## Check license headers
 		exit 1; \
 	fi
 
-docs:## Serve the Jekyll documentation site
+# [docs] Serve the Jekyll documentation site
+docs:
 	cd docs && bundle exec jekyll serve
 
-docs-build:## Build the Jekyll documentation site
+# [docs] Build the Jekyll documentation site
+docs-build:
 	cd docs && bundle exec jekyll build
 
-lib-doc:## Generate Rust documentation
+# [docs] Generate Rust documentation
+lib-doc:
 	cargo doc
 
-release:## Release a new version (usage: make release VERSION=1.2.3, or omit VERSION for patch bump)
+# [release] Release a new version (usage: make release VERSION=1.2.3, or omit VERSION for patch bump)
+release:
 	@if [ -z "$(VERSION)" ]; then \
 		CURRENT_VERSION=$$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/'); \
 		MAJOR=$$(echo $$CURRENT_VERSION | cut -d. -f1); \
@@ -66,8 +77,10 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 	gh release create v$$VERSION --generate-notes;
 	echo "Release completed."
 
-run-memory: build## Run oxibase with in-memory database
+# [run] Run oxibase with in-memory database
+run: build
 	./target/release/oxibase -d memory://
 
-run-files: build## Run oxibase with file-based database
+# [run] Run oxibase with file-based database
+run-files: build
 	./target/release/oxibase -d file://./examples/oxibase.db
