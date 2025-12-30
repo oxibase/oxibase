@@ -293,8 +293,8 @@ import json
 return json.dumps({"name": arguments[0], "age": arguments[1]})
 ''';
 ```
-LANGUAGE PYTHON AS 'return args[0] % 2 == 0';
-```
+
+**Note**: Python functions support both `return` statements (recommended) and direct `result =` assignments for backward compatibility. If no value is returned, the function returns `NULL`.
 
 ### JavaScript Features
 

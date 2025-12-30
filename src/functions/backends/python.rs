@@ -31,6 +31,17 @@ pub struct PythonBackend {
 
 #[cfg(feature = "python")]
 impl PythonBackend {
+    /// Indent each line of the code by 4 spaces for function wrapping
+    fn indent_code(&self, code: &str) -> String {
+        code.lines()
+            .map(|line| format!("    {}", line))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+#[cfg(feature = "python")]
+impl PythonBackend {
     /// Create a new Python backend
     pub fn new() -> Self {
         Self {}
@@ -139,14 +150,21 @@ impl ScriptingBackend for PythonBackend {
                     .set_item("arguments", py_args.into(), vm)
                     .map_err(|e| Error::internal(format!("Failed to set arguments: {:?}", e)))?;
 
-                // Execute the code
-                match vm.run_code_string(scope.clone(), code, "<user_function>".to_string()) {
+                // Wrap user code in a function to support 'return' statements
+                let indented_code = self.indent_code(code);
+                let wrapper_code = format!(
+                    "def __user_function():\n{}\nresult = __user_function()",
+                    indented_code
+                );
+
+                // Execute the wrapper
+                match vm.run_code_string(scope.clone(), &wrapper_code, "<user_function>".to_string()) {
                     Ok(_) => {
-                        // Check if there's a 'result' variable set by the user's code
+                        // Check for 'result' (set by the wrapper)
                         match scope.locals.get_item("result", vm) {
                             Ok(result) => self.convert_python_to_oxibase(&result, vm),
                             Err(_) => Err(Error::internal(
-                                "Python function must set a 'result' variable to return a value",
+                                "Python function did not return a value (use 'return' or set 'result')",
                             )),
                         }
                     }
@@ -164,12 +182,19 @@ impl ScriptingBackend for PythonBackend {
     }
 
     fn validate_code(&self, code: &str) -> Result<()> {
-        // Basic syntax validation using rustpython parsing
+        // Basic syntax validation using rustpython parsing with wrapper
         let interpreter = Interpreter::with_init(Settings::default(), |_| ());
         interpreter
             .enter(|vm| {
-                // Try to compile the code to check for basic syntax errors
-                match vm.compile(code, Mode::Exec, "<validation>".to_string()) {
+                // Wrap code in function for validation
+                let indented_code = self.indent_code(code);
+                let wrapper_code = format!(
+                    "def __user_function():\n{}\nresult = __user_function()",
+                    indented_code
+                );
+
+                // Try to compile the wrapped code to check for syntax errors
+                match vm.compile(&wrapper_code, Mode::Exec, "<validation>".to_string()) {
                     Ok(_) => Ok(()),
                     Err(e) => Err(Error::internal(format!("Python syntax error: {}", e))),
                 }

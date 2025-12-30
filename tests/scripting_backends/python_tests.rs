@@ -28,10 +28,10 @@ mod python_function_tests {
     fn test_python_function_creation_and_execution() {
         let db = Database::open("memory://python_create_test").unwrap();
 
-        // Create a Python function that sets result variable
+        // Create a Python function that returns a value
         db.execute(r#"
             CREATE FUNCTION compute_sum(a INTEGER, b INTEGER) RETURNS INTEGER
-            LANGUAGE PYTHON AS 'result = arguments[0] + arguments[1]'
+            LANGUAGE PYTHON AS 'return arguments[0] + arguments[1]'
         "#, ()).unwrap();
 
         // Execute the function
@@ -46,19 +46,19 @@ mod python_function_tests {
         // Test INTEGER return
         db.execute(r#"
             CREATE FUNCTION get_answer() RETURNS INTEGER
-            LANGUAGE PYTHON AS 'result = 42'
+            LANGUAGE PYTHON AS 'return 42'
         "#, ()).unwrap();
 
         // Test TEXT return
         db.execute(r#"
             CREATE FUNCTION get_message() RETURNS TEXT
-            LANGUAGE PYTHON AS 'result = "Hello from Python"'
+            LANGUAGE PYTHON AS 'return "Hello from Python"'
         "#, ()).unwrap();
 
         // Test BOOLEAN return
         db.execute(r#"
             CREATE FUNCTION get_truth() RETURNS BOOLEAN
-            LANGUAGE PYTHON AS 'result = True'
+            LANGUAGE PYTHON AS 'return True'
         "#, ()).unwrap();
 
         let int_result: i64 = db.query_one("SELECT get_answer()", ()).unwrap();
@@ -77,7 +77,7 @@ mod python_function_tests {
 
         db.execute(r#"
             CREATE FUNCTION format_person(name TEXT, age INTEGER, active BOOLEAN) RETURNS TEXT
-            LANGUAGE PYTHON AS 'result = f"{arguments[0]} is {arguments[1]} years old, active: {arguments[2]}"'
+            LANGUAGE PYTHON AS 'return f"{arguments[0]} is {arguments[1]} years old, active: {arguments[2]}"'
         "#, ()).unwrap();
 
         let result: String = db.query_one("SELECT format_person('Alice', 30, true)", ()).unwrap();
@@ -91,7 +91,7 @@ mod python_function_tests {
         // Create function
         db.execute(r#"
             CREATE FUNCTION temp_func() RETURNS INTEGER
-            LANGUAGE PYTHON AS 'result = 123'
+            LANGUAGE PYTHON AS 'return 123'
         "#, ()).unwrap();
 
         // Verify it works
@@ -113,7 +113,7 @@ mod python_function_tests {
         // Test that valid syntax works
         let result = db.execute(r#"
             CREATE FUNCTION valid_func() RETURNS INTEGER
-            LANGUAGE PYTHON AS 'result = 1'
+            LANGUAGE PYTHON AS 'return 1'
         "#, ());
         assert!(result.is_ok());
 
@@ -127,20 +127,18 @@ mod python_function_tests {
     }
 
     #[test]
-    fn test_python_function_without_result() {
+    fn test_python_function_without_return() {
         let db = Database::open("memory://python_no_result_test").unwrap();
 
-        // Function that doesn't set result should fail
-        let result = db.execute(r#"
-            CREATE FUNCTION no_result_func() RETURNS INTEGER
+        // Function that doesn't return a value should return NULL
+        db.execute(r#"
+            CREATE FUNCTION no_return_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'x = 42'
-        "#, ());
-        assert!(result.is_ok()); // Creation succeeds, but execution fails
+        "#, ()).unwrap();
 
-        // Execution should fail
-        let result: Result<i64, _> = db.query_one("SELECT no_result_func()", ());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("must set a 'result' variable"));
+        // Execution should return NULL
+        let result: Option<i64> = db.query_one("SELECT no_return_func()", ()).unwrap();
+        assert!(result.is_none());
     }
 
     #[test]
