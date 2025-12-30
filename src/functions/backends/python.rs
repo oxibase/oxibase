@@ -19,9 +19,8 @@ use crate::core::{Error, Result, Value};
 
 #[cfg(feature = "python")]
 use rustpython_vm::{
-    AsObject,
-    convert::ToPyObject,
-    PyObjectRef, VirtualMachine,
+    compiler::Mode, convert::ToPyObject, AsObject, Interpreter, PyObjectRef, PyRef, Settings,
+    VirtualMachine,
 };
 
 /// Python scripting backend
@@ -59,11 +58,12 @@ impl PythonBackend {
         }
     }
 
-
-
     /// Convert Python object back to OxiBase Value
-    #[allow(dead_code)]
-    fn convert_python_to_oxibase(&self, py_obj: &PyObjectRef, vm: &VirtualMachine) -> Result<Value> {
+    fn convert_python_to_oxibase(
+        &self,
+        py_obj: &PyObjectRef,
+        vm: &VirtualMachine,
+    ) -> Result<Value> {
         if py_obj.is(&vm.ctx.none()) {
             return Ok(Value::null_unknown());
         }
@@ -92,6 +92,16 @@ impl PythonBackend {
         // Fallback
         Err(Error::internal("Failed to convert Python object"))
     }
+
+    /// Format Python error with basic error message
+    fn format_python_error(
+        &self,
+        py_err: PyRef<rustpython_vm::builtins::PyBaseException>,
+        _vm: &VirtualMachine,
+    ) -> String {
+        // Simple error formatting - just get the exception string representation
+        format!("{:?}", py_err)
+    }
 }
 
 impl Default for PythonBackend {
@@ -110,17 +120,61 @@ impl ScriptingBackend for PythonBackend {
         &["python", "py"]
     }
 
-    fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
-        // TODO: Implement Python execution
-        // For now, return a placeholder - Python backend needs more work
-        Err(Error::internal(
-            "Python backend is not yet fully implemented",
-        ))
+    fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
+        // Create a new interpreter for each execution (isolation)
+        let interpreter = Interpreter::with_init(Settings::default(), |_| ());
+
+        interpreter
+            .enter(|vm| {
+                let scope = vm.new_scope_with_builtins();
+
+                // Convert arguments to Python list and set as global
+                let py_args_vec: Vec<PyObjectRef> = args
+                    .iter()
+                    .map(|arg| self.convert_oxibase_to_python(arg, vm))
+                    .collect::<Result<Vec<_>>>()?;
+                let py_args = vm.ctx.new_list(py_args_vec);
+                scope
+                    .globals
+                    .set_item("arguments", py_args.into(), vm)
+                    .map_err(|e| Error::internal(format!("Failed to set arguments: {:?}", e)))?;
+
+                // Execute the code
+                match vm.run_code_string(scope.clone(), code, "<user_function>".to_string()) {
+                    Ok(_) => {
+                        // Check if there's a 'result' variable set by the user's code
+                        match scope.locals.get_item("result", vm) {
+                            Ok(result) => self.convert_python_to_oxibase(&result, vm),
+                            Err(_) => Err(Error::internal(
+                                "Python function must set a 'result' variable to return a value",
+                            )),
+                        }
+                    }
+                    Err(py_err) => {
+                        // Convert Python exception to detailed error message
+                        let error_msg = self.format_python_error(py_err, vm);
+                        Err(Error::internal(format!(
+                            "Python execution error: {}",
+                            error_msg
+                        )))
+                    }
+                }
+            })
+            .map_err(|e| Error::internal(format!("Interpreter error: {:?}", e)))
     }
 
-    fn validate_code(&self, _code: &str) -> Result<()> {
-        // TODO: Add Python syntax validation
-        Ok(())
+    fn validate_code(&self, code: &str) -> Result<()> {
+        // Basic syntax validation using rustpython parsing
+        let interpreter = Interpreter::with_init(Settings::default(), |_| ());
+        interpreter
+            .enter(|vm| {
+                // Try to compile the code to check for basic syntax errors
+                match vm.compile(code, Mode::Exec, "<validation>".to_string()) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(Error::internal(format!("Python syntax error: {}", e))),
+                }
+            })
+            .map_err(|e| Error::internal(format!("Validation error: {:?}", e)))
     }
 }
 
