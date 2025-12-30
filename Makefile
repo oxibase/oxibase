@@ -56,6 +56,7 @@ release:## Release a new version (usage: make release VERSION=1.2.3, or omit VER
 	fi; \
 	echo "Updating version to $$VERSION"; \
 	sed -i '' "s/^version = \".*\"/version = \"$$VERSION\"/" Cargo.toml; \
+	cargo check; \
 	git commit -a -m "Bump version to $$VERSION"; \
 	git tag -a v$$VERSION -m "Release version $$VERSION"; \
 	git push origin HEAD; \
