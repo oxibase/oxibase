@@ -764,8 +764,18 @@ impl Executor {
                 }
 
                 // Check if this is an information_schema table
-                if let Some(schema_table) = table_name.strip_prefix("information_schema.") {
-                    let mut result = self.execute_information_schema_table(schema_table, stmt, ctx)?;
+                // First check string prefix (for backward compatibility)
+                let is_information_schema_table = if let Some(schema_table) = table_name.strip_prefix("information_schema.") {
+                    Some(schema_table.to_string())
+                } else if table_source.name.schema().map(|s| s.to_lowercase()) == Some("information_schema".to_string()) {
+                    // Handle qualified identifiers like information_schema.tables
+                    Some(table_source.name.table().to_lowercase())
+                } else {
+                    None
+                };
+
+                if let Some(schema_table) = is_information_schema_table {
+                    let mut result = self.execute_information_schema_table(&schema_table, stmt, ctx)?;
                     let columns = result.columns().to_vec();
                     let mut rows = Vec::new();
                     while result.next() {

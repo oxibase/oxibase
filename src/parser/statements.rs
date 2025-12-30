@@ -496,9 +496,11 @@ impl Parser {
         // Check for qualified name (schema.table)
         let table_name = if self.peek_token_is_punctuator(".") {
             self.next_token(); // consume .
-            if !self.expect_peek(TokenType::Identifier) {
+            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword) {
+                self.peek_error(TokenType::Identifier);
                 return None;
             }
+            self.next_token(); // consume the identifier/keyword
             let second_ident =
                 Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
             TableName::Qualified(QualifiedIdentifier {
@@ -1309,17 +1311,21 @@ impl Parser {
 
     /// Parse a table name (simple or qualified)
     fn parse_table_name(&mut self) -> Option<TableName> {
-        if !self.expect_peek(TokenType::Identifier) {
+        if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword) {
+            self.peek_error(TokenType::Identifier);
             return None;
         }
+        self.next_token();
         let first_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
 
         // Check for qualified name (schema.table)
         if self.peek_token_is_punctuator(".") {
             self.next_token(); // consume .
-            if !self.expect_peek(TokenType::Identifier) {
+            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword) {
+                self.peek_error(TokenType::Identifier);
                 return None;
             }
+            self.next_token(); // consume the identifier/keyword
             let second_ident =
                 Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
             Some(TableName::Qualified(QualifiedIdentifier {

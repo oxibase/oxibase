@@ -48,6 +48,53 @@ fn test_information_schema_tables() {
 }
 
 #[test]
+fn test_information_schema_unquoted_qualified_identifiers() {
+    let db = Database::open("memory://info_schema_unquoted").expect("Failed to create database");
+
+    // Create some tables and views
+    db.execute("CREATE TABLE users (id INTEGER, name TEXT)", ())
+        .expect("Failed to create table");
+    db.execute("CREATE TABLE products (id INTEGER, price FLOAT)", ())
+        .expect("Failed to create table");
+    db.execute("CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0", ())
+        .expect("Failed to create view");
+
+    // Query information_schema.tables with unquoted qualified identifiers
+    let result = db
+        .query("SELECT * FROM information_schema.tables ORDER BY table_name", ())
+        .expect("Failed to query information_schema.tables with unquoted identifiers");
+
+    let mut tables = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let table_name: String = row.get(2).expect("Failed to get table_name");
+        let table_type: String = row.get(3).expect("Failed to get table_type");
+        tables.push((table_name, table_type));
+    }
+
+    assert_eq!(tables.len(), 3);
+    assert_eq!(tables[0], ("active_users".to_string(), "VIEW".to_string()));
+    assert_eq!(tables[1], ("products".to_string(), "BASE TABLE".to_string()));
+    assert_eq!(tables[2], ("users".to_string(), "BASE TABLE".to_string()));
+
+    // Also test other information_schema tables with unquoted identifiers
+    let result = db
+        .query("SELECT * FROM information_schema.columns WHERE table_name = 'users' ORDER BY column_name", ())
+        .expect("Failed to query information_schema.columns with unquoted identifiers");
+
+    let mut columns = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let column_name: String = row.get(3).expect("Failed to get column_name");
+        columns.push(column_name);
+    }
+
+    assert_eq!(columns.len(), 2);
+    assert_eq!(columns[0], "id");
+    assert_eq!(columns[1], "name");
+}
+
+#[test]
 fn test_information_schema_columns() {
     let db = Database::open("memory://info_schema_columns").expect("Failed to create database");
 
@@ -87,11 +134,11 @@ fn test_information_schema_columns() {
     assert_eq!(columns.len(), 4);
     assert_eq!(
         columns[0],
-        ("id".to_string(), "Integer".to_string(), "NO".to_string(), None)
+        ("id".to_string(), "Integer".to_string(), "NO".to_string(), Some("".to_string()))
     );
     assert_eq!(
         columns[1],
-        ("name".to_string(), "Text".to_string(), "NO".to_string(), None)
+        ("name".to_string(), "Text".to_string(), "NO".to_string(), Some("".to_string()))
     );
     assert_eq!(
         columns[2],
@@ -104,7 +151,7 @@ fn test_information_schema_columns() {
     );
     assert_eq!(
         columns[3],
-        ("price".to_string(), "Float".to_string(), "YES".to_string(), None)
+        ("price".to_string(), "Float".to_string(), "YES".to_string(), Some("".to_string()))
     );
 }
 
@@ -212,4 +259,29 @@ fn test_show_functions() {
     assert!(has_scalar);
     assert!(has_aggregate);
     assert!(has_window);
+}
+
+#[test]
+fn test_information_schema_basic_queries() {
+    let db = Database::open("memory://basic_queries").expect("Failed to create database");
+
+    // Create some test data
+    db.execute("CREATE TABLE users (id INTEGER, name TEXT)", ())
+        .expect("Failed to create table");
+    db.execute("CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0", ())
+        .expect("Failed to create view");
+
+    // Test SELECT * FROM information_schema.tables (with quotes)
+    let result = db.query("SELECT * FROM \"information_schema\".\"tables\"", ())
+        .expect("Failed to query information_schema.tables");
+
+    let rows: Vec<_> = result.collect();
+    assert_eq!(rows.len(), 2); // users table and active_users view
+
+    // Test SHOW FUNCTION
+    let result = db.query("SHOW FUNCTION", ())
+        .expect("Failed to execute SHOW FUNCTION");
+
+    let rows: Vec<_> = result.collect();
+    assert!(rows.len() > 10); // Should have many functions
 }
