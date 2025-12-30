@@ -17,9 +17,9 @@
 //! This module provides pluggable scripting backends that allow user-defined
 //! functions to be written in different scripting languages.
 
-pub mod rhai;
 pub mod deno;
 pub mod python;
+pub mod rhai;
 
 use crate::core::{Result, Value};
 use std::collections::HashMap;

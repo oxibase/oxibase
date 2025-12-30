@@ -68,8 +68,15 @@ impl ScalarFunction for UserDefinedScalarFunction {
 
     fn evaluate(&self, args: &[Value]) -> Result<Value> {
         // Get the appropriate backend for this function's language
-        let backend = self.backend_registry.get_backend(&self.language)
-            .ok_or_else(|| Error::internal(format!("No backend available for language: {}", self.language)))?;
+        let backend = self
+            .backend_registry
+            .get_backend(&self.language)
+            .ok_or_else(|| {
+                Error::internal(format!(
+                    "No backend available for language: {}",
+                    self.language
+                ))
+            })?;
 
         // Execute using the backend
         backend.execute(&self.code, args)
@@ -110,7 +117,10 @@ impl UserDefinedFunctionRegistry {
     ) -> Result<()> {
         // Validate that the backend exists for this language
         if !self.backend_registry.is_language_supported(&language) {
-            return Err(Error::internal(format!("Unsupported language: {}", language)));
+            return Err(Error::internal(format!(
+                "Unsupported language: {}",
+                language
+            )));
         }
 
         let udf = Arc::new(UserDefinedScalarFunction::new(

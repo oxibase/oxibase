@@ -34,6 +34,12 @@ impl DenoBackend {
     }
 }
 
+impl Default for DenoBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(feature = "deno")]
 impl ScriptingBackend for DenoBackend {
     fn name(&self) -> &'static str {
@@ -117,7 +123,7 @@ impl ScriptingBackend for DenoBackend {
         }
     }
 
-    fn validate_code(&self, code: &str) -> Result<()> {
+    fn validate_code(&self, _code: &str) -> Result<()> {
         // For now, we'll do basic validation by attempting to create a runtime
         // In the future, we could add proper AST parsing/validation
         let _runtime = JsRuntime::new(RuntimeOptions::default());
@@ -148,10 +154,14 @@ impl ScriptingBackend for DenoBackend {
     }
 
     fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
-        Err(Error::internal("Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support"))
+        Err(Error::internal(
+            "Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support",
+        ))
     }
 
     fn validate_code(&self, _code: &str) -> Result<()> {
-        Err(Error::internal("Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support"))
+        Err(Error::internal(
+            "Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support",
+        ))
     }
 }

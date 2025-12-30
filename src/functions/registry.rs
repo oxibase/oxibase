@@ -35,6 +35,7 @@ use super::aggregate::{
     StddevSampFunction, StringAggFunction, SumFunction, VarPopFunction, VarSampFunction,
     VarianceFunction,
 };
+use super::backends::create_backend_registry;
 use super::scalar::{
     AbsFunction, CastFunction, CeilFunction, CeilingFunction, CharFunction, CharLengthFunction,
     CoalesceFunction, CollateFunction, ConcatFunction, ConcatWsFunction, CosFunction,
@@ -52,7 +53,6 @@ use super::scalar::{
     SubstringFunction, TanFunction, TimeTruncFunction, ToCharFunction, TrimFunction, TruncFunction,
     TruncateFunction, TypeOfFunction, UpperFunction, VersionFunction, YearFunction,
 };
-use super::backends::create_backend_registry;
 use super::user_defined::UserDefinedFunctionRegistry;
 use super::window::{
     CumeDistFunction, DenseRankFunction, FirstValueFunction, LagFunction, LastValueFunction,

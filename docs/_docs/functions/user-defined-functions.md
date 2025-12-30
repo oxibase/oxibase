@@ -185,12 +185,42 @@ LANGUAGE DENO AS 'return arguments[0] + arguments[1];';
 ```
 
 #### Python Backend
-Arguments are accessible through the `args` tuple:
+Arguments are accessible through the `arguments` list (same as JavaScript):
 
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE PYTHON AS 'return args[0] + args[1]';
+LANGUAGE PYTHON AS 'return arguments[0] + arguments[1]';
+```
+
+Python functions support the same argument and return types as JavaScript:
+- **INTEGER**: Python `int`
+- **FLOAT**: Python `float`
+- **TEXT**: Python `str`
+- **BOOLEAN**: Python `bool`
+- **JSON**: Python objects (dict/list parsed from JSON string)
+
+Example functions:
+
+```sql
+-- String manipulation
+CREATE FUNCTION greet(name TEXT)
+RETURNS TEXT
+LANGUAGE PYTHON AS 'return f"Hello, {arguments[0]}!"';
+
+-- Mathematical operations
+CREATE FUNCTION power(base INTEGER, exp INTEGER)
+RETURNS INTEGER
+LANGUAGE PYTHON AS 'return arguments[0] ** arguments[1]';
+
+-- JSON processing
+CREATE FUNCTION extract_field(json_data JSON, field TEXT)
+RETURNS TEXT
+LANGUAGE PYTHON AS '''
+import json
+data = json.loads(arguments[0])
+return data.get(arguments[1], "")
+''';
 ```
 
 ### Return Values
@@ -243,16 +273,26 @@ LANGUAGE DENO AS 'return { name: arguments[0], age: arguments[1] };';
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE PYTHON AS 'return f"Hello, {args[0]}!"';
+LANGUAGE PYTHON AS 'return f"Hello, {arguments[0]}!"';
 
 -- Return a number
 CREATE FUNCTION square(x INTEGER)
 RETURNS INTEGER
-LANGUAGE PYTHON AS 'return args[0] * args[0]';
+LANGUAGE PYTHON AS 'return arguments[0] * arguments[0]';
 
 -- Return a boolean
 CREATE FUNCTION is_even(n INTEGER)
 RETURNS BOOLEAN
+LANGUAGE PYTHON AS 'return arguments[0] % 2 == 0';
+
+-- Return JSON
+CREATE FUNCTION create_person(name TEXT, age INTEGER)
+RETURNS JSON
+LANGUAGE PYTHON AS '''
+import json
+return json.dumps({"name": arguments[0], "age": arguments[1]})
+''';
+```
 LANGUAGE PYTHON AS 'return args[0] % 2 == 0';
 ```
 

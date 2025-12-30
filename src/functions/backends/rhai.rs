@@ -68,7 +68,10 @@ impl ScriptingBackend for RhaiBackend {
         }
 
         // Execute the script
-        match self.engine.eval_with_scope::<rhai::Dynamic>(&mut scope, code) {
+        match self
+            .engine
+            .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
+        {
             Ok(result) => {
                 // Convert Rhai result back to Value
                 if result.is::<i64>() {

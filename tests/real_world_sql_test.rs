@@ -582,7 +582,8 @@ fn test_create_function_python() {
 
 #[test]
 fn test_create_function_if_not_exists() {
-    let stmt = parse_ok("CREATE FUNCTION IF NOT EXISTS test() RETURNS TEXT LANGUAGE RHAI AS '\"hello\"'");
+    let stmt =
+        parse_ok("CREATE FUNCTION IF NOT EXISTS test() RETURNS TEXT LANGUAGE RHAI AS '\"hello\"'");
     assert!(matches!(stmt, Statement::CreateFunction(_)));
 }
 
@@ -597,5 +598,8 @@ fn test_create_function_malformed_string_literal() {
     // Regression test: This SQL has an unterminated string literal and should be rejected
     // The string starts with ' but never closes properly
     let result = parse_succeeds("create function format_currency(amount int, currency text) returns text language rhai as ' return currency + \" \" + amount;");
-    assert!(!result, "Parser should reject malformed SQL with unterminated string literal");
+    assert!(
+        !result,
+        "Parser should reject malformed SQL with unterminated string literal"
+    );
 }

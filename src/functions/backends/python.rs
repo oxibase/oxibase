@@ -19,7 +19,9 @@ use crate::core::{Error, Result, Value};
 
 #[cfg(feature = "python")]
 use rustpython_vm::{
-    builtins::PyInt, pyobject::PyObjectRef, Interpreter, PyResult, VirtualMachine,
+    AsObject,
+    convert::ToPyObject,
+    PyObjectRef, VirtualMachine,
 };
 
 /// Python scripting backend
@@ -34,6 +36,68 @@ impl PythonBackend {
     pub fn new() -> Self {
         Self {}
     }
+
+    /// Convert OxiBase Value to Python object
+    #[allow(dead_code)]
+    fn convert_oxibase_to_python(&self, value: &Value, vm: &VirtualMachine) -> Result<PyObjectRef> {
+        match value {
+            Value::Null(_) => Ok(vm.ctx.none()),
+            Value::Integer(i) => Ok(i.to_pyobject(vm)),
+            Value::Float(f) => Ok(f.to_pyobject(vm)),
+            Value::Text(s) => Ok(s.as_ref().to_pyobject(vm)),
+            Value::Boolean(b) => Ok(b.to_pyobject(vm)),
+            Value::Timestamp(ts) => {
+                // Convert to Python datetime - simplified approach
+                // For now, convert to ISO string and let Python handle it
+                let iso_str = ts.to_rfc3339();
+                Ok(iso_str.to_pyobject(vm))
+            }
+            Value::Json(j) => {
+                // For now, just pass as string
+                Ok(j.as_ref().to_pyobject(vm))
+            }
+        }
+    }
+
+
+
+    /// Convert Python object back to OxiBase Value
+    #[allow(dead_code)]
+    fn convert_python_to_oxibase(&self, py_obj: &PyObjectRef, vm: &VirtualMachine) -> Result<Value> {
+        if py_obj.is(&vm.ctx.none()) {
+            return Ok(Value::null_unknown());
+        }
+
+        // Try to extract as different types using str() and parsing
+        if let Ok(str_repr) = py_obj.str(vm) {
+            // Convert PyStr to String
+            let s = str_repr.to_string();
+            // Try to parse as different types
+            if let Ok(i) = s.parse::<i64>() {
+                return Ok(Value::Integer(i));
+            }
+            if let Ok(f) = s.parse::<f64>() {
+                return Ok(Value::Float(f));
+            }
+            if s == "True" {
+                return Ok(Value::Boolean(true));
+            }
+            if s == "False" {
+                return Ok(Value::Boolean(false));
+            }
+            // For strings and complex objects, return as text or JSON
+            return Ok(Value::Text(s.into()));
+        }
+
+        // Fallback
+        Err(Error::internal("Failed to convert Python object"))
+    }
+}
+
+impl Default for PythonBackend {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(feature = "python")]
@@ -46,57 +110,12 @@ impl ScriptingBackend for PythonBackend {
         &["python", "py"]
     }
 
-    fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
-        Interpreter::with_init(Default::default(), |vm| {
-            // Convert args to Python objects
-            let py_args: Vec<PyObjectRef> = args
-                .iter()
-                .map(|arg| match arg {
-                    Value::Integer(i) => vm.ctx.new_int(*i).into(),
-                    Value::Float(f) => vm.ctx.new_float(*f).into(),
-                    Value::Text(s) => vm.ctx.new_str(s.as_ref()).into(),
-                    Value::Boolean(b) => vm.ctx.new_bool(*b).into(),
-                    _ => vm.ctx.none(), // Default to None for unsupported types
-                })
-                .collect();
-
-            // Create a list for arguments
-            let args_list = vm.ctx.new_list(py_args);
-
-            // Execute the function with arguments
-            let script = format!(
-                "
-def __user_function(*args):
-    {}
-
-result = __user_function({})
-                ",
-                code, "args[0]" // For now, just pass first arg - need to expand
-            );
-
-            match vm.run_code_string(vm.ctx.new_scope_with_builtins(), &script, "<user_function>".to_string()) {
-                Ok(_) => {
-                    // Get the result from the scope
-                    if let Some(result) = vm.get_attribute(vm.current_scope(), "result").ok() {
-                        // Convert back to Value
-                        if let Ok(int_val) = result.downcast::<PyInt>() {
-                            Ok(Value::Integer(int_val.as_bigint().to_i64().unwrap_or(0)))
-                        } else if let Ok(float_val) = result.downcast::<rustpython_vm::builtins::PyFloat>() {
-                            Ok(Value::Float(float_val.to_f64()))
-                        } else if let Ok(str_val) = result.downcast::<rustpython_vm::builtins::PyStr>() {
-                            Ok(Value::Text(str_val.as_str().to_string().into()))
-                        } else if let Ok(bool_val) = result.downcast::<rustpython_vm::builtins::PyBool>() {
-                            Ok(Value::Boolean(bool_val.to_bool()))
-                        } else {
-                            Err(Error::internal("Unsupported return type from Python script"))
-                        }
-                    } else {
-                        Err(Error::internal("No result variable found in Python script"))
-                    }
-                }
-                Err(e) => Err(Error::internal(format!("Python execution error: {:?}", e))),
-            }
-        }).map_err(|e| Error::internal(format!("Python interpreter error: {:?}", e)))?
+    fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
+        // TODO: Implement Python execution
+        // For now, return a placeholder - Python backend needs more work
+        Err(Error::internal(
+            "Python backend is not yet fully implemented",
+        ))
     }
 
     fn validate_code(&self, _code: &str) -> Result<()> {
@@ -127,10 +146,14 @@ impl ScriptingBackend for PythonBackend {
     }
 
     fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
-        Err(Error::internal("Python backend not enabled. Use --features python to enable Python support"))
+        Err(Error::internal(
+            "Python backend not enabled. Use --features python to enable Python support",
+        ))
     }
 
     fn validate_code(&self, _code: &str) -> Result<()> {
-        Err(Error::internal("Python backend not enabled. Use --features python to enable Python support"))
+        Err(Error::internal(
+            "Python backend not enabled. Use --features python to enable Python support",
+        ))
     }
 }

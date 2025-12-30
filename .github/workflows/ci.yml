@@ -38,12 +38,36 @@ jobs:
       run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
-    name: Test
+    name: Test (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - name: "Default Features"
+            os: ubuntu-latest
+            features: ""
+            test_cmd: "cargo nextest run --profile ci"
+          - name: "Deno Backend"
+            os: ubuntu-latest
+            features: "deno"
+            test_cmd: "cargo nextest run --profile ci --features deno"
+          - name: "Python Backend"
+            os: ubuntu-latest
+            features: "python"
+            test_cmd: "cargo nextest run --profile ci --features python"
+          - name: "All Backends"
+            os: ubuntu-latest
+            features: "deno,python"
+            test_cmd: "cargo nextest run --profile ci --features deno,python"
+          - name: "macOS Default"
+            os: macos-latest
+            features: ""
+            test_cmd: "cargo nextest run --profile ci"
+          - name: "Windows Default"
+            os: windows-latest
+            features: ""
+            test_cmd: "cargo nextest run --profile ci"
     steps:
     - name: Free disk space (Linux)
       if: runner.os == 'Linux'
@@ -69,7 +93,7 @@ jobs:
         locked: true
 
     - name: Run tests
-      run: cargo nextest run --profile ci
+      run: ${{ matrix.test_cmd }}
 
   coverage:
     name: Code Coverage
