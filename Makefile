@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license docs docs-build lib-doc release help run-memory run-files
+.PHONY: all lint test build coverage license docs docs-build lib-doc release help run-memory run-files run-full
 
 .PHONY: help
 # [other] Display help
@@ -65,3 +65,7 @@ run: build
 # [run] Run oxibase with file-based database
 run-files: build
 	./target/release/oxibase -d file://./examples/oxibase.db
+
+run-full: ## Build and run oxibase with all backends (Rhai, Deno, Python) in memory
+	cargo build --release --features deno,python
+	./target/release/oxibase -d memory://
