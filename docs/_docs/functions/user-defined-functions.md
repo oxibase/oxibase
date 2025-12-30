@@ -13,6 +13,78 @@ OxiBase supports user-defined functions written in JavaScript and TypeScript tha
 
 User-defined functions (UDFs) enable you to create custom scalar functions that can be called from SQL queries. These functions run in a secure, isolated JavaScript environment with no access to the file system, network, or system resources by default.
 
+## Functions vs Stored Procedures
+
+OxiBase currently supports **user-defined functions** but not **stored procedures**. Understanding the difference is important for choosing the right tool for your database logic.
+
+### Comparison at a Glance
+
+| Feature | Function (`CREATE FUNCTION`) | Procedure (`CREATE PROCEDURE`) |
+| --- | --- | --- |
+| **Return Value** | **Must** return exactly one value (scalar). | Can return zero, one, or multiple values. |
+| **Usage in SQL** | Can be used in `SELECT`, `WHERE`, and `JOIN`. | Must be called using `EXECUTE` or `CALL`. |
+| **Data Modification** | Cannot perform DML (Insert, Update, Delete). | Can perform any DML operations. |
+| **Transactions** | **No** transaction control allowed. | Supports `COMMIT`, `ROLLBACK`, and `SAVEPOINT`. |
+| **Parameters** | Generally only **Input** parameters. | Supports **Input**, **Output**, and **In-Out**. |
+| **Error Handling** | Limited (JavaScript exceptions only). | Full support for error handling constructs. |
+
+### Key Differences
+
+#### Integration with Queries
+
+Functions are "pluggable" into your SQL statements and can be used just like built-in functions:
+
+```sql
+-- Function usage in queries
+SELECT calculate_tax(price) FROM products;
+SELECT * FROM users WHERE is_adult(age);
+```
+
+Procedures cannot be used directly in queries and must be called separately:
+
+```sql
+-- Procedure usage (when implemented)
+EXECUTE update_inventory;
+CALL process_monthly_report;
+```
+
+#### Side Effects and DML
+
+Functions are restricted to be "side-effect free" and cannot change database state:
+
+```sql
+-- ✅ Valid function - read-only calculation
+CREATE FUNCTION calculate_tax(price INTEGER) RETURNS INTEGER
+LANGUAGE DENO AS 'return arguments[0] * 0.08;';
+```
+
+Procedures are designed for actions that modify data:
+
+```sql
+-- ❌ Invalid in functions - would be valid in procedures (when implemented)
+-- CREATE PROCEDURE update_prices()
+-- AS BEGIN
+--     UPDATE products SET price = price * 1.1;
+-- END;
+```
+
+#### When to Use Functions vs Procedures
+
+**Use Functions when:**
+- You need to perform calculations and use results in queries
+- The logic is simple and read-only
+- You want to encapsulate reusable business logic
+- Examples: Currency conversion, string formatting, age calculation
+
+**Use Procedures when:**
+- You need to perform write operations (INSERT/UPDATE/DELETE)
+- You need complex multi-step logic with error handling
+- You need transaction control
+- You need to return multiple result sets
+- Examples: Monthly payroll processing, customer registration, data cleanup
+
+> **Note:** Stored procedures are planned for future implementation in OxiBase but are not currently available.
+
 ## Creating User-Defined Functions
 
 Use the `CREATE FUNCTION` statement to define a user-defined function:
@@ -31,16 +103,22 @@ LANGUAGE DENO AS 'JavaScript code here';
 - `LANGUAGE DENO`: Specifies that the function uses JavaScript/TypeScript
 - `AS 'code'`: The JavaScript/TypeScript code that implements the function
 
-### Supported Data Types
+### Supported Return Data Types
 
-User-defined functions support all OxiBase data types:
+User-defined functions can return values of these scalar data types:
 
-- `INTEGER` - 64-bit signed integers
-- `FLOAT` - 64-bit floating-point numbers
-- `TEXT` - UTF-8 text strings
-- `BOOLEAN` - True/false values
-- `TIMESTAMP` - Date and time values
-- `JSON` - JSON documents
+| Data Type | Description | JavaScript Example |
+|-----------|-------------|-------------------|
+| **`INTEGER`** | 64-bit signed integers | `return 42;` |
+| **`FLOAT`** | 64-bit floating-point numbers | `return 3.14159;` |
+| **`TEXT`** | UTF-8 text strings | `return "Hello World";` |
+| **`BOOLEAN`** | True/false values | `return arguments[0] > 10;` |
+| **`TIMESTAMP`** | Date and time values | `return new Date().toISOString();` |
+| **`JSON`** | JSON documents and objects | `return {name: "John", age: 30};` |
+
+Functions must return exactly one value and declare their return type in the `CREATE FUNCTION` statement. The JavaScript runtime automatically converts return values to the appropriate OxiBase type.
+
+> **Note:** OxiBase currently only supports scalar user-defined functions. Table-valued functions and stored procedures are planned for future releases.
 
 ## Function Implementation
 
