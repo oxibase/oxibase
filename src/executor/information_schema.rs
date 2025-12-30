@@ -24,7 +24,7 @@
 
 use std::sync::Arc;
 
-use crate::core::{Error, Result, Row, Value, DataType};
+use crate::core::{DataType, Error, Result, Row, Value};
 use crate::parser::ast::*;
 use crate::storage::traits::{Engine, QueryResult};
 
@@ -47,7 +47,10 @@ impl Executor {
             "views" => self.build_views_result(),
             "statistics" => self.build_statistics_result(),
             "sequences" => self.build_sequences_result(),
-            _ => Err(Error::TableNotFoundByName(format!("information_schema.{}", schema_table))),
+            _ => Err(Error::TableNotFoundByName(format!(
+                "information_schema.{}",
+                schema_table
+            ))),
         }
     }
 
@@ -72,7 +75,7 @@ impl Executor {
         // Add tables
         for table_name in table_names {
             rows.push(Row::from_values(vec![
-                Value::Text(Arc::from("def")), // catalog
+                Value::Text(Arc::from("def")),            // catalog
                 Value::Null(crate::core::DataType::Text), // schema (NULL for single schema)
                 Value::Text(Arc::from(table_name.as_str())),
                 Value::Text(Arc::from("BASE TABLE")),
@@ -82,7 +85,7 @@ impl Executor {
         // Add views
         for view_name in view_names {
             rows.push(Row::from_values(vec![
-                Value::Text(Arc::from("def")), // catalog
+                Value::Text(Arc::from("def")),            // catalog
                 Value::Null(crate::core::DataType::Text), // schema (NULL for single schema)
                 Value::Text(Arc::from(view_name.as_str())),
                 Value::Text(Arc::from("VIEW")),
@@ -149,7 +152,9 @@ impl Executor {
 
                 // Get numeric precision/scale (for INTEGER/FLOAT)
                 let (num_precision, num_scale) = match col.data_type {
-                    crate::core::types::DataType::Integer => (Some(Value::Integer(64)), Some(Value::Integer(0))),
+                    crate::core::types::DataType::Integer => {
+                        (Some(Value::Integer(64)), Some(Value::Integer(0)))
+                    }
                     crate::core::types::DataType::Float => (Some(Value::Integer(53)), None), // Double precision
                     _ => (None, None),
                 };
@@ -216,7 +221,8 @@ impl Executor {
         // Add scalar functions
         for func_name in scalar_functions {
             if let Some(func_info) = function_registry.get_info(&func_name) {
-                let return_type_str = function_data_type_to_string(&func_info.signature.return_type);
+                let return_type_str =
+                    function_data_type_to_string(&func_info.signature.return_type);
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
                     Value::Null(DataType::Text),
@@ -231,7 +237,8 @@ impl Executor {
         // Add aggregate functions
         for func_name in aggregate_functions {
             if let Some(func_info) = function_registry.get_info(&func_name) {
-                let return_type_str = function_data_type_to_string(&func_info.signature.return_type);
+                let return_type_str =
+                    function_data_type_to_string(&func_info.signature.return_type);
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
                     Value::Null(DataType::Text),
@@ -246,7 +253,8 @@ impl Executor {
         // Add window functions
         for func_name in window_functions {
             if let Some(func_info) = function_registry.get_info(&func_name) {
-                let return_type_str = function_data_type_to_string(&func_info.signature.return_type);
+                let return_type_str =
+                    function_data_type_to_string(&func_info.signature.return_type);
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
                     Value::Null(DataType::Text),

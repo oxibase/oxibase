@@ -497,7 +497,8 @@ impl Parser {
         // Check for qualified name (schema.table)
         let table_name = if self.peek_token_is_punctuator(".") {
             self.next_token(); // consume .
-            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword) {
+            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword)
+            {
                 self.peek_error(TokenType::Identifier);
                 return None;
             }
@@ -1322,7 +1323,8 @@ impl Parser {
         // Check for qualified name (schema.table)
         if self.peek_token_is_punctuator(".") {
             self.next_token(); // consume .
-            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword) {
+            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword)
+            {
                 self.peek_error(TokenType::Identifier);
                 return None;
             }
@@ -2479,7 +2481,8 @@ impl Parser {
                 token,
                 table_name,
             }))
-        } else if self.peek_token_is_keyword("FUNCTIONS") || self.peek_token_is_keyword("FUNCTION") {
+        } else if self.peek_token_is_keyword("FUNCTIONS") || self.peek_token_is_keyword("FUNCTION")
+        {
             self.next_token();
             Some(Statement::ShowFunctions(ShowFunctionsStatement { token }))
         } else {

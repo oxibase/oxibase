@@ -25,12 +25,18 @@ fn test_information_schema_tables() {
         .expect("Failed to create table");
     db.execute("CREATE TABLE products (id INTEGER, price FLOAT)", ())
         .expect("Failed to create table");
-    db.execute("CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0", ())
-        .expect("Failed to create view");
+    db.execute(
+        "CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0",
+        (),
+    )
+    .expect("Failed to create view");
 
     // Query information_schema.tables
     let result = db
-        .query("SELECT * FROM \"information_schema\".\"tables\" ORDER BY table_name", ())
+        .query(
+            "SELECT * FROM \"information_schema\".\"tables\" ORDER BY table_name",
+            (),
+        )
         .expect("Failed to query information_schema.tables");
 
     let mut tables = Vec::new();
@@ -43,7 +49,10 @@ fn test_information_schema_tables() {
 
     assert_eq!(tables.len(), 3);
     assert_eq!(tables[0], ("active_users".to_string(), "VIEW".to_string()));
-    assert_eq!(tables[1], ("products".to_string(), "BASE TABLE".to_string()));
+    assert_eq!(
+        tables[1],
+        ("products".to_string(), "BASE TABLE".to_string())
+    );
     assert_eq!(tables[2], ("users".to_string(), "BASE TABLE".to_string()));
 }
 
@@ -56,12 +65,18 @@ fn test_information_schema_unquoted_qualified_identifiers() {
         .expect("Failed to create table");
     db.execute("CREATE TABLE products (id INTEGER, price FLOAT)", ())
         .expect("Failed to create table");
-    db.execute("CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0", ())
-        .expect("Failed to create view");
+    db.execute(
+        "CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0",
+        (),
+    )
+    .expect("Failed to create view");
 
     // Query information_schema.tables with unquoted qualified identifiers
     let result = db
-        .query("SELECT * FROM information_schema.tables ORDER BY table_name", ())
+        .query(
+            "SELECT * FROM information_schema.tables ORDER BY table_name",
+            (),
+        )
         .expect("Failed to query information_schema.tables with unquoted identifiers");
 
     let mut tables = Vec::new();
@@ -74,7 +89,10 @@ fn test_information_schema_unquoted_qualified_identifiers() {
 
     assert_eq!(tables.len(), 3);
     assert_eq!(tables[0], ("active_users".to_string(), "VIEW".to_string()));
-    assert_eq!(tables[1], ("products".to_string(), "BASE TABLE".to_string()));
+    assert_eq!(
+        tables[1],
+        ("products".to_string(), "BASE TABLE".to_string())
+    );
     assert_eq!(tables[2], ("users".to_string(), "BASE TABLE".to_string()));
 
     // Also test other information_schema tables with unquoted identifiers
@@ -134,11 +152,21 @@ fn test_information_schema_columns() {
     assert_eq!(columns.len(), 4);
     assert_eq!(
         columns[0],
-        ("id".to_string(), "Integer".to_string(), "NO".to_string(), Some("".to_string()))
+        (
+            "id".to_string(),
+            "Integer".to_string(),
+            "NO".to_string(),
+            Some("".to_string())
+        )
     );
     assert_eq!(
         columns[1],
-        ("name".to_string(), "Text".to_string(), "NO".to_string(), Some("".to_string()))
+        (
+            "name".to_string(),
+            "Text".to_string(),
+            "NO".to_string(),
+            Some("".to_string())
+        )
     );
     assert_eq!(
         columns[2],
@@ -151,7 +179,12 @@ fn test_information_schema_columns() {
     );
     assert_eq!(
         columns[3],
-        ("price".to_string(), "Float".to_string(), "YES".to_string(), Some("".to_string()))
+        (
+            "price".to_string(),
+            "Float".to_string(),
+            "YES".to_string(),
+            Some("".to_string())
+        )
     );
 }
 
@@ -181,15 +214,24 @@ fn test_information_schema_functions() {
 
     // Check that we have the expected functions
     assert!(functions.len() >= 3);
-    let upper = functions.iter().find(|(name, _, _)| name == "UPPER").unwrap();
+    let upper = functions
+        .iter()
+        .find(|(name, _, _)| name == "UPPER")
+        .unwrap();
     assert_eq!(upper.1, "SCALAR");
     assert_eq!(upper.2, "TEXT");
 
-    let count = functions.iter().find(|(name, _, _)| name == "COUNT").unwrap();
+    let count = functions
+        .iter()
+        .find(|(name, _, _)| name == "COUNT")
+        .unwrap();
     assert_eq!(count.1, "AGGREGATE");
     assert_eq!(count.2, "INTEGER");
 
-    let row_number = functions.iter().find(|(name, _, _)| name == "ROW_NUMBER").unwrap();
+    let row_number = functions
+        .iter()
+        .find(|(name, _, _)| name == "ROW_NUMBER")
+        .unwrap();
     assert_eq!(row_number.1, "WINDOW");
     assert_eq!(row_number.2, "INTEGER");
 }
@@ -199,8 +241,11 @@ fn test_information_schema_statistics() {
     let db = Database::open("memory://info_schema_stats").expect("Failed to create database");
 
     // Create a table with indexes
-    db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)", ())
-        .expect("Failed to create table");
+    db.execute(
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)",
+        (),
+    )
+    .expect("Failed to create table");
     db.execute("CREATE INDEX idx_name ON users (name)", ())
         .expect("Failed to create index");
     db.execute("CREATE INDEX idx_email ON users (email)", ())
@@ -227,8 +272,14 @@ fn test_information_schema_statistics() {
     }
 
     assert_eq!(indexes.len(), 2);
-    assert_eq!(indexes[0], ("idx_email".to_string(), "email".to_string(), true));
-    assert_eq!(indexes[1], ("idx_name".to_string(), "name".to_string(), true));
+    assert_eq!(
+        indexes[0],
+        ("idx_email".to_string(), "email".to_string(), true)
+    );
+    assert_eq!(
+        indexes[1],
+        ("idx_name".to_string(), "name".to_string(), true)
+    );
 }
 
 #[test]
@@ -268,18 +319,23 @@ fn test_information_schema_basic_queries() {
     // Create some test data
     db.execute("CREATE TABLE users (id INTEGER, name TEXT)", ())
         .expect("Failed to create table");
-    db.execute("CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0", ())
-        .expect("Failed to create view");
+    db.execute(
+        "CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0",
+        (),
+    )
+    .expect("Failed to create view");
 
     // Test SELECT * FROM information_schema.tables (with quotes)
-    let result = db.query("SELECT * FROM \"information_schema\".\"tables\"", ())
+    let result = db
+        .query("SELECT * FROM \"information_schema\".\"tables\"", ())
         .expect("Failed to query information_schema.tables");
 
     let rows: Vec<_> = result.collect();
     assert_eq!(rows.len(), 2); // users table and active_users view
 
     // Test SHOW FUNCTION
-    let result = db.query("SHOW FUNCTION", ())
+    let result = db
+        .query("SHOW FUNCTION", ())
         .expect("Failed to execute SHOW FUNCTION");
 
     let rows: Vec<_> = result.collect();
