@@ -1,0 +1,215 @@
+// Copyright 2025 Stoolap Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and limitations
+// under the License.
+
+//! Tests for information_schema virtual tables
+
+use oxibase::api::Database;
+
+#[test]
+fn test_information_schema_tables() {
+    let db = Database::open("memory://info_schema_tables").expect("Failed to create database");
+
+    // Create some tables and views
+    db.execute("CREATE TABLE users (id INTEGER, name TEXT)", ())
+        .expect("Failed to create table");
+    db.execute("CREATE TABLE products (id INTEGER, price FLOAT)", ())
+        .expect("Failed to create table");
+    db.execute("CREATE VIEW active_users AS SELECT * FROM users WHERE id > 0", ())
+        .expect("Failed to create view");
+
+    // Query information_schema.tables
+    let result = db
+        .query("SELECT * FROM \"information_schema\".\"tables\" ORDER BY table_name", ())
+        .expect("Failed to query information_schema.tables");
+
+    let mut tables = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let table_name: String = row.get(2).expect("Failed to get table_name");
+        let table_type: String = row.get(3).expect("Failed to get table_type");
+        tables.push((table_name, table_type));
+    }
+
+    assert_eq!(tables.len(), 3);
+    assert_eq!(tables[0], ("active_users".to_string(), "VIEW".to_string()));
+    assert_eq!(tables[1], ("products".to_string(), "BASE TABLE".to_string()));
+    assert_eq!(tables[2], ("users".to_string(), "BASE TABLE".to_string()));
+}
+
+#[test]
+fn test_information_schema_columns() {
+    let db = Database::open("memory://info_schema_columns").expect("Failed to create database");
+
+    // Create a table with various column types
+    db.execute(
+        "CREATE TABLE test_table (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            age INTEGER DEFAULT 0,
+            price FLOAT
+        )",
+        (),
+    )
+    .expect("Failed to create table");
+
+    // Query information_schema.columns
+    let result = db
+        .query(
+            "SELECT column_name, data_type, is_nullable, column_default
+             FROM \"information_schema\".\"columns\"
+             WHERE table_name = 'test_table'
+             ORDER BY ordinal_position",
+            (),
+        )
+        .expect("Failed to query information_schema.columns");
+
+    let mut columns = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let col_name: String = row.get(0).expect("Failed to get column_name");
+        let data_type: String = row.get(1).expect("Failed to get data_type");
+        let is_nullable: String = row.get(2).expect("Failed to get is_nullable");
+        let default: Option<String> = row.get(3).ok();
+        columns.push((col_name, data_type, is_nullable, default));
+    }
+
+    assert_eq!(columns.len(), 4);
+    assert_eq!(
+        columns[0],
+        ("id".to_string(), "Integer".to_string(), "NO".to_string(), None)
+    );
+    assert_eq!(
+        columns[1],
+        ("name".to_string(), "Text".to_string(), "NO".to_string(), None)
+    );
+    assert_eq!(
+        columns[2],
+        (
+            "age".to_string(),
+            "Integer".to_string(),
+            "YES".to_string(),
+            Some("0".to_string())
+        )
+    );
+    assert_eq!(
+        columns[3],
+        ("price".to_string(), "Float".to_string(), "YES".to_string(), None)
+    );
+}
+
+#[test]
+fn test_information_schema_functions() {
+    let db = Database::open("memory://info_schema_functions").expect("Failed to create database");
+
+    // Query information_schema.functions
+    let result = db
+        .query(
+            "SELECT function_name, function_type, data_type
+             FROM \"information_schema\".\"functions\"
+             WHERE function_name IN ('UPPER', 'COUNT', 'ROW_NUMBER')
+             ORDER BY function_name",
+            (),
+        )
+        .expect("Failed to query information_schema.functions");
+
+    let mut functions = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let func_name: String = row.get(0).expect("Failed to get function_name");
+        let func_type: String = row.get(1).expect("Failed to get function_type");
+        let data_type: String = row.get(2).expect("Failed to get data_type");
+        functions.push((func_name, func_type, data_type));
+    }
+
+    // Check that we have the expected functions
+    assert!(functions.len() >= 3);
+    let upper = functions.iter().find(|(name, _, _)| name == "UPPER").unwrap();
+    assert_eq!(upper.1, "SCALAR");
+    assert_eq!(upper.2, "TEXT");
+
+    let count = functions.iter().find(|(name, _, _)| name == "COUNT").unwrap();
+    assert_eq!(count.1, "AGGREGATE");
+    assert_eq!(count.2, "INTEGER");
+
+    let row_number = functions.iter().find(|(name, _, _)| name == "ROW_NUMBER").unwrap();
+    assert_eq!(row_number.1, "WINDOW");
+    assert_eq!(row_number.2, "INTEGER");
+}
+
+#[test]
+fn test_information_schema_statistics() {
+    let db = Database::open("memory://info_schema_stats").expect("Failed to create database");
+
+    // Create a table with indexes
+    db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)", ())
+        .expect("Failed to create table");
+    db.execute("CREATE INDEX idx_name ON users (name)", ())
+        .expect("Failed to create index");
+    db.execute("CREATE INDEX idx_email ON users (email)", ())
+        .expect("Failed to create index");
+
+    // Query information_schema.statistics
+    let result = db
+        .query(
+            "SELECT index_name, column_name, non_unique
+             FROM \"information_schema\".\"statistics\"
+             WHERE table_name = 'users'
+             ORDER BY index_name, seq_in_index",
+            (),
+        )
+        .expect("Failed to query information_schema.statistics");
+
+    let mut indexes = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let index_name: String = row.get(0).expect("Failed to get index_name");
+        let column_name: String = row.get(1).expect("Failed to get column_name");
+        let non_unique: bool = row.get(2).expect("Failed to get non_unique");
+        indexes.push((index_name, column_name, non_unique));
+    }
+
+    assert_eq!(indexes.len(), 2);
+    assert_eq!(indexes[0], ("idx_email".to_string(), "email".to_string(), true));
+    assert_eq!(indexes[1], ("idx_name".to_string(), "name".to_string(), true));
+}
+
+#[test]
+fn test_show_functions() {
+    let db = Database::open("memory://show_functions").expect("Failed to create database");
+
+    // Test SHOW FUNCTION
+    let result = db
+        .query("SHOW FUNCTION", ())
+        .expect("Failed to execute SHOW FUNCTION");
+
+    let mut functions = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let name: String = row.get(0).expect("Failed to get name");
+        let func_type: String = row.get(1).expect("Failed to get type");
+        functions.push((name, func_type));
+    }
+
+    // Should have many functions
+    assert!(functions.len() > 50);
+
+    // Check that we have different types
+    let has_scalar = functions.iter().any(|(_, t)| t == "SCALAR");
+    let has_aggregate = functions.iter().any(|(_, t)| t == "AGGREGATE");
+    let has_window = functions.iter().any(|(_, t)| t == "WINDOW");
+
+    assert!(has_scalar);
+    assert!(has_aggregate);
+    assert!(has_window);
+}

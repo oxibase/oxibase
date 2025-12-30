@@ -763,6 +763,23 @@ impl Executor {
                     );
                 }
 
+                // Check if this is an information_schema table
+                if table_name.starts_with("information_schema.") {
+                    let schema_table = &table_name["information_schema.".len()..];
+                    let mut result = self.execute_information_schema_table(schema_table, stmt, ctx)?;
+                    let columns = result.columns().to_vec();
+                    let mut rows = Vec::new();
+                    while result.next() {
+                        rows.push(result.take_row());
+                    }
+                    return self.execute_query_on_memory_result(
+                        stmt,
+                        ctx,
+                        columns,
+                        rows,
+                    );
+                }
+
                 // Check if this is actually a view (single lookup, no double RwLock acquisition)
                 if let Some(view_def) = self.engine.get_view_lowercase(table_name)? {
                     return self.execute_view_query(&view_def, stmt, ctx);

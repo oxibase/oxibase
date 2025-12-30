@@ -107,6 +107,7 @@ pub use ast::{
     SetOperationType,
     SetStatement,
     ShowCreateTableStatement,
+    ShowFunctionsStatement,
     ShowIndexesStatement,
     ShowTablesStatement,
     SimpleTableSource,
