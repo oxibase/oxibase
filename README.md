@@ -9,11 +9,13 @@
   </p>
 
   <p>
-     <a href="https://github.com/oxibase/oxibase/actions/workflows/ci.yml"><img src="https://github.com/oxibase/oxibase/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-     <a href="https://codecov.io/gh/oxibase/oxibase"><img src="https://codecov.io/gh/oxibase/oxibase/branch/main/graph/badge.svg" alt="codecov"></a>
-     <a href="https://crates.io/crates/oxibase"><img src="https://img.shields.io/crates/v/oxibase.svg" alt="Crates.io"></a>
      <a href="https://github.com/oxibase/oxibase/releases"><img src="https://img.shields.io/github/v/release/oxibase/oxibase" alt="GitHub release"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
+     <a href="https://github.com/oxibase/oxibase/actions/workflows/ci.yml"><img src="https://github.com/oxibase/oxibase/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+     <a href="https://crates.io/crates/oxibase"><img src="https://img.shields.io/crates/v/oxibase.svg" alt="Crates.io"></a>
+     <a href="https://codecov.io/gh/oxibase/oxibase"><img src="https://codecov.io/gh/oxibase/oxibase/branch/main/graph/badge.svg" alt="codecov"></a>
+     <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Foxibase%2Foxibase?ref=badge_shield&issueType=license" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Foxibase%2Foxibase.svg?type=shield&issueType=license"/></a>
+     <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Foxibase%2Foxibase?ref=badge_shield&issueType=security" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Foxibase%2Foxibase.svg?type=shield&issueType=security"/></a>
+     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
   </p>
 </div>
 
