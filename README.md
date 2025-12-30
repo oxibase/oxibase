@@ -1,5 +1,8 @@
 <div align="center">
-   <img src="logo.svg" alt="OxiBase Logo" width="360">
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="logo_white.svg">
+     <img src="logo.svg" alt="OxiBase Logo" width="360">
+   </picture>
 
    <p>Moving computation to data.</p>
 
