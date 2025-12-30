@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -761,6 +762,31 @@ impl Executor {
                         columns.clone(),
                         rows.clone(),
                     );
+                }
+
+                // Check if this is an information_schema table
+                // First check string prefix (for backward compatibility)
+                let is_information_schema_table =
+                    if let Some(schema_table) = table_name.strip_prefix("information_schema.") {
+                        Some(schema_table.to_string())
+                    } else if table_source.name.schema().map(|s| s.to_lowercase())
+                        == Some("information_schema".to_string())
+                    {
+                        // Handle qualified identifiers like information_schema.tables
+                        Some(table_source.name.table().to_lowercase())
+                    } else {
+                        None
+                    };
+
+                if let Some(schema_table) = is_information_schema_table {
+                    let mut result =
+                        self.execute_information_schema_table(&schema_table, stmt, ctx)?;
+                    let columns = result.columns().to_vec();
+                    let mut rows = Vec::new();
+                    while result.next() {
+                        rows.push(result.take_row());
+                    }
+                    return self.execute_query_on_memory_result(stmt, ctx, columns, rows);
                 }
 
                 // Check if this is actually a view (single lookup, no double RwLock acquisition)

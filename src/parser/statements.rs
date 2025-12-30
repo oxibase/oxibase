@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -496,9 +497,12 @@ impl Parser {
         // Check for qualified name (schema.table)
         let table_name = if self.peek_token_is_punctuator(".") {
             self.next_token(); // consume .
-            if !self.expect_peek(TokenType::Identifier) {
+            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword)
+            {
+                self.peek_error(TokenType::Identifier);
                 return None;
             }
+            self.next_token(); // consume the identifier/keyword
             let second_ident =
                 Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
             TableName::Qualified(QualifiedIdentifier {
@@ -1309,17 +1313,22 @@ impl Parser {
 
     /// Parse a table name (simple or qualified)
     fn parse_table_name(&mut self) -> Option<TableName> {
-        if !self.expect_peek(TokenType::Identifier) {
+        if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword) {
+            self.peek_error(TokenType::Identifier);
             return None;
         }
+        self.next_token();
         let first_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
 
         // Check for qualified name (schema.table)
         if self.peek_token_is_punctuator(".") {
             self.next_token(); // consume .
-            if !self.expect_peek(TokenType::Identifier) {
+            if !self.peek_token_is(TokenType::Identifier) && !self.peek_token_is(TokenType::Keyword)
+            {
+                self.peek_error(TokenType::Identifier);
                 return None;
             }
+            self.next_token(); // consume the identifier/keyword
             let second_ident =
                 Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
             Some(TableName::Qualified(QualifiedIdentifier {
@@ -2472,6 +2481,10 @@ impl Parser {
                 token,
                 table_name,
             }))
+        } else if self.peek_token_is_keyword("FUNCTIONS") || self.peek_token_is_keyword("FUNCTION")
+        {
+            self.next_token();
+            Some(Statement::ShowFunctions(ShowFunctionsStatement { token }))
         } else {
             self.add_error(format!(
                 "unsupported SHOW statement at {}",

@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -219,6 +220,50 @@ impl Executor {
                     Value::Boolean(is_unique),
                 ]));
             }
+        }
+
+        Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+    }
+
+    /// Execute SHOW FUNCTIONS statement
+    pub(crate) fn execute_show_functions(
+        &self,
+        _stmt: &ShowFunctionsStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Get function lists from function registry
+        let function_registry = self.function_registry();
+        let scalar_functions = function_registry.list_scalars();
+        let aggregate_functions = function_registry.list_aggregates();
+        let window_functions = function_registry.list_windows();
+
+        // Columns: name, type
+        let columns = vec!["name".to_string(), "type".to_string()];
+
+        let mut rows: Vec<Row> = Vec::new();
+
+        // Add scalar functions
+        for func_name in scalar_functions {
+            rows.push(Row::from_values(vec![
+                Value::Text(Arc::from(func_name.as_str())),
+                Value::Text(Arc::from("SCALAR")),
+            ]));
+        }
+
+        // Add aggregate functions
+        for func_name in aggregate_functions {
+            rows.push(Row::from_values(vec![
+                Value::Text(Arc::from(func_name.as_str())),
+                Value::Text(Arc::from("AGGREGATE")),
+            ]));
+        }
+
+        // Add window functions
+        for func_name in window_functions {
+            rows.push(Row::from_values(vec![
+                Value::Text(Arc::from(func_name.as_str())),
+                Value::Text(Arc::from("WINDOW")),
+            ]));
         }
 
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))

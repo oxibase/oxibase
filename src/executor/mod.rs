@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +60,7 @@ mod cte;
 mod ddl;
 mod dml;
 mod explain;
+mod information_schema;
 mod join;
 pub mod pushdown;
 mod query;
@@ -495,6 +497,7 @@ impl Executor {
             Statement::Set(stmt) => self.execute_set(stmt, &ctx),
             Statement::ShowTables(stmt) => self.execute_show_tables(stmt, &ctx),
             Statement::ShowViews(stmt) => self.execute_show_views(stmt, &ctx),
+            Statement::ShowFunctions(stmt) => self.execute_show_functions(stmt, &ctx),
             Statement::ShowCreateTable(stmt) => self.execute_show_create_table(stmt, &ctx),
             Statement::ShowCreateView(stmt) => self.execute_show_create_view(stmt, &ctx),
             Statement::ShowIndexes(stmt) => self.execute_show_indexes(stmt, &ctx),
