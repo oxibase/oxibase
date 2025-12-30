@@ -223,8 +223,33 @@ LANGUAGE DENO AS '
 
 ## Dropping Functions
 
-User-defined functions can be dropped (this feature will be available in a future release):
+User-defined functions can be dropped using the `DROP FUNCTION` statement:
 
 ```sql
 DROP FUNCTION function_name;
 ```
+
+### Parameters
+
+- `function_name`: The name of the function to drop
+- `IF EXISTS`: Optional clause that prevents an error if the function doesn't exist
+
+### Examples
+
+```sql
+-- Drop a function
+DROP FUNCTION calculate_total;
+
+-- Drop a function only if it exists
+DROP FUNCTION IF EXISTS old_function;
+
+-- Drop a schema-qualified function
+DROP FUNCTION myschema.add_numbers;
+```
+
+### Behavior
+
+- Dropping a function removes it from the database permanently
+- The function becomes unavailable for new queries immediately
+- Existing queries using the function may fail if the function is dropped during execution
+- Functions are dropped from both the system catalog and the runtime registry
