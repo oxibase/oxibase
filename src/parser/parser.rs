@@ -174,6 +174,10 @@ impl Parser {
     /// Advance to the next token
     pub(crate) fn next_token(&mut self) {
         self.cur_token = std::mem::replace(&mut self.peek_token, self.lexer.next_token());
+        // Check if the current token is an error token
+        if self.cur_token.is_error() {
+            self.add_error(self.cur_token.literal.clone());
+        }
     }
 
     /// Check if the current token is of the given type

@@ -557,3 +557,45 @@ fn test_drop_index_if_exists() {
     let stmt = parse_ok("DROP INDEX IF EXISTS idx_nonexistent ON employees");
     assert!(matches!(stmt, Statement::DropIndex(_)));
 }
+
+// =============================================================================
+// TestCreateFunction
+// =============================================================================
+
+#[test]
+fn test_create_function_rhai() {
+    let stmt = parse_ok("CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 + arg1'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_deno() {
+    let stmt = parse_ok("CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_python() {
+    let stmt = parse_ok("CREATE FUNCTION multiply(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE PYTHON AS 'return args[0] * args[1]'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_if_not_exists() {
+    let stmt = parse_ok("CREATE FUNCTION IF NOT EXISTS test() RETURNS TEXT LANGUAGE RHAI AS '\"hello\"'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_schema_qualified() {
+    let stmt = parse_ok("CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 + arg1'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_malformed_string_literal() {
+    // Regression test: This SQL has an unterminated string literal and should be rejected
+    // The string starts with ' but never closes properly
+    let result = parse_succeeds("create function format_currency(amount int, currency text) returns text language rhai as ' return currency + \" \" + amount;");
+    assert!(!result, "Parser should reject malformed SQL with unterminated string literal");
+}
