@@ -17,9 +17,13 @@ lint:
 	cargo fmt --all -- --check
 	cargo clippy --all-targets --all-features -- -D warnings
 
-# [dev] Run all tests
+# [dev] Run core tests
 test:
 	cargo nextest run --show-progress only
+
+# [dev] Run all tests
+test-all:
+	cargo nextest run --all-features --show-progress only
 
 # [dev] Build in release mode
 build:
