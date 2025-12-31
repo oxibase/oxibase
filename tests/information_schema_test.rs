@@ -341,3 +341,58 @@ fn test_information_schema_basic_queries() {
     let rows: Vec<_> = result.collect();
     assert!(rows.len() > 10); // Should have many functions
 }
+
+#[test]
+fn test_information_schema_table_schema_multiple_schemas() {
+    let db =
+        Database::open("memory://info_schema_multi_schema").expect("Failed to create database");
+
+    // Create tables in default schema
+    db.execute("CREATE TABLE default_table (id INTEGER, name TEXT)", ())
+        .expect("Failed to create table in default schema");
+
+    // Create a new schema and table
+    db.execute("CREATE SCHEMA test_schema", ())
+        .expect("Failed to create schema");
+    db.execute(
+        "CREATE TABLE test_schema.test_table (id INTEGER, value FLOAT)",
+        (),
+    )
+    .expect("Failed to create table in test schema");
+
+    // Query information_schema.tables
+    let result = db
+        .query(
+            "SELECT table_schema, table_name, table_type FROM information_schema.tables ORDER BY table_schema, table_name",
+            (),
+        )
+        .expect("Failed to query information_schema.tables");
+
+    let mut tables = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let table_schema: Option<String> = row.get(0).ok();
+        let table_name: String = row.get(1).expect("Failed to get table_name");
+        let table_type: String = row.get(2).expect("Failed to get table_type");
+        tables.push((table_schema, table_name, table_type));
+    }
+
+    // Should have 2 tables from different schemas
+    assert_eq!(tables.len(), 2);
+
+    // Tables should be sorted by schema, then table_name
+    // Check that we have the expected tables
+    let public_table = tables
+        .iter()
+        .find(|(schema, name, _)| schema.as_ref().unwrap() == "public" && name == "default_table")
+        .expect("Should find default_table in public schema");
+
+    assert_eq!(public_table.2, "BASE TABLE");
+
+    let test_schema_table = tables
+        .iter()
+        .find(|(schema, name, _)| schema.as_ref().unwrap() == "test_schema" && name == "test_table")
+        .expect("Should find test_table in test_schema");
+
+    assert_eq!(test_schema_table.2, "BASE TABLE");
+}

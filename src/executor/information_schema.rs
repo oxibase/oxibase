@@ -74,19 +74,28 @@ impl Executor {
 
         // Add tables
         for table_name in table_names {
+            // Parse qualified table names: if it contains a dot, split into schema and name
+            let (schema_name, actual_table_name) = if let Some(dot_pos) = table_name.find('.') {
+                let schema = &table_name[..dot_pos];
+                let name = &table_name[dot_pos + 1..];
+                (schema.to_string(), name.to_string())
+            } else {
+                ("public".to_string(), table_name.clone())
+            };
+
             rows.push(Row::from_values(vec![
-                Value::Text(Arc::from("def")),            // catalog
-                Value::Null(crate::core::DataType::Text), // schema (NULL for single schema)
-                Value::Text(Arc::from(table_name.as_str())),
+                Value::Text(Arc::from("def")),       // catalog
+                Value::Text(Arc::from(schema_name)), // schema
+                Value::Text(Arc::from(actual_table_name)),
                 Value::Text(Arc::from("BASE TABLE")),
             ]));
         }
 
-        // Add views
+        // Add views (views are global, no schema)
         for view_name in view_names {
             rows.push(Row::from_values(vec![
                 Value::Text(Arc::from("def")),            // catalog
-                Value::Null(crate::core::DataType::Text), // schema (NULL for single schema)
+                Value::Null(crate::core::DataType::Text), // schema (NULL for views)
                 Value::Text(Arc::from(view_name.as_str())),
                 Value::Text(Arc::from("VIEW")),
             ]));
@@ -121,9 +130,18 @@ impl Executor {
 
         for table_name in table_names {
             let table = tx.get_table(&table_name)?;
-            let schema = table.schema();
+            let table_schema = table.schema();
 
-            for (pos, col) in schema.columns.iter().enumerate() {
+            // Parse qualified table names
+            let (schema_name, actual_table_name) = if let Some(dot_pos) = table_name.find('.') {
+                let schema = &table_name[..dot_pos];
+                let name = &table_name[dot_pos + 1..];
+                (schema.to_string(), name.to_string())
+            } else {
+                ("public".to_string(), table_name.clone())
+            };
+
+            for (pos, col) in table_schema.columns.iter().enumerate() {
                 let ordinal = (pos + 1) as i64;
 
                 // Get default value
@@ -160,9 +178,9 @@ impl Executor {
                 };
 
                 rows.push(Row::from_values(vec![
-                    Value::Text(Arc::from("def")), // catalog
-                    Value::Null(DataType::Text),   // schema
-                    Value::Text(Arc::from(table_name.as_str())),
+                    Value::Text(Arc::from("def")),                // catalog
+                    Value::Text(Arc::from(schema_name.as_str())), // schema
+                    Value::Text(Arc::from(actual_table_name.as_str())),
                     Value::Text(Arc::from(col.name.as_str())),
                     Value::Integer(ordinal),
                     match default_value {
@@ -320,6 +338,15 @@ impl Executor {
         for table_name in table_names {
             let table = tx.get_table(&table_name)?;
 
+            // Parse qualified table names
+            let (schema_name, actual_table_name) = if let Some(dot_pos) = table_name.find('.') {
+                let schema = &table_name[..dot_pos];
+                let name = &table_name[dot_pos + 1..];
+                (schema.to_string(), name.to_string())
+            } else {
+                ("public".to_string(), table_name.clone())
+            };
+
             // Get indexes for this table
             if let Ok(indexes) = self.engine.list_table_indexes(&table_name) {
                 for index_name in indexes.keys() {
@@ -332,8 +359,8 @@ impl Executor {
                         for (seq, col_name) in column_names.iter().enumerate() {
                             rows.push(Row::from_values(vec![
                                 Value::Text(Arc::from("def")),
-                                Value::Null(DataType::Text),
-                                Value::Text(Arc::from(table_name.as_str())),
+                                Value::Text(Arc::from(schema_name.as_str())),
+                                Value::Text(Arc::from(actual_table_name.as_str())),
                                 Value::Text(Arc::from(index_name.as_str())),
                                 Value::Integer((seq + 1) as i64),
                                 Value::Text(Arc::from(col_name.as_str())),
