@@ -2318,11 +2318,16 @@ impl fmt::Display for ShowViewsStatement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShowFunctionsStatement {
     pub token: Token,
+    pub plural: bool,
 }
 
 impl fmt::Display for ShowFunctionsStatement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SHOW FUNCTIONS")
+        if self.plural {
+            write!(f, "SHOW FUNCTIONS")
+        } else {
+            write!(f, "SHOW FUNCTION")
+        }
     }
 }
 

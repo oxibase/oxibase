@@ -27,9 +27,9 @@ use std::sync::Arc;
 
 use crate::core::{Error, Result, Row, Value};
 use crate::parser::{ast::*, Parser};
+use crate::storage::functions::StoredParameter;
 
 use crate::storage::traits::{Engine, QueryResult};
-
 
 use super::context::ExecutionContext;
 use super::result::ExecutorMemoryResult;
@@ -40,35 +40,69 @@ impl Executor {
     pub(crate) fn execute_show_tables(
         &self,
         _stmt: &ShowTablesStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let tx = self.engine.begin_transaction()?;
-        let tables = tx.list_tables()?;
-
-        let columns = vec!["table_name".to_string()];
-        let rows: Vec<Row> = tables
-            .into_iter()
-            .map(|name| Row::from_values(vec![Value::Text(Arc::from(name.as_str()))]))
-            .collect();
-
-        Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+        let sql = "SELECT table_name FROM information_schema.tables ORDER BY table_name";
+        let mut parser = Parser::new(sql);
+        let program = parser.parse_program().map_err(|e| Error::Parse {
+            message: format!("Failed to parse internal query: {}", e),
+        })?;
+        if let Some(Statement::Select(stmt)) = program.statements.into_iter().next() {
+            let result = self.execute_select(&stmt, ctx)?;
+            // The result already has the correct columns and rows
+            Ok(result)
+        } else {
+            Err(Error::Internal {
+                message: "Failed to parse SHOW TABLES query".to_string(),
+            })
+        }
     }
 
     /// Execute SHOW VIEWS statement
     pub(crate) fn execute_show_views(
         &self,
         _stmt: &ShowViewsStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let views = self.engine.list_views()?;
-
-        let columns = vec!["view_name".to_string()];
-        let rows: Vec<Row> = views
-            .into_iter()
-            .map(|name| Row::from_values(vec![Value::Text(Arc::from(name.as_str()))]))
-            .collect();
-
-        Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+        let sql = "SELECT table_name FROM information_schema.views ORDER BY table_name";
+        let mut parser = Parser::new(sql);
+        let program = parser.parse_program().map_err(|e| Error::Parse {
+            message: format!("Failed to parse internal query: {}", e),
+        })?;
+        if let Some(Statement::Select(stmt)) = program.statements.into_iter().next() {
+            let mut result = self.execute_select(&stmt, ctx)?;
+            // Rename column to view_name
+            // But since it's internal, and result has table_name, but SHOW expects view_name
+            // For simplicity, since information_schema.views has table_name for views, and SHOW shows view_name, it's the same.
+            // But to match, perhaps wrap.
+            // For now, since table_name is the view name, and column is table_name, but SHOW has view_name.
+            // In the test, SHOW VIEWS has view_name.
+            // To match, I can change the column name.
+            // But since it's a shortcut, and user expects view_name, let's rename the column.
+            // But ExecutorMemoryResult has columns, but since it's dyn QueryResult, hard to modify.
+            // Perhaps keep as is, but since the output is the same, and CLI shows the column name.
+            // In the code, columns = vec!["view_name".to_string()], but now it's table_name.
+            // Problem.
+            // To fix, I need to post-process.
+            // Collect the rows, change column to "view_name"
+            let mut all_rows = Vec::new();
+            while result.next() {
+                all_rows.push(result.row().clone());
+            }
+            let columns = vec!["view_name".to_string()];
+            let rows = all_rows
+                .into_iter()
+                .map(|row| {
+                    // Assume row has one value, table_name
+                    Row::from_values(vec![row.get(0).unwrap().clone()])
+                })
+                .collect();
+            Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+        } else {
+            Err(Error::Internal {
+                message: "Failed to parse SHOW VIEWS query".to_string(),
+            })
+        }
     }
 
     /// Execute SHOW CREATE TABLE statement
@@ -290,65 +324,107 @@ impl Executor {
     /// Execute SHOW FUNCTIONS statement
     pub(crate) fn execute_show_functions(
         &self,
-        _stmt: &ShowFunctionsStatement,
+        stmt: &ShowFunctionsStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        // Get function lists from function registry for built-in functions
-        let function_registry = self.function_registry();
-        let scalar_functions = function_registry.list_scalars();
-        let aggregate_functions = function_registry.list_aggregates();
-        let window_functions = function_registry.list_windows();
-
         let mut rows: Vec<Row> = Vec::new();
 
-        // Add scalar functions
-        for func_name in scalar_functions {
-            rows.push(Row::from_values(vec![
-                Value::Text(Arc::from(func_name.as_str())),
-                Value::Text(Arc::from("SCALAR")),
-            ]));
-        }
+        if stmt.plural {
+            // SHOW FUNCTIONS - show user-defined functions
+            // Ensure functions table exists
+            self.ensure_functions_table_exists()?;
 
-        // Add aggregate functions
-        for func_name in aggregate_functions {
-            rows.push(Row::from_values(vec![
-                Value::Text(Arc::from(func_name.as_str())),
-                Value::Text(Arc::from("AGGREGATE")),
-            ]));
-        }
-
-        // Add window functions
-        for func_name in window_functions {
-            rows.push(Row::from_values(vec![
-                Value::Text(Arc::from(func_name.as_str())),
-                Value::Text(Arc::from("WINDOW")),
-            ]));
-        }
-
-        // Add user-defined functions from system table
-        if self.ensure_functions_table_exists().is_ok() {
-            // Execute equivalent SELECT query to leverage existing execution path
-            let sql = "SELECT name FROM _sys_functions ORDER BY name";
+            // Select all functions from system table
+            let sql = "SELECT name, parameters, return_type, language, code FROM _sys_functions ORDER BY name";
             let mut parser = Parser::new(sql);
-            if let Ok(program) = parser.parse_program() {
-                if let Some(Statement::Select(stmt)) = program.statements.into_iter().next() {
-                    if let Ok(mut raw_result) = self.execute_select(&stmt, ctx) {
-                        // Add user-defined functions with "USER_DEFINED" type
-                        while raw_result.next() {
-                            let row = raw_result.row();
-                            if let Some(Value::Text(name)) = row.get(0) {
-                                rows.push(Row::from_values(vec![
-                                    Value::Text(name.clone()),
-                                    Value::Text(Arc::from("USER_DEFINED")),
-                                ]));
-                            }
-                        }
+            let program = parser.parse_program().map_err(|e| Error::Parse {
+                message: format!("Failed to parse internal query: {}", e),
+            })?;
+            if let Some(Statement::Select(select_stmt)) = program.statements.into_iter().next() {
+                let mut result = self.execute_select(&select_stmt, ctx)?;
+                while result.next() {
+                    let row = result.row();
+                    if let (
+                        Some(Value::Text(name)),
+                        Some(Value::Json(params_json)),
+                        Some(Value::Text(return_type)),
+                        Some(Value::Text(language)),
+                        Some(Value::Text(code)),
+                    ) = (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4))
+                    {
+                        // Parse parameters JSON
+                        let parameters: Vec<StoredParameter> = serde_json::from_str(params_json)
+                            .map_err(|e| Error::Internal {
+                                message: format!("Failed to parse function parameters: {}", e),
+                            })?;
+
+                        // Format parameters as "(name type, name type, ...)"
+                        let args = if parameters.is_empty() {
+                            "()".to_string()
+                        } else {
+                            format!(
+                                "({})",
+                                parameters
+                                    .iter()
+                                    .map(|p| format!("{} {}", p.name, p.data_type))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            )
+                        };
+
+                        rows.push(Row::from_values(vec![
+                            Value::Text(name.clone()),
+                            Value::Text(Arc::from(args)),
+                            Value::Text(return_type.clone()),
+                            Value::Text(language.clone()),
+                            Value::Text(code.clone()),
+                        ]));
                     }
                 }
             }
+        } else {
+            // SHOW FUNCTION - show built-in functions
+            let function_registry = self.function_registry();
+            let scalar_functions = function_registry.list_scalars();
+            let aggregate_functions = function_registry.list_aggregates();
+            let window_functions = function_registry.list_windows();
+
+            // Add scalar functions
+            for func_name in scalar_functions {
+                rows.push(Row::from_values(vec![
+                    Value::Text(Arc::from(func_name.as_str())),
+                    Value::Text(Arc::from("SCALAR")),
+                ]));
+            }
+
+            // Add aggregate functions
+            for func_name in aggregate_functions {
+                rows.push(Row::from_values(vec![
+                    Value::Text(Arc::from(func_name.as_str())),
+                    Value::Text(Arc::from("AGGREGATE")),
+                ]));
+            }
+
+            // Add window functions
+            for func_name in window_functions {
+                rows.push(Row::from_values(vec![
+                    Value::Text(Arc::from(func_name.as_str())),
+                    Value::Text(Arc::from("WINDOW")),
+                ]));
+            }
         }
 
-        let columns = vec!["name".to_string(), "type".to_string()];
+        let columns = if stmt.plural {
+            vec![
+                "name".to_string(),
+                "args".to_string(),
+                "return_type".to_string(),
+                "language".to_string(),
+                "body".to_string(),
+            ]
+        } else {
+            vec!["name".to_string(), "type".to_string()]
+        };
 
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
     }

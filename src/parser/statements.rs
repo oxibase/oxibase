@@ -2668,10 +2668,14 @@ impl Parser {
                 token,
                 table_name,
             }))
-        } else if self.peek_token_is_keyword("FUNCTIONS") || self.peek_token_is_keyword("FUNCTION") {
-
+        } else if self.peek_token_is_keyword("FUNCTIONS") || self.peek_token_is_keyword("FUNCTION")
+        {
+            let plural = self.peek_token_is_keyword("FUNCTIONS");
             self.next_token();
-            Some(Statement::ShowFunctions(ShowFunctionsStatement { token }))
+            Some(Statement::ShowFunctions(ShowFunctionsStatement {
+                token,
+                plural,
+            }))
         } else {
             self.add_error(format!(
                 "unsupported SHOW statement at {}",

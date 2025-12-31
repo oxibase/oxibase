@@ -25,7 +25,7 @@
 use std::sync::Arc;
 
 use crate::core::{DataType, Error, Result, Row, Value};
-use crate::parser::ast::*;
+use crate::parser::{ast::*, Parser};
 use crate::storage::traits::{Engine, QueryResult};
 
 use super::context::ExecutionContext;
@@ -243,7 +243,7 @@ impl Executor {
                     function_data_type_to_string(&func_info.signature.return_type);
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
-                    Value::Null(DataType::Text),
+                    Value::Text(Arc::from("sys")),
                     Value::Text(Arc::from(func_name.as_str())),
                     Value::Text(Arc::from("SCALAR")),
                     Value::Text(Arc::from(return_type_str.as_str())),
@@ -259,7 +259,7 @@ impl Executor {
                     function_data_type_to_string(&func_info.signature.return_type);
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
-                    Value::Null(DataType::Text),
+                    Value::Text(Arc::from("sys")),
                     Value::Text(Arc::from(func_name.as_str())),
                     Value::Text(Arc::from("AGGREGATE")),
                     Value::Text(Arc::from(return_type_str.as_str())),
@@ -275,12 +275,59 @@ impl Executor {
                     function_data_type_to_string(&func_info.signature.return_type);
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
-                    Value::Null(DataType::Text),
+                    Value::Text(Arc::from("sys")),
                     Value::Text(Arc::from(func_name.as_str())),
                     Value::Text(Arc::from("WINDOW")),
                     Value::Text(Arc::from(return_type_str.as_str())),
                     Value::Boolean(true),
                 ]));
+            }
+        }
+
+        // Add user-defined functions
+        // Query _sys_functions for user functions, if the table exists
+        let sql = "SELECT schema, name, parameters, return_type FROM _sys_functions ORDER BY name";
+        let mut parser = Parser::new(sql);
+        if let Ok(program) = parser.parse_program() {
+            if let Some(Statement::Select(stmt)) = program.statements.into_iter().next() {
+                if let Ok(mut result) = self.execute_select(&stmt, &ExecutionContext::default()) {
+                    while result.next() {
+                        let row = result.row();
+                        if let (
+                            Some(schema_val),
+                            Some(Value::Text(name)),
+                            Some(Value::Json(_params)),
+                            Some(Value::Text(return_type_str)),
+                        ) = (row.get(0), row.get(1), row.get(2), row.get(3))
+                        {
+                            let function_schema = match schema_val {
+                                Value::Text(s) => s.clone(),
+                                Value::Null(_) => Arc::from("public"),
+                                _ => Arc::from("public"),
+                            };
+                            // Map return_type string to data_type
+                            let data_type = match return_type_str.as_ref() {
+                                "Integer" => "INTEGER",
+                                "Text" => "TEXT",
+                                "Boolean" => "BOOLEAN",
+                                "Float" => "FLOAT",
+                                "Timestamp" => "TIMESTAMP",
+                                "Date" => "DATE",
+                                "Time" => "TIME",
+                                "Json" => "JSON",
+                                _ => "UNKNOWN",
+                            };
+                            rows.push(Row::from_values(vec![
+                                Value::Text(Arc::from("def")),
+                                Value::Text(function_schema),
+                                Value::Text(name.clone()),
+                                Value::Text(Arc::from("SCALAR")),
+                                Value::Text(Arc::from(data_type)),
+                                Value::Boolean(true),
+                            ]));
+                        }
+                    }
+                }
             }
         }
 
