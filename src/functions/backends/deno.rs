@@ -40,6 +40,28 @@ impl Default for DenoBackend {
     }
 }
 
+/// Create secure runtime options with filtered extensions
+#[cfg(feature = "deno")]
+fn create_secure_runtime_options() -> RuntimeOptions {
+    let mut options = RuntimeOptions::default();
+    options.extensions.retain(|ext| {
+        let name = &ext.name;
+        // Disable high-risk and unnecessary extensions, but keep net for fetch
+        !name.contains("deno_kv") &&           // KV store
+        !name.contains("deno_fs") &&           // File system
+        !name.contains("deno_process") &&      // Process spawning
+        !name.contains("deno_ffi") &&          // Foreign functions
+        !name.contains("deno_napi") &&         // Native addons
+        !name.contains("deno_cron") &&         // Cron jobs
+        !name.contains("deno_os") &&           // OS interfaces
+        !name.contains("deno_webgpu") &&       // GPU access
+        !name.contains("deno_canvas") &&       // Canvas API
+        !name.contains("deno_webstorage") &&   // localStorage
+        !name.contains("deno_node") // Node.js compatibility
+    });
+    options
+}
+
 #[cfg(feature = "deno")]
 impl ScriptingBackend for DenoBackend {
     fn name(&self) -> &'static str {
@@ -52,9 +74,7 @@ impl ScriptingBackend for DenoBackend {
 
     fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
         // Create a new JavaScript runtime for each function call
-        let mut runtime = JsRuntime::new(RuntimeOptions {
-            ..Default::default()
-        });
+        let mut runtime = JsRuntime::new(create_secure_runtime_options());
 
         // Convert args to JavaScript values
         let js_args_vec: Vec<serde_json::Value> = args
@@ -126,7 +146,7 @@ impl ScriptingBackend for DenoBackend {
     fn validate_code(&self, _code: &str) -> Result<()> {
         // For now, we'll do basic validation by attempting to create a runtime
         // In the future, we could add proper AST parsing/validation
-        let _runtime = JsRuntime::new(RuntimeOptions::default());
+        let _runtime = JsRuntime::new(create_secure_runtime_options());
         // TODO: Add actual syntax validation
         Ok(())
     }

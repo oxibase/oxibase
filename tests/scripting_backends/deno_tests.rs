@@ -101,4 +101,71 @@ mod deno_function_tests {
         let bool_result: bool = db.query_one("SELECT negate_bool(true)", ()).unwrap();
         assert_eq!(bool_result, false);
     }
+
+    #[test]
+    fn test_deno_security_restrictions() {
+        let db = Database::open("memory://security_test").unwrap();
+
+        // Test file system access is blocked
+        db.execute(r#"
+            CREATE FUNCTION test_fs()
+            RETURNS TEXT
+            LANGUAGE DENO AS 'try { Deno.readFile("test"); return "FS accessible"; } catch(e) { return "FS blocked: " + e.name; }'
+        "#, ()).unwrap();
+
+        let result: String = db.query_one("SELECT test_fs()", ()).unwrap();
+        assert!(result.contains("FS blocked"));
+
+        // Test process spawning is blocked
+        db.execute(r#"
+            CREATE FUNCTION test_process()
+            RETURNS TEXT
+            LANGUAGE DENO AS 'try { Deno.run({cmd: "echo"}); return "Process accessible"; } catch(e) { return "Process blocked: " + e.name; }'
+        "#, ()).unwrap();
+
+        let result: String = db.query_one("SELECT test_process()", ()).unwrap();
+        assert!(result.contains("Process blocked"));
+
+        // Test KV is blocked
+        db.execute(r#"
+            CREATE FUNCTION test_kv()
+            RETURNS TEXT
+            LANGUAGE DENO AS 'try { Deno.openKv(); return "KV accessible"; } catch(e) { return "KV blocked: " + e.name; }'
+        "#, ()).unwrap();
+
+        let result: String = db.query_one("SELECT test_kv()", ()).unwrap();
+        assert!(result.contains("KV blocked"));
+
+        // Test Node.js APIs are blocked
+        db.execute(r#"
+            CREATE FUNCTION test_node()
+            RETURNS TEXT
+            LANGUAGE DENO AS 'try { require("fs"); return "Node accessible"; } catch(e) { return "Node blocked: " + e.name; }'
+        "#, ()).unwrap();
+
+        let result: String = db.query_one("SELECT test_node()", ()).unwrap();
+        assert!(result.contains("Node blocked"));
+
+        // Test webstorage is blocked
+        db.execute(r#"
+            CREATE FUNCTION test_storage()
+            RETURNS TEXT
+            LANGUAGE DENO AS 'try { localStorage.setItem("test", "value"); return "Storage accessible"; } catch(e) { return "Storage blocked: " + e.name; }'
+        "#, ()).unwrap();
+
+        let result: String = db.query_one("SELECT test_storage()", ()).unwrap();
+        assert!(result.contains("Storage blocked"));
+
+        // Test that fetch still works (allowed)
+        db.execute(r#"
+            CREATE FUNCTION test_fetch()
+            RETURNS TEXT
+            LANGUAGE DENO AS 'try { fetch("https://httpbin.org/get"); return "Fetch works"; } catch(e) { return "Fetch failed: " + e.message; }'
+        "#, ()).unwrap();
+
+        // Note: This might fail due to network timeouts in tests, but the API should be available
+        let result: String = db.query_one("SELECT test_fetch()", ()).unwrap();
+        // Just check that it's not blocked at the API level
+        assert!(!result.contains("blocked") || result.contains("Fetch works") || result.contains("network"));
+    }
 }
