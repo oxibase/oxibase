@@ -236,6 +236,93 @@ fn test_information_schema_functions() {
     assert_eq!(row_number.2, "INTEGER");
 }
 
+#[cfg(feature = "deno")]
+#[test]
+fn test_information_schema_functions_user_defined() {
+    let db = Database::open("memory://info_schema_udf").expect("Failed to create database");
+
+    // Create user-defined functions
+    db.execute(
+        "CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'",
+        (),
+    )
+    .expect("Failed to create greet function");
+
+    db.execute(
+        "CREATE FUNCTION square(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] * arguments[0];'",
+        (),
+    )
+    .expect("Failed to create square function");
+
+    db.execute(
+        "CREATE FUNCTION is_even(n INTEGER) RETURNS BOOLEAN LANGUAGE DENO AS 'return arguments[0] % 2 === 0;'",
+        (),
+    )
+    .expect("Failed to create is_even function");
+
+    db.execute(
+        "CREATE FUNCTION create_person(name TEXT, age INTEGER) RETURNS JSON LANGUAGE DENO AS 'return { name: arguments[0], age: arguments[1] };'",
+        (),
+    )
+    .expect("Failed to create create_person function");
+
+    // Query information_schema.functions for user-defined functions
+    let result = db
+        .query(
+            "SELECT function_name, function_type, data_type, function_schema
+             FROM information_schema.functions
+             WHERE function_schema != 'sys'
+             ORDER BY function_name",
+            (),
+        )
+        .expect("Failed to query information_schema.functions");
+
+    let mut functions = Vec::new();
+    for row in result {
+        let row = row.expect("Failed to read row");
+        let func_name: String = row.get(0).expect("Failed to get function_name");
+        let func_type: String = row.get(1).expect("Failed to get function_type");
+        let data_type: String = row.get(2).expect("Failed to get data_type");
+        let schema: Option<String> = row.get(3).expect("Failed to get function_schema");
+        functions.push((func_name, func_type, data_type, schema));
+    }
+
+    // Check that we have the expected user-defined functions
+    assert_eq!(functions.len(), 4);
+
+    let create_person = functions
+        .iter()
+        .find(|(name, _, _, _)| name == "CREATE_PERSON")
+        .unwrap();
+    assert_eq!(create_person.1, "SCALAR");
+    assert_eq!(create_person.2, "JSON");
+    assert_eq!(create_person.3, Some("public".to_string()));
+
+    let greet = functions
+        .iter()
+        .find(|(name, _, _, _)| name == "GREET")
+        .unwrap();
+    assert_eq!(greet.1, "SCALAR");
+    assert_eq!(greet.2, "TEXT");
+    assert_eq!(greet.3, Some("public".to_string()));
+
+    let is_even = functions
+        .iter()
+        .find(|(name, _, _, _)| name == "IS_EVEN")
+        .unwrap();
+    assert_eq!(is_even.1, "SCALAR");
+    assert_eq!(is_even.2, "BOOLEAN");
+    assert_eq!(is_even.3, Some("public".to_string()));
+
+    let square = functions
+        .iter()
+        .find(|(name, _, _, _)| name == "SQUARE")
+        .unwrap();
+    assert_eq!(square.1, "SCALAR");
+    assert_eq!(square.2, "INTEGER");
+    assert_eq!(square.3, Some("public".to_string()));
+}
+
 #[test]
 fn test_information_schema_statistics() {
     let db = Database::open("memory://info_schema_stats").expect("Failed to create database");

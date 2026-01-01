@@ -557,3 +557,103 @@ fn test_drop_index_if_exists() {
     let stmt = parse_ok("DROP INDEX IF EXISTS idx_nonexistent ON employees");
     assert!(matches!(stmt, Statement::DropIndex(_)));
 }
+
+// =============================================================================
+// TestCreateFunction
+// =============================================================================
+
+#[test]
+fn test_create_function_rhai() {
+    let stmt = parse_ok(
+        "CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'a + b'",
+    );
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_deno() {
+    let stmt = parse_ok("CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_python() {
+    let stmt = parse_ok("CREATE FUNCTION multiply(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE PYTHON AS 'return args[0] * args[1]'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_if_not_exists() {
+    let stmt =
+        parse_ok("CREATE FUNCTION IF NOT EXISTS test() RETURNS TEXT LANGUAGE RHAI AS '\"hello\"'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_schema_qualified() {
+    let stmt = parse_ok("CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'a + b'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_malformed_string_literal() {
+    // Regression test: This SQL has an unterminated string literal and should be rejected
+    // The string starts with ' but never closes properly
+    let result = parse_succeeds("create function format_currency(amount int, currency text) returns text language rhai as ' return currency + \" \" + amount;");
+    assert!(
+        !result,
+        "Parser should reject malformed SQL with unterminated string literal"
+    );
+}
+
+#[test]
+fn test_create_function_missing_language() {
+    let result = parse_succeeds("CREATE FUNCTION test() RETURNS INTEGER AS '42'");
+    assert!(!result, "Should fail to parse without LANGUAGE");
+}
+
+#[test]
+fn test_create_function_missing_as() {
+    let result = parse_succeeds("CREATE FUNCTION test() RETURNS INTEGER LANGUAGE RHAI '42'");
+    assert!(!result, "Should fail to parse without AS");
+}
+
+#[test]
+fn test_create_function_invalid_parameter_type() {
+    let result = parse_succeeds(
+        "CREATE FUNCTION test(param INVALID_TYPE) RETURNS INTEGER LANGUAGE RHAI AS '42'",
+    );
+    assert!(!result, "Should fail to parse invalid parameter type");
+}
+
+#[test]
+fn test_create_function_invalid_return_type() {
+    let result =
+        parse_succeeds("CREATE FUNCTION test() RETURNS INVALID_TYPE LANGUAGE RHAI AS '42'");
+    assert!(!result, "Should fail to parse invalid return type");
+}
+
+#[test]
+fn test_create_function_malformed_parameters() {
+    let result =
+        parse_succeeds("CREATE FUNCTION test(a INTEGER, b) RETURNS INTEGER LANGUAGE RHAI AS '42'");
+    assert!(!result, "Should fail to parse malformed parameters");
+}
+
+#[test]
+fn test_create_function_no_parameters() {
+    let stmt = parse_ok("CREATE FUNCTION test() RETURNS INTEGER LANGUAGE RHAI AS '42'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_multiple_parameters() {
+    let stmt = parse_ok("CREATE FUNCTION test(a INTEGER, b TEXT, c BOOLEAN) RETURNS TEXT LANGUAGE RHAI AS 'a + b + c'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}
+
+#[test]
+fn test_create_function_float_parameter() {
+    let stmt = parse_ok("CREATE FUNCTION test(f FLOAT) RETURNS FLOAT LANGUAGE RHAI AS 'f * 2.0'");
+    assert!(matches!(stmt, Statement::CreateFunction(_)));
+}

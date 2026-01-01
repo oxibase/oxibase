@@ -35,6 +35,7 @@ use super::aggregate::{
     StddevSampFunction, StringAggFunction, SumFunction, VarPopFunction, VarSampFunction,
     VarianceFunction,
 };
+use super::backends::create_backend_registry;
 use super::scalar::{
     AbsFunction, CastFunction, CeilFunction, CeilingFunction, CharFunction, CharLengthFunction,
     CoalesceFunction, CollateFunction, ConcatFunction, ConcatWsFunction, CosFunction,
@@ -52,11 +53,13 @@ use super::scalar::{
     SubstringFunction, TanFunction, TimeTruncFunction, ToCharFunction, TrimFunction, TruncFunction,
     TruncateFunction, TypeOfFunction, UpperFunction, VersionFunction, YearFunction,
 };
+use super::user_defined::UserDefinedFunctionRegistry;
 use super::window::{
     CumeDistFunction, DenseRankFunction, FirstValueFunction, LagFunction, LastValueFunction,
     LeadFunction, NthValueFunction, NtileFunction, PercentRankFunction, RankFunction,
     RowNumberFunction,
 };
+use super::FunctionSignature;
 use super::{AggregateFunction, FunctionInfo, ScalarFunction, WindowFunction};
 
 /// Type alias for aggregate function factory
@@ -74,6 +77,8 @@ pub struct FunctionRegistry {
     scalar_functions: RwLock<HashMap<String, ScalarFnFactory>>,
     /// Window functions
     window_functions: RwLock<HashMap<String, WindowFnFactory>>,
+    /// User-defined functions
+    user_defined_functions: RwLock<UserDefinedFunctionRegistry>,
     /// Function info cache
     function_info: RwLock<HashMap<String, FunctionInfo>>,
 }
@@ -87,10 +92,12 @@ impl Default for FunctionRegistry {
 impl FunctionRegistry {
     /// Create a new function registry with all built-in functions registered
     pub fn new() -> Self {
+        let backend_registry = Arc::new(create_backend_registry());
         let registry = Self {
             aggregate_functions: RwLock::new(HashMap::new()),
             scalar_functions: RwLock::new(HashMap::new()),
             window_functions: RwLock::new(HashMap::new()),
+            user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new(backend_registry)),
             function_info: RwLock::new(HashMap::new()),
         };
 
@@ -259,6 +266,44 @@ impl FunctionRegistry {
         infos.insert(name, info);
     }
 
+    /// Register a user-defined function
+    pub fn register_user_defined(
+        &self,
+        name: String,
+        code: String,
+        language: String,
+        param_names: Vec<String>,
+        signature: FunctionSignature,
+    ) -> crate::core::Result<()> {
+        let mut udf_registry = self.user_defined_functions.write().unwrap();
+        udf_registry.register(name.clone(), code, language, param_names, signature.clone())?;
+
+        // Add to function info cache
+        let info = FunctionInfo::new(
+            name.clone(),
+            super::FunctionType::Scalar,
+            "User-defined function".to_string(),
+            signature,
+        );
+
+        let mut infos = self.function_info.write().unwrap();
+        infos.insert(name.to_uppercase(), info);
+
+        Ok(())
+    }
+
+    /// Unregister a user-defined function
+    pub fn unregister_user_defined(&self, name: &str) -> crate::core::Result<()> {
+        let mut udf_registry = self.user_defined_functions.write().unwrap();
+        udf_registry.unregister(name)?;
+
+        // Remove from function info cache
+        let mut infos = self.function_info.write().unwrap();
+        infos.remove(&name.to_uppercase());
+
+        Ok(())
+    }
+
     /// Get a new instance of an aggregate function by name
     pub fn get_aggregate(&self, name: &str) -> Option<Box<dyn AggregateFunction>> {
         // OPTIMIZATION: Fast path - if name is already uppercase, avoid allocation
@@ -280,7 +325,17 @@ impl FunctionRegistry {
         }
         // Slow path - try uppercase
         let upper = name.to_uppercase();
-        funcs.get(&upper).map(|f| f())
+        if let Some(f) = funcs.get(&upper) {
+            return Some(f());
+        }
+
+        // Check user-defined functions
+        let udf_registry = self.user_defined_functions.read().unwrap();
+        if let Some(udf) = udf_registry.get(&upper) {
+            return Some(udf.clone_box());
+        }
+
+        None
     }
 
     /// Get a new instance of a window function by name
@@ -316,7 +371,13 @@ impl FunctionRegistry {
         }
         // Slow path - try uppercase
         let upper = name.to_uppercase();
-        funcs.contains_key(&upper)
+        if funcs.contains_key(&upper) {
+            return true;
+        }
+
+        // Check user-defined functions
+        let udf_registry = self.user_defined_functions.read().unwrap();
+        udf_registry.exists(&upper)
     }
 
     /// Check if a function name is a window function
@@ -351,14 +412,31 @@ impl FunctionRegistry {
 
     /// List all scalar function names
     pub fn list_scalars(&self) -> Vec<String> {
+        let mut names = Vec::new();
+
+        // Built-in scalar functions
         let funcs = self.scalar_functions.read().unwrap();
-        funcs.keys().cloned().collect()
+        names.extend(funcs.keys().cloned());
+
+        // User-defined functions
+        let udf_registry = self.user_defined_functions.read().unwrap();
+        names.extend(udf_registry.list());
+
+        names
     }
 
     /// List all window function names
     pub fn list_windows(&self) -> Vec<String> {
         let funcs = self.window_functions.read().unwrap();
         funcs.keys().cloned().collect()
+    }
+
+    /// Check if a language is supported for user-defined functions
+    pub fn is_language_supported(&self, language: &str) -> bool {
+        self.user_defined_functions
+            .read()
+            .unwrap()
+            .is_language_supported(language)
     }
 
     /// List all function names

@@ -22,8 +22,10 @@
 //! - [`FunctionRegistry`] - Registry for function lookup and validation
 
 pub mod aggregate;
+pub mod backends;
 pub mod registry;
 pub mod scalar;
+pub mod user_defined;
 pub mod window;
 
 use crate::core::{Error, Result, Value};
@@ -317,5 +319,52 @@ mod tests {
         );
         assert_eq!(info.name, "TEST");
         assert_eq!(info.function_type, FunctionType::Scalar);
+    }
+
+    #[test]
+    fn test_user_defined_function_creation() {
+        use super::backends::create_backend_registry;
+        let backend_registry = std::sync::Arc::new(create_backend_registry());
+
+        let udf = user_defined::UserDefinedScalarFunction::new(
+            "test_func",
+            "a + b",
+            "rhai",
+            vec!["a".to_string(), "b".to_string()],
+            FunctionSignature::new(
+                FunctionDataType::Integer,
+                vec![FunctionDataType::Integer, FunctionDataType::Integer],
+                2,
+                2,
+            ),
+            backend_registry,
+        );
+
+        assert_eq!(udf.name(), "test_func");
+    }
+
+    #[test]
+    fn test_user_defined_function_registry() {
+        use super::backends::create_backend_registry;
+        let backend_registry = std::sync::Arc::new(create_backend_registry());
+        let mut registry = user_defined::UserDefinedFunctionRegistry::new(backend_registry);
+
+        registry
+            .register(
+                "add".to_string(),
+                "a + b".to_string(),
+                "rhai".to_string(),
+                vec!["a".to_string(), "b".to_string()],
+                FunctionSignature::new(
+                    FunctionDataType::Integer,
+                    vec![FunctionDataType::Integer, FunctionDataType::Integer],
+                    2,
+                    2,
+                ),
+            )
+            .unwrap();
+
+        assert!(registry.exists("add"));
+        assert!(registry.get("add").is_some());
     }
 }

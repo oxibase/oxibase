@@ -117,7 +117,11 @@ impl Lexer {
             // String literal (single quotes)
             '\'' => {
                 let literal = self.read_string_literal();
-                Token::new(TokenType::String, literal, pos)
+                if let Some(error_msg) = self.last_error.take() {
+                    Token::error(error_msg, literal, pos)
+                } else {
+                    Token::new(TokenType::String, literal, pos)
+                }
             }
 
             // Double-quoted identifier

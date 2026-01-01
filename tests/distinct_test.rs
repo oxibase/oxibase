@@ -191,8 +191,7 @@ fn test_distinct_on_numeric() {
     }
 
     // Expected distinct prices (there's a duplicate 20.00)
-    #[allow(clippy::useless_vec)]
-    let expected_prices = vec![20.0, 25.0, 50.0, 60.0, 75.0, 100.0, 150.0, 180.0, 200.0];
+    let expected_prices = [20.0, 25.0, 50.0, 60.0, 75.0, 100.0, 150.0, 180.0, 200.0];
 
     assert_eq!(
         prices.len(),

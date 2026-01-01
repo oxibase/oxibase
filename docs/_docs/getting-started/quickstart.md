@@ -213,6 +213,28 @@ FROM products
 GROUP BY category;
 ```
 
+## Creating User-Defined Functions
+
+Extend SQL with custom functions written in Rhai, Python, or JavaScript:
+
+```sql
+-- Create a function that calculates discount
+CREATE FUNCTION calculate_discount(price FLOAT, discount_rate FLOAT) RETURNS FLOAT
+LANGUAGE RHAI AS 'price * (1.0 - discount_rate)';
+
+-- Use the function in queries
+SELECT name, price, calculate_discount(price, 0.1) as discounted_price
+FROM products;
+```
+
+```sql
+-- Function with string manipulation
+CREATE FUNCTION format_name(first_name TEXT, last_name TEXT) RETURNS TEXT
+LANGUAGE RHAI AS 'first_name + " " + last_name.to_upper()';
+
+SELECT format_name('John', 'Doe') as full_name;
+```
+
 ## Working with Common Table Expressions (CTEs)
 
 CTEs make complex queries more readable:

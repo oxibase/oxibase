@@ -15,6 +15,7 @@ Oxibase is a relation database operating system (DBOS) that provides full ACID t
 - **Semantic Query Caching**: Intelligent result caching with predicate subsumption
 - **Disk Persistence**: WAL and snapshots with crash recovery
 - **Rich SQL Support**: Window functions, CTEs (including recursive), subqueries, ROLLUP/CUBE, and 101+ built-in functions
+- **User-Defined Functions**: Extend SQL with custom functions written in Rhai, Python, or JavaScript
 
 ## Roadmap Overview
 

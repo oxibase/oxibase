@@ -1302,9 +1302,13 @@ impl Parser {
             self.next_token();
             self.parse_create_view_statement()
                 .map(Statement::CreateView)
+        } else if self.peek_token_is_keyword("FUNCTION") {
+            self.next_token();
+            self.parse_create_function_statement()
+                .map(Statement::CreateFunction)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, or VIEW after CREATE at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after CREATE at {}",
                 self.cur_token.position
             ));
             None
@@ -1854,6 +1858,135 @@ impl Parser {
         })
     }
 
+    /// Parse a data type
+    fn parse_data_type(&mut self) -> Option<String> {
+        if !self.expect_peek(TokenType::Keyword) {
+            return None;
+        }
+        let data_type = self.cur_token.literal.to_uppercase();
+
+        // Handle DECIMAL(precision, scale) and NUMERIC(precision, scale) syntax
+        if (data_type == "DECIMAL" || data_type == "NUMERIC") && self.peek_token_is_punctuator("(")
+        {
+            self.next_token(); // consume (
+                               // Skip precision
+            if self.peek_token.token_type == TokenType::Integer {
+                self.next_token();
+            }
+            // Skip comma and scale if present
+            if self.peek_token_is_punctuator(",") {
+                self.next_token(); // consume ,
+                if self.peek_token.token_type == TokenType::Integer {
+                    self.next_token();
+                }
+            }
+            if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+                self.add_error(format!("expected ')' at {}", self.cur_token.position));
+                return None;
+            }
+            Some(data_type)
+        } else {
+            Some(data_type)
+        }
+    }
+
+    /// Parse a CREATE FUNCTION statement
+    fn parse_create_function_statement(&mut self) -> Option<CreateFunctionStatement> {
+        let token = self.cur_token.clone();
+
+        // Optional IF NOT EXISTS
+        let if_not_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("NOT") {
+                return None;
+            }
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Function name
+        let function_name = self.parse_function_name()?;
+
+        // Parameters
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+            self.add_error(format!("expected '(' at {}", self.cur_token.position));
+            return None;
+        }
+
+        let mut parameters = Vec::new();
+        if !self.peek_token_is_punctuator(")") {
+            loop {
+                if !self.expect_peek(TokenType::Identifier) {
+                    return None;
+                }
+                let param_name =
+                    Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+                let param_type = self.parse_data_type()?;
+                parameters.push(FunctionParameter {
+                    name: param_name,
+                    data_type: param_type,
+                });
+
+                if !self.peek_token_is_punctuator(",") {
+                    break;
+                }
+                self.next_token(); // consume comma
+            }
+        }
+
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            self.add_error(format!("expected ')' at {}", self.cur_token.position));
+            return None;
+        }
+
+        // RETURNS
+        if !self.expect_keyword("RETURNS") {
+            return None;
+        }
+
+        let return_type = self.parse_data_type()?;
+
+        // LANGUAGE
+        if !self.expect_keyword("LANGUAGE") {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let language = self.cur_token.literal.clone();
+
+        // AS
+        if !self.expect_keyword("AS") {
+            return None;
+        }
+
+        // Function body as string literal
+        if !self.expect_peek(TokenType::String) {
+            self.add_error(format!(
+                "expected string literal for function body at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+        let body = self.cur_token.literal.trim_matches('\'').to_string();
+
+        Some(CreateFunctionStatement {
+            token,
+            function_name,
+            parameters,
+            return_type,
+            language,
+            body,
+            if_not_exists,
+        })
+    }
+
     /// Parse a DROP statement
     fn parse_drop_statement(&mut self) -> Option<Statement> {
         if self.peek_token_is_keyword("TABLE") {
@@ -1876,9 +2009,13 @@ impl Parser {
         } else if self.peek_token_is_keyword("VIEW") {
             self.next_token();
             self.parse_drop_view_statement().map(Statement::DropView)
+        } else if self.peek_token_is_keyword("FUNCTION") {
+            self.next_token();
+            self.parse_drop_function_statement()
+                .map(Statement::DropFunction)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, or VIEW after DROP at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after DROP at {}",
                 self.cur_token.position
             ));
             None
@@ -1906,6 +2043,56 @@ impl Parser {
         Some(DropTableStatement {
             token,
             table_name,
+            if_exists,
+        })
+    }
+
+    /// Parse a function name (simple or qualified)
+    fn parse_function_name(&mut self) -> Option<FunctionName> {
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let first_ident = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+        // Check for qualified name (schema.function)
+        if self.peek_token_is_punctuator(".") {
+            self.next_token(); // consume .
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            let second_ident =
+                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            Some(FunctionName::Qualified(QualifiedIdentifier {
+                token: first_ident.token.clone(),
+                qualifier: Box::new(first_ident),
+                name: Box::new(second_ident),
+            }))
+        } else {
+            Some(FunctionName::Simple(first_ident))
+        }
+    }
+
+    /// Parse a DROP FUNCTION statement
+    fn parse_drop_function_statement(&mut self) -> Option<DropFunctionStatement> {
+        let token = self.cur_token.clone();
+
+        // Check for IF EXISTS
+        let if_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse function name (simple or qualified)
+        let function_name = self.parse_function_name()?;
+
+        Some(DropFunctionStatement {
+            token,
+            function_name,
             if_exists,
         })
     }
@@ -2483,8 +2670,12 @@ impl Parser {
             }))
         } else if self.peek_token_is_keyword("FUNCTIONS") || self.peek_token_is_keyword("FUNCTION")
         {
+            let plural = self.peek_token_is_keyword("FUNCTIONS");
             self.next_token();
-            Some(Statement::ShowFunctions(ShowFunctionsStatement { token }))
+            Some(Statement::ShowFunctions(ShowFunctionsStatement {
+                token,
+                plural,
+            }))
         } else {
             self.add_error(format!(
                 "unsupported SHOW statement at {}",

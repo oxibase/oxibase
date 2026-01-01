@@ -74,7 +74,7 @@ use rustc_hash::FxHashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::core::{Error, Result, Value};
-use crate::functions::FunctionRegistry;
+use crate::functions::{global_registry, FunctionDataType, FunctionRegistry, FunctionSignature};
 use crate::parser::ast::{Program, Statement};
 use crate::parser::Parser;
 use crate::storage::mvcc::engine::MVCCEngine;
@@ -98,6 +98,9 @@ pub(crate) enum DeferredDdlOperation {
         tables: Vec<(String, crate::core::Schema)>,
     }, // Undo by recreating
 }
+
+use crate::storage::functions::StoredParameter;
+use serde_json;
 
 pub use context::{ExecutionContext, TimeoutGuard};
 pub use expression::{
@@ -171,7 +174,7 @@ pub struct Executor {
 impl Executor {
     /// Create a new executor with the given storage engine
     pub fn new(engine: Arc<MVCCEngine>) -> Self {
-        Self {
+        let executor = Self {
             engine,
             function_registry: Arc::new(FunctionRegistry::new()),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
@@ -179,7 +182,13 @@ impl Executor {
             semantic_cache: SemanticCache::default(),
             active_transaction: Mutex::new(None),
             query_planner: std::sync::OnceLock::new(),
-        }
+        };
+
+        // Load user-defined functions from system table
+        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
+        let _ = executor.load_functions();
+
+        executor
     }
 
     /// Create a new executor with a custom function registry
@@ -187,7 +196,7 @@ impl Executor {
         engine: Arc<MVCCEngine>,
         function_registry: Arc<FunctionRegistry>,
     ) -> Self {
-        Self {
+        let executor = Self {
             engine,
             function_registry,
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
@@ -195,12 +204,17 @@ impl Executor {
             semantic_cache: SemanticCache::default(),
             active_transaction: Mutex::new(None),
             query_planner: std::sync::OnceLock::new(),
-        }
+        };
+
+        // Load user-defined functions from system table
+        let _ = executor.load_functions();
+
+        executor
     }
 
     /// Create a new executor with a custom cache size
     pub fn with_cache_size(engine: Arc<MVCCEngine>, cache_size: usize) -> Self {
-        Self {
+        let executor = Self {
             engine,
             function_registry: Arc::new(FunctionRegistry::new()),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
@@ -208,7 +222,12 @@ impl Executor {
             semantic_cache: SemanticCache::default(),
             active_transaction: Mutex::new(None),
             query_planner: std::sync::OnceLock::new(),
-        }
+        };
+
+        // Load user-defined functions from system table
+        let _ = executor.load_functions();
+
+        executor
     }
 
     /// Check if there is an active explicit transaction
@@ -220,6 +239,104 @@ impl Executor {
     fn get_query_planner(&self) -> &QueryPlanner {
         self.query_planner
             .get_or_init(|| QueryPlanner::new(Arc::clone(&self.engine)))
+    }
+
+    /// Load user-defined functions from the system table during startup
+    fn load_functions(&self) -> Result<()> {
+        use crate::storage::functions::SYS_FUNCTIONS;
+
+        // Check if the functions system table exists
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_functions_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
+
+        if !has_functions_table {
+            // No functions table yet, nothing to load
+            return Ok(());
+        }
+
+        let table = tx.get_table(SYS_FUNCTIONS)?;
+        let mut scanner = table.scan(&[], None)?;
+
+        // Load each function from the system table
+        while scanner.next() {
+            let row = scanner.row();
+            // Schema: id(0), name(1), parameters(2), return_type(3), language(4), code(5)
+            if let (
+                Some(Value::Text(name)),
+                Some(Value::Text(parameters_json)),
+                Some(Value::Text(_return_type)),
+                Some(Value::Text(_language)),
+                Some(Value::Text(code)),
+            ) = (row.get(1), row.get(2), row.get(3), row.get(4), row.get(5))
+            {
+                // Parse parameters from JSON
+                let stored_parameters: Vec<StoredParameter> = serde_json::from_str(parameters_json)
+                    .map_err(|e| {
+                        Error::internal(format!("Failed to parse function parameters: {}", e))
+                    })?;
+
+                // Convert to FunctionParameter format for registration
+                let parameters: Vec<crate::parser::ast::FunctionParameter> = stored_parameters
+                    .into_iter()
+                    .map(|sp| crate::parser::ast::FunctionParameter {
+                        name: crate::parser::ast::Identifier::new(
+                            crate::parser::token::Token::new(
+                                crate::parser::token::TokenType::Identifier,
+                                sp.name.clone(),
+                                crate::parser::token::Position::default(),
+                            ),
+                            sp.name,
+                        ),
+                        data_type: sp.data_type,
+                    })
+                    .collect();
+
+                // Helper function to convert string to FunctionDataType
+                fn string_to_function_data_type(s: &str) -> FunctionDataType {
+                    match s.to_uppercase().as_str() {
+                        "ANY" => FunctionDataType::Any,
+                        "INTEGER" => FunctionDataType::Integer,
+                        "FLOAT" => FunctionDataType::Float,
+                        "TEXT" => FunctionDataType::String,
+                        "BOOLEAN" => FunctionDataType::Boolean,
+                        "TIMESTAMP" => FunctionDataType::Timestamp,
+                        "DATE" => FunctionDataType::Date,
+                        "TIME" => FunctionDataType::Time,
+                        "JSON" => FunctionDataType::Json,
+                        _ => FunctionDataType::Unknown,
+                    }
+                }
+
+                // Register the function in the global registry
+                let registry = global_registry();
+                // Use stored language if supported, otherwise default to Rhai for backward compatibility
+                let language = if registry.is_language_supported(_language) {
+                    _language.to_string()
+                } else {
+                    "rhai".to_string()
+                };
+                let param_names: Vec<String> =
+                    parameters.iter().map(|p| p.name.value.clone()).collect();
+                registry.register_user_defined(
+                    name.to_string(),
+                    code.to_string(),
+                    language,
+                    param_names,
+                    FunctionSignature::new(
+                        string_to_function_data_type(_return_type),
+                        parameters
+                            .iter()
+                            .map(|p| string_to_function_data_type(&p.data_type))
+                            .collect(),
+                        parameters.len(),
+                        parameters.len(),
+                    ),
+                )?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Get or create a table within the active transaction
@@ -506,6 +623,8 @@ impl Executor {
             Statement::Expression(stmt) => self.execute_expression_stmt(stmt, &ctx),
             Statement::Explain(stmt) => self.execute_explain(stmt, &ctx),
             Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
+            Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
+            Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
         }
     }
 

@@ -11,7 +11,7 @@ This document covers Oxibase's schema management capabilities, including table c
 
 ## Tables and Schemas
 
-Oxibase provides standard SQL DDL (Data Definition Language) statements for managing database schemas.
+OxiBase provides standard SQL DDL (Data Definition Language) statements for managing database schemas, including tables, indexes, and user-defined functions.
 
 ### Creating Tables
 
@@ -210,6 +210,26 @@ Oxibase supports multiple index implementations:
 ```sql
 DROP INDEX idx_user_email;
 ```
+
+## User-Defined Functions
+
+OxiBase supports creating custom functions using JavaScript/TypeScript:
+
+### Creating Functions
+
+```sql
+CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
+RETURNS INTEGER
+LANGUAGE DENO AS 'return arguments[0] + arguments[1];';
+```
+
+### Using Functions
+
+```sql
+SELECT add_numbers(5, 3) as sum;  -- Returns 8
+```
+
+See the [User-Defined Functions](../functions/user-defined-functions.md) documentation for detailed information about creating and using custom functions.
 
 ## Schema Information
 
