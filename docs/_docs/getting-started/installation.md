@@ -2,8 +2,7 @@
 layout: default
 title: Installation Guide
 parent: Getting Started
-parent: Getting Started
-nav_nav_order: 1
+nav_order: 1
 ---
 
 # Installation Guide
