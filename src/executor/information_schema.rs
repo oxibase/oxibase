@@ -307,14 +307,14 @@ impl Executor {
                             };
                             // Map return_type string to data_type
                             let data_type = match return_type_str.as_ref() {
-                                "Integer" => "INTEGER",
-                                "Text" => "TEXT",
-                                "Boolean" => "BOOLEAN",
-                                "Float" => "FLOAT",
-                                "Timestamp" => "TIMESTAMP",
-                                "Date" => "DATE",
-                                "Time" => "TIME",
-                                "Json" => "JSON",
+                                "INTEGER" => "INTEGER",
+                                "TEXT" => "TEXT",
+                                "BOOLEAN" => "BOOLEAN",
+                                "FLOAT" => "FLOAT",
+                                "TIMESTAMP" => "TIMESTAMP",
+                                "DATE" => "DATE",
+                                "TIME" => "TIME",
+                                "JSON" => "JSON",
                                 _ => "UNKNOWN",
                             };
                             rows.push(Row::from_values(vec![
