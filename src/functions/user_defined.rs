@@ -144,6 +144,11 @@ impl UserDefinedFunctionRegistry {
         self.functions.contains_key(&name.to_uppercase())
     }
 
+    /// Check if a language is supported
+    pub fn is_language_supported(&self, language: &str) -> bool {
+        self.backend_registry.is_language_supported(language)
+    }
+
     /// Unregister a user-defined function
     pub fn unregister(&mut self, name: &str) -> Result<()> {
         let key = name.to_uppercase();

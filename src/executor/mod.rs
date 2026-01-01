@@ -292,17 +292,40 @@ impl Executor {
                     })
                     .collect();
 
+                // Helper function to convert string to FunctionDataType
+                fn string_to_function_data_type(s: &str) -> FunctionDataType {
+                    match s.to_uppercase().as_str() {
+                        "ANY" => FunctionDataType::Any,
+                        "INTEGER" => FunctionDataType::Integer,
+                        "FLOAT" => FunctionDataType::Float,
+                        "TEXT" => FunctionDataType::String,
+                        "BOOLEAN" => FunctionDataType::Boolean,
+                        "TIMESTAMP" => FunctionDataType::Timestamp,
+                        "DATE" => FunctionDataType::Date,
+                        "TIME" => FunctionDataType::Time,
+                        "JSON" => FunctionDataType::Json,
+                        _ => FunctionDataType::Unknown,
+                    }
+                }
+
                 // Register the function in the global registry
                 let registry = global_registry();
+                // Use stored language if supported, otherwise default to Rhai for backward compatibility
+                let language = if registry.is_language_supported(_language) {
+                    _language.to_string()
+                } else {
+                    "rhai".to_string()
+                };
                 registry.register_user_defined(
                     name.to_string(),
                     code.to_string(),
-                    "rhai".to_string(), // Default to Rhai for persisted functions
+                    language,
                     FunctionSignature::new(
-                        // TODO: Map return_type string to FunctionDataType
-                        FunctionDataType::Unknown,
-                        // TODO: Map parameters to FunctionDataType
-                        vec![],
+                        string_to_function_data_type(_return_type),
+                        parameters
+                            .iter()
+                            .map(|p| string_to_function_data_type(&p.data_type))
+                            .collect(),
                         parameters.len(),
                         parameters.len(),
                     ),

@@ -430,6 +430,14 @@ impl FunctionRegistry {
         funcs.keys().cloned().collect()
     }
 
+    /// Check if a language is supported for user-defined functions
+    pub fn is_language_supported(&self, language: &str) -> bool {
+        self.user_defined_functions
+            .read()
+            .unwrap()
+            .is_language_supported(language)
+    }
+
     /// List all function names
     pub fn list_all(&self) -> Vec<String> {
         let mut names = Vec::new();

@@ -236,6 +236,7 @@ fn test_information_schema_functions() {
     assert_eq!(row_number.2, "INTEGER");
 }
 
+#[cfg(feature = "deno")]
 #[test]
 fn test_information_schema_functions_user_defined() {
     let db = Database::open("memory://info_schema_udf").expect("Failed to create database");
