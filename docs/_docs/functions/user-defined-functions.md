@@ -608,6 +608,161 @@ LANGUAGE DENO AS '
 
 8. **Handle errors appropriately** - Different backends have different error handling patterns
 
+## UDF Testing Strategy
+
+User-defined functions (UDFs) require comprehensive testing to ensure reliability across different backends and environments. The testing strategy covers multiple layers and scenarios.
+
+### Test Categories
+
+#### 1. Unit Tests per Backend
+Each backend has dedicated test suites that validate:
+- **Function Creation**: Syntax validation and compilation
+- **Argument Handling**: Type conversion and parameter passing
+- **Return Values**: Correct output types and values
+- **Error Handling**: Runtime errors and exception propagation
+- **Type Safety**: Mixed-type operations and conversions
+
+**Examples:**
+```rust
+// Rhai backend tests
+#[test]
+fn test_rhai_string_manipulation() {
+    let db = Database::open("memory://test").unwrap();
+    db.execute(r#"
+        CREATE FUNCTION greet(name TEXT) RETURNS TEXT
+        LANGUAGE RHAI AS '`Hello, ${name}!`'
+    "#, ()).unwrap();
+    // ... validation
+}
+
+// Python backend tests
+#[test]
+fn test_python_runtime_error() {
+    let db = Database::open("memory://test").unwrap();
+    db.execute(r#"
+        CREATE FUNCTION error_func() RETURNS INTEGER
+        LANGUAGE PYTHON AS 'return 1 / 0'
+    "#, ()).unwrap();
+    // ... error validation
+}
+```
+
+#### 2. Cross-Backend Integration Tests
+Tests that verify consistent behavior across all enabled backends:
+- **Function Registration**: Multi-backend function loading
+- **Execution Consistency**: Same inputs produce equivalent outputs
+- **Error Message Alignment**: Standardized error formats
+- **Performance Validation**: Backend-specific performance expectations
+
+#### 3. End-to-End SQL Tests
+Complete SQL workflow testing including:
+- **DDL Operations**: CREATE/DROP FUNCTION statements
+- **Query Integration**: UDFs in SELECT, WHERE, and aggregate contexts
+- **Transaction Safety**: UDF behavior within transactions
+- **Concurrency**: Multi-user function execution
+
+#### 4. Environment Consistency Tests
+Validates UDF reliability across different environments:
+- **Feature Flags**: Tests with different cargo feature combinations
+- **Platform Compatibility**: Cross-platform execution consistency
+- **Dependency Isolation**: Sandboxing and security boundary validation
+
+### Backend-Specific Considerations
+
+#### Rhai Backend
+- **String Concatenation**: Requires explicit `.to_string()` for non-string types
+- **Type Coercion**: Limited implicit conversions
+- **Performance**: Fastest for simple operations
+- **Error Format**: "Rhai execution error: {message}"
+
+#### Python Backend
+- **Library Access**: Extensive standard library and scientific computing
+- **Type Flexibility**: Dynamic typing with runtime conversion
+- **Error Format**: "Python execution error: {exception_string}"
+- **Security**: Isolated execution environment
+
+#### Deno Backend
+- **JavaScript/TypeScript**: Modern JS runtime with ES modules
+- **JSON Processing**: Native JSON support
+- **Date Operations**: Full Date API
+- **Error Format**: "Function execution failed: {error}"
+
+### Testing Infrastructure
+
+#### Test Organization
+```
+tests/
+├── functions/
+│   ├── backends_test.rs      # Backend registration and loading
+│   └── ...
+├── rhai_scripting_test.rs    # Rhai-specific functionality
+├── python_scripting_test.rs  # Python-specific functionality
+├── multi_backend_integration_test.rs  # Cross-backend scenarios
+└── ddl_function_test.rs      # DDL operations
+```
+
+#### CI/CD Integration
+- **Matrix Testing**: All backends tested with `--all-features`
+- **Feature Isolation**: Individual backend testing with specific features
+- **Performance Regression**: Execution time monitoring
+- **Memory Safety**: Leak detection and resource cleanup
+
+#### Test Execution
+```bash
+# Run all tests with all backends
+make test-all
+
+# Run specific backend tests
+cargo test --test rhai_scripting_test --features rhai
+cargo test --test python_scripting_test --features python
+
+# Run integration tests
+cargo test --test multi_backend_integration_test --all-features
+```
+
+### Best Practices for UDF Testing
+
+1. **Test All Backends**: Ensure UDFs work across Rhai, Python, and Deno
+2. **Validate Error Messages**: Check error format consistency
+3. **Performance Benchmarking**: Compare execution times across backends
+4. **Type Edge Cases**: Test with null values, type mismatches, and boundaries
+5. **Concurrency Testing**: Multiple UDF executions in parallel
+6. **Memory Leak Detection**: Ensure proper resource cleanup
+7. **Cross-Platform Validation**: Test on different operating systems
+8. **Security Boundary Testing**: Validate sandbox isolation
+
+### Common Testing Patterns
+
+#### Error Testing
+```rust
+let result: Result<i64, _> = db.query_one("SELECT error_func()", ());
+assert!(result.is_err());
+let err_msg = result.unwrap_err().to_string();
+// Check for backend-specific error patterns
+assert!(err_msg.contains("execution error"));
+```
+
+#### Type Conversion Testing
+```rust
+// Test string concatenation with mixed types
+db.execute(r#"
+    CREATE FUNCTION format_person(name TEXT, age INTEGER)
+    RETURNS TEXT LANGUAGE RHAI AS 'name + " is " + age.to_string() + " years old"'
+"#, ()).unwrap();
+```
+
+#### Performance Validation
+```rust
+let start = std::time::Instant::now();
+// Execute UDF multiple times
+for _ in 0..1000 {
+    db.query_one("SELECT fast_udf(42)", ()).unwrap();
+}
+let duration = start.elapsed();
+// Assert performance expectations
+assert!(duration < std::time::Duration::from_millis(100));
+```
+
 ## Dropping Functions
 
 User-defined functions can be dropped using the `DROP FUNCTION` statement:

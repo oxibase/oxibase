@@ -76,6 +76,27 @@ impl ScriptingBackend for DenoBackend {
         // Create a new JavaScript runtime for each function call
         let mut runtime = JsRuntime::new(create_secure_runtime_options());
 
+        // Create arguments array for compatibility
+        let mut args_array = Vec::new();
+        for arg in args {
+            let js_value = match arg {
+                Value::Null(_) => serde_json::Value::Null,
+                Value::Integer(i) => serde_json::json!(i),
+                Value::Float(f) => serde_json::json!(f),
+                Value::Text(s) => serde_json::json!(s.as_ref()),
+                Value::Boolean(b) => serde_json::json!(b),
+                Value::Timestamp(ts) => serde_json::json!(ts.to_rfc3339()),
+                Value::Json(j) => serde_json::from_str(j).unwrap_or(serde_json::Value::Null),
+            };
+            args_array.push(js_value);
+        }
+        let args_array_json = serde_json::to_string(&args_array)
+            .map_err(|e| Error::internal(format!("Failed to serialize arguments array: {}", e)))?;
+        let set_args_script = format!("globalThis.arguments = {};", args_array_json);
+        runtime
+            .execute_script("<set_args>", set_args_script)
+            .map_err(|e| Error::internal(format!("Failed to set arguments array: {}", e)))?;
+
         // Bind arguments as global variables using parameter names
         for (i, arg) in args.iter().enumerate() {
             let param_name = param_names[i];
@@ -102,7 +123,7 @@ impl ScriptingBackend for DenoBackend {
             globalThis.__user_function = function() {{
                 {}
             }};
-            globalThis.__user_function()
+            globalThis.__user_function.apply(null, globalThis.arguments)
         ",
             code
         );

@@ -55,6 +55,19 @@ impl ScriptingBackend for RhaiBackend {
     fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
         let mut scope = Scope::new();
 
+        // Create arguments array for compatibility
+        let mut args_array = rhai::Array::new();
+        for arg in args {
+            match arg {
+                Value::Integer(i) => args_array.push(rhai::Dynamic::from(*i)),
+                Value::Float(f) => args_array.push(rhai::Dynamic::from(*f)),
+                Value::Text(s) => args_array.push(rhai::Dynamic::from(s.as_ref().to_string())),
+                Value::Boolean(b) => args_array.push(rhai::Dynamic::from(*b)),
+                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
+            };
+        }
+        scope.push("arguments", args_array);
+
         // Bind arguments to scope using parameter names
         for (i, arg) in args.iter().enumerate() {
             let var_name = param_names[i];

@@ -108,10 +108,13 @@ impl PythonBackend {
     fn format_python_error(
         &self,
         py_err: PyRef<rustpython_vm::builtins::PyBaseException>,
-        _vm: &VirtualMachine,
+        vm: &VirtualMachine,
     ) -> String {
-        // Simple error formatting - just get the exception string representation
-        format!("{:?}", py_err)
+        // Format error consistently with other backends - try to get string representation
+        match py_err.as_object().str(vm) {
+            Ok(s) => s.to_string(),
+            Err(_) => format!("{:?}", py_err),
+        }
     }
 }
 
@@ -138,6 +141,17 @@ impl ScriptingBackend for PythonBackend {
         interpreter
             .enter(|vm| {
                 let scope = vm.new_scope_with_builtins();
+
+                // Create arguments list for compatibility
+                let mut args_vec = Vec::new();
+                for arg in args {
+                    let py_value = self.convert_oxibase_to_python(arg, vm)?;
+                    args_vec.push(py_value);
+                }
+                let args_list = vm.ctx.new_list(args_vec);
+                scope.globals.set_item("arguments", args_list.into(), vm).map_err(|e| {
+                    Error::internal(format!("Failed to set arguments list: {:?}", e))
+                })?;
 
                 // Convert arguments to Python variables using parameter names
                 for (i, arg) in args.iter().enumerate() {

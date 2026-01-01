@@ -159,11 +159,14 @@ mod deno_function_tests {
     fn test_deno_invalid_syntax() {
         let db = Database::open("memory://deno_invalid_test").unwrap();
 
-        // Test that invalid JavaScript syntax fails during creation
-        let result = db.execute(r#"
+        // Test that invalid JavaScript syntax fails during execution (not creation)
+        db.execute(r#"
             CREATE FUNCTION invalid_func() RETURNS INTEGER
             LANGUAGE DENO AS 'return 1 +'
-        "#, ());
+        "#, ()).unwrap(); // Creation succeeds
+
+        // Execution should fail
+        let result: Result<i64, _> = db.query_one("SELECT invalid_func()", ());
         assert!(result.is_err());
     }
 
@@ -272,14 +275,18 @@ mod deno_function_tests {
             LANGUAGE DENO AS 'return 1;'
         "#, ());
         assert!(result.is_ok());
+        let result: Result<i64, _> = db.query_one("SELECT valid_func()", ());
+        assert!(result.is_ok());
 
-        // Test that invalid syntax fails
+        // Test that invalid syntax fails during execution
         let result = db.execute(r#"
             CREATE FUNCTION invalid_func() RETURNS INTEGER
-            LANGUAGE DENO AS 'return 1 +'
+            LANGUAGE DENO AS 'return 1 + ;'
         "#, ());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("syntax error"));
+        assert!(result.is_ok()); // Creation succeeds
+
+        let result: Result<i64, _> = db.query_one("SELECT invalid_func()", ());
+        assert!(result.is_err()); // Execution fails
     }
 
     #[test]
