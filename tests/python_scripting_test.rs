@@ -23,8 +23,6 @@ use oxibase::Database;
 #[cfg(feature = "python")]
 mod python_function_tests {
     use super::*;
-    use crate::core::Error;
-    use super::*;
 
     #[test]
     fn test_python_function_creation_and_execution() {
@@ -108,25 +106,7 @@ mod python_function_tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn test_python_syntax_validation() {
-        let db = Database::open("memory://python_syntax_test").unwrap();
 
-        // Test that valid syntax works
-        let result = db.execute(r#"
-            CREATE FUNCTION valid_func() RETURNS INTEGER
-            LANGUAGE PYTHON AS 'return 1'
-        "#, ());
-        assert!(result.is_ok());
-
-        // Test that invalid syntax fails
-        let result = db.execute(r#"
-            CREATE FUNCTION invalid_func() RETURNS INTEGER
-            LANGUAGE PYTHON AS 'result = 1 +'
-        "#, ());
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("syntax error"));
-    }
 
     #[test]
     fn test_python_function_without_return() {
@@ -144,21 +124,67 @@ mod python_function_tests {
     }
 
     #[test]
-    fn test_python_runtime_error() {
-        let db = Database::open("memory://python_runtime_error_test").unwrap();
+    fn test_python_string_manipulation() {
+        let db = Database::open("memory://python_string_test").unwrap();
 
         db.execute(r#"
-            CREATE FUNCTION error_func() RETURNS INTEGER
-            LANGUAGE PYTHON AS 'result = 1 / 0'
+            CREATE FUNCTION greet(name TEXT)
+            RETURNS TEXT
+            LANGUAGE PYTHON AS 'return f"Hello, {arguments[0]}!"'
         "#, ()).unwrap();
 
-        let result: Result<i64, _> = db.query_one("SELECT error_func()", ());
-        assert!(result.is_err());
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("execution error"));
-        // Should include Python exception details
+        let result: String = db.query_one("SELECT greet('World')", ()).unwrap();
+        assert_eq!(result, "Hello, World!");
     }
-}
+
+    #[test]
+    fn test_python_math_operations() {
+        let db = Database::open("memory://python_math_test").unwrap();
+
+        db.execute(r#"
+            CREATE FUNCTION power(base INTEGER, exp INTEGER)
+            RETURNS INTEGER
+            LANGUAGE PYTHON AS 'return arguments[0] ** arguments[1]'
+        "#, ()).unwrap();
+
+        let result: i64 = db.query_one("SELECT power(2, 3)", ()).unwrap();
+        assert_eq!(result, 8);
+    }
+
+    #[test]
+    fn test_python_type_conversion() {
+        let db = Database::open("memory://python_types_test").unwrap();
+
+        // Test INTEGER
+        db.execute(r#"
+            CREATE FUNCTION double_int(x INTEGER)
+            RETURNS INTEGER
+            LANGUAGE PYTHON AS 'return x * 2'
+        "#, ()).unwrap();
+
+        // Test FLOAT
+        db.execute(r#"
+            CREATE FUNCTION double_float(x FLOAT)
+            RETURNS FLOAT
+            LANGUAGE PYTHON AS 'return arguments[0] * 2.0'
+        "#, ()).unwrap();
+
+        // Test BOOLEAN
+        db.execute(r#"
+            CREATE FUNCTION negate_bool(x BOOLEAN)
+            RETURNS BOOLEAN
+            LANGUAGE PYTHON AS 'return not arguments[0]'
+        "#, ()).unwrap();
+
+        let int_result: i64 = db.query_one("SELECT double_int(21)", ()).unwrap();
+        assert_eq!(int_result, 42);
+
+        let float_result: f64 = db.query_one("SELECT double_float(3.14)", ()).unwrap();
+        assert!((float_result - 6.28).abs() < 0.01);
+
+        let bool_result: bool = db.query_one("SELECT negate_bool(true)", ()).unwrap();
+        assert_eq!(bool_result, false);
+    }
 
     #[test]
     fn test_python_invalid_syntax() {
@@ -183,6 +209,29 @@ mod python_function_tests {
 
         let result: Result<i64, _> = db.query_one("SELECT error_func()", ());
         assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("execution error"));
+        // Should include Python exception details
+    }
+
+    #[test]
+    fn test_python_syntax_validation() {
+        let db = Database::open("memory://python_syntax_test").unwrap();
+
+        // Test that valid syntax works
+        let result = db.execute(r#"
+            CREATE FUNCTION valid_func() RETURNS INTEGER
+            LANGUAGE PYTHON AS 'return 1'
+        "#, ());
+        assert!(result.is_ok());
+
+        // Test that invalid syntax fails
+        let result = db.execute(r#"
+            CREATE FUNCTION invalid_func() RETURNS INTEGER
+            LANGUAGE PYTHON AS 'return 1 +'
+        "#, ());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("syntax error"));
     }
 
     #[test]
