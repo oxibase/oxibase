@@ -23,16 +23,21 @@ use oxibase::Database;
 #[cfg(feature = "python")]
 mod python_function_tests {
     use super::*;
+    use std::f64::consts::{PI, TAU};
 
     #[test]
     fn test_python_function_creation_and_execution() {
         let db = Database::open("memory://python_create_test").unwrap();
 
         // Create a Python function that returns a value
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION compute_sum(a INTEGER, b INTEGER) RETURNS INTEGER
             LANGUAGE PYTHON AS 'return arguments[0] + arguments[1]'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Execute the function
         let result: i64 = db.query_one("SELECT compute_sum(10, 20)", ()).unwrap();
@@ -44,22 +49,34 @@ mod python_function_tests {
         let db = Database::open("memory://python_types_test").unwrap();
 
         // Test INTEGER return
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION get_answer() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 42'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test TEXT return
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION get_message() RETURNS TEXT
             LANGUAGE PYTHON AS 'return "Hello from Python"'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test BOOLEAN return
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION get_truth() RETURNS BOOLEAN
             LANGUAGE PYTHON AS 'return True'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let int_result: i64 = db.query_one("SELECT get_answer()", ()).unwrap();
         assert_eq!(int_result, 42);
@@ -68,7 +85,7 @@ mod python_function_tests {
         assert_eq!(text_result, "Hello from Python");
 
         let bool_result: bool = db.query_one("SELECT get_truth()", ()).unwrap();
-        assert_eq!(bool_result, true);
+        assert!(bool_result);
     }
 
     #[test]
@@ -80,7 +97,9 @@ mod python_function_tests {
             LANGUAGE PYTHON AS 'return f"{arguments[0]} is {arguments[1]} years old, active: {arguments[2]}"'
         "#, ()).unwrap();
 
-        let result: String = db.query_one("SELECT format_person('Alice', 30, true)", ()).unwrap();
+        let result: String = db
+            .query_one("SELECT format_person('Alice', 30, true)", ())
+            .unwrap();
         assert_eq!(result, "Alice is 30 years old, active: True");
     }
 
@@ -89,10 +108,14 @@ mod python_function_tests {
         let db = Database::open("memory://python_drop_test").unwrap();
 
         // Create function
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION temp_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 123'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Verify it works
         let result: i64 = db.query_one("SELECT temp_func()", ()).unwrap();
@@ -106,17 +129,19 @@ mod python_function_tests {
         assert!(result.is_err());
     }
 
-
-
     #[test]
     fn test_python_function_without_return() {
         let db = Database::open("memory://python_no_result_test").unwrap();
 
         // Function that doesn't return a value should return NULL
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION no_return_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'x = 42'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Execution should return NULL
         let result: Option<i64> = db.query_one("SELECT no_return_func()", ()).unwrap();
@@ -127,11 +152,15 @@ mod python_function_tests {
     fn test_python_string_manipulation() {
         let db = Database::open("memory://python_string_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION greet(name TEXT)
             RETURNS TEXT
             LANGUAGE PYTHON AS 'return f"Hello, {arguments[0]}!"'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: String = db.query_one("SELECT greet('World')", ()).unwrap();
         assert_eq!(result, "Hello, World!");
@@ -141,11 +170,15 @@ mod python_function_tests {
     fn test_python_math_operations() {
         let db = Database::open("memory://python_math_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION power(base INTEGER, exp INTEGER)
             RETURNS INTEGER
             LANGUAGE PYTHON AS 'return arguments[0] ** arguments[1]'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: i64 = db.query_one("SELECT power(2, 3)", ()).unwrap();
         assert_eq!(result, 8);
@@ -156,34 +189,46 @@ mod python_function_tests {
         let db = Database::open("memory://python_types_test").unwrap();
 
         // Test INTEGER
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION double_int(x INTEGER)
             RETURNS INTEGER
             LANGUAGE PYTHON AS 'return x * 2'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test FLOAT
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION double_float(x FLOAT)
             RETURNS FLOAT
             LANGUAGE PYTHON AS 'return arguments[0] * 2.0'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test BOOLEAN
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION negate_bool(x BOOLEAN)
             RETURNS BOOLEAN
             LANGUAGE PYTHON AS 'return not arguments[0]'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let int_result: i64 = db.query_one("SELECT double_int(21)", ()).unwrap();
         assert_eq!(int_result, 42);
 
         let float_result: f64 = db.query_one("SELECT double_float(3.14)", ()).unwrap();
-        assert!((float_result - 6.28).abs() < 0.01);
+        assert!((float_result - TAU).abs() < 0.01);
 
         let bool_result: bool = db.query_one("SELECT negate_bool(true)", ()).unwrap();
-        assert_eq!(bool_result, false);
+        assert!(!bool_result);
     }
 
     #[test]
@@ -191,10 +236,14 @@ mod python_function_tests {
         let db = Database::open("memory://python_invalid_test").unwrap();
 
         // Test that invalid Python syntax fails during execution (not creation)
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION invalid_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 1 +'
-        "#, ()).unwrap(); // Creation succeeds
+        "#,
+            (),
+        )
+        .unwrap(); // Creation succeeds
 
         // Execution should fail
         let result: Result<i64, _> = db.query_one("SELECT invalid_func()", ());
@@ -205,16 +254,24 @@ mod python_function_tests {
     fn test_python_runtime_error() {
         let db = Database::open("memory://python_runtime_error_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION error_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 1 / 0'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: Result<i64, _> = db.query_one("SELECT error_func()", ());
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
         // Check that it contains some error indication
-        assert!(err_msg.contains("error") || err_msg.contains("Error") || err_msg.contains("ZeroDivisionError"));
+        assert!(
+            err_msg.contains("error")
+                || err_msg.contains("Error")
+                || err_msg.contains("ZeroDivisionError")
+        );
         // Should include Python exception details
     }
 
@@ -223,17 +280,24 @@ mod python_function_tests {
         let db = Database::open("memory://python_syntax_test").unwrap();
 
         // Test that valid syntax works
-        let result = db.execute(r#"
+        let result = db.execute(
+            r#"
             CREATE FUNCTION valid_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 1'
-        "#, ());
+        "#,
+            (),
+        );
         assert!(result.is_ok());
 
         // Test that invalid syntax fails during execution
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION invalid_func() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 1 + (invalid_syntax'
-        "#, ()).unwrap(); // Creation succeeds
+        "#,
+            (),
+        )
+        .unwrap(); // Creation succeeds
 
         // Execution should fail
         let result: Result<i64, _> = db.query_one("SELECT invalid_func()", ());
@@ -249,13 +313,16 @@ mod python_function_tests {
         // TODO: Implement proper sandboxing for Python backend
 
         // Test that file system access works (currently not restricted)
-        let result = db.execute(r#"
+        let result = db.execute(
+            r#"
             CREATE FUNCTION file_access() RETURNS TEXT
             LANGUAGE PYTHON AS 'try:
     with open("/dev/null", "r") as f: return "File access allowed"
 except:
     return "File access failed"'
-        "#, ());
+        "#,
+            (),
+        );
         if result.is_ok() {
             let exec_result: Result<String, _> = db.query_one("SELECT file_access()", ());
             // Currently, this may succeed - security restrictions not implemented yet
@@ -263,14 +330,17 @@ except:
         }
 
         // Test that subprocess creation works (currently not restricted)
-        let result = db.execute(r#"
+        let result = db.execute(
+            r#"
             CREATE FUNCTION subprocess_test() RETURNS TEXT
             LANGUAGE PYTHON AS 'try:
     import subprocess
     return "Subprocess available"
 except:
     return "Subprocess blocked"'
-        "#, ());
+        "#,
+            (),
+        );
         if result.is_ok() {
             let exec_result: Result<String, _> = db.query_one("SELECT subprocess_test()", ());
             // Currently, this may succeed - security restrictions not implemented yet
@@ -282,17 +352,21 @@ except:
     fn test_python_basic_execution() {
         let db = Database::open("memory://python_exec_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION is_even(n INTEGER)
             RETURNS BOOLEAN
             LANGUAGE PYTHON AS 'return arguments[0] % 2 == 0'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: bool = db.query_one("SELECT is_even(4)", ()).unwrap();
-        assert_eq!(result, true);
+        assert!(result);
 
         let result: bool = db.query_one("SELECT is_even(5)", ()).unwrap();
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
@@ -306,7 +380,9 @@ except:
             LANGUAGE PYTHON AS 'return f"{arguments[0]}, {arguments[1]}, {arguments[2]}, {arguments[3]}"'
         "#, ()).unwrap();
 
-        let result: String = db.query_one("SELECT process_args(42, 3.14, 'hello', true)", ()).unwrap();
+        let result: String = db
+            .query_one("SELECT process_args(42, 3.14, 'hello', true)", ())
+            .unwrap();
         assert_eq!(result, "42, 3.14, hello, True");
     }
 
@@ -315,36 +391,52 @@ except:
         let db = Database::open("memory://python_return_test").unwrap();
 
         // Test all supported return type conversions
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_int() RETURNS INTEGER
             LANGUAGE PYTHON AS 'return 42'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_float() RETURNS FLOAT
             LANGUAGE PYTHON AS 'return 3.14'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_text() RETURNS TEXT
             LANGUAGE PYTHON AS 'return "hello"'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_bool() RETURNS BOOLEAN
             LANGUAGE PYTHON AS 'return True'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let int_result: i64 = db.query_one("SELECT return_int()", ()).unwrap();
         assert_eq!(int_result, 42);
 
         let float_result: f64 = db.query_one("SELECT return_float()", ()).unwrap();
-        assert!((float_result - 3.14).abs() < 0.01);
+        assert!((float_result - PI).abs() < 0.01);
 
         let text_result: String = db.query_one("SELECT return_text()", ()).unwrap();
         assert_eq!(text_result, "hello");
 
         let bool_result: bool = db.query_one("SELECT return_bool()", ()).unwrap();
-        assert_eq!(bool_result, true);
+        assert!(bool_result);
     }
 }

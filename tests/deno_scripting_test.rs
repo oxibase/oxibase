@@ -29,11 +29,15 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_test").unwrap();
 
         // Test basic JavaScript execution
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
             RETURNS INTEGER
             LANGUAGE DENO AS 'return arguments[0] + arguments[1];'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: i64 = db.query_one("SELECT add_numbers(5, 3)", ()).unwrap();
         assert_eq!(result, 8);
@@ -43,11 +47,15 @@ mod deno_function_tests {
     fn test_deno_string_manipulation() {
         let db = Database::open("memory://deno_string_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION greet(name TEXT)
             RETURNS TEXT
             LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: String = db.query_one("SELECT greet('World')", ()).unwrap();
         assert_eq!(result, "Hello, World!");
@@ -57,11 +65,15 @@ mod deno_function_tests {
     fn test_deno_math_operations() {
         let db = Database::open("memory://deno_math_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION power(base INTEGER, exp INTEGER)
             RETURNS INTEGER
             LANGUAGE DENO AS 'return Math.pow(arguments[0], arguments[1]);'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: i64 = db.query_one("SELECT power(2, 3)", ()).unwrap();
         assert_eq!(result, 8);
@@ -72,34 +84,46 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_types_test").unwrap();
 
         // Test INTEGER
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION double_int(x INTEGER)
             RETURNS INTEGER
             LANGUAGE DENO AS 'return x * 2;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test FLOAT
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION double_float(x FLOAT)
             RETURNS FLOAT
             LANGUAGE DENO AS 'return arguments[0] * 2.0;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test BOOLEAN
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION negate_bool(x BOOLEAN)
             RETURNS BOOLEAN
             LANGUAGE DENO AS 'return !arguments[0];'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let int_result: i64 = db.query_one("SELECT double_int(21)", ()).unwrap();
         assert_eq!(int_result, 42);
 
         let float_result: f64 = db.query_one("SELECT double_float(3.14)", ()).unwrap();
-        assert!((float_result - 6.28).abs() < 0.01);
+        assert!((float_result - std::f64::consts::TAU).abs() < 0.01);
 
         let bool_result: bool = db.query_one("SELECT negate_bool(true)", ()).unwrap();
-        assert_eq!(bool_result, false);
+        assert!(!bool_result);
     }
 
     #[test]
@@ -113,7 +137,9 @@ mod deno_function_tests {
             LANGUAGE DENO AS 'return `${arguments[0]}, ${arguments[1]}, ${arguments[2]}, ${arguments[3]}`;'
         "#, ()).unwrap();
 
-        let result: String = db.query_one("SELECT process_args(42, 3.14, 'hello', true)", ()).unwrap();
+        let result: String = db
+            .query_one("SELECT process_args(42, 3.14, 'hello', true)", ())
+            .unwrap();
         assert_eq!(result, "42, 3.14, hello, true");
     }
 
@@ -122,37 +148,53 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_return_test").unwrap();
 
         // Test all supported return type conversions
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_int() RETURNS INTEGER
             LANGUAGE DENO AS 'return 42;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_float() RETURNS FLOAT
             LANGUAGE DENO AS 'return 3.14;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_text() RETURNS TEXT
             LANGUAGE DENO AS 'return "hello";'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION return_bool() RETURNS BOOLEAN
             LANGUAGE DENO AS 'return true;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let int_result: i64 = db.query_one("SELECT return_int()", ()).unwrap();
         assert_eq!(int_result, 42);
 
         let float_result: f64 = db.query_one("SELECT return_float()", ()).unwrap();
-        assert!((float_result - 3.14).abs() < 0.01);
+        assert!((float_result - std::f64::consts::PI).abs() < 0.01);
 
         let text_result: String = db.query_one("SELECT return_text()", ()).unwrap();
         assert_eq!(text_result, "hello");
 
         let bool_result: bool = db.query_one("SELECT return_bool()", ()).unwrap();
-        assert_eq!(bool_result, true);
+        assert!(bool_result);
     }
 
     #[test]
@@ -160,10 +202,14 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_invalid_test").unwrap();
 
         // Test that invalid JavaScript syntax fails during execution (not creation)
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION invalid_func() RETURNS INTEGER
             LANGUAGE DENO AS 'return 1 +'
-        "#, ()).unwrap(); // Creation succeeds
+        "#,
+            (),
+        )
+        .unwrap(); // Creation succeeds
 
         // Execution should fail
         let result: Result<i64, _> = db.query_one("SELECT invalid_func()", ());
@@ -174,10 +220,14 @@ mod deno_function_tests {
     fn test_deno_runtime_error() {
         let db = Database::open("memory://deno_runtime_error_test").unwrap();
 
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION error_func() RETURNS INTEGER
             LANGUAGE DENO AS 'return 1 / 0;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let result: Result<i64, _> = db.query_one("SELECT error_func()", ());
         assert!(result.is_err());
@@ -188,10 +238,14 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_create_test").unwrap();
 
         // Create a Deno function that returns a value
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION compute_sum(a INTEGER, b INTEGER) RETURNS INTEGER
             LANGUAGE DENO AS 'return arguments[0] + arguments[1];'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Execute the function
         let result: i64 = db.query_one("SELECT compute_sum(10, 20)", ()).unwrap();
@@ -203,22 +257,34 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_types_test").unwrap();
 
         // Test INTEGER return
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION get_answer() RETURNS INTEGER
             LANGUAGE DENO AS 'return 42;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test TEXT return
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION get_message() RETURNS TEXT
             LANGUAGE DENO AS 'return "Hello from Deno";'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Test BOOLEAN return
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION get_truth() RETURNS BOOLEAN
             LANGUAGE DENO AS 'return true;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         let int_result: i64 = db.query_one("SELECT get_answer()", ()).unwrap();
         assert_eq!(int_result, 42);
@@ -227,7 +293,7 @@ mod deno_function_tests {
         assert_eq!(text_result, "Hello from Deno");
 
         let bool_result: bool = db.query_one("SELECT get_truth()", ()).unwrap();
-        assert_eq!(bool_result, true);
+        assert!(bool_result);
     }
 
     #[test]
@@ -239,7 +305,9 @@ mod deno_function_tests {
             LANGUAGE DENO AS 'return `${arguments[0]} is ${arguments[1]} years old, active: ${arguments[2]}`;'
         "#, ()).unwrap();
 
-        let result: String = db.query_one("SELECT format_person('Alice', 30, true)", ()).unwrap();
+        let result: String = db
+            .query_one("SELECT format_person('Alice', 30, true)", ())
+            .unwrap();
         assert_eq!(result, "Alice is 30 years old, active: true");
     }
 
@@ -248,10 +316,14 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_drop_test").unwrap();
 
         // Create function
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION temp_func() RETURNS INTEGER
             LANGUAGE DENO AS 'return 123;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Verify it works
         let result: i64 = db.query_one("SELECT temp_func()", ()).unwrap();
@@ -270,19 +342,25 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_syntax_test").unwrap();
 
         // Test that valid syntax works
-        let result = db.execute(r#"
+        let result = db.execute(
+            r#"
             CREATE FUNCTION valid_func() RETURNS INTEGER
             LANGUAGE DENO AS 'return 1;'
-        "#, ());
+        "#,
+            (),
+        );
         assert!(result.is_ok());
         let result: Result<i64, _> = db.query_one("SELECT valid_func()", ());
         assert!(result.is_ok());
 
         // Test that invalid syntax fails during execution
-        let result = db.execute(r#"
+        let result = db.execute(
+            r#"
             CREATE FUNCTION invalid_func() RETURNS INTEGER
             LANGUAGE DENO AS 'return 1 + ;'
-        "#, ());
+        "#,
+            (),
+        );
         assert!(result.is_ok()); // Creation succeeds
 
         let result: Result<i64, _> = db.query_one("SELECT invalid_func()", ());
@@ -294,10 +372,14 @@ mod deno_function_tests {
         let db = Database::open("memory://deno_no_result_test").unwrap();
 
         // Function that doesn't return a value should return NULL
-        db.execute(r#"
+        db.execute(
+            r#"
             CREATE FUNCTION no_return_func() RETURNS INTEGER
             LANGUAGE DENO AS 'let x = 42;'
-        "#, ()).unwrap();
+        "#,
+            (),
+        )
+        .unwrap();
 
         // Execution should return NULL
         let result: Option<i64> = db.query_one("SELECT no_return_func()", ()).unwrap();
@@ -368,6 +450,10 @@ mod deno_function_tests {
         // Note: This might fail due to network timeouts in tests, but the API should be available
         let result: String = db.query_one("SELECT test_fetch()", ()).unwrap();
         // Just check that it's not blocked at the API level
-        assert!(!result.contains("blocked") || result.contains("Fetch works") || result.contains("network"));
+        assert!(
+            !result.contains("blocked")
+                || result.contains("Fetch works")
+                || result.contains("network")
+        );
     }
 }
