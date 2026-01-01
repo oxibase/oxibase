@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license docs docs-build docs-lib release help run-memory run-files run-all
+.PHONY: all lint test build buil-all coverage license docs docs-build docs-lib release help run-memory run-files run-all
 
 .PHONY: help
 # [other] Display help
@@ -28,6 +28,10 @@ test-all:
 # [dev] Build in release mode
 build:
 	cargo build --release
+
+# [dev] Build in release mode with all features
+build-all:
+	cargo build --release --all-features
 
 # [dev] Generate coverage report (requires cargo-llvm-cov)
 coverage:
