@@ -23,6 +23,8 @@ use oxibase::Database;
 #[cfg(feature = "python")]
 mod python_function_tests {
     use super::*;
+    use crate::core::Error;
+    use super::*;
 
     #[test]
     fn test_python_function_creation_and_execution() {
@@ -159,18 +161,57 @@ mod python_function_tests {
 }
 
     #[test]
-    fn test_python_function_creation_fails() {
-        let db = Database::open("memory://python_func_test").unwrap();
+    fn test_python_invalid_syntax() {
+        let db = Database::open("memory://python_invalid_test").unwrap();
 
-        // Try to call a Python function - should fail
-        let result: Result<bool, _> = db.query_one("SELECT is_even(4)", ());
-
-        // Should fail since function doesn't exist or backend not implemented
+        // Test that invalid Python syntax fails during creation
+        let result = db.execute(r#"
+            CREATE FUNCTION invalid_func() RETURNS INTEGER
+            LANGUAGE PYTHON AS 'return 1 +'
+        "#, ());
         assert!(result.is_err());
     }
 
-    // TODO: Add these tests once Python backend is fully implemented:
-    /*
+    #[test]
+    fn test_python_runtime_error() {
+        let db = Database::open("memory://python_runtime_error_test").unwrap();
+
+        db.execute(r#"
+            CREATE FUNCTION error_func() RETURNS INTEGER
+            LANGUAGE PYTHON AS 'return 1 / 0'
+        "#, ()).unwrap();
+
+        let result: Result<i64, _> = db.query_one("SELECT error_func()", ());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_python_security_isolation() {
+        let db = Database::open("memory://python_security_test").unwrap();
+
+        // Test that file system access is blocked
+        let result = db.execute(r#"
+            CREATE FUNCTION file_access() RETURNS TEXT
+            LANGUAGE PYTHON AS 'with open("/etc/passwd", "r") as f: return f.read()'
+        "#, ());
+        // Should fail due to security restrictions (if implemented)
+        // For now, just check that it doesn't execute silently
+        if result.is_ok() {
+            let exec_result: Result<String, _> = db.query_one("SELECT file_access()", ());
+            assert!(exec_result.is_err(), "File access should be blocked");
+        }
+
+        // Test that subprocess creation is blocked
+        let result = db.execute(r#"
+            CREATE FUNCTION subprocess_test() RETURNS TEXT
+            LANGUAGE PYTHON AS 'import subprocess; return subprocess.run(["echo", "test"], capture_output=True).stdout.decode()'
+        "#, ());
+        if result.is_ok() {
+            let exec_result: Result<String, _> = db.query_one("SELECT subprocess_test()", ());
+            assert!(exec_result.is_err(), "Subprocess creation should be blocked");
+        }
+    }
+
     #[test]
     fn test_python_basic_execution() {
         let db = Database::open("memory://python_exec_test").unwrap();
@@ -240,5 +281,4 @@ mod python_function_tests {
         let bool_result: bool = db.query_one("SELECT return_bool()", ()).unwrap();
         assert_eq!(bool_result, true);
     }
-    */
 }
