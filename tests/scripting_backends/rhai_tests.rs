@@ -30,7 +30,7 @@ mod rhai_function_tests {
         db.execute(r#"
             CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
             RETURNS INTEGER
-            LANGUAGE RHAI AS 'arg0 + arg1'
+            LANGUAGE RHAI AS 'a + b'
         "#, ()).unwrap();
 
         let result: i64 = db.query_one("SELECT add_numbers(5, 3)", ()).unwrap();
@@ -44,7 +44,7 @@ mod rhai_function_tests {
         db.execute(r#"
             CREATE FUNCTION greet(name TEXT)
             RETURNS TEXT
-            LANGUAGE RHAI AS '`Hello, ${arg0}!`'
+            LANGUAGE RHAI AS '`Hello, ${name}!`'
         "#, ()).unwrap();
 
         let result: String = db.query_one("SELECT greet('World')", ()).unwrap();
@@ -58,7 +58,7 @@ mod rhai_function_tests {
         db.execute(r#"
             CREATE FUNCTION power(base INTEGER, exp INTEGER)
             RETURNS INTEGER
-            LANGUAGE RHAI AS 'arg0 ** arg1'
+            LANGUAGE RHAI AS 'base ** exp'
         "#, ()).unwrap();
 
         let result: i64 = db.query_one("SELECT power(2, 3)", ()).unwrap();
@@ -73,21 +73,21 @@ mod rhai_function_tests {
         db.execute(r#"
             CREATE FUNCTION double_int(x INTEGER)
             RETURNS INTEGER
-            LANGUAGE RHAI AS 'arg0 * 2'
+            LANGUAGE RHAI AS 'x * 2'
         "#, ()).unwrap();
 
         // Test FLOAT
         db.execute(r#"
             CREATE FUNCTION double_float(x FLOAT)
             RETURNS FLOAT
-            LANGUAGE RHAI AS 'arg0 * 2.0'
+            LANGUAGE RHAI AS 'x * 2.0'
         "#, ()).unwrap();
 
         // Test BOOLEAN
         db.execute(r#"
             CREATE FUNCTION negate_bool(x BOOLEAN)
             RETURNS BOOLEAN
-            LANGUAGE RHAI AS '!arg0'
+            LANGUAGE RHAI AS '!x'
         "#, ()).unwrap();
 
         let int_result: i64 = db.query_one("SELECT double_int(21)", ()).unwrap();
@@ -108,7 +108,7 @@ mod rhai_function_tests {
         db.execute(r#"
             CREATE FUNCTION process_args(i INTEGER, f FLOAT, t TEXT, b BOOLEAN)
             RETURNS TEXT
-            LANGUAGE RHAI AS '${arg0}, ${arg1}, ${arg2}, ${arg3}'
+            LANGUAGE RHAI AS '${i}, ${f}, ${t}, ${b}'
         "#, ()).unwrap();
 
         let result: String = db.query_one("SELECT process_args(42, 3.14, 'hello', true)", ()).unwrap();
@@ -185,7 +185,7 @@ mod rhai_function_tests {
         // Create a Rhai function that returns a value
         db.execute(r#"
             CREATE FUNCTION compute_sum(a INTEGER, b INTEGER) RETURNS INTEGER
-            LANGUAGE RHAI AS 'arg0 + arg1'
+            LANGUAGE RHAI AS 'a + b'
         "#, ()).unwrap();
 
         // Execute the function
@@ -231,7 +231,7 @@ mod rhai_function_tests {
 
         db.execute(r#"
             CREATE FUNCTION format_person(name TEXT, age INTEGER, active BOOLEAN) RETURNS TEXT
-            LANGUAGE RHAI AS '${arg0} is ${arg1} years old, active: ${arg2}'
+            LANGUAGE RHAI AS '${name} is ${age} years old, active: ${active}'
         "#, ()).unwrap();
 
         let result: String = db.query_one("SELECT format_person('Alice', 30, true)", ()).unwrap();

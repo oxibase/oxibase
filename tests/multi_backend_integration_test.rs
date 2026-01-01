@@ -31,7 +31,7 @@ mod multi_backend_integration_tests {
         db.execute(
             r#"
             CREATE FUNCTION rhai_add(a INTEGER, b INTEGER) RETURNS INTEGER
-            LANGUAGE RHAI AS 'arg0 + arg1'
+            LANGUAGE RHAI AS 'a + b'
         "#,
             (),
         )
@@ -41,7 +41,7 @@ mod multi_backend_integration_tests {
         db.execute(
             r#"
             CREATE FUNCTION deno_multiply(a INTEGER, b INTEGER) RETURNS INTEGER
-            LANGUAGE DENO AS 'return arguments[0] * arguments[1];'
+            LANGUAGE DENO AS 'return a * b;'
         "#,
             (),
         )
@@ -51,7 +51,7 @@ mod multi_backend_integration_tests {
         db.execute(
             r#"
             CREATE FUNCTION python_subtract(a INTEGER, b INTEGER) RETURNS INTEGER
-            LANGUAGE PYTHON AS 'return arguments[0] - arguments[1]'
+            LANGUAGE PYTHON AS 'return a - b'
         "#,
             (),
         )
@@ -104,7 +104,7 @@ mod multi_backend_integration_tests {
         db.execute(
             r#"
             CREATE FUNCTION double_value(x INTEGER) RETURNS INTEGER
-            LANGUAGE DENO AS 'return arguments[0] * 2;'
+            LANGUAGE DENO AS 'return x * 2;'
         "#,
             (),
         )

@@ -25,7 +25,7 @@ fn main() -> Result<()> {
 
     // Create a function that adds two numbers
     db.execute(
-        r#"CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 + arg1'"#,
+        r#"CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'a + b'"#,
         (),
     )?;
 
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
 
     // Create a simple multiplication function
     db.execute(
-        r#"CREATE FUNCTION multiply(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 * arg1'"#,
+        r#"CREATE FUNCTION multiply(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'a * b'"#,
         (),
     )?;
 

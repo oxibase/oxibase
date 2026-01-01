@@ -328,8 +328,9 @@ mod tests {
 
         let udf = user_defined::UserDefinedScalarFunction::new(
             "test_func",
-            "return arg0 + arg1;",
+            "a + b",
             "rhai",
+            vec!["a".to_string(), "b".to_string()],
             FunctionSignature::new(
                 FunctionDataType::Integer,
                 vec![FunctionDataType::Integer, FunctionDataType::Integer],
@@ -351,8 +352,9 @@ mod tests {
         registry
             .register(
                 "add".to_string(),
-                "return arg0 + arg1;".to_string(),
+                "a + b".to_string(),
                 "rhai".to_string(),
+                vec!["a".to_string(), "b".to_string()],
                 FunctionSignature::new(
                     FunctionDataType::Integer,
                     vec![FunctionDataType::Integer, FunctionDataType::Integer],

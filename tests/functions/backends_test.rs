@@ -114,4 +114,124 @@ mod backend_registry_tests {
         // Should fail because language is not supported
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_rhai_backend_named_parameters() {
+        use oxibase::functions::backends::rhai::RhaiBackend;
+        use oxibase::core::{Value, Result};
+
+        let backend = RhaiBackend::new();
+
+        // Test with named parameters
+        let result = backend.execute("a + b", &[Value::Integer(3), Value::Integer(4)], &["a".to_string(), "b".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Integer(7));
+    }
+
+    #[test]
+    fn test_rhai_backend_wrong_param_names() {
+        use oxibase::functions::backends::rhai::RhaiBackend;
+        use oxibase::core::Value;
+
+        let backend = RhaiBackend::new();
+
+        // Test with wrong param names (should fail)
+        let result = backend.execute("x + y", &[Value::Integer(3), Value::Integer(4)], &["a".to_string(), "b".to_string()]);
+        assert!(result.is_err()); // Rhai will fail because x and y are undefined
+    }
+
+    #[test]
+    fn test_rhai_backend_multiple_types() {
+        use oxibase::functions::backends::rhai::RhaiBackend;
+        use oxibase::core::Value;
+
+        let backend = RhaiBackend::new();
+
+        // Test with different types: integer, float, text, boolean
+        let result = backend.execute("i + f + (if b { 10 } else { 0 })", &[Value::Integer(5), Value::Float(3.5), Value::Boolean(true)], &["i".to_string(), "f".to_string(), "b".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Float(18.5)); // 5 + 3.5 + 10
+    }
+
+    #[test]
+    fn test_rhai_backend_complex_expression() {
+        use oxibase::functions::backends::rhai::RhaiBackend;
+        use oxibase::core::Value;
+
+        let backend = RhaiBackend::new();
+
+        // Test complex expression with multiple params
+        let result = backend.execute("if x > y { x * 2 } else { y / 2 }", &[Value::Integer(10), Value::Integer(4)], &["x".to_string(), "y".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Integer(20)); // 10 > 4, so 10 * 2
+    }
+
+    #[test]
+    fn test_rhai_backend_string_manipulation() {
+        use oxibase::functions::backends::rhai::RhaiBackend;
+        use oxibase::core::Value;
+
+        let backend = RhaiBackend::new();
+
+        // Test string concatenation
+        let result = backend.execute("name + \" is \" + age + \" years old\"", &[Value::Text("Alice".into()), Value::Integer(30)], &["name".to_string(), "age".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Text("Alice is 30 years old".into()));
+    }
+
+    #[cfg(feature = "deno")]
+    #[test]
+    fn test_deno_backend_named_parameters() {
+        use oxibase::functions::backends::deno::DenoBackend;
+        use oxibase::core::Value;
+
+        let backend = DenoBackend::new();
+
+        // Test basic named parameters
+        let result = backend.execute("return a + b;", &[Value::Integer(3), Value::Integer(4)], &["a".to_string(), "b".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Integer(7));
+    }
+
+    #[cfg(feature = "deno")]
+    #[test]
+    fn test_deno_backend_multiple_types() {
+        use oxibase::functions::backends::deno::DenoBackend;
+        use oxibase::core::Value;
+
+        let backend = DenoBackend::new();
+
+        // Test with different types
+        let result = backend.execute("return i + f + (b ? 1 : 0);", &[Value::Integer(5), Value::Float(2.5), Value::Boolean(true)], &["i".to_string(), "f".to_string(), "b".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Float(8.5));
+    }
+
+    #[cfg(feature = "python")]
+    #[test]
+    fn test_python_backend_named_parameters() {
+        use oxibase::functions::backends::python::PythonBackend;
+        use oxibase::core::Value;
+
+        let backend = PythonBackend::new();
+
+        // Test basic named parameters
+        let result = backend.execute("return a + b", &[Value::Integer(3), Value::Integer(4)], &["a".to_string(), "b".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Integer(7));
+    }
+
+    #[cfg(feature = "python")]
+    #[test]
+    fn test_python_backend_string_ops() {
+        use oxibase::functions::backends::python::PythonBackend;
+        use oxibase::core::Value;
+
+        let backend = PythonBackend::new();
+
+        // Test string operations
+        let result = backend.execute("return name.upper() + str(age)", &[Value::Text("alice".into()), Value::Integer(25)], &["name".to_string(), "age".to_string()]);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Value::Text("ALICE25".into()));
+    }
 }

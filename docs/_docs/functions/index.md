@@ -14,4 +14,5 @@ Documentation for functions in OxiBase, including built-in aggregate, scalar, an
 - **[Scalar Functions](scalar-functions.md)** - Functions that operate on individual values
 - **[Aggregate Functions](aggregate-functions.md)** - Functions that operate on groups of values
 - **[Window Functions](window-functions.md)** - Functions that operate on windows of rows
-- **[User-Defined Functions](user-defined-functions.md)** - Custom functions written in JavaScript/TypeScript using Deno
+- **[User-Defined Functions](user-defined-functions.md)** - Custom functions written in Rhai, JavaScript (Deno), or Python
+- **[Procedures](procedures.md)** - Stored procedures for complex operations

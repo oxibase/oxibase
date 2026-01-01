@@ -75,7 +75,7 @@ mod deno_function_tests {
         db.execute(r#"
             CREATE FUNCTION double_int(x INTEGER)
             RETURNS INTEGER
-            LANGUAGE DENO AS 'return arguments[0] * 2;'
+            LANGUAGE DENO AS 'return x * 2;'
         "#, ()).unwrap();
 
         // Test FLOAT

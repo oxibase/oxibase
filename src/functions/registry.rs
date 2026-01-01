@@ -272,10 +272,11 @@ impl FunctionRegistry {
         name: String,
         code: String,
         language: String,
+        param_names: Vec<String>,
         signature: FunctionSignature,
     ) -> crate::core::Result<()> {
         let mut udf_registry = self.user_defined_functions.write().unwrap();
-        udf_registry.register(name.clone(), code, language, signature.clone())?;
+        udf_registry.register(name.clone(), code, language, param_names, signature.clone())?;
 
         // Add to function info cache
         let info = FunctionInfo::new(

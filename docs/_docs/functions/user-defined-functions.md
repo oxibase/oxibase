@@ -95,7 +95,7 @@ Functions are restricted to be "side-effect free" and cannot change database sta
 ```sql
 -- ✅ Valid function - read-only calculation
 CREATE FUNCTION calculate_tax(price INTEGER) RETURNS INTEGER
-LANGUAGE DENO AS 'return arguments[0] * 0.08;';
+LANGUAGE DENO AS 'return price * 0.08;';
 ```
 
 Procedures are designed for actions that modify data:
@@ -164,33 +164,33 @@ Functions must return exactly one value and declare their return type in the `CR
 
 ### Argument Access
 
-Arguments are accessed differently depending on the backend:
+All backends now support **named parameters**. Arguments are accessed by their parameter names:
 
 #### Rhai Backend
-Arguments are accessible as `arg0`, `arg1`, `arg2`, etc.:
+Parameters are bound to variables with their declared names:
 
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE RHAI AS 'arg0 + arg1';
+LANGUAGE RHAI AS 'a + b';
 ```
 
 #### Deno Backend
-Arguments are accessible through the JavaScript `arguments` array:
+Parameters are set as global variables with their declared names:
 
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE DENO AS 'return arguments[0] + arguments[1];';
+LANGUAGE DENO AS 'return a + b;';
 ```
 
 #### Python Backend
-Arguments are accessible through the `arguments` list (same as JavaScript):
+Parameters are set as local variables with their declared names:
 
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE PYTHON AS 'return arguments[0] + arguments[1]';
+LANGUAGE PYTHON AS 'return a + b';
 ```
 
 Python functions support the same argument and return types as JavaScript:
@@ -206,20 +206,20 @@ Example functions:
 -- String manipulation
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE PYTHON AS 'return f"Hello, {arguments[0]}!"';
+LANGUAGE PYTHON AS 'return f"Hello, {name}!"';
 
 -- Mathematical operations
 CREATE FUNCTION power(base INTEGER, exp INTEGER)
 RETURNS INTEGER
-LANGUAGE PYTHON AS 'return arguments[0] ** arguments[1]';
+LANGUAGE PYTHON AS 'return base ** exp';
 
 -- JSON processing
 CREATE FUNCTION extract_field(json_data JSON, field TEXT)
 RETURNS TEXT
 LANGUAGE PYTHON AS '''
 import json
-data = json.loads(arguments[0])
-return data.get(arguments[1], "")
+data = json.loads(json_data)
+return data.get(field, "")
 ''';
 ```
 
@@ -232,17 +232,17 @@ Functions return values using backend-specific syntax:
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE RHAI AS '"Hello, " + arg0 + "!"';
+LANGUAGE RHAI AS '"Hello, " + name + "!"';
 
 -- Return a number
 CREATE FUNCTION square(x INTEGER)
 RETURNS INTEGER
-LANGUAGE RHAI AS 'arg0 * arg0';
+LANGUAGE RHAI AS 'x * x';
 
 -- Return a boolean
 CREATE FUNCTION is_even(n INTEGER)
 RETURNS BOOLEAN
-LANGUAGE RHAI AS 'arg0 % 2 == 0';
+LANGUAGE RHAI AS 'n % 2 == 0';
 ```
 
 #### Deno Backend
@@ -250,22 +250,22 @@ LANGUAGE RHAI AS 'arg0 % 2 == 0';
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;';
+LANGUAGE DENO AS 'return `Hello, ${name}!`;';
 
 -- Return a number
 CREATE FUNCTION square(x INTEGER)
 RETURNS INTEGER
-LANGUAGE DENO AS 'return arguments[0] * arguments[0];';
+LANGUAGE DENO AS 'return x * x;';
 
 -- Return a boolean
 CREATE FUNCTION is_even(n INTEGER)
 RETURNS BOOLEAN
-LANGUAGE DENO AS 'return arguments[0] % 2 === 0;';
+LANGUAGE DENO AS 'return n % 2 === 0;';
 
 -- Return JSON
 CREATE FUNCTION create_person(name TEXT, age INTEGER)
 RETURNS JSON
-LANGUAGE DENO AS 'return { name: arguments[0], age: arguments[1] };';
+LANGUAGE DENO AS 'return { name: name, age: age };';
 ```
 
 #### Python Backend
@@ -273,24 +273,24 @@ LANGUAGE DENO AS 'return { name: arguments[0], age: arguments[1] };';
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE PYTHON AS 'return f"Hello, {arguments[0]}!"';
+LANGUAGE PYTHON AS 'return f"Hello, {name}!"';
 
 -- Return a number
 CREATE FUNCTION square(x INTEGER)
 RETURNS INTEGER
-LANGUAGE PYTHON AS 'return arguments[0] * arguments[0]';
+LANGUAGE PYTHON AS 'return x * x';
 
 -- Return a boolean
 CREATE FUNCTION is_even(n INTEGER)
 RETURNS BOOLEAN
-LANGUAGE PYTHON AS 'return arguments[0] % 2 == 0';
+LANGUAGE PYTHON AS 'return n % 2 == 0';
 
 -- Return JSON
 CREATE FUNCTION create_person(name TEXT, age INTEGER)
 RETURNS JSON
 LANGUAGE PYTHON AS '''
 import json
-return json.dumps({"name": arguments[0], "age": arguments[1]})
+return json.dumps({"name": name, "age": age})
 ''';
 ```
 
@@ -312,8 +312,8 @@ RETURNS TEXT
 LANGUAGE DENO AS '
     const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: arguments[1]
-    }).format(arguments[0] / 100);
+        currency: currency
+    }).format(amount / 100);
     return formatted;
 ';
 ```
@@ -400,7 +400,7 @@ Performance varies by backend:
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE RHAI AS 'arg0 + arg1';
+LANGUAGE RHAI AS 'a + b';
 
 CREATE FUNCTION calculate_area(width INTEGER, height INTEGER)
 RETURNS INTEGER
@@ -416,7 +416,7 @@ SELECT add_numbers(5, 3) as sum, calculate_area(10, 20) as area;
 CREATE FUNCTION slugify(text TEXT)
 RETURNS TEXT
 LANGUAGE RHAI AS '
-    arg0
+    text
         .to_lower()
         .replace(re("[^a-z0-9]+"), "-")
         .replace(re("^-+|-+$"), "")
@@ -432,7 +432,7 @@ SELECT slugify('Hello, World! How are you?') as slug;
 CREATE FUNCTION slugify(text TEXT)
 RETURNS TEXT
 LANGUAGE DENO AS '
-    return arguments[0]
+    return text
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
@@ -453,11 +453,11 @@ LANGUAGE RHAI AS '
     30  // Placeholder - use Deno for real date calculations
 ';
 
--- For complex date operations, use Deno:
+// For complex date operations, use Deno:
 CREATE FUNCTION days_until(date TIMESTAMP)
 RETURNS INTEGER
 LANGUAGE DENO AS '
-    const target = new Date(arguments[0]);
+    const target = new Date(date);
     const now = new Date();
     const diff = target - now;
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -472,8 +472,8 @@ SELECT days_until('2024-12-31') as days_remaining;
 CREATE FUNCTION extract_field(json_doc JSON, field TEXT)
 RETURNS TEXT
 LANGUAGE DENO AS '
-    const doc = JSON.parse(arguments[0]);
-    return doc[arguments[1]] || null;
+    const doc = JSON.parse(json_doc);
+    return doc[field] || null;
 ';
 
 SELECT extract_field(metadata, 'version') as version
@@ -486,11 +486,11 @@ FROM documents;
 CREATE FUNCTION fibonacci(n INTEGER)
 RETURNS INTEGER
 LANGUAGE RHAI AS '
-    if arg0 <= 1 { arg0 }
+    if n <= 1 { n }
     else {
         let a = 0;
         let b = 1;
-        for i in 2..=arg0 {
+        for i in 2..=n {
             let temp = a + b;
             a = b;
             b = temp;
@@ -502,8 +502,8 @@ LANGUAGE RHAI AS '
 CREATE FUNCTION factorial(n INTEGER)
 RETURNS INTEGER
 LANGUAGE RHAI AS '
-    if arg0 <= 1 { 1 }
-    else { arg0 * factorial(arg0 - 1) }
+    if n <= 1 { 1 }
+    else { n * factorial(n - 1) }
 ';
 
 SELECT fibonacci(10) as fib, factorial(5) as fact;
@@ -517,7 +517,7 @@ CREATE FUNCTION validate_email(email TEXT)
 RETURNS BOOLEAN
 LANGUAGE DENO AS '
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(arguments[0]);
+    return emailRegex.test(email);
 ';
 
 CREATE FUNCTION is_strong_password(password TEXT)
@@ -525,7 +525,7 @@ RETURNS BOOLEAN
 LANGUAGE DENO AS '
     // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
     const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
-    return strongRegex.test(arguments[0]);
+    return strongRegex.test(password);
 ';
 
 SELECT validate_email('user@example.com') as valid_email,
@@ -534,16 +534,27 @@ SELECT validate_email('user@example.com') as valid_email,
 
 ## Error Handling
 
-Functions that throw JavaScript exceptions will cause the query to fail:
+Functions that throw exceptions will cause the query to fail:
 
 ```sql
+-- Rhai
+CREATE FUNCTION safe_divide(a INTEGER, b INTEGER)
+RETURNS FLOAT
+LANGUAGE RHAI AS '
+    if b == 0 {
+        throw "Division by zero";
+    }
+    a / b
+';
+
+-- Deno
 CREATE FUNCTION safe_divide(a INTEGER, b INTEGER)
 RETURNS FLOAT
 LANGUAGE DENO AS '
-    if (arguments[1] === 0) {
+    if (b === 0) {
         throw new Error("Division by zero");
     }
-    return arguments[0] / arguments[1];
+    return a / b;
 ';
 ```
 

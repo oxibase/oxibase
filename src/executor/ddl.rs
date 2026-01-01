@@ -754,12 +754,20 @@ impl Executor {
             code: stmt.body.clone(),
         };
 
+        // Collect parameter names
+        let param_names: Vec<String> = stmt
+            .parameters
+            .iter()
+            .map(|p| p.name.value.clone())
+            .collect();
+
         // Register the function in the global registry first
         let registry = global_registry();
         registry.register_user_defined(
             function_name_upper.clone(),
             stmt.body.clone(),
             stmt.language.clone(),
+            param_names,
             FunctionSignature::new(
                 // TODO: Map return_type string to FunctionDataType
                 FunctionDataType::Unknown,

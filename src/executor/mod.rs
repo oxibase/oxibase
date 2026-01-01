@@ -316,10 +316,13 @@ impl Executor {
                 } else {
                     "rhai".to_string()
                 };
+                let param_names: Vec<String> =
+                    parameters.iter().map(|p| p.name.value.clone()).collect();
                 registry.register_user_defined(
                     name.to_string(),
                     code.to_string(),
                     language,
+                    param_names,
                     FunctionSignature::new(
                         string_to_function_data_type(_return_type),
                         parameters

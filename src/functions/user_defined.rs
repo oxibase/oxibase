@@ -29,6 +29,7 @@ pub struct UserDefinedScalarFunction {
     name: String,
     code: String,
     language: String,
+    param_names: Vec<String>,
     signature: FunctionSignature,
     backend_registry: Arc<BackendRegistry>,
 }
@@ -39,6 +40,7 @@ impl UserDefinedScalarFunction {
         name: impl Into<String>,
         code: impl Into<String>,
         language: impl Into<String>,
+        param_names: Vec<String>,
         signature: FunctionSignature,
         backend_registry: Arc<BackendRegistry>,
     ) -> Self {
@@ -46,6 +48,7 @@ impl UserDefinedScalarFunction {
             name: name.into(),
             code: code.into(),
             language: language.into(),
+            param_names,
             signature,
             backend_registry,
         }
@@ -78,8 +81,16 @@ impl ScalarFunction for UserDefinedScalarFunction {
                 ))
             })?;
 
-        // Execute using the backend
-        backend.execute(&self.code, args)
+        // Execute using the backend with parameter names
+        backend.execute(
+            &self.code,
+            args,
+            &self
+                .param_names
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>(),
+        )
     }
 
     fn clone_box(&self) -> Box<dyn ScalarFunction> {
@@ -87,6 +98,7 @@ impl ScalarFunction for UserDefinedScalarFunction {
             name: self.name.clone(),
             code: self.code.clone(),
             language: self.language.clone(),
+            param_names: self.param_names.clone(),
             signature: self.signature.clone(),
             backend_registry: self.backend_registry.clone(),
         })
@@ -113,6 +125,7 @@ impl UserDefinedFunctionRegistry {
         name: String,
         code: String,
         language: String,
+        param_names: Vec<String>,
         signature: FunctionSignature,
     ) -> Result<()> {
         // Validate that the backend exists for this language
@@ -127,6 +140,7 @@ impl UserDefinedFunctionRegistry {
             name.clone(),
             code,
             language,
+            param_names,
             signature,
             self.backend_registry.clone(),
         ));

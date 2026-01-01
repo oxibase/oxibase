@@ -72,14 +72,14 @@ impl ScriptingBackend for DenoBackend {
         &["deno", "javascript", "js", "typescript", "ts"]
     }
 
-    fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
+    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
         // Create a new JavaScript runtime for each function call
         let mut runtime = JsRuntime::new(create_secure_runtime_options());
 
-        // Convert args to JavaScript values
-        let js_args_vec: Vec<serde_json::Value> = args
-            .iter()
-            .map(|v| match v {
+        // Bind arguments as global variables using parameter names
+        for (i, arg) in args.iter().enumerate() {
+            let param_name = param_names[i];
+            let js_value = match arg {
                 Value::Null(_) => serde_json::Value::Null,
                 Value::Integer(i) => serde_json::json!(i),
                 Value::Float(f) => serde_json::json!(f),
@@ -87,21 +87,24 @@ impl ScriptingBackend for DenoBackend {
                 Value::Boolean(b) => serde_json::json!(b),
                 Value::Timestamp(ts) => serde_json::json!(ts.to_rfc3339()),
                 Value::Json(j) => serde_json::from_str(j).unwrap_or(serde_json::Value::Null),
-            })
-            .collect();
+            };
+            let set_script = format!("globalThis.{} = {};", param_name, js_value);
+            runtime
+                .execute_script("<set_arg>", set_script)
+                .map_err(|e| {
+                    Error::internal(format!("Failed to set argument {}: {}", param_name, e))
+                })?;
+        }
 
-        let js_args = serde_json::to_string(&js_args_vec)
-            .map_err(|e| Error::internal(format!("Failed to serialize arguments: {}", e)))?;
-
-        // Execute the function call
+        // Execute the function call with named variables available
         let script = format!(
             "
             globalThis.__user_function = function() {{
                 {}
             }};
-            globalThis.__user_function.apply(null, {})
+            globalThis.__user_function()
         ",
-            code, js_args
+            code
         );
 
         let result = runtime
@@ -173,7 +176,7 @@ impl ScriptingBackend for DenoBackend {
         &["deno", "javascript", "js", "typescript", "ts"]
     }
 
-    fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
+    fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
         Err(Error::internal(
             "Deno backend not enabled. Use --features deno to enable JavaScript/TypeScript support",
         ))

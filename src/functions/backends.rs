@@ -33,8 +33,8 @@ pub trait ScriptingBackend {
     /// Get the list of supported language identifiers for this backend
     fn supported_languages(&self) -> &[&'static str];
 
-    /// Execute script code with the given arguments
-    fn execute(&self, code: &str, args: &[Value]) -> Result<Value>;
+    /// Execute script code with the given arguments and parameter names
+    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value>;
 
     /// Validate that the code is syntactically correct for this backend
     fn validate_code(&self, code: &str) -> Result<()>;

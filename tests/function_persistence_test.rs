@@ -28,7 +28,7 @@ fn test_function_persistence_basic() {
 
     // Create a simple function
     db.execute(
-        "CREATE FUNCTION test_add(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + arguments[1];'",
+        "CREATE FUNCTION test_add(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return a + b;'",
         (),
     ).expect("Failed to create function");
 
@@ -76,7 +76,7 @@ fn test_function_persistence_restart() {
 
         // Create a function
         db.execute(
-            "CREATE FUNCTION persistent_func(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] * 2;'",
+            "CREATE FUNCTION persistent_func(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return x * 2;'",
             (),
         ).expect("Failed to create function");
 
@@ -107,12 +107,13 @@ fn test_multiple_functions_persistence() {
 
     // Create multiple functions
     db.execute(
-        "CREATE FUNCTION func1(a TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello ${arguments[0]}`;'",
+        "CREATE FUNCTION func1(a TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello ${a}`;'",
         (),
-    ).expect("Failed to create func1");
+    )
+    .expect("Failed to create func1");
 
     db.execute(
-        "CREATE FUNCTION func2(x INTEGER, y INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return Math.max(arguments[0], arguments[1]);'",
+        "CREATE FUNCTION func2(x INTEGER, y INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return Math.max(x, y);'",
         (),
     ).expect("Failed to create func2");
 
@@ -197,7 +198,7 @@ fn test_show_functions() {
 
     // Create some functions
     db.execute(
-        "CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + arguments[1];'",
+        "CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return a + b;'",
         (),
     )
     .expect("Failed to create function");
@@ -210,7 +211,7 @@ fn test_show_functions() {
     assert_eq!(rows[0].get::<String>(0).unwrap(), "ADD_NUMS");
 
     db.execute(
-        "CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;'",
+        "CREATE FUNCTION greet(name TEXT) RETURNS TEXT LANGUAGE DENO AS 'return `Hello, ${name}!`;'",
         (),
     )
     .expect("Failed to create function");
@@ -234,10 +235,7 @@ fn test_show_functions() {
     assert_eq!(row.get::<String>(1).unwrap(), "(a INTEGER, b INTEGER)");
     assert_eq!(row.get::<String>(2).unwrap(), "INTEGER");
     assert_eq!(row.get::<String>(3).unwrap(), "DENO");
-    assert!(row
-        .get::<String>(4)
-        .unwrap()
-        .contains("arguments[0] + arguments[1]"));
+    assert!(row.get::<String>(4).unwrap().contains("a + b"));
 
     // Check second function (GREET)
     let row = &rows[1];
@@ -256,9 +254,10 @@ fn test_drop_function_basic() {
 
     // Create a function
     db.execute(
-        "CREATE FUNCTION drop_me(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] * 3;'",
+        "CREATE FUNCTION drop_me(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return x * 3;'",
         (),
-    ).expect("Failed to create function");
+    )
+    .expect("Failed to create function");
 
     // Verify function exists and works
     let result: i64 = db
@@ -431,7 +430,7 @@ fn test_drop_function_persistence_restart() {
 
         // Create a function
         db.execute(
-            "CREATE FUNCTION temp_drop_func(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + 100;'",
+            "CREATE FUNCTION temp_drop_func(x INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return x + 100;'",
             (),
         ).expect("Failed to create function");
 
@@ -476,7 +475,7 @@ fn test_create_function_schema_qualified() {
 
     // Create function with schema-qualified name
     db.execute(
-        "CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] + arguments[1];'",
+        "CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return a + b;'",
         (),
     ).expect("Failed to create schema-qualified function");
 
@@ -512,7 +511,7 @@ fn test_drop_function_schema_qualified() {
 
     // Create function with schema-qualified name
     db.execute(
-        "CREATE FUNCTION test_schema.multiply(x INTEGER, y INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return arguments[0] * arguments[1];'",
+        "CREATE FUNCTION test_schema.multiply(x INTEGER, y INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return x * y;'",
         (),
     ).expect("Failed to create schema-qualified function");
 
@@ -545,7 +544,7 @@ fn test_function_call_schema_qualified() {
 
     // Create function with schema-qualified name
     db.execute(
-        "CREATE FUNCTION db.calc_power(base INTEGER, exp INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return Math.pow(arguments[0], arguments[1]);'",
+        "CREATE FUNCTION db.calc_power(base INTEGER, exp INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return Math.pow(base, exp);'",
         (),
     ).expect("Failed to create function");
 

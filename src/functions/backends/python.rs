@@ -131,7 +131,7 @@ impl ScriptingBackend for PythonBackend {
         &["python", "py"]
     }
 
-    fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
+    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
         // Create a new interpreter for each execution (isolation)
         let interpreter = Interpreter::with_init(Settings::default(), |_| ());
 
@@ -139,16 +139,15 @@ impl ScriptingBackend for PythonBackend {
             .enter(|vm| {
                 let scope = vm.new_scope_with_builtins();
 
-                // Convert arguments to Python list and set as global
-                let py_args_vec: Vec<PyObjectRef> = args
-                    .iter()
-                    .map(|arg| self.convert_oxibase_to_python(arg, vm))
-                    .collect::<Result<Vec<_>>>()?;
-                let py_args = vm.ctx.new_list(py_args_vec);
-                scope
-                    .globals
-                    .set_item("arguments", py_args.into(), vm)
-                    .map_err(|e| Error::internal(format!("Failed to set arguments: {:?}", e)))?;
+                // Convert arguments to Python variables using parameter names
+                for (i, arg) in args.iter().enumerate() {
+                    let param_name = param_names[i];
+                    let py_value = self.convert_oxibase_to_python(arg, vm)?;
+                    scope
+                        .globals
+                        .set_item(param_name, py_value, vm)
+                        .map_err(|e| Error::internal(format!("Failed to set argument {}: {:?}", param_name, e)))?;
+                }
 
                 // Wrap user code in a function to support 'return' statements
                 let indented_code = self.indent_code(code);
@@ -224,7 +223,7 @@ impl ScriptingBackend for PythonBackend {
         &["python", "py"]
     }
 
-    fn execute(&self, _code: &str, _args: &[Value]) -> Result<Value> {
+    fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
         Err(Error::internal(
             "Python backend not enabled. Use --features python to enable Python support",
         ))

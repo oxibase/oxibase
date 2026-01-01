@@ -564,7 +564,9 @@ fn test_drop_index_if_exists() {
 
 #[test]
 fn test_create_function_rhai() {
-    let stmt = parse_ok("CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 + arg1'");
+    let stmt = parse_ok(
+        "CREATE FUNCTION add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'a + b'",
+    );
     assert!(matches!(stmt, Statement::CreateFunction(_)));
 }
 
@@ -589,7 +591,7 @@ fn test_create_function_if_not_exists() {
 
 #[test]
 fn test_create_function_schema_qualified() {
-    let stmt = parse_ok("CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'arg0 + arg1'");
+    let stmt = parse_ok("CREATE FUNCTION myschema.add_nums(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE RHAI AS 'a + b'");
     assert!(matches!(stmt, Statement::CreateFunction(_)));
 }
 

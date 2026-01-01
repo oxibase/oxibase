@@ -52,12 +52,12 @@ impl ScriptingBackend for RhaiBackend {
         &["rhai"]
     }
 
-    fn execute(&self, code: &str, args: &[Value]) -> Result<Value> {
+    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
         let mut scope = Scope::new();
 
-        // Bind arguments to scope
+        // Bind arguments to scope using parameter names
         for (i, arg) in args.iter().enumerate() {
-            let var_name = format!("arg{}", i);
+            let var_name = param_names[i];
             match arg {
                 Value::Integer(i) => scope.push(var_name, *i),
                 Value::Float(f) => scope.push(var_name, *f),
