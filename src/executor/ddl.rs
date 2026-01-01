@@ -754,10 +754,7 @@ impl Executor {
             code: stmt.body.clone(),
         };
 
-        // Insert function into system table
-        self.insert_function(&stored_function)?;
-
-        // Register the function in the global registry
+        // Register the function in the global registry first
         let registry = global_registry();
         registry.register_user_defined(
             function_name_upper.clone(),
@@ -772,6 +769,14 @@ impl Executor {
                 stmt.parameters.len(),
             ),
         )?;
+
+        // Insert function into system table
+        // If this fails, we need to unregister from the registry to maintain consistency
+        if let Err(e) = self.insert_function(&stored_function) {
+            // Rollback registry registration on database insert failure
+            let _ = registry.unregister_user_defined(&function_name_upper);
+            return Err(e);
+        }
 
         Ok(Box::new(EmptyResult::new()))
     }
