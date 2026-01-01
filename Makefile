@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build coverage license docs docs-build lib-doc release help run-memory run-files run-full
+.PHONY: all lint test build coverage license docs docs-build docs-lib release help run-memory run-files run-all
 
 .PHONY: help
 # [other] Display help
@@ -55,7 +55,7 @@ docs-build:
 	cd docs && bundle exec jekyll build
 
 # [docs] Generate Rust documentation
-lib-doc:
+docs-lib:
 	cargo doc
 
 # [release] Release a new version (usage: make release VERSION=1.2.3, or omit VERSION for patch bump)
@@ -70,6 +70,7 @@ run: build
 run-files: build
 	./target/release/oxibase -d file://./examples/oxibase.db
 
-run-full: ## Build and run oxibase with all backends (Rhai, Deno, Python) in memory
+# [run] Build and run oxibase with all backends (Rhai, Deno, Python) in memory
+run-all:
 	cargo build --release --features deno,python
 	./target/release/oxibase -d memory://
