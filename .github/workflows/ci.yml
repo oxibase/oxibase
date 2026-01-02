@@ -120,8 +120,11 @@ jobs:
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
 
+    - name: Free disk spac
+      run: cargo clean
+
     - name: Generate coverage
-      run: cargo llvm-cov --features python --workspace --lcov --output-path lcov.info
+      run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
