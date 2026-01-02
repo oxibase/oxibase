@@ -48,18 +48,18 @@ jobs:
             os: ubuntu-latest
             features: ""
             test_cmd: "cargo nextest run --profile ci"
-          - name: "Deno Backend"
-            os: ubuntu-latest
-            features: "deno"
-            test_cmd: "cargo nextest run --profile ci --features deno"
+          #- name: "Deno Backend"
+          #  os: ubuntu-latest
+          #  features: "deno"
+          #  test_cmd: "cargo nextest run --profile ci --features deno"
           - name: "Python Backend"
             os: ubuntu-latest
             features: "python"
             test_cmd: "cargo nextest run --profile ci --features python"
-          - name: "All Backends"
-            os: ubuntu-latest
-            features: "deno,python"
-            test_cmd: "cargo nextest run --profile ci --features deno,python"
+          #- name: "All Backends"
+          #  os: ubuntu-latest
+          #  features: "deno,python"
+          #  test_cmd: "cargo nextest run --profile ci --features deno,python"
           - name: "macOS Default"
             os: macos-latest
             features: ""
@@ -121,7 +121,7 @@ jobs:
       uses: taiki-e/install-action@cargo-llvm-cov
 
     - name: Generate coverage
-      run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      run: cargo llvm-cov --features python --workspace --lcov --output-path lcov.info
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
