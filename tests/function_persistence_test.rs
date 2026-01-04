@@ -17,11 +17,11 @@
 //! These tests verify that user-defined functions are properly persisted
 //! to and loaded from the system table across database restarts.
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 use oxibase::Database;
 
 /// Test basic function persistence and loading
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_function_persistence_basic() {
     let db = Database::open("memory://test").unwrap();
@@ -59,7 +59,7 @@ fn test_function_persistence_basic() {
     assert_eq!(result, 8);
 }
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_function_persistence_restart() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
@@ -100,7 +100,7 @@ fn test_function_persistence_restart() {
 }
 
 /// Test multiple functions persistence
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_multiple_functions_persistence() {
     let db = Database::open("memory://multi_func").expect("Failed to create database");
@@ -136,7 +136,7 @@ fn test_multiple_functions_persistence() {
 }
 
 /// Test CREATE FUNCTION IF NOT EXISTS with persistence
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_function_if_not_exists_persistence() {
     let db = Database::open("memory://if_not_exists").expect("Failed to create database");
@@ -161,7 +161,7 @@ fn test_function_if_not_exists_persistence() {
 }
 
 /// Test that system table starts empty (created on first function)
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_functions_table_starts_empty() {
     let db = Database::open("memory://empty_table").expect("Failed to create database");
@@ -184,7 +184,7 @@ fn test_functions_table_starts_empty() {
     assert_eq!(count, 1);
 }
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_show_functions() {
     let db = Database::open("memory://show_functions").expect("Failed to create database");
@@ -247,7 +247,7 @@ fn test_show_functions() {
 }
 
 /// Test basic DROP FUNCTION functionality
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_basic() {
     let db = Database::open("memory://drop_basic").expect("Failed to create database");
@@ -293,7 +293,7 @@ fn test_drop_function_basic() {
 }
 
 /// Test DROP FUNCTION IF EXISTS when function exists
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_if_exists_exists() {
     let db = Database::open("memory://drop_if_exists").expect("Failed to create database");
@@ -320,7 +320,7 @@ fn test_drop_function_if_exists_exists() {
 }
 
 /// Test DROP FUNCTION IF EXISTS when function doesn't exist
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_if_exists_not_exists() {
     let db = Database::open("memory://drop_if_not_exists").expect("Failed to create database");
@@ -340,7 +340,7 @@ fn test_drop_function_if_exists_not_exists() {
 }
 
 /// Test DROP FUNCTION on non-existent function without IF EXISTS
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_not_exists_error() {
     let db = Database::open("memory://drop_error").expect("Failed to create database");
@@ -354,7 +354,7 @@ fn test_drop_function_not_exists_error() {
 }
 
 /// Test DROP FUNCTION removes function from registry
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_registry_cleanup() {
     let db = Database::open("memory://drop_registry").expect("Failed to create database");
@@ -413,7 +413,7 @@ fn test_drop_function_registry_cleanup() {
 }
 
 /// Test DROP FUNCTION persistence across restart
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_persistence_restart() {
     let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
@@ -468,7 +468,7 @@ fn test_drop_function_persistence_restart() {
 }
 
 /// Test CREATE FUNCTION with schema-qualified names
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_create_function_schema_qualified() {
     let db = Database::open("memory://create_schema_func").expect("Failed to create database");
@@ -504,7 +504,7 @@ fn test_create_function_schema_qualified() {
 }
 
 /// Test DROP FUNCTION with schema-qualified names
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_drop_function_schema_qualified() {
     let db = Database::open("memory://drop_schema_func").expect("Failed to create database");
@@ -537,7 +537,7 @@ fn test_drop_function_schema_qualified() {
 }
 
 /// Test function invocation with schema-qualified names
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_function_call_schema_qualified() {
     let db = Database::open("memory://call_schema_func").expect("Failed to create database");
@@ -562,7 +562,7 @@ fn test_function_call_schema_qualified() {
 }
 
 /// Test that functions remain global despite schema qualification
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 #[test]
 fn test_functions_remain_global() {
     let db = Database::open("memory://global_funcs").expect("Failed to create database");

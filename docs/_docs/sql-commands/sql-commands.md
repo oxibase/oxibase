@@ -552,7 +552,7 @@ CREATE FUNCTION [IF NOT EXISTS] function_name (
     ...
 )
 RETURNS return_type
-LANGUAGE DENO AS 'JavaScript code';
+LANGUAGE BOA AS 'JavaScript code';
 ```
 
 #### Parameters
@@ -560,7 +560,7 @@ LANGUAGE DENO AS 'JavaScript code';
 - **function_name**: Name of the function
 - **param1, param2, ...**: Parameter names and their data types
 - **return_type**: Return value data type
-- **LANGUAGE DENO**: Specifies JavaScript/TypeScript implementation
+- **LANGUAGE BOA**: Specifies JavaScript/TypeScript implementation
 - **AS 'code'**: The function implementation code
 
 #### Supported Data Types
@@ -578,17 +578,17 @@ LANGUAGE DENO AS 'JavaScript code';
 -- Simple arithmetic function
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE DENO AS 'return arguments[0] + arguments[1];';
+LANGUAGE BOA AS 'return arguments[0] + arguments[1];';
 
 -- String manipulation
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS 'return `Hello, ${arguments[0]}!`;';
+LANGUAGE BOA AS 'return `Hello, ${arguments[0]}!`;';
 
 -- Date processing
 CREATE FUNCTION format_date(ts TIMESTAMP)
 RETURNS TEXT
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     const date = new Date(arguments[0]);
     return date.toLocaleDateString();
 ';
@@ -596,7 +596,7 @@ LANGUAGE DENO AS '
 -- JSON processing
 CREATE FUNCTION extract_field(json_doc JSON, field TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     const doc = JSON.parse(arguments[0]);
     return doc[arguments[1]] || null;
 ';

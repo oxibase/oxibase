@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Deno scripting backend tests
+//! Boa scripting backend tests
 //!
-//! Tests specific to Deno JavaScript/TypeScript functionality.
-//! These tests are only run when the "deno" feature is enabled.
+//! Tests specific to Boa JavaScript/TypeScript functionality.
+//! These tests are only run when the "boa" feature is enabled.
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "boa")]
 use oxibase::Database;
 
-#[cfg(feature = "deno")]
-mod deno_function_tests {
+#[cfg(feature = "boa")]
+mod boa_function_tests {
     use super::*;
 
     #[test]
-    fn test_deno_basic_execution() {
-        let db = Database::open("memory://deno_test").unwrap();
+    fn test_boa_basic_execution() {
+        let db = Database::open("memory://boa_test").unwrap();
 
         // Test basic JavaScript execution
         db.execute(
@@ -44,8 +44,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_string_manipulation() {
-        let db = Database::open("memory://deno_string_test").unwrap();
+    fn test_boa_string_manipulation() {
+        let db = Database::open("memory://boa_string_test").unwrap();
 
         db.execute(
             r#"
@@ -62,8 +62,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_math_operations() {
-        let db = Database::open("memory://deno_math_test").unwrap();
+    fn test_boa_math_operations() {
+        let db = Database::open("memory://boa_math_test").unwrap();
 
         db.execute(
             r#"
@@ -80,8 +80,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_type_conversion() {
-        let db = Database::open("memory://deno_types_test").unwrap();
+    fn test_boa_type_conversion() {
+        let db = Database::open("memory://boa_types_test").unwrap();
 
         // Test INTEGER
         db.execute(
@@ -127,8 +127,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_argument_types() {
-        let db = Database::open("memory://deno_args_test").unwrap();
+    fn test_boa_argument_types() {
+        let db = Database::open("memory://boa_args_test").unwrap();
 
         // Test INTEGER, FLOAT, TEXT, BOOLEAN arguments
         db.execute(r#"
@@ -144,8 +144,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_return_types() {
-        let db = Database::open("memory://deno_return_test").unwrap();
+    fn test_boa_return_types() {
+        let db = Database::open("memory://boa_return_test").unwrap();
 
         // Test all supported return type conversions
         db.execute(
@@ -198,8 +198,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_invalid_syntax() {
-        let db = Database::open("memory://deno_invalid_test").unwrap();
+    fn test_boa_invalid_syntax() {
+        let db = Database::open("memory://boa_invalid_test").unwrap();
 
         // Test that invalid JavaScript syntax fails during execution (not creation)
         db.execute(
@@ -217,13 +217,13 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_runtime_error() {
-        let db = Database::open("memory://deno_runtime_error_test").unwrap();
+    fn test_boa_runtime_error() {
+        let db = Database::open("memory://boa_runtime_error_test").unwrap();
 
         db.execute(
             r#"
             CREATE FUNCTION error_func() RETURNS INTEGER
-            LANGUAGE DENO AS 'return 1 / 0;'
+            LANGUAGE DENO AS 'throw new Error("test error");'
         "#,
             (),
         )
@@ -234,8 +234,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_function_creation_and_execution() {
-        let db = Database::open("memory://deno_create_test").unwrap();
+    fn test_boa_function_creation_and_execution() {
+        let db = Database::open("memory://boa_create_test").unwrap();
 
         // Create a Deno function that returns a value
         db.execute(
@@ -253,8 +253,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_function_with_different_types() {
-        let db = Database::open("memory://deno_types_test").unwrap();
+    fn test_boa_function_with_different_types() {
+        let db = Database::open("memory://boa_types_test").unwrap();
 
         // Test INTEGER return
         db.execute(
@@ -297,8 +297,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_function_with_multiple_arguments() {
-        let db = Database::open("memory://deno_multi_args_test").unwrap();
+    fn test_boa_function_with_multiple_arguments() {
+        let db = Database::open("memory://boa_multi_args_test").unwrap();
 
         db.execute(r#"
             CREATE FUNCTION format_person(name TEXT, age INTEGER, active BOOLEAN) RETURNS TEXT
@@ -312,8 +312,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_function_drop() {
-        let db = Database::open("memory://deno_drop_test").unwrap();
+    fn test_boa_function_drop() {
+        let db = Database::open("memory://boa_drop_test").unwrap();
 
         // Create function
         db.execute(
@@ -338,8 +338,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_syntax_validation() {
-        let db = Database::open("memory://deno_syntax_test").unwrap();
+    fn test_boa_syntax_validation() {
+        let db = Database::open("memory://boa_syntax_test").unwrap();
 
         // Test that valid syntax works
         let result = db.execute(
@@ -368,8 +368,8 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_function_without_return() {
-        let db = Database::open("memory://deno_no_result_test").unwrap();
+    fn test_boa_function_without_return() {
+        let db = Database::open("memory://boa_no_result_test").unwrap();
 
         // Function that doesn't return a value should return NULL
         db.execute(
@@ -387,7 +387,7 @@ mod deno_function_tests {
     }
 
     #[test]
-    fn test_deno_security_restrictions() {
+    fn test_boa_security_restrictions() {
         let db = Database::open("memory://security_test").unwrap();
 
         // Test file system access is blocked

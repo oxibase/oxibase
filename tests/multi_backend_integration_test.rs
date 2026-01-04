@@ -37,7 +37,7 @@ mod multi_backend_integration_tests {
         )
         .unwrap();
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         db.execute(
             r#"
             CREATE FUNCTION deno_multiply(a INTEGER, b INTEGER) RETURNS INTEGER
@@ -65,7 +65,7 @@ mod multi_backend_integration_tests {
         );
         assert_eq!(rhai_result.unwrap(), 15);
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         {
             let deno_result: Result<i64, _> = db.query_one("SELECT deno_multiply(4, 3)", ());
             assert!(
@@ -100,7 +100,7 @@ mod multi_backend_integration_tests {
         )
         .unwrap();
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         db.execute(
             r#"
             CREATE FUNCTION double_value(x INTEGER) RETURNS INTEGER
@@ -115,7 +115,7 @@ mod multi_backend_integration_tests {
         assert!(base.is_ok(), "get_base should work");
         assert_eq!(base.unwrap(), 10);
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         {
             // Test calling Deno from SQL
             let doubled: Result<i64, _> = db.query_one("SELECT double_value(5)", ());
@@ -124,7 +124,7 @@ mod multi_backend_integration_tests {
         }
 
         // Test composing functions in a single query
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         {
             let composed: Result<i64, _> = db.query_one("SELECT double_value(get_base())", ());
             assert!(composed.is_ok(), "Composed functions should work");
@@ -140,7 +140,7 @@ mod multi_backend_integration_tests {
         #[allow(clippy::useless_vec)]
         let backends = vec![
             ("RHAI", "42"),
-            #[cfg(feature = "deno")]
+            #[cfg(feature = "boa")]
             ("DENO", "return 42;"),
             #[cfg(feature = "python")]
             ("PYTHON", "return 42"),
@@ -181,7 +181,7 @@ mod multi_backend_integration_tests {
         .unwrap();
 
         // Try to create function with same name in different language - should fail
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         {
             let result = db.execute(
                 r#"
@@ -216,7 +216,7 @@ mod multi_backend_integration_tests {
         )
         .unwrap();
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         db.execute(
             r#"
             CREATE FUNCTION func_deno() RETURNS INTEGER
@@ -244,7 +244,7 @@ mod multi_backend_integration_tests {
 
         assert!(functions.contains(&"FUNC_RHAI".to_string()));
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         assert!(functions.contains(&"FUNC_DENO".to_string()));
 
         #[cfg(feature = "python")]
@@ -265,7 +265,7 @@ mod multi_backend_integration_tests {
         )
         .unwrap();
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         db.execute(
             r#"
             CREATE FUNCTION info_deno() RETURNS TEXT
@@ -301,7 +301,7 @@ mod multi_backend_integration_tests {
 
         assert!(function_names.contains(&"INFO_RHAI".to_string()));
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "boa")]
         assert!(function_names.contains(&"INFO_DENO".to_string()));
     }
 }

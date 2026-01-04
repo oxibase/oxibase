@@ -7,7 +7,7 @@ nav_order: 4
 
 # User-Defined Functions
 
-OxiBase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language), with optional support for JavaScript/TypeScript (via Deno) and Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
+OxiBase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language), with optional support for JavaScript/TypeScript (via Boa) and Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
 
 ## Overview
 
@@ -24,11 +24,11 @@ OxiBase supports multiple scripting backends, each optimized for different use c
 - **Availability**: Always enabled
 - **Use Case**: General-purpose scripting, high-performance requirements
 
-### Deno Backend (Optional)
-- **Language**: `LANGUAGE DENO` or `LANGUAGE JAVASCRIPT`
+### Boa Backend (Optional)
+- **Language**: `LANGUAGE BOA` or `LANGUAGE JAVASCRIPT`
 - **Description**: Full JavaScript/TypeScript runtime with modern ES features
 - **Performance**: Good performance with rich ecosystem support
-- **Availability**: Enable with `--features deno`
+- **Availability**: Enable with `--features boa`
 - **Use Case**: Complex logic, JSON processing, date manipulation
 
 ### Python Backend (Optional)
@@ -44,7 +44,7 @@ To use JavaScript/TypeScript or Python functions, enable the corresponding featu
 
 ```bash
 # Enable JavaScript/TypeScript support
-cargo build --features deno
+cargo build --features boa
 
 # Enable Python support
 cargo build --features python
@@ -95,7 +95,7 @@ Functions are restricted to be "side-effect free" and cannot change database sta
 ```sql
 -- ✅ Valid function - read-only calculation
 CREATE FUNCTION calculate_tax(price INTEGER) RETURNS INTEGER
-LANGUAGE DENO AS 'return price * 0.08;';
+LANGUAGE BOA AS 'return price * 0.08;';
 ```
 
 Procedures are designed for actions that modify data:
@@ -132,7 +132,7 @@ Use the `CREATE FUNCTION` statement to define a user-defined function:
 ```sql
 CREATE FUNCTION function_name(param1 TYPE1, param2 TYPE2, ...)
 RETURNS return_type
-LANGUAGE DENO AS 'JavaScript code here';
+LANGUAGE BOA AS 'JavaScript code here';
 ```
 
 ### Parameters
@@ -181,7 +181,7 @@ Parameters are set as global variables with their declared names:
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE DENO AS 'return a + b;';
+LANGUAGE BOA AS 'return a + b;';
 ```
 
 #### Python Backend
@@ -250,22 +250,22 @@ LANGUAGE RHAI AS 'n % 2 == 0';
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS 'return `Hello, ${name}!`;';
+LANGUAGE BOA AS 'return `Hello, ${name}!`;';
 
 -- Return a number
 CREATE FUNCTION square(x INTEGER)
 RETURNS INTEGER
-LANGUAGE DENO AS 'return x * x;';
+LANGUAGE BOA AS 'return x * x;';
 
 -- Return a boolean
 CREATE FUNCTION is_even(n INTEGER)
 RETURNS BOOLEAN
-LANGUAGE DENO AS 'return n % 2 === 0;';
+LANGUAGE BOA AS 'return n % 2 === 0;';
 
 -- Return JSON
 CREATE FUNCTION create_person(name TEXT, age INTEGER)
 RETURNS JSON
-LANGUAGE DENO AS 'return { name: name, age: age };';
+LANGUAGE BOA AS 'return { name: name, age: age };';
 ```
 
 #### Python Backend
@@ -309,7 +309,7 @@ User-defined functions have access to standard JavaScript features:
 ```sql
 CREATE FUNCTION format_currency(amount INTEGER, currency TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: currency
@@ -431,7 +431,7 @@ SELECT slugify('Hello, World! How are you?') as slug;
 ```sql
 CREATE FUNCTION slugify(text TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     return text
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -456,7 +456,7 @@ LANGUAGE RHAI AS '
 // For complex date operations, use Deno:
 CREATE FUNCTION days_until(date TIMESTAMP)
 RETURNS INTEGER
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     const target = new Date(date);
     const now = new Date();
     const diff = target - now;
@@ -471,7 +471,7 @@ SELECT days_until('2024-12-31') as days_remaining;
 ```sql
 CREATE FUNCTION extract_field(json_doc JSON, field TEXT)
 RETURNS TEXT
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     const doc = JSON.parse(json_doc);
     return doc[field] || null;
 ';
@@ -515,14 +515,14 @@ SELECT fibonacci(10) as fib, factorial(5) as fact;
 ```sql
 CREATE FUNCTION validate_email(email TEXT)
 RETURNS BOOLEAN
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
 ';
 
 CREATE FUNCTION is_strong_password(password TEXT)
 RETURNS BOOLEAN
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
     const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
     return strongRegex.test(password);
@@ -550,7 +550,7 @@ LANGUAGE RHAI AS '
 -- Deno
 CREATE FUNCTION safe_divide(a INTEGER, b INTEGER)
 RETURNS FLOAT
-LANGUAGE DENO AS '
+LANGUAGE BOA AS '
     if (b === 0) {
         throw new Error("Division by zero");
     }

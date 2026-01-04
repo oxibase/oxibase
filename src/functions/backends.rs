@@ -17,7 +17,8 @@
 //! This module provides pluggable scripting backends that allow user-defined
 //! functions to be written in different scripting languages.
 
-pub mod deno;
+#[cfg(feature = "boa")]
+pub mod boa;
 pub mod python;
 pub mod rhai;
 
@@ -48,8 +49,8 @@ pub fn create_backend_registry() -> BackendRegistry {
     registry.register_backend(Arc::new(rhai::RhaiBackend::new()));
 
     // Include optional backends based on features
-    #[cfg(feature = "deno")]
-    registry.register_backend(Arc::new(deno::DenoBackend::new()));
+    #[cfg(feature = "boa")]
+    registry.register_backend(Arc::new(boa::BoaBackend::new()));
 
     #[cfg(feature = "python")]
     registry.register_backend(Arc::new(python::PythonBackend::new()));
