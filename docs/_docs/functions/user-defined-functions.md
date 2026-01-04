@@ -50,7 +50,7 @@ cargo build --features boa
 cargo build --features python
 
 # Enable both
-cargo build --features deno,python
+cargo build --features boa,python
 ```
 
 ## Functions vs Stored Procedures
@@ -175,7 +175,7 @@ RETURNS INTEGER
 LANGUAGE RHAI AS 'a + b';
 ```
 
-#### Deno Backend
+#### Boa Backend
 Parameters are set as global variables with their declared names:
 
 ```sql
@@ -245,7 +245,7 @@ RETURNS BOOLEAN
 LANGUAGE RHAI AS 'n % 2 == 0';
 ```
 
-#### Deno Backend
+#### Boa Backend
 ```sql
 -- Return a string
 CREATE FUNCTION greet(name TEXT)
@@ -351,7 +351,7 @@ All backends execute in secure sandboxes with controlled access:
 - **Memory isolation** - Each call runs in isolated context
 - **Limited runtime** - Execution time limits prevent abuse
 
-### Deno Backend
+### Boa Backend
 - **No file system access** - Cannot read or write files
 - **No network access** - Cannot make HTTP requests or open sockets
 - **No system access** - Cannot execute system commands or access environment variables
@@ -375,7 +375,7 @@ Performance varies by backend:
 - **Memory Usage**: Low memory footprint
 - **Best For**: High-frequency calls, simple logic
 
-### Deno Backend
+### Boa Backend
 - **Runtime Creation**: Moderate overhead (~milliseconds)
 - **Execution Speed**: Good for complex logic
 - **Memory Usage**: Higher memory usage
@@ -426,7 +426,7 @@ SELECT slugify('Hello, World! How are you?') as slug;
 -- Result: "hello-world-how-are-you"
 ```
 
-### String Processing (Deno)
+### String Processing (Boa)
 
 ```sql
 CREATE FUNCTION slugify(text TEXT)
@@ -449,11 +449,11 @@ CREATE FUNCTION days_until(date TEXT)
 RETURNS INTEGER
 LANGUAGE RHAI AS '
     // Simple date difference calculation
-    // Note: Rhai has limited date support, consider Deno for complex date operations
-    30  // Placeholder - use Deno for real date calculations
+    // Note: Rhai has limited date support, consider Boa for complex date operations
+    30  // Placeholder - use Boa for real date calculations
 ';
 
-// For complex date operations, use Deno:
+// For complex date operations, use Boa:
 CREATE FUNCTION days_until(date TIMESTAMP)
 RETURNS INTEGER
 LANGUAGE BOA AS '
@@ -466,7 +466,7 @@ LANGUAGE BOA AS '
 SELECT days_until('2024-12-31') as days_remaining;
 ```
 
-### JSON Processing (Deno)
+### JSON Processing (Boa)
 
 ```sql
 CREATE FUNCTION extract_field(json_doc JSON, field TEXT)
@@ -510,7 +510,7 @@ SELECT fibonacci(10) as fib, factorial(5) as fact;
 -- Result: fib = 55, fact = 120
 ```
 
-### Data Validation (Deno)
+### Data Validation (Boa)
 
 ```sql
 CREATE FUNCTION validate_email(email TEXT)
@@ -547,7 +547,7 @@ LANGUAGE RHAI AS '
     a / b
 ';
 
--- Deno
+-- Boa
 CREATE FUNCTION safe_divide(a INTEGER, b INTEGER)
 RETURNS FLOAT
 LANGUAGE BOA AS '
@@ -566,7 +566,7 @@ LANGUAGE BOA AS '
 - **Limitations**: Limited standard library, no built-in JSON parsing
 - **Performance**: Excellent for numerical computations and simple logic
 
-### Deno Backend
+### Boa Backend
 - **Syntax**: Full JavaScript/TypeScript with modern ES features
 - **Features**: Rich standard library, JSON support, date/time operations
 - **Limitations**: Higher memory usage and startup time
@@ -591,7 +591,7 @@ LANGUAGE BOA AS '
 
 1. **Choose the right backend**:
    - Use **Rhai** for simple, high-performance calculations
-   - Use **Deno** for complex logic, JSON processing, or date operations
+   - Use **Boa** for complex logic, JSON processing, or date operations
    - Use **Python** for scientific computing or when you need extensive libraries
 
 2. **Keep functions simple** - Complex logic is better handled in application code
@@ -681,7 +681,7 @@ Validates UDF reliability across different environments:
 - **Error Format**: "Python execution error: {exception_string}"
 - **Security**: Isolated execution environment
 
-#### Deno Backend
+#### Boa Backend
 - **JavaScript/TypeScript**: Modern JS runtime with ES modules
 - **JSON Processing**: Native JSON support
 - **Date Operations**: Full Date API
@@ -722,7 +722,7 @@ cargo test --test multi_backend_integration_test --all-features
 
 ### Best Practices for UDF Testing
 
-1. **Test All Backends**: Ensure UDFs work across Rhai, Python, and Deno
+1. **Test All Backends**: Ensure UDFs work across Rhai, Python, and Boa
 2. **Validate Error Messages**: Check error format consistency
 3. **Performance Benchmarking**: Compare execution times across backends
 4. **Type Edge Cases**: Test with null values, type mismatches, and boundaries

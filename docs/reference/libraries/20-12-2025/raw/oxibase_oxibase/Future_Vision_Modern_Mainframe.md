@@ -93,7 +93,7 @@ graph LR
 
 ## Phase 1: Database as Server
 
-**Goal**: Eliminate separate backend API layers (Deno/Python/Node.js) and external migration tools.
+**Goal**: Eliminate separate backend API layers (Boa/Python/Node.js) and external migration tools.
 
 ### WebAssembly Stored Procedures
 
