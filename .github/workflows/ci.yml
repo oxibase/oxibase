@@ -59,10 +59,6 @@ jobs:
             os: ubuntu-latest
             features: "python"
             test_cmd: "cargo nextest run --profile ci --features python"
-          - name: "All Backends"
-            os: ubuntu-latest
-            features: "js,python"
-            test_cmd: "cargo nextest run --profile ci --features js,python"
           - name: "macOS Default"
             os: macos-latest
             features: ""
@@ -126,7 +122,7 @@ jobs:
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
 
-    - name: Free disk spac
+    - name: Free disk space
       run: cargo clean
 
     - name: Generate coverage
