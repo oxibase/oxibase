@@ -3,7 +3,7 @@
 // Example demonstrating user-defined functions with multiple backends
 //
 // This example shows how to create and use user-defined functions
-// written in Rhai, JavaScript (Deno), and Python scripting languages.
+// written in Rhai, JavaScript (Boa), and Python scripting languages.
 //
 // User-defined functions access their arguments by name (e.g., 'a', 'b').
 // Named parameters make functions more readable and maintainable.
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
     let discounted: f64 = db.query_one("SELECT discount(100.0, 0.2)", ())?;
     println!("Discounted price: ${:.2}", discounted);
 
-    #[cfg(feature = "deno")]
+    #[cfg(feature = "js")]
     {
         println!("\n--- Deno/JavaScript Examples ---");
 

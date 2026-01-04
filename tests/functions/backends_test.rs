@@ -33,7 +33,7 @@ mod backend_registry_tests {
         let languages = registry.list_supported_languages();
         assert!(languages.contains(&"rhai".to_string()));
 
-        #[cfg(feature = "deno")]
+        #[cfg(feature = "js")]
         assert!(languages.contains(&"deno".to_string()));
 
         #[cfg(feature = "python")]
@@ -179,7 +179,7 @@ mod backend_registry_tests {
         assert_eq!(result.unwrap(), Value::Text("Alice is 30 years old".into()));
     }
 
-    #[cfg(feature = "deno")]
+    #[cfg(feature = "js")]
     #[test]
     fn test_deno_backend_named_parameters() {
         use oxibase::functions::backends::deno::DenoBackend;
@@ -193,7 +193,7 @@ mod backend_registry_tests {
         assert_eq!(result.unwrap(), Value::Integer(7));
     }
 
-    #[cfg(feature = "deno")]
+    #[cfg(feature = "js")]
     #[test]
     fn test_deno_backend_multiple_types() {
         use oxibase::functions::backends::deno::DenoBackend;

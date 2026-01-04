@@ -66,7 +66,7 @@ lz4_flex = "0.11"
 
 # Scripting backends for user-defined functions
 rhai = { version = "1.17", features = ["sync"] }
-deno_runtime = { version = "0.212", optional = true }
+boa_engine = { version = "0.21", optional = true }
 rustpython-vm = { version = "0.3", optional = true }
 
 # Utilities
@@ -102,7 +102,7 @@ cli = ["clap", "rustyline", "comfy-table", "dirs"]
 pg-server = ["tokio"]
 simd = []  # Enable SIMD optimizations
 rhai = []  # Rhai scripting backend (always enabled)
-deno = ["deno_runtime"]  # Deno JavaScript/TypeScript backend
+js = ["boa_engine"]  # Boa JavaScript/TypeScript backend
 python = ["rustpython-vm"]  # Python backend
 
 [profile.release]

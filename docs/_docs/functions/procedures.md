@@ -31,7 +31,7 @@ Procedures support the same parameter types as functions:
 ## Supported Backends
 
 - **Rhai**: Lightweight scripting with access to database context
-- **Deno**: Full JavaScript/TypeScript runtime
+- **Boa**: Full JavaScript/TypeScript runtime
 - **Python**: Python scripting environment
 
 ## Examples

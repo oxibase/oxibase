@@ -17,16 +17,16 @@
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "js")]
 use deno_runtime::deno_core::{serde_v8, v8, JsRuntime, RuntimeOptions};
 
 /// Deno scripting backend
-#[cfg(feature = "deno")]
+#[cfg(feature = "js")]
 pub struct DenoBackend {
     // Runtime will be created per execution for isolation
 }
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "js")]
 impl DenoBackend {
     /// Create a new Deno backend
     pub fn new() -> Self {
@@ -41,7 +41,7 @@ impl Default for DenoBackend {
 }
 
 /// Create secure runtime options with filtered extensions
-#[cfg(feature = "deno")]
+#[cfg(feature = "js")]
 fn create_secure_runtime_options() -> RuntimeOptions {
     let mut options = RuntimeOptions::default();
     options.extensions.retain(|ext| {
@@ -62,7 +62,7 @@ fn create_secure_runtime_options() -> RuntimeOptions {
     options
 }
 
-#[cfg(feature = "deno")]
+#[cfg(feature = "js")]
 impl ScriptingBackend for DenoBackend {
     fn name(&self) -> &'static str {
         "deno"
