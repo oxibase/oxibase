@@ -17,10 +17,10 @@
 //! Tests specific to Boa JavaScript/TypeScript functionality.
 //! These tests are only run when the "boa" feature is enabled.
 
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 use oxibase::Database;
 
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 mod boa_function_tests {
     use super::*;
 

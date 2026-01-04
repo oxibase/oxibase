@@ -18,16 +18,16 @@ use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
 
 use boa_engine::object::builtins::JsArray;
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 use boa_engine::{Context, JsString, JsValue, Source};
 
 /// Boa scripting backend
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 pub struct BoaBackend {
     // Context will be created per execution for isolation
 }
 
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 impl BoaBackend {
     /// Create a new Boa backend
     pub fn new() -> Self {
@@ -42,14 +42,14 @@ impl Default for BoaBackend {
 }
 
 /// Create secure context options with filtered extensions
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 fn create_secure_context() -> Context {
     // Boa doesn't have built-in security restrictions like Deno
     // For now, we'll use default context and implement basic restrictions
     Context::default()
 }
 
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 impl ScriptingBackend for BoaBackend {
     fn name(&self) -> &'static str {
         "boa"
@@ -168,17 +168,17 @@ impl ScriptingBackend for BoaBackend {
 }
 
 /// Stub implementation when Boa feature is not enabled
-#[cfg(not(feature = "boa"))]
+#[cfg(not(feature = "js"))]
 pub struct BoaBackend;
 
-#[cfg(not(feature = "boa"))]
+#[cfg(not(feature = "js"))]
 impl BoaBackend {
     pub fn new() -> Self {
         Self
     }
 }
 
-#[cfg(not(feature = "boa"))]
+#[cfg(not(feature = "js"))]
 impl ScriptingBackend for BoaBackend {
     fn name(&self) -> &'static str {
         "boa"
@@ -190,13 +190,13 @@ impl ScriptingBackend for BoaBackend {
 
     fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
         Err(Error::internal(
-            "Boa backend not enabled. Use --features boa to enable JavaScript/TypeScript support",
+            "Boa backend not enabled. Use --features js to enable JavaScript/TypeScript support",
         ))
     }
 
     fn validate_code(&self, _code: &str) -> Result<()> {
         Err(Error::internal(
-            "Boa backend not enabled. Use --features boa to enable JavaScript/TypeScript support",
+            "Boa backend not enabled. Use --features js to enable JavaScript/TypeScript support",
         ))
     }
 }

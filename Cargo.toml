@@ -102,7 +102,7 @@ cli = ["clap", "rustyline", "comfy-table", "dirs"]
 pg-server = ["tokio"]
 simd = []  # Enable SIMD optimizations
 rhai = []  # Rhai scripting backend (always enabled)
-boa = ["boa_engine"]  # Boa JavaScript/TypeScript backend
+js = ["boa_engine"]  # Boa JavaScript/TypeScript backend
 python = ["rustpython-vm"]  # Python backend
 
 [profile.release]

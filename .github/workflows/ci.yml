@@ -48,18 +48,18 @@ jobs:
             os: ubuntu-latest
             features: ""
             test_cmd: "cargo nextest run --profile ci"
-          #- name: "Deno Backend"
-          #  os: ubuntu-latest
-          #  features: "deno"
-          #  test_cmd: "cargo nextest run --profile ci --features deno"
+          - name: "Deno Backend"
+            os: ubuntu-latest
+            features: "js"
+            test_cmd: "cargo nextest run --profile ci --features js"
           - name: "Python Backend"
             os: ubuntu-latest
             features: "python"
             test_cmd: "cargo nextest run --profile ci --features python"
-          #- name: "All Backends"
-          #  os: ubuntu-latest
-          #  features: "deno,python"
-          #  test_cmd: "cargo nextest run --profile ci --features deno,python"
+          - name: "All Backends"
+            os: ubuntu-latest
+            features: "js,python"
+            test_cmd: "cargo nextest run --profile ci --features js,python"
           - name: "macOS Default"
             os: macos-latest
             features: ""

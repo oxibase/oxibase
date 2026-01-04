@@ -17,7 +17,7 @@
 //! This module provides pluggable scripting backends that allow user-defined
 //! functions to be written in different scripting languages.
 
-#[cfg(feature = "boa")]
+#[cfg(feature = "js")]
 pub mod boa;
 pub mod python;
 pub mod rhai;
@@ -49,7 +49,7 @@ pub fn create_backend_registry() -> BackendRegistry {
     registry.register_backend(Arc::new(rhai::RhaiBackend::new()));
 
     // Include optional backends based on features
-    #[cfg(feature = "boa")]
+    #[cfg(feature = "js")]
     registry.register_backend(Arc::new(boa::BoaBackend::new()));
 
     #[cfg(feature = "python")]

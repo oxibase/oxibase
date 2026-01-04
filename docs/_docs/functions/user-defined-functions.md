@@ -28,7 +28,7 @@ OxiBase supports multiple scripting backends, each optimized for different use c
 - **Language**: `LANGUAGE BOA` or `LANGUAGE JAVASCRIPT`
 - **Description**: Full JavaScript/TypeScript runtime with modern ES features
 - **Performance**: Good performance with rich ecosystem support
-- **Availability**: Enable with `--features boa`
+- **Availability**: Enable with `--features js`
 - **Use Case**: Complex logic, JSON processing, date manipulation
 
 ### Python Backend (Optional)
@@ -44,13 +44,13 @@ To use JavaScript/TypeScript or Python functions, enable the corresponding featu
 
 ```bash
 # Enable JavaScript/TypeScript support
-cargo build --features boa
+cargo build --features js
 
 # Enable Python support
 cargo build --features python
 
 # Enable both
-cargo build --features boa,python
+cargo build --features js,python
 ```
 
 ## Functions vs Stored Procedures
