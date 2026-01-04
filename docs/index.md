@@ -32,14 +32,67 @@ Oxibase is evolving into a distributed, autonomous database system that bridges 
 _Figure 1: Phase 1 Dependency Flow_
 
 ```mermaid
-graph TD;
-    A[Embedded Scripting Languages<br/>Stored functions & triggers<br/>FaaS-like with debugger] --> B[Web Server Exposure<br/>REST/GraphQL endpoints<br/>DML routes, HTML/function execution]
-    A --> C[Postgres Wire Protocol Server<br/>Third-party connectivity<br/>Remote control & vertical scaling]
-    A --> D[Deterministic Simulator<br/>Failure simulation<br/>Horizontal scaling prep]
-    B --> E[Horizontal Scaling<br/>Post-simulator implementation]
-    C --> E
-    D --> E
-    F[Unikernel Compilation<br/>OS-free, bootable images] --> E
+classDiagram
+    %% --- RELATIONSHIPS ---
+    %% Use the short class names here, not "Layer.Class"
+    Computational_Layer ..> Web_Interface
+    Computational_Layer ..> External_Gateway
+    Computational_Layer ..> Performance
+
+    Web_Interface ..> Horizontal_Architecture
+    External_Gateway ..> Horizontal_Architecture
+    Performance ..> Horizontal_Architecture
+    Unikernel_Compiler ..> Horizontal_Architecture
+
+    %% --- LAYERS & CLASS DEFINITIONS ---
+
+    class Computational_Layer {
+        - Embedded Scripting Languages
+        - Stored functions
+        - Triggers
+        - Queues
+        - Debugger support
+        - FaaS-like DevEx
+        - Out-of-core processing
+    }
+    class Web_Interface {
+        - DML routes
+        - REST / GraphQL endpoints
+        - HTML Render
+    }
+    class External_Gateway {
+        - Postgres Wire Protocol Server
+        - Role based authorization control
+        - Authentication
+    }
+
+    class Performance {
+        - Vertical scaling support
+        - Out-of-core processing
+        - Self-monitoring
+        - Undo-log based MVCC
+        - Copy-on-write checkopoint
+        - Row level replication
+        - Storage backends
+    }
+
+    class Horizontal_Architecture {
+        - Deterministic Simulator
+        - Failure simulation
+        - Logic and storage separation
+        - Dedicated Clustering
+        - Sharding
+        - Geolocation
+        - Distributed Computation
+        - Data / Computation rebalancing
+    }
+
+    class Unikernel_Compiler {
+        - Unikernel Compilation
+        - OS-free images
+        - Bootable image generation
+        - SQL based OS management
+    }
 ```
 
 For detailed information about each phase, see the [full roadmap](getting-started/roadmap).

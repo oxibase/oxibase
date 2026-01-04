@@ -16,9 +16,9 @@
      <a href="https://github.com/oxibase/oxibase/actions/workflows/ci.yml"><img src="https://github.com/oxibase/oxibase/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
      <a href="https://crates.io/crates/oxibase"><img src="https://img.shields.io/crates/v/oxibase.svg" alt="Crates.io"></a>
      <a href="https://codecov.io/gh/oxibase/oxibase"><img src="https://codecov.io/gh/oxibase/oxibase/branch/main/graph/badge.svg" alt="codecov"></a>
+     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a><br>
      <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Foxibase%2Foxibase?ref=badge_shield&issueType=license" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Foxibase%2Foxibase.svg?type=shield&issueType=license"/></a>
      <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Foxibase%2Foxibase?ref=badge_shield&issueType=security" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Foxibase%2Foxibase.svg?type=shield&issueType=security"/></a>
-     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
   </p>
 </div>
 
@@ -74,14 +74,68 @@ architectures.
 Currently, active efforts focus on embedded scripting, web exposure, wire protocol support, simulation for scaling, unikernel compilation, and autonomous networking:
 
 ```mermaid
-graph TD;
-    A[Embedded Scripting Languages<br/>Stored functions & triggers<br/>FaaS-like with debugger] --> B[Web Server Exposure<br/>REST/GraphQL endpoints<br/>DML routes, HTML/function execution]
-    A --> C[Postgres Wire Protocol Server<br/>Third-party connectivity<br/>Remote control & vertical scaling]
-    A --> D[Deterministic Simulator<br/>Failure simulation<br/>Horizontal scaling prep]
-    B --> E[Horizontal Scaling<br/>Post-simulator implementation]
-    C --> E
-    D --> E
-    F[Unikernel Compilation<br/>OS-free, bootable images] --> E
+classDiagram
+    %% --- RELATIONSHIPS ---
+    %% Use the short class names here, not "Layer.Class"
+    Computational_Layer ..> Web_Interface
+    Computational_Layer ..> External_Gateway
+    Computational_Layer ..> Performance
+
+    Web_Interface ..> Horizontal_Architecture
+    External_Gateway ..> Horizontal_Architecture
+    Performance ..> Horizontal_Architecture
+    Unikernel_Compiler ..> Horizontal_Architecture
+
+    %% --- LAYERS & CLASS DEFINITIONS ---
+
+    class Computational_Layer {
+        - Embedded Scripting Languages
+        - Stored functions
+        - Triggers
+        - Queues
+        - Debugger support
+        - FaaS-like DevEx
+        - Out-of-core processing
+    }
+    class Web_Interface {
+        - DML routes
+        - REST / GraphQL endpoints
+        - HTML Render
+    }
+    class External_Gateway {
+        - Postgres Wire Protocol Server
+        - Role based authorization control
+        - Authentication
+    }
+
+    class Performance {
+        - Vertical scaling support
+        - Out-of-core processing
+        - Self-monitoring
+        - Undo-log based MVCC
+        - Copy-on-write checkopoint
+        - Row level replication
+        - Storage backends
+    }
+
+    class Horizontal_Architecture {
+        - Deterministic Simulator
+        - Failure simulation
+        - Logic and storage separation
+        - Dedicated Clustering
+        - Sharding
+        - Geolocation
+        - Distributed Computation
+        - Data / Computation rebalancing
+    }
+
+    class Unikernel_Compiler {
+        - Unikernel Compilation
+        - OS-free images
+        - Bootable image generation
+        - SQL based OS management
+    }
+
 ```
 
 See [our roadmap](./docs/_docs/roadmap.md) for details.
