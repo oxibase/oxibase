@@ -89,13 +89,12 @@ classDiagram
     %% --- LAYERS & CLASS DEFINITIONS ---
 
     class Computational_Layer {
-        - Embedded Scripting Languages
+        - Embedded Scripting Languages ✅
         - Stored functions
         - Triggers
         - Queues
         - Debugger support
         - FaaS-like DevEx
-        - Out-of-core processing
     }
     class Web_Interface {
         - DML routes
