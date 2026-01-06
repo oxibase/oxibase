@@ -302,6 +302,23 @@ SELECT
 FROM employees;
 ```
 
+### User-Defined Functions
+
+OxiBase supports user-defined functions (UDFs) via three scripting backends for custom logic in SQL queries:
+
+- **Rhai**: Lightweight, fast scripting language (Rust-based). Ideal for simple calculations and high-performance needs. Always enabled.
+- **Boa (JavaScript)**: Full JavaScript runtime with modern ES features. Best for complex logic, JSON processing, and date manipulation. Enabled with `--features js`.
+- **Python**: Python scripting with access to standard library. Suitable for scientific computing and ML integration. Enabled with `--features python`.
+
+All backends run in secure sandboxes with no file/network access, limited execution time, and memory isolation. Functions are scalar-only and can return INTEGER, FLOAT, TEXT, BOOLEAN, TIMESTAMP, or JSON types.
+
+```sql
+CREATE FUNCTION calculate_tax(price INTEGER) RETURNS INTEGER
+LANGUAGE RHAI AS 'price * 0.08';
+```
+
+For detailed documentation, see [User-Defined Functions](docs/_docs/functions/user-defined-functions.md).
+
 ### Common Table Expressions
 
 Including recursive queries:
