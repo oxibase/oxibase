@@ -396,8 +396,8 @@ WHERE c.country = 'US';
 
 | Object Type | Status | Notes |
 |-------------|--------|-------|
-| Schemas | Missing | No CREATE SCHEMA/DROP SCHEMA support |
-| User-defined Functions | Missing | No CREATE FUNCTION/DROP FUNCTION |
+| Schemas | Available | CREATE SCHEMA/DROP SCHEMA support |
+| User-defined Functions | Available | CREATE FUNCTION/DROP FUNCTION |
 | Stored Procedures | Missing | No CREATE PROCEDURE/DROP PROCEDURE |
 | Materialized Views | Missing | No CREATE MATERIALIZED VIEW |
 | Custom Types/Domains | Missing | No CREATE TYPE/CREATE DOMAIN |
