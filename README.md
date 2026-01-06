@@ -25,7 +25,7 @@
 ## Overview
 
 OxiBase is a research platform focused on bringing computation as close as
-possible to the data itself. Our goal is to investigate how embedding
+possible to the data itself, leveraging unikernel technology for kernel-integrated performance. Our goal is to investigate how embedding
 computation within the database management system, by co-locating logic and
 data, can eliminate inefficiencies and complexities and enable self-managing
 systems. We want to provide user-defined functions and libraries to empower
@@ -55,6 +55,7 @@ operations, enabling co-location of logic and data to eliminate observed
 network latency and serialization inefficiencies in contemporary distributed
 architectures.
 
+This research draws from CumulusDB's unikernel approach, integrating kernel primitives for hardware-optimized performance. See the [Architecture docs](docs/_docs/architecture/index.md) for kernel integration benefits and references.
 
 ### Project Philosophy
 
@@ -134,6 +135,17 @@ classDiagram
         - Bootable image generation
         - SQL based OS management
     }
+
+    class Kernel_Integration {
+        - Zero-copy data paths
+        - Privileged hardware access
+        - Lock-free page-table walks
+        - Active virtual memory
+        - Elastic resource allocation
+    }
+
+    Unikernel_Compiler ..> Kernel_Integration
+    Kernel_Integration ..> Horizontal_Architecture
 
 ```
 

@@ -26,7 +26,7 @@ graph TB
         Transaction["Transaction<br/>(api/transaction.rs)"]
         Rows["Rows<br/>(api/rows.rs)"]
     end
-    
+
     subgraph "Executor Layer"
         Executor["Executor<br/>(executor/mod.rs)"]
         QueryPlanner["QueryPlanner<br/>(executor/planner.rs)"]
@@ -34,7 +34,7 @@ graph TB
         ExprVM["ExprVM<br/>(executor/expression/vm.rs)"]
         FunctionRegistry["FunctionRegistry<br/>(functions/registry.rs)"]
     end
-    
+
     subgraph "Storage Layer"
         MVCCEngine["MVCCEngine<br/>(storage/mvcc/engine.rs)"]
         VersionStore["VersionStore<br/>(storage/mvcc/version_store.rs)"]
@@ -44,7 +44,7 @@ graph TB
         BitmapIndex["BitmapIndex<br/>(storage/index/bitmap.rs)"]
         WALManager["WALManager<br/>(storage/persistence/wal.rs)"]
     end
-    
+
     Database -->|"execute/query"| Executor
     Transaction -->|"execute/query"| Executor
     Executor -->|"parse"| Parser["Parser<br/>(parser/mod.rs)"]
@@ -59,7 +59,7 @@ graph TB
     VersionStore -->|"index data"| HashIndex
     VersionStore -->|"index data"| BitmapIndex
     MVCCEngine -->|"persist changes"| WALManager
-    
+
     Database -->|"return results"| Rows
     Transaction -->|"return results"| Rows
 ```
@@ -109,6 +109,26 @@ The Storage layer implements multi-version concurrency control (MVCC), indexing,
 - `WALManager` - Write-ahead log for durability and crash recovery (storage/persistence/wal.rs)
 - `PersistenceManager` - Snapshot creation and restoration (storage/persistence/manager.rs)
 
+## Kernel Integration Benefits
+
+OxiBase builds on research from CumulusDB[^4], a unikernel-based DBMS that integrates kernel primitives for optimal performance, inspired by related work on OS-DBMS co-design[^1], virtual memory snapshots[^2], buffer management[^3], and OS-oriented systems[^5][^9]. Kernel integration provides privileged access to hardware and OS resources, enabling features that traditional layered architectures cannot achieve.
+
+### Privileged Hardware Access
+- **Direct NVMe Queue Access**: Bypass OS storage layers for kernel-bypass I/O, reducing latency in high-performance SSD scenarios.
+- **Lock-Free Page-Table Walks**: Concurrent, lock-free access to MMU structures for fast virtual-page presence checks (demonstrated 40x speedup in CumulusDB benchmarks[^4]).
+- **IRQ and CPU Management**: Manipulate interrupt vectors, block IRQs, and control CPU shutdown for query-plan-aware scheduling.
+
+### Zero-Copy Data Paths
+- Stream data from query execution to network results without copying, leveraging hypervisor-shared memory regions[^4].
+- Elastic resource allocation through hypercalls for dynamic VM scaling[^4].
+
+### Active Virtual Memory Management
+- Virtual memory as an active abstraction, with inconsistent TLB states handled efficiently for concurrent OLTP/OLAP workloads[^4].
+- Advanced snapshots using ad-hoc parallelization and reader-side TLB invalidation, avoiding TLB shootdowns[^8], with evaluation of virtual memory primitives[^6] and support for heterogeneous hardware[^7].
+
+These benefits align with OxiBase's unikernel compilation goals, enabling full hardware exploitation without OS overhead. See the [Future Vision](../reference/libraries/20-12-2025/raw/oxibase_oxibase/Future_Vision_Modern_Mainframe.md) for roadmap details.
+
+
 ## Module Organization
 
 The codebase is organized into distinct modules with minimal cross-dependencies:
@@ -124,29 +144,29 @@ graph LR
     functions["functions/"]
     storage["storage/"]
     common["common/"]
-    
+
     api --> executor
     api --> storage
     api --> core
-    
+
     executor --> parser
     executor --> optimizer
     executor --> functions
     executor --> storage
     executor --> core
-    
+
     optimizer --> planner
     optimizer --> core
-    
+
     planner --> parser
     planner --> core
-    
+
     parser --> core
-    
+
     storage --> core
-    
+
     functions --> core
-    
+
     executor --> common
     storage --> common
 ```
@@ -172,54 +192,54 @@ The following diagram shows how a SQL query flows through the system, from API e
 ```mermaid
 flowchart TD
     Client["Client Application"]
-    
+
     Client -->|"SQL + params"| Database["Database::query()"]
-    
+
     Database -->|"create"| ExecCtx["ExecutionContext<br/>(executor/context.rs)"]
-    
+
     Database -->|"delegate"| Executor["Executor::execute()"]
-    
+
     Executor -->|"tokenize"| Lexer["Lexer<br/>(parser/lexer.rs)"]
-    
+
     Lexer -->|"tokens"| Parser["Parser<br/>(parser/parser.rs)"]
-    
+
     Parser -->|"AST"| Router{Statement Type?}
-    
+
     Router -->|"SELECT"| SelectExec["Executor::execute_select()"]
     Router -->|"INSERT/UPDATE/DELETE"| DMLExec["Executor::execute_dml()"]
     Router -->|"CREATE/DROP/ALTER"| DDLExec["Executor::execute_ddl()"]
-    
+
     SelectExec --> FeatureDetect{Query Features?}
-    
+
     FeatureDetect -->|"WITH"| CTEEngine["CTEExecutor<br/>(executor/cte.rs)"]
     FeatureDetect -->|"Subquery"| SubqueryEngine["SubqueryExecutor<br/>(executor/subquery.rs)"]
     FeatureDetect -->|"GROUP BY"| AggEngine["AggregateExecutor<br/>(executor/aggregate.rs)"]
     FeatureDetect -->|"OVER"| WindowEngine["WindowExecutor<br/>(executor/window.rs)"]
-    
+
     CTEEngine --> Optimize["Optimizer<br/>(optimizer/mod.rs)"]
     SubqueryEngine --> Optimize
     AggEngine --> Optimize
     WindowEngine --> Optimize
     FeatureDetect -->|"Simple"| Optimize
-    
+
     Optimize --> ScanStrategy{Scan Type?}
-    
+
     ScanStrategy -->|"PK lookup"| DirectLookup["VersionStore::get()"]
     ScanStrategy -->|"Index"| IndexScan["Index::scan()"]
     ScanStrategy -->|"Full table"| TableScan["VersionStore::scan()"]
-    
+
     DirectLookup --> ExprEval["ExprVM::execute()<br/>(executor/expression/vm.rs)"]
     IndexScan --> ExprEval
     TableScan --> ExprEval
-    
+
     ExprEval --> MVCCCheck["VersionStore::is_visible()"]
-    
+
     MVCCCheck -->|"visible rows"| ResultBuilder["Build QueryResult"]
-    
+
     ResultBuilder --> Rows["Rows Iterator"]
-    
+
     Rows --> Client
-    
+
     DMLExec --> WAL["WALManager::log_entry()"]
     DDLExec --> WAL
 ```
@@ -242,7 +262,7 @@ Oxibase uses a strongly-typed value system with runtime type checking:
 ```mermaid
 graph TB
     Value["Value<br/>(core/value.rs)"]
-    
+
     Value -->|"variants"| Integer["Integer(i64)"]
     Value -->|"variants"| Float["Float(f64)"]
     Value -->|"variants"| Text["Text(Arc&lt;str&gt;)"]
@@ -250,15 +270,15 @@ graph TB
     Value -->|"variants"| Timestamp["Timestamp(DateTime)"]
     Value -->|"variants"| Json["Json(Arc&lt;str&gt;)"]
     Value -->|"variants"| Null["Null"]
-    
+
     Row["Row<br/>(core/row.rs)"] -->|"contains"| Value
-    
+
     Schema["Schema<br/>(core/schema.rs)"] -->|"defines"| SchemaColumn["SchemaColumn"]
-    
+
     SchemaColumn -->|"type"| DataType["DataType"]
     SchemaColumn -->|"constraints"| Constraints["Constraints<br/>(nullable, unique, pk)"]
     SchemaColumn -->|"indexes"| IndexEntry["IndexEntry<br/>(index type, columns)"]
-    
+
     DataType -->|"types"| IntegerType["INTEGER"]
     DataType -->|"types"| FloatType["FLOAT"]
     DataType -->|"types"| TextType["TEXT"]
@@ -272,3 +292,23 @@ graph TB
 - `Row` - Vector of `Value` objects representing a table row (core/row.rs)
 - `Schema` - Table metadata including columns and indexes (core/schema.rs)
 - `DataType` - Enum of supported SQL types (core/types.rs)
+
+
+---
+[^1]: Jana Giceva, Tudor-Ioan Salomie, Adrian Schüpbach, et al. "COD: Database / Operating System Co-Design". In: CIDR. 2013.
+
+[^2]: Alfons Kemper and Thomas Neumann. "HyPer: A hybrid OLTP&OLAP main memory database system based on virtual memory snapshots". In: ICDE. 2011. DOI: 10.1109/ICDE.2011.5767867.
+
+[^3]: Viktor Leis, Adnan Alhomssi, Tobias Ziegler, et al. "Virtual-Memory Assisted Buffer Management". In: Proceedings of the ACM SIGMOD/PODS International Conference on Management of Data. Seattle, WA, USA: ACM, June 2023. DOI: 10.1145/3588687.
+
+[^4]: Viktor Leis and Christian Dietrich. "Cloud-Native Database Systems and Unikernels: Reimagining OS Abstractions for Modern Hardware [Vision]". In: Proceedings of the 50th International Conference on Very Large Data Bases. Vision Paper, Accepted with availability check. Guangzhou, China: VLDB Endowment, Aug. 2024.
+
+[^5]: Qian Li, Peter Kraft, Kostis Kaffes, et al. "A Progress Report on DBOS: A Database-oriented Operating System". In: CIDR. 2022.
+
+[^6]: Yannick Loeck and Christian Dietrich. "Evaluation and Reﬁnement of an Explicit Virtual-Memory Primitive". In: IEEE Access 11 (Dec. 2023), pp. 136855–136868. DOI: 10.1109/ACCESS.2023.3338149.
+
+[^7]: Jan Mühlig, Michael Müller, Olaf Spinczyk, et al. "mxkernel: A Novel System Software Stack for Data Processing on Modern Hardware". In: Datenbank-Spektrum 20.3 (2020). DOI: 10.1007/s13222-020-00357-5.
+
+[^8]: Ankur Sharma, Felix Martin Schuhknecht, and Jens Dittrich. "Accelerating Analytical Processing in MVCC using Fine-Granular High-Frequency Virtual Snapshotting". In: SIGMOD. 2018. DOI: 10.1145/3183713.3196904.
+
+[^9]: Athinagoras Skiadopoulos, Qian Li, Peter Kraft, et al. "DBOS: A DBMS-oriented Operating System". In: PVLDB 15.1 (2021). DOI: 10.14778/3485450.3485454.

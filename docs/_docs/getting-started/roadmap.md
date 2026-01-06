@@ -120,12 +120,13 @@ Build a deterministic simulator to simulate failure points in the system. This p
 
 ### Unikernel Compilation
 
-Compile the entire system into a unikernel to avoid conflicts with OS paging systems and eliminate the need for a general-purpose OS. Results in easily bootable machine images.
+Compile the entire system into a unikernel to avoid conflicts with OS paging systems and eliminate the need for a general-purpose OS. Results in easily bootable machine images with deep kernel integration.
 
-- **Benefits:** Minimal footprint, faster boot, enhanced security.
+- **Benefits:** Minimal footprint, faster boot, enhanced security, and privileged hardware access including direct NVMe queue manipulation, lock-free page-table walks, zero-copy data paths, and active virtual memory management for optimal performance in high-performance workloads.
 - **Dependencies:** All prior efforts (to compile a complete system).
 - **Blocks:** Horizontal Scaling.
-- **Example:** Boot Oxibase directly on hardware without an OS layer.
+- **Example:** Boot Oxibase directly on hardware without an OS layer, leveraging kernel primitives for 40x faster page checks and query-plan-aware scheduling.
+- **Research Foundation:** Builds on CumulusDB's unikernel approach for cloud-native DBMS. See the [Architecture docs](../architecture/index.md) for detailed kernel integration benefits and references.
 
 ## Phase 2: Single Node Efficiency
 
