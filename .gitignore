@@ -38,6 +38,7 @@ TODO.md
 docs/_site
 docs/.jekyll-cache/
 git_history_backup.log
+docs/reference
 
 # Example databases
 ./examples/oxibase.db
