@@ -144,7 +144,7 @@ Features:
 - Nested structures
 - Validation of JSON syntax on insert
 - Basic equality comparison
-- More details in the dedicated [JSON Support](json-support) documentation
+- More details in the dedicated [JSON Support]({% link _docs/data-types/json-support.md %}) documentation
 
 ## Column Constraints
 
@@ -262,7 +262,7 @@ Features:
 - IS NULL and IS NOT NULL operators
 - NULL propagation in expressions
 - NULL is distinct from any value, including another NULL
-- More details in the dedicated [NULL Handling](null-handling) documentation
+- More details in the dedicated [NULL Handling]({% link _docs/sql-features/null-handling.md %}) documentation
 
 ## Type Conversions
 
@@ -278,7 +278,7 @@ SELECT CAST('2023-01-01' AS TIMESTAMP);
 SELECT '42' + 1;  -- Converts '42' to INTEGER
 ```
 
-More details on type conversions can be found in the dedicated [CAST Operations](cast-operations) documentation.
+More details on type conversions can be found in the dedicated [CAST Operations]({% link _docs/sql-features/cast-operations.md %}) documentation.
 
 ## Examples
 

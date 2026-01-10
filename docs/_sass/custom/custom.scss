@@ -1,52 +1,272 @@
-.side-bar {
-  background-color: #fafafa;
+// CSS variables for pane dimensions (spine-based)
+:root {
+    --spine-width: 40px;
+    --card-width: 800px; // matches original --pane-width
+    --last-card-width: var(--card-width);
 }
 
-// Sliding panes styles
+@property --top-fade {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0;
+}
+
+@property --bottom-fade {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 0;
+}
+
+// Sidebar
+.side-bar {
+    background-color: #fafafa;
+}
+
+// Footer
+.nav-footer-custom {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+}
+
+// Main Content
+.main-content {
+    ul {
+        > li {
+            &::before {
+                position: relative;
+                margin-left: -1em;
+                color: #959396;
+                content: "•";
+                padding-right: 0.5em;
+            }
+        }
+    }
+}
+
+// Wide navigation
+// ----------------------------------------
+
+// Wide view toggle button (shadcn UI style)
+.wide-view-toggle {
+    display: none;
+
+    @include mq(md) {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 0.6rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        background: white;
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        margin: 0.5rem 0.5rem;
+
+        &:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        &:active {
+            transform: scale(0.98);
+        }
+
+        input {
+            display: none;
+
+            &:checked + svg {
+                color: #3b82f6;
+            }
+
+            &:checked ~ span {
+                color: #3b82f6;
+            }
+        }
+    }
+}
+
+.search-results {
+    z-index: 100;
+}
+
+// Remove max-width from .main to allow wider layout
+.main {
+    max-width: none;
+}
+
+// Panes navigation
+// ----------------------------------------
+// Sliding panes styles (spine-based)
 .panes-container {
-  display: flex;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
-  height: calc(100vh - 120px); // Adjust based on header height
+    display: flex;
+    height: calc(100vh - 60px);
+    overflow-x: auto;
+    padding-right: 2rem;
+    gap: 1rem;
+    scroll-behavior: smooth;
+    view-timeline-name: --cards-element-scrolls-in-body;
+    view-timeline-axis: inline;
 }
 
 .pane {
-  flex: 0 0 550px;
-  min-width: 550px;
-  border-right: 1px solid #e0e0e0;
-  overflow-y: auto;
-  position: relative;
+    flex: 0 0 var(--card-width);
+    width: var(--card-width);
+    max-width: 80vw;
+    height: inherit;
+    margin-top: auto;
+    margin-bottom: auto;
+
+    --index0: calc(var(--index) - 1);
+
+    position: sticky;
+    left: calc((var(--index0) * var(--spine-width)));
+    z-index: var(--index);
+
+    &:last-child {
+        position: relative;
+        left: auto;
+        z-index: calc(var(--numcards));
+        width: var(--last-card-width);
+        flex: 0 0 var(--last-card-width);
+    }
+
+    &:only-of-type {
+        .pane-header {
+            display: none;
+        }
+    }
 }
 
-// Sticky titles
-.pane h1,
-.pane h2,
-.pane h3,
-.pane h4,
-.pane h5,
-.pane h6 {
-  position: sticky;
-  top: 0;
-  background: white;
-  padding: 0.5rem 0;
-  margin: -0.5rem 0 1rem 0;
-  z-index: 10;
-}
-
-// Mobile responsiveness
-@media (max-width: 768px) {
-  .panes-container {
-    flex-direction: column;
-    height: auto;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .pane {
+// Card content and spine structure
+.pane-content {
+    height: 100%;
     width: 100%;
-    min-width: auto;
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
-  }
+    background-color: white;
+    border-right: 1px solid #eeebee;
+    box-shadow:
+        -4px 0 10px rgba(0, 0, 0, 0.05),
+        0 0 0 1px rgba(0, 0, 0, 0.02);
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+
+    // Animation Logic
+    --start-range: calc(var(--index0) / var(--numcards) * 100%);
+    --end-range: calc((var(--index)) / var(--numcards) * 100%);
+
+    animation: linear scale forwards;
+    animation-timeline: --cards-element-scrolls-in-body;
+    animation-range: exit-crossing var(--start-range) exit-crossing
+        var(--end-range);
+
+    transform-origin: left center;
 }
+
+@keyframes scale {
+    to {
+        filter: brightness(0.92);
+    }
+}
+
+// Spine (header) on left
+.pane-header {
+    height: 100%;
+    width: var(--spine-width);
+    flex-shrink: 0;
+    border-right: 1px solid #f3f4f6;
+    background-color: #fafafa;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 1rem 0;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    flex-direction: row-reverse;
+
+    @include fs-3;
+
+    &:hover {
+        background-color: hsl(0 0% 96% / 1);
+    }
+}
+
+// Body content
+
+@keyframes scrollfade {
+    0% {
+        --top-fade: 0;
+    }
+    10%,
+    100% {
+        --top-fade: 3rem;
+    }
+    0%,
+    90% {
+        --bottom-fade: 3rem;
+    }
+    100% {
+        --bottom-fade: 0;
+    }
+}
+
+.pane-body {
+    padding: 2rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-width: 0;
+    background: linear-gradient(
+        to bottom,
+        #fff,
+        #0000 var(--top-fade) calc(100% - var(--bottom-fade)),
+        #fff
+    );
+    mask: linear-gradient(
+        to bottom,
+        #0000,
+        #ffff var(--top-fade) calc(100% - var(--bottom-fade)),
+        #0000
+    );
+    animation: scrollfade;
+    animation-timeline: --scrollfade;
+    scroll-timeline: --scrollfade y;
+    scroll-snap-type: y mandatory;
+}
+
+// Adjust sidebar and main layout for wide view (narrow sidebar)
+.wide-view {
+    --sidebar-width: 16.5rem;
+}
+
+.wide-view .side-bar {
+    @include mq(md) {
+        width: var(--sidebar-width);
+    }
+}
+
+.wide-view .main {
+    @include mq(md) {
+        margin-left: var(--sidebar-width);
+    }
+}
+
+// Enable transitions after initial load
+.has-transition .side-bar {
+    @include mq(md) {
+        transition: width 0.3s ease;
+    }
+}
+
+.has-transition .main {
+    transition: margin 0.3s ease;
+}
+
+// Scrollable
+// ---------------------------------------

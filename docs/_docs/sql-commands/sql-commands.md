@@ -34,7 +34,7 @@ FROM table_name
 - **table_name**: The table to query
 - **WHERE condition**: Filter condition
 - **GROUP BY**: Groups rows by specified columns
-- **ROLLUP/CUBE**: Multi-dimensional aggregation (see [ROLLUP and CUBE](../sql-features/rollup-cube))
+- **ROLLUP/CUBE**: Multi-dimensional aggregation (see [ROLLUP and CUBE]({% link _docs/sql-features/rollup-cube.md %}))
 - **HAVING**: Filter applied to groups
 - **ORDER BY**: Sorting of results (`NULLS FIRST` or `NULLS LAST` to control NULL placement)
 - **LIMIT**: Maximum rows to return
@@ -101,7 +101,7 @@ FROM products p
 CROSS JOIN colors c;
 ```
 
-See [JOIN Operations](../sql-features/join-operations) for detailed documentation.
+See [JOIN Operations]({% link _docs/sql-features/join-operations.md %}) for detailed documentation.
 
 #### Subqueries
 
@@ -136,7 +136,7 @@ SELECT * FROM products WHERE price > ALL (SELECT price FROM products WHERE categ
 SELECT * FROM (SELECT id, name FROM products WHERE price > 100) AS expensive;
 ```
 
-See [Subqueries](../sql-features/subqueries) for detailed documentation.
+See [Subqueries]({% link _docs/sql-features/subqueries.md %}) for detailed documentation.
 
 #### Common Table Expressions (CTEs)
 
@@ -170,7 +170,7 @@ WITH RECURSIVE numbers AS (
 SELECT * FROM numbers;
 ```
 
-See [Common Table Expressions](../sql-features/common-table-expressions) for detailed documentation.
+See [Common Table Expressions]({% link _docs/sql-features/common-table-expressions.md %}) for detailed documentation.
 
 #### Set Operations
 
@@ -208,7 +208,7 @@ SELECT * FROM orders AS OF TIMESTAMP '2024-01-15 10:30:00';
 SELECT * FROM inventory AS OF TIMESTAMP NOW();
 ```
 
-See [Temporal Queries](../sql-features/temporal-queries) for detailed documentation.
+See [Temporal Queries]({% link _docs/sql-features/temporal-queries.md %}) for detailed documentation.
 
 ### INSERT
 
@@ -261,7 +261,7 @@ ON DUPLICATE KEY UPDATE
   quantity = quantity + 50;
 ```
 
-See [ON DUPLICATE KEY UPDATE](../sql-features/on-duplicate-key-update) for detailed documentation.
+See [ON DUPLICATE KEY UPDATE]({% link _docs/sql-features/on-duplicate-key-update.md %}) for detailed documentation.
 
 ### UPDATE
 
@@ -602,7 +602,7 @@ LANGUAGE BOA AS '
 ';
 ```
 
-See [User-Defined Functions](../functions/user-defined-functions) for detailed documentation.
+See [User-Defined Functions]({% link _docs/functions/user-defined-functions.md %}) for detailed documentation.
 
 ### CREATE INDEX
 
@@ -641,7 +641,7 @@ CREATE UNIQUE INDEX idx_unique_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_name ON products (name);
 ```
 
-See [Indexing](../architecture/indexing) for detailed documentation.
+See [Indexing]({% link _docs/architecture/indexing.md %}) for detailed documentation.
 
 ### DROP INDEX
 
@@ -720,7 +720,7 @@ UPDATE accounts SET balance = 900 WHERE id = 1;
 COMMIT;
 ```
 
-See [Savepoints](../sql-features/savepoints) for detailed documentation.
+See [Savepoints]({% link _docs/sql-features/savepoints.md %}) for detailed documentation.
 
 ## Query Analysis
 
@@ -760,7 +760,7 @@ SELECT (actual time=1.2ms, rows=150)
        Filter: (price > 100)
 ```
 
-See [EXPLAIN](../sql-features/explain) for detailed documentation.
+See [EXPLAIN]({% link _docs/sql-features/explain.md %}) for detailed documentation.
 
 ### ANALYZE
 
@@ -1046,7 +1046,7 @@ PRAGMA name;
 | wal_flush_trigger | Operations before WAL flush | 1000 |
 | create_snapshot | Manually create a snapshot | - |
 
-See [PRAGMA Commands](pragma-commands) for detailed documentation.
+See [PRAGMA Commands]({% link _docs/sql-commands/pragma-commands.md %}) for detailed documentation.
 
 ## Parameter Binding
 
@@ -1058,7 +1058,7 @@ INSERT INTO products (name, price) VALUES ($1, $2);
 UPDATE orders SET status = $1 WHERE id = $2;
 ```
 
-See [Parameter Binding](../sql-features/parameter-binding) for detailed documentation.
+See [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %}) for detailed documentation.
 
 ## Notes
 

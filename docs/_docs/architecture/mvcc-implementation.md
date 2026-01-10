@@ -339,18 +339,19 @@ No global mutex needed - conflicts detected through version checks.
 ### Read Path: Query Execution
 
 ```mermaid
+
 flowchart TD
     Query["SELECT * FROM users<br/>WHERE email = 'alice@example.com'"]
     
-    Query --> TryPK{{"try_pk_lookup()<br/>Is WHERE on PK?"}}
+    Query --> TryPK("try_pk_lookup<br/>Is WHERE on PK?")
     
     TryPK -->|Yes| PKLookup["get_visible_version(row_id)<br/>O(1) hash lookup"]
-    TryPK -->|No| TryIndex{{"try_index_lookup()<br/>Is WHERE on indexed column?"}}
+    TryPK -->|No| TryIndex("try_index_lookup<br/>Is WHERE on indexed column?")
     
     TryIndex -->|Yes| IndexPath["Index lookup"]
     TryIndex -->|No| FullScan["Full table scan"]
     
-    IndexPath --> HashIndex{{"Index type?"}}
+    IndexPath --> HashIndex("Index type?")
     HashIndex -->|Hash| HashFind["hash_to_rows.get(hash)<br/>O(1)"]
     HashIndex -->|BTree| BTreeFind["sorted_values.range()<br/>O(log n + k)"]
     HashIndex -->|Bitmap| BitmapFind["bitmap.and_count()<br/>O(n/64)"]
@@ -369,6 +370,7 @@ flowchart TD
     
     CheckVis --> Normalize["normalize_row_to_schema()<br/>(handle ALTER TABLE)"]
     Normalize --> Results["Vec&lt;(i64, Row)&gt;"]
+
 ```
 
 ### Write Path: Insert, Update, Delete
@@ -440,7 +442,7 @@ graph LR
     OldRow --> Normalize["normalize_row_to_schema()"]
     NewSchema --> Normalize
     
-    Normalize --> Check{{"row.len() vs schema.len()"}}
+    Normalize --> Check["row.len() vs schema.len()"]
     
     Check -->|"row.len() < schema"| AddDefaults["Append default values<br/>or NULLs"]
     Check -->|"row.len() > schema"| Truncate["Truncate extra columns"]

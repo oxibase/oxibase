@@ -229,7 +229,7 @@ LANGUAGE BOA AS 'return arguments[0] + arguments[1];';
 SELECT add_numbers(5, 3) as sum;  -- Returns 8
 ```
 
-See the [User-Defined Functions](../functions/user-defined-functions.md) documentation for detailed information about creating and using custom functions.
+See the [User-Defined Functions]({% link _docs/functions/user-defined-functions.md %}) documentation for detailed information about creating and using custom functions.
 
 ## Schema Information
 

@@ -112,7 +112,7 @@ Compile the entire system into a unikernel to avoid conflicts with OS paging sys
 - **Dependencies:** All prior efforts (to compile a complete system).
 - **Blocks:** Horizontal Scaling.
 - **Example:** Boot Oxibase directly on hardware without an OS layer, leveraging kernel primitives for 40x faster page checks and query-plan-aware scheduling.
-- **Research Foundation:** Builds on CumulusDB's unikernel approach for cloud-native DBMS. See the [Architecture docs](../architecture/index.md) for detailed kernel integration benefits and references.
+- **Research Foundation:** Builds on CumulusDB's unikernel approach for cloud-native DBMS. See the [Architecture docs]({% link _docs/architecture/index.md %}) for detailed kernel integration benefits and references.
 
 ## Phase 2: Single Node Efficiency
 

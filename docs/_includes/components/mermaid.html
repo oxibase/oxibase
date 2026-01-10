@@ -1,0 +1,14 @@
+<script type="module">
+  {% if site.mermaid.path %}
+  import mermaid from '{{ site.mermaid.path | relative_url }}';
+  {% else %}
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@{{ site.mermaid.version }}/dist/mermaid.esm.min.mjs';
+  {% endif %}
+
+  var config = {% include mermaid_config.js %};
+  mermaid.initialize(config);
+  window.mermaid = mermaid; // Make mermaid available globally for dynamic rendering
+  mermaid.run({
+    querySelector: '.language-mermaid',
+  });
+</script>
