@@ -1,3 +1,52 @@
 .side-bar {
   background-color: #fafafa;
 }
+
+// Sliding panes styles
+.panes-container {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  height: calc(100vh - 120px); // Adjust based on header height
+}
+
+.pane {
+  flex: 0 0 550px;
+  min-width: 550px;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+  position: relative;
+}
+
+// Sticky titles
+.pane h1,
+.pane h2,
+.pane h3,
+.pane h4,
+.pane h5,
+.pane h6 {
+  position: sticky;
+  top: 0;
+  background: white;
+  padding: 0.5rem 0;
+  margin: -0.5rem 0 1rem 0;
+  z-index: 10;
+}
+
+// Mobile responsiveness
+@media (max-width: 768px) {
+  .panes-container {
+    flex-direction: column;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .pane {
+    width: 100%;
+    min-width: auto;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+}

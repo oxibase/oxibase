@@ -39,6 +39,16 @@ docs/_site
 docs/.jekyll-cache/
 git_history_backup.log
 docs/reference
+_docs/.next
+_docs/.source
+_docs/lib
+_docs/out
+_docs/node_modules
+docs/.next
+docs/.source
+docs/lib
+docs/out
+docs/node_modules
 
 # Example databases
 ./examples/oxibase.db

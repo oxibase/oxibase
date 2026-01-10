@@ -47,40 +47,41 @@ git clone https://github.com/oxibase/oxibase.git
 # Navigate to the directory
 cd oxibase
 
-# Build in release mode
-cargo build --release
-
-# The binary will be at ./target/release/oxibase
+# Build and install locally
+cargo install --path .
 ```
 
 ## Platform-Specific Instructions
 
 ### macOS
 
-On macOS, after building from source:
+On macOS, after cloning the repository:
 
 ```bash
-# Optionally move to a directory in your PATH
-sudo cp ./target/release/oxibase /usr/local/bin/
+cd oxibase
+cargo install --path .
 ```
+
+This installs the binary to `~/.cargo/bin/oxibase` (ensure `~/.cargo/bin` is in your PATH).
 
 ### Linux
 
-For Linux users, after building the binary:
+For Linux users, after cloning the repository:
 
 ```bash
-# Optionally move to a directory in your PATH
-sudo cp ./target/release/oxibase /usr/local/bin/
+cd oxibase
+cargo install --path .
 ```
+
+This installs the binary to `~/.cargo/bin/oxibase` (ensure `~/.cargo/bin` is in your PATH).
 
 ### Windows
 
-On Windows:
+On Windows, after cloning the repository:
 
-1. Build from source as described above
-2. The binary will be at `.\target\release\oxibase.exe`
-3. Place the executable in a suitable location, such as `C:\Program Files\Oxibase`
-4. Add the directory to your PATH through System Properties > Advanced > Environment Variables
+1. Navigate to the directory: `cd oxibase`
+2. Install locally: `cargo install --path .`
+3. The binary will be at `%USERPROFILE%\.cargo\bin\oxibase.exe` (ensure `%USERPROFILE%\.cargo\bin` is in your PATH)
 
 ## Using Oxibase as a Library
 

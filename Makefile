@@ -51,8 +51,8 @@ license:
 	fi
 
 # [docs] Serve the Jekyll documentation site
-docs:
-	cd docs && bundle exec jekyll serve
+docs-serve:
+	cd docs && bundle exec jekyll serve --livereload
 
 # [docs] Build the Jekyll documentation site
 docs-build:

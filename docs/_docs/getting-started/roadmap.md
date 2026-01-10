@@ -8,20 +8,6 @@ parent: Getting Started
 
 Oxibase is evolving into a distributed, autonomous database system that bridges embedded logic with global resilience. This roadmap outlines the journey from a single-node, scriptable database to a self-managing, AI-enhanced platform.
 
-## Project Goals
-
-- **Self-sufficiency:** Oxibase aspires to be a fully self-contained system, minimizing external dependencies for both development and deployment. The database should provide everything needed—compute, storage, logic, and orchestration—within a cohesive environment.
-- **Strong Opinions:** The architecture and feature set are intentionally opinionated, favoring bold, clear principles over generic extensibility. Decisions are made for users to reduce ambiguity and increase focus.
-- **Learning & Research:** Oxibase is a playground for exploring new ideas in database systems, distributed architectures, transactionality, and co-location of data and logic. Continuous learning and disseminating insights are core to the project.
-- **Heavily Tested:** Reliability and correctness matter deeply. Features and infrastructure are expected to be exhaustively tested.
-- **Accessible for Humans:** Readability and clarity of code, configuration, and operation are prioritized—even at the expense of some automation or performance. The system should be understandable by curious practitioners.
-
-## Explicit Non-Goals
-
-- **Maximum Performance:** Raw benchmark performance is not the primary pursuit. Reasonable performance is required, but clarity and correctness take precedence.
-- **Strict Standards Conformance:** While best effort will be made for compatibility (e.g., SQL, network protocols), strict adherence to industry standards is not a goal. Deviations may be made for clarity, simplicity, or research motivations.
-- **Prioritizing Automation Over Clarity:** Design choices that favor ease of maintenance, modification, or explanation—even if that leads to less automation or a “bottleneck” for throughput—will be preferred.
-- **Generic Extensibility:** Oxibase is explicitly not “one size fits all.” It targets specific philosophies and refuses to chase universal flexibility.
 
 ## Phase 1: Foundation
 

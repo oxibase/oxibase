@@ -6,111 +6,52 @@ nav_exclude: true
 
 <div style="text-align: center;"><img src="assets/img/logo.svg" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
 
-Oxibase is a relation database operating system (DBOS) that provides full ACID
-transactions with MVCC and a sophisticated cost-based query optimizer. It
-leverages unikernel technology for kernel-integrated performance, to enable
-privileged hardware access and zero-copy data paths.
+Oxibase is an autonomous relational database management operating system (DBMOS)
+written in Rust that embodies a _"Modern Mainframe"_ philosophy: bringing
+computation directly to data. The system provides ACID-compliant transactions
+with multi-version concurrency control (MVCC), supporting both in-memory and
+persistent operation modes.
 
-- **Multiple Index Types**: B-tree, Hash, and Bitmap indexes with automatic type selection
-- **Multi-Column Indexes**: Composite indexes for complex query patterns
-- **Parallel Query Execution**: Automatic parallelization using Rayon for large datasets
-- **Cost-Based Optimizer**: PostgreSQL-style optimizer with adaptive execution and cardinality feedback
-- **Semantic Query Caching**: Intelligent result caching with predicate subsumption
-- **Disk Persistence**: WAL and snapshots with crash recovery
-- **Rich SQL Support**: Window functions, CTEs (including recursive), subqueries, ROLLUP/CUBE, and 101+ built-in functions
-- **User-Defined Functions**: Extend SQL with custom functions written in Rhai, Python, or JavaScript
+### **Core Philosophy:** 
 
-## Roadmap Overview
+Oxibase rejects the traditional separation of "application server" and "database
+server" as an artifact of historical hardware constraints. By co-locating
+computation and data, the system eliminates network latency and serialization
+overhead inherent in distributed architectures. This "computation to data"
+approach enables user-defined functions in multiple languages to execute within
+transaction scope, directly where data resides.
 
-Oxibase is evolving from an embedded database into a distributed, autonomous database system that bridges embedded logic with global resilience. The roadmap outlines the journey from a single-node, scriptable database to a self-managing, platform.
+### **Current State:** 
 
-**Phase 1: Foundation** - Establishing core capabilities through parallel efforts: embedded scripting languages for stored functions and triggers, declarative schema migrations, TUI manager, web server exposure for REST/GraphQL, Postgres wire protocol server, deterministic simulator, and unikernel compilation with kernel integration benefits like zero-copy data paths and privileged hardware access. These prepare for horizontal scaling.
+An embedded SQL database with 100+ built-in functions, three index types
+(B-tree, Hash, Bitmap), cost-based query optimization, and advanced SQL features
+including window functions, recursive CTEs, and time-travel queries.
 
-**Phase 2: Single Node Efficiency** - Unifying operational needs into Oxibase itself with self-monitoring, multiple storage backends, data lifecycle management, and separation of compute & storage.
+### **Future Vision:** 
 
-**Phase 3: Distributed System** - Achieving infinite horizontal scale and global resilience through multi-master consensus, data rebalancing/sharding, geo-sharding, and gossip protocols.
+Evolution toward a distributed unikernel-based system with kernel-integrated
+performance, embedding a multiple computational paradigms, autonomous scaling,
+and in-database machine learning. The roadmap progresses from embedded scripting
+(Phase 1) through distributed consensus (Phase 3) to self-managing
+infrastructure with GPU-accelerated ML inference (Phase 4).
 
-**Phase 4: The Autonomous Cloud** - The database manages its own physical existence and evolves into an autonomous platform with networking, auto-infrastructure management, in-database ML inference, and GPU training.
 
-_Figure 1:  Dependency Flow_
+## Project Goals
 
-```mermaid
-classDiagram
-    %% --- RELATIONSHIPS ---
-    %% Use the short class names here, not "Layer.Class"
-    Computational_Layer ..> Web_Interface
-    Computational_Layer ..> External_Gateway
-    Computational_Layer ..> Performance
+- **Self-sufficiency:** Oxibase aspires to be a fully self-contained system, minimizing external dependencies for both development and deployment. The database should provide everything needed—compute, storage, logic, and orchestration—within a cohesive environment.
+- **Strong Opinions:** The architecture and feature set are intentionally opinionated, favoring bold, clear principles over generic extensibility. Decisions are made for users to reduce ambiguity and increase focus.
+- **Learning & Research:** Oxibase is a playground for exploring new ideas in database systems, distributed architectures, transactionality, and co-location of data and logic. Continuous learning and disseminating insights are core to the project.
+- **Heavily Tested:** Reliability and correctness matter deeply. Features and infrastructure are expected to be exhaustively tested.
+- **Accessible for Humans:** Readability and clarity of code, configuration, and operation are prioritized—even at the expense of some automation or performance. The system should be understandable by curious practitioners.
 
-    Web_Interface ..> Horizontal_Architecture
-    External_Gateway ..> Horizontal_Architecture
-    Performance ..> Horizontal_Architecture
-    Unikernel_Compiler ..> Horizontal_Architecture
+## Explicit Non-Goals
 
-    %% --- LAYERS & CLASS DEFINITIONS ---
+- **Maximum Performance:** Raw benchmark performance is not the primary pursuit. Reasonable performance is required, but clarity and correctness take precedence.
+- **Strict Standards Conformance:** While best effort will be made for compatibility (e.g., SQL, network protocols), strict adherence to industry standards is not a goal. Deviations may be made for clarity, simplicity, or research motivations.
+- **Prioritizing Automation Over Clarity:** Design choices that favor ease of maintenance, modification, or explanation—even if that leads to less automation or a “bottleneck” for throughput—will be preferred.
+- **Generic Extensibility:** Oxibase is explicitly not “one size fits all.” It targets specific philosophies and refuses to chase universal flexibility.
 
-    class Computational_Layer {
-        - Embedded Scripting Languages
-        - Stored functions
-        - Triggers
-        - Queues
-        - Debugger support
-        - FaaS-like DevEx
-        - Out-of-core processing
-    }
-    class Web_Interface {
-        - DML routes
-        - REST / GraphQL endpoints
-        - HTML Render
-    }
-    class External_Gateway {
-        - Postgres Wire Protocol Server
-        - Role based authorization control
-        - Authentication
-    }
-
-    class Performance {
-        - Vertical scaling support
-        - Out-of-core processing
-        - Self-monitoring
-        - Undo-log based MVCC
-        - Copy-on-write checkopoint
-        - Row level replication
-        - Storage backends
-    }
-
-    class Horizontal_Architecture {
-        - Deterministic Simulator
-        - Failure simulation
-        - Logic and storage separation
-        - Dedicated Clustering
-        - Sharding
-        - Geolocation
-        - Distributed Computation
-        - Data / Computation rebalancing
-    }
-
-    class Unikernel_Compiler {
-        - Unikernel Compilation
-        - OS-free images
-        - Bootable image generation
-        - SQL based OS management
-    }
-
-    class Kernel_Integration {
-        - Zero-copy data paths
-        - Privileged hardware access
-        - Lock-free page-table walks
-        - Active virtual memory
-        - Elastic resource allocation
-    }
-
-    Unikernel_Compiler ..> Kernel_Integration
-    Kernel_Integration ..> Horizontal_Architecture
-
-```
-
-For detailed information about each phase, see the [full roadmap](getting-started/roadmap).
+For detailed information about each phase, see the [full roadmap]({% link _docs/roadmap.md %}).
 
 ## Need Help?
 
