@@ -188,9 +188,8 @@ impl Database {
             }
         };
 
-        // Create executor with function registry
-        let function_registry = Arc::new(FunctionRegistry::new());
-        let executor = Executor::with_function_registry(Arc::clone(&engine), function_registry);
+        // Create executor
+        let executor = Executor::new(Arc::clone(&engine));
 
         let inner = Arc::new(DatabaseInner {
             engine,

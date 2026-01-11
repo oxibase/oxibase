@@ -24,7 +24,7 @@
 //! - DROP VIEW
 
 use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
-use crate::functions::{global_registry, FunctionDataType, FunctionSignature};
+use crate::functions::{FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
 use crate::storage::functions::{
     StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
@@ -761,9 +761,16 @@ impl Executor {
             .map(|p| p.name.value.clone())
             .collect();
 
-        // Register the function in the global registry first
-        let registry = global_registry();
-        registry.register_user_defined(
+        // Check if the backend exists for this language
+        if !self.function_registry.is_language_supported(&stmt.language) {
+            return Err(Error::internal(format!(
+                "Unsupported language: {}",
+                stmt.language
+            )));
+        }
+
+        // Register the function in the registry first
+        self.function_registry.register_user_defined(
             function_name_upper.clone(),
             stmt.body.clone(),
             stmt.language.clone(),
@@ -782,7 +789,9 @@ impl Executor {
         // If this fails, we need to unregister from the registry to maintain consistency
         if let Err(e) = self.insert_function(&stored_function) {
             // Rollback registry registration on database insert failure
-            let _ = registry.unregister_user_defined(&function_name_upper);
+            let _ = self
+                .function_registry
+                .unregister_user_defined(&function_name_upper);
             return Err(e);
         }
 
@@ -808,9 +817,9 @@ impl Executor {
         // Delete function from system table
         self.delete_function(&function_name)?;
 
-        // Unregister the function from the global registry
-        let registry = global_registry();
-        registry.unregister_user_defined(&function_name)?;
+        // Unregister the function from the registry
+        self.function_registry
+            .unregister_user_defined(&function_name)?;
 
         Ok(Box::new(EmptyResult::new()))
     }

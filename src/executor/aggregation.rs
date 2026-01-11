@@ -28,6 +28,7 @@ use rustc_hash::FxHashMap;
 
 use crate::core::{Result, Row, Value};
 use crate::functions::aggregate::CompiledAggregate;
+use crate::functions::global_registry;
 use crate::functions::AggregateFunction;
 use crate::parser::ast::*;
 use crate::storage::traits::QueryResult;
@@ -742,7 +743,7 @@ impl Executor {
 
         // Evaluate each row
         let mut final_rows = Vec::with_capacity(agg_rows.len());
-        let mut evaluator = CompiledEvaluator::new(crate::functions::registry::global_registry());
+        let mut evaluator = CompiledEvaluator::new(global_registry().as_ref());
         evaluator.init_columns(&agg_columns);
 
         // Add aggregate expression aliases so COALESCE(SUM(val), 0) can find the "sum(val)" column

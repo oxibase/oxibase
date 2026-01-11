@@ -21,12 +21,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
 /// Global function registry instance
-static GLOBAL_REGISTRY: OnceLock<FunctionRegistry> = OnceLock::new();
+static GLOBAL_REGISTRY: OnceLock<Arc<FunctionRegistry>> = OnceLock::new();
 
 /// Get the global function registry
 #[inline]
-pub fn global_registry() -> &'static FunctionRegistry {
-    GLOBAL_REGISTRY.get_or_init(FunctionRegistry::new)
+pub fn global_registry() -> &'static Arc<FunctionRegistry> {
+    GLOBAL_REGISTRY.get_or_init(|| Arc::new(FunctionRegistry::new()))
 }
 
 use super::aggregate::{
@@ -81,6 +81,20 @@ pub struct FunctionRegistry {
     user_defined_functions: RwLock<UserDefinedFunctionRegistry>,
     /// Function info cache
     function_info: RwLock<HashMap<String, FunctionInfo>>,
+}
+
+impl Clone for FunctionRegistry {
+    fn clone(&self) -> Self {
+        Self {
+            aggregate_functions: RwLock::new(self.aggregate_functions.read().unwrap().clone()),
+            scalar_functions: RwLock::new(self.scalar_functions.read().unwrap().clone()),
+            window_functions: RwLock::new(self.window_functions.read().unwrap().clone()),
+            user_defined_functions: RwLock::new(
+                self.user_defined_functions.read().unwrap().clone(),
+            ),
+            function_info: RwLock::new(self.function_info.read().unwrap().clone()),
+        }
+    }
 }
 
 impl Default for FunctionRegistry {

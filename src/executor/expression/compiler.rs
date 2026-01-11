@@ -154,7 +154,7 @@ impl<'a> CompileContext<'a> {
 
     /// Create context using global function registry
     pub fn with_global_registry(columns: &[String]) -> Self {
-        Self::new(columns, global_registry())
+        Self::new(columns, global_registry().as_ref())
     }
 
     /// Add second row columns (for join compilation)

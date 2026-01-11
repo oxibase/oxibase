@@ -178,6 +178,15 @@ impl UserDefinedFunctionRegistry {
     }
 }
 
+impl Clone for UserDefinedFunctionRegistry {
+    fn clone(&self) -> Self {
+        Self {
+            functions: self.functions.clone(),
+            backend_registry: self.backend_registry.clone(),
+        }
+    }
+}
+
 impl Default for UserDefinedFunctionRegistry {
     fn default() -> Self {
         // This should not be used directly - backend registry is required

@@ -176,7 +176,7 @@ impl Executor {
     pub fn new(engine: Arc<MVCCEngine>) -> Self {
         let executor = Self {
             engine,
-            function_registry: Arc::new(FunctionRegistry::new()),
+            function_registry: Arc::clone(global_registry()),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::default(),
             semantic_cache: SemanticCache::default(),
@@ -207,6 +207,7 @@ impl Executor {
         };
 
         // Load user-defined functions from system table
+        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
 
         executor
@@ -308,17 +309,16 @@ impl Executor {
                     }
                 }
 
-                // Register the function in the global registry
-                let registry = global_registry();
+                // Register the function in the registry
                 // Use stored language if supported, otherwise default to Rhai for backward compatibility
-                let language = if registry.is_language_supported(_language) {
+                let language = if self.function_registry.is_language_supported(_language) {
                     _language.to_string()
                 } else {
                     "rhai".to_string()
                 };
                 let param_names: Vec<String> =
                     parameters.iter().map(|p| p.name.value.clone()).collect();
-                registry.register_user_defined(
+                self.function_registry.register_user_defined(
                     name.to_string(),
                     code.to_string(),
                     language,
