@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
       codeBlocks:
         "div.highlighter-rouge, div.listingblock > div.content, figure.highlight",
       wideViewToggle: "#wide-view-toggle",
-      mainContent: "#main-content",
+      mainContent: ".main-content-wrap",
       titleElements: "h1, h2",
     },
     classes: {
@@ -163,52 +163,50 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /**
      * Update the active navigation item based on the current URL
-     * @param {string} url - The current URL to match
+     * @param {string} url - The current URL to match (defaults to window.location.href)
      */
-    updateActiveNav(url) {
-      // First, remove .active from all nav items and links
-      const allItems = document.querySelectorAll('.site-nav .nav-list-item');
-      allItems.forEach(item => item.classList.remove('active'));
-      const allLinks = document.querySelectorAll('.site-nav .nav-list a');
-      allLinks.forEach(link => link.classList.remove('active'));
+    updateActiveNav(url = window.location.href) {
+      // Remove .active from all nav items and links
+      const allItems = document.querySelectorAll(".site-nav .nav-list-item");
+      allItems.forEach((item) => item.classList.remove("active"));
+      const allLinks = document.querySelectorAll(".site-nav .nav-list a");
+      allLinks.forEach((link) => link.classList.remove("active"));
 
-      // Then, add .active to the matching link, item and its ancestors
       const currentPathname = new URL(url).pathname;
-      let bestMatch = null;
-      let bestCommonLength = 0;
-      let bestLength = 0;
-      allLinks.forEach(link => {
-        try {
-          const linkPathname = new URL(link.href).pathname;
-          // Find common prefix length
-          let commonLength = 0;
-          for (let i = 0; i < Math.min(linkPathname.length, currentPathname.length); i++) {
-            if (linkPathname[i] === currentPathname[i]) {
-              commonLength = i + 1;
-            } else {
-              break;
-            }
+
+      // If home, do nothing
+      if (currentPathname === "/") {
+        return;
+      }
+
+      let currentLink = null;
+
+      // First, try to find and restore the <a> with missing href (for navigation events)
+      currentLink = Array.from(allLinks).find(
+        (link) => !link.hasAttribute("href"),
+      );
+      if (currentLink) {
+        currentLink.href = url; // Restore href
+      } else {
+        // Fallback: find by exact pathname match (for fresh reload/direct access)
+        currentLink = Array.from(allLinks).find((link) => {
+          try {
+            return new URL(link.href).pathname === currentPathname;
+          } catch {
+            return false; // Invalid URL
           }
-          if (commonLength > bestCommonLength || (commonLength === bestCommonLength && linkPathname.length > bestLength)) {
-            bestMatch = link;
-            bestCommonLength = commonLength;
-            bestLength = linkPathname.length;
-          }
-        } catch (e) {
-          // Ignore invalid URLs
-        }
-      });
-      if (bestMatch) {
-        bestMatch.classList.add('active');
-        // Restore href if removed by theme
-        if (!bestMatch.hasAttribute('href')) {
-          bestMatch.href = url;
-        }
-        let item = bestMatch.closest('.nav-list-item');
+        });
+      }
+
+      // If a link found, set .active on it and ancestors
+      if (currentLink) {
+        currentLink.classList.add("active");
+        let item = currentLink.closest(".nav-list-item");
         while (item) {
-          item.classList.add('active');
-          // Get parent nav-list-item
-          item = item.parentElement ? item.parentElement.closest('.nav-list-item') : null;
+          item.classList.add("active");
+          item = item.parentElement
+            ? item.parentElement.closest(".nav-list-item")
+            : null;
         }
       }
     },
@@ -614,7 +612,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!this.enabled) return;
       const panes = this.paneSystem.panesContainer.children;
       const currentHref = window.location.href;
-      const paneUrls = Array.from(panes).map(pane => pane.dataset.url);
+      const paneUrls = Array.from(panes).map((pane) => pane.dataset.url);
 
       const matchingIndex = paneUrls.indexOf(currentHref);
 
@@ -626,7 +624,7 @@ document.addEventListener("DOMContentLoaded", function () {
         this.updateAfterChange(currentHref);
       } else {
         // Clear existing panes and load pane for current URL
-        this.paneSystem.panesContainer.innerHTML = '';
+        this.paneSystem.panesContainer.innerHTML = "";
         this.paneSystem.linkInterceptor.loadPaneForUrl(currentHref);
       }
     }
@@ -677,7 +675,9 @@ document.addEventListener("DOMContentLoaded", function () {
       this.mediaQueryHandler.init();
 
       // Listen for changes
-      this.mqMd.addEventListener("change", () => this.mediaQueryHandler.onMediaQueryChange());
+      this.mqMd.addEventListener("change", () =>
+        this.mediaQueryHandler.onMediaQueryChange(),
+      );
     }
 
     enablePaneSystem() {

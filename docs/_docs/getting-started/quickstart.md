@@ -1,17 +1,19 @@
 ---
 layout: default
-title: Quick Start Tutorial
+title: Learn the Basics
 parent: Getting Started
 nav_order: 2
 ---
 
-# Quick Start Tutorial
+# Learn the Basics
 
-This tutorial will guide you through creating your first database with Oxibase and performing basic operations.
+This page will guide you through creating your first database with Oxibase and
+performing basic operations.
 
 ## Installation
 
-Before starting, ensure you have Oxibase installed. If not, follow the [Installation Guide]({% link _docs/getting-started/installation.md %}).
+Before starting, ensure you have Oxibase installed. If not, follow the
+[Installation Guide]({% link _docs/tutorials/installation.md %}).
 
 ```bash
 # Install with Cargo
@@ -264,7 +266,7 @@ ORDER BY pct_above_avg DESC;
 
 Now that you've learned the basics, you might want to explore:
 
-- [Connection Strings]({% link _docs/getting-started/connection-strings.md %}) - More connection options
+- [Connection Strings]({% link _docs/references/connection-strings.md %}) - More connection options
 - [SQL Commands]({% link _docs/sql-commands/sql-commands.md %}) - Comprehensive SQL reference
 - [Data Types]({% link _docs/data-types/data-types.md %}) - Detailed information on data types
 - [Indexing]({% link _docs/architecture/indexing.md %}) - How to optimize queries with indexes

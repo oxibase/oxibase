@@ -1,11 +1,11 @@
 ---
 layout: default
-title: API Reference
+title: Rust Embedded API Reference
 parent: References
 nav_order: 4
 ---
 
-# Oxibase API Reference
+# Oxibase Rust Embedded API Reference
 {: .no_toc}
 
 This document provides a comprehensive reference for the Oxibase Rust API.
