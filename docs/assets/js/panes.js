@@ -229,8 +229,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (this.mqMd.matches) {
         this.setupWideView();
         this.setupResizeHandler();
+        this.paneSystem.enablePaneSystem();
       } else {
         this.disableForSmallScreens();
+        this.paneSystem.disablePaneSystem();
       }
     }
 
@@ -320,20 +322,32 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     onMediaQueryChange() {
-      this.init();
+      if (this.mqMd.matches) {
+        this.setupWideView();
+        this.setupResizeHandler();
+        this.paneSystem.enablePaneSystem();
+      } else {
+        this.disableForSmallScreens();
+        this.paneSystem.disablePaneSystem();
+      }
     }
   }
 
   class LinkInterceptor {
     constructor(paneSystem) {
       this.paneSystem = paneSystem;
+      this.enabled = false;
+      this.initialized = false;
     }
 
     init() {
+      if (this.initialized) return;
       document.addEventListener("click", (e) => this.handleClick(e));
+      this.initialized = true;
     }
 
     handleClick(event) {
+      if (!this.enabled) return;
       const link = event.target.closest("a");
       if (!link) return;
 
@@ -530,6 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     updateLayout() {
+      if (!this.paneSystem.enabled) return;
       const container = this.paneSystem.panesContainer;
       const scroller = Utils.safeQuerySelector(CONFIG.selectors.mainScroller); // assuming .main is the scroller
       const panes = Utils.safeQuerySelectorAll(
@@ -585,13 +600,18 @@ document.addEventListener("DOMContentLoaded", function () {
     constructor(paneSystem) {
       this.paneSystem = paneSystem;
       this.initialUrl = window.location.href;
+      this.enabled = false;
+      this.initialized = false;
     }
 
     init() {
+      if (this.initialized) return;
       window.addEventListener("popstate", () => this.handlePopState());
+      this.initialized = true;
     }
 
     handlePopState() {
+      if (!this.enabled) return;
       const panes = this.paneSystem.panesContainer.children;
       const currentHref = window.location.href;
       const paneUrls = Array.from(panes).map(pane => pane.dataset.url);
@@ -636,6 +656,7 @@ document.addEventListener("DOMContentLoaded", function () {
         );
         return;
       }
+      this.enabled = false;
       this.mediaQueryHandler = new MediaQueryHandler(this);
       this.linkInterceptor = new LinkInterceptor(this);
       this.layoutManager = new LayoutManager(this);
@@ -647,8 +668,6 @@ document.addEventListener("DOMContentLoaded", function () {
       // Enable transitions after initial layout
       setTimeout(() => {
         document.body.classList.add(CONFIG.classes.hasTransition);
-        this.layoutManager.updateLayout();
-        this.layoutManager.addPaneHeaderClickHandlers();
       }, CONFIG.timeouts.initialLayout);
 
       // Update active nav for initial page
@@ -656,11 +675,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Initialize components
       this.mediaQueryHandler.init();
-      this.linkInterceptor.init();
-      this.historyManager.init();
 
       // Listen for changes
       this.mqMd.addEventListener("change", () => this.mediaQueryHandler.onMediaQueryChange());
+    }
+
+    enablePaneSystem() {
+      if (this.enabled) return;
+      this.enabled = true;
+      this.linkInterceptor.enabled = true;
+      this.historyManager.enabled = true;
+      this.linkInterceptor.init();
+      this.historyManager.init();
+      this.layoutManager.updateLayout();
+      this.layoutManager.addPaneHeaderClickHandlers();
+    }
+
+    disablePaneSystem() {
+      if (!this.enabled) return;
+      this.enabled = false;
+      this.linkInterceptor.enabled = false;
+      this.historyManager.enabled = false;
     }
   }
   // Initialize the pane system

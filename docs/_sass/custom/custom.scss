@@ -107,17 +107,17 @@
     display: flex;
     height: calc(100vh - 60px);
     overflow-x: auto;
-    padding-right: 2rem;
     gap: 1rem;
     scroll-behavior: smooth;
     view-timeline-name: --cards-element-scrolls-in-body;
     view-timeline-axis: inline;
+
+    @include mq(md) {
+        padding-right: 2rem;
+    }
 }
 
 .pane {
-    flex: 0 0 var(--card-width);
-    width: var(--card-width);
-    max-width: 80vw;
     height: inherit;
     margin-top: auto;
     margin-bottom: auto;
@@ -129,12 +129,21 @@
     left: calc((var(--index0) * var(--spine-width)));
     z-index: var(--index);
 
+    @include mq(md) {
+        flex: 0 0 var(--card-width);
+        width: var(--card-width);
+        max-width: 80vw;
+    }
+
     &:last-child {
         position: relative;
         left: auto;
         z-index: calc(var(--numcards));
-        width: var(--last-card-width);
-        flex: 0 0 var(--last-card-width);
+
+        @include mq(md) {
+            width: var(--last-card-width);
+            flex: 0 0 var(--last-card-width);
+        }
     }
 
     &:only-of-type {
