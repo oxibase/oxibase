@@ -121,6 +121,7 @@
     height: inherit;
     margin-top: auto;
     margin-bottom: auto;
+    background-color: white;
 
     --index0: calc(var(--index) - 1);
 
@@ -147,7 +148,6 @@
 .pane-content {
     height: 100%;
     width: 100%;
-    background-color: white;
     border-right: 1px solid #eeebee;
     box-shadow:
         -4px 0 10px rgba(0, 0, 0, 0.05),
@@ -206,11 +206,11 @@
     }
     10%,
     100% {
-        --top-fade: 3rem;
+        --top-fade: 5rem;
     }
     0%,
     90% {
-        --bottom-fade: 3rem;
+        --bottom-fade: 5rem;
     }
     100% {
         --bottom-fade: 0;

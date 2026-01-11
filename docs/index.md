@@ -51,7 +51,7 @@ infrastructure with GPU-accelerated ML inference (Phase 4).
 - **Prioritizing Automation Over Clarity:** Design choices that favor ease of maintenance, modification, or explanation—even if that leads to less automation or a “bottleneck” for throughput—will be preferred.
 - **Generic Extensibility:** Oxibase is explicitly not “one size fits all.” It targets specific philosophies and refuses to chase universal flexibility.
 
-For detailed information about each phase, see the [full roadmap]({% link _docs/roadmap.md %}).
+For detailed information about each phase, see the [full roadmap]({% link _docs/getting-started/roadmap.md %}).
 
 ## Need Help?
 

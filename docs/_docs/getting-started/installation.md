@@ -119,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-See the [API Reference]({% link _docs/getting-started/api-reference.md %}) for complete documentation of the Oxibase API.
+See the [API Reference]({% link _docs/references/api-reference.md %}) for complete documentation of the Oxibase API.
 
 ## Verifying Installation
 
@@ -137,7 +137,7 @@ After installing Oxibase, you can:
 
 - Follow the [Quick Start Tutorial]({% link _docs/getting-started/quickstart.md %}) to create your first database using the CLI
 - Learn about [Connection Strings]({% link _docs/getting-started/connection-strings.md %}) to configure your database
-- Check the [API Reference]({% link _docs/getting-started/api-reference.md %}) for using Oxibase in your Rust applications
+- Check the [API Reference]({% link _docs/references/api-reference.md %}) for using Oxibase in your Rust applications
 - Check the [SQL Commands]({% link _docs/sql-commands/sql-commands.md %}) reference for working with data
 
 ## Troubleshooting
