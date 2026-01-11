@@ -1,14 +1,21 @@
 ---
 layout: default
-title: Rust Embedded API Reference
+title: Embedded API Reference
 parent: References
 nav_order: 4
 ---
 
-# Oxibase Rust Embedded API Reference
+# Embedded API Reference
 {: .no_toc}
 
 This document provides a comprehensive reference for the Oxibase Rust API.
+Oxibase can be used as an embedded database in Rust applications. Although it is
+designed for use in server environments, it can also be used as an embedded
+database. This allows Oxibase to be used in a variety of scenarios, including
+embedded systems and IoT devices. 
+
+By making Oxibase Embeddable, make the single-node development process easier
+and more efficient.
 
 ## Table of Contents
 {: .no_toc .text-delta }
@@ -48,6 +55,8 @@ let db = Database::open("file:///path/to/database?sync_mode=full&snapshot_interv
 | keep_snapshots | Number of snapshots to keep | Integer |
 | wal_flush_trigger | Operations before WAL flush | Integer |
 | compression | Enable compression | on, off |
+
+See all connection string options in the [connection string reference]({% link _docs/references/connection-strings.md %})
 
 ## Executing Queries
 

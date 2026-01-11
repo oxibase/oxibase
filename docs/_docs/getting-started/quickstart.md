@@ -2,7 +2,7 @@
 layout: default
 title: Learn the Basics
 parent: Getting Started
-nav_order: 2
+nav_order: 1 
 ---
 
 # Learn the Basics
@@ -31,13 +31,13 @@ Oxibase includes a command-line interface (CLI) for interactive use:
 
 ```bash
 # Start with an in-memory database (data is lost when the CLI exits)
-./target/release/oxibase
+oxibase
 
 # Or with persistent storage (data is saved to disk)
-./target/release/oxibase --db "file:///path/to/data"
+oxibase --db "file:///path/to/data"
 
 # Execute a query directly
-./target/release/oxibase -q "SELECT 1 + 1"
+oxibase -q -e "SELECT 1 + 1 as sum;"
 ```
 
 ## Creating a Table
@@ -153,13 +153,17 @@ BEGIN TRANSACTION;
 
 -- Perform operations
 UPDATE products SET price = price * 0.9 WHERE category = 'Electronics';
-INSERT INTO products (id, name, price, category) VALUES (6, 'Tablet', 499.99, 'Electronics');
 
--- Commit the transaction to save changes
-COMMIT;
+INSERT INTO products (id, name, description, price, category, in_stock, created_at) VALUES 
+(6, 'Tablet', '12.9-inch iPad Pro', 999.99, 'Electronics', TRUE, NOW());
+SELECT * FROM products;
+-- Roll back to discard changes
+ROLLBACK;
 
--- Or roll back to discard changes
--- ROLLBACK;
+SELECT * FROM products;
+-- 
+-- Or comit the transaction to save changes
+-- COMMIT;
 ```
 
 ## Using Joins

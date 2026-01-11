@@ -457,19 +457,54 @@ WHERE category IN (
 ### Example 3: Scalar Subquery Examples
 
 ```sql
+-- Create sample data
+CREATE TABLE products (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    price FLOAT
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    amount FLOAT,
+    status TEXT
+);
+
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    salary FLOAT
+);
+
+-- Insert sample data
+INSERT INTO products VALUES
+    (1, 'Laptop', 1200.0),
+    (2, 'Book', 25.0),
+    (3, 'Phone', 800.0);
+
+INSERT INTO orders VALUES
+    (1, 100.0, 'completed'),
+    (2, 50.0, 'completed'),
+    (3, 200.0, 'pending');
+
+INSERT INTO employees VALUES
+    (1, 'Alice', 60000.0),
+    (2, 'Bob', 55000.0),
+    (3, 'Charlie', 65000.0);
+
 -- Find products priced above average
-SELECT name, price FROM products 
+SELECT name, price FROM products
 WHERE price > (SELECT AVG(price) FROM products);
 
 -- Delete orders below average for completed orders
-DELETE FROM orders 
+DELETE FROM orders
 WHERE amount < (
     SELECT AVG(amount) FROM orders WHERE status = 'completed'
 ) AND status = 'pending';
 
 -- Update salaries below company average
-UPDATE employees 
-SET salary = salary * 1.1 
+UPDATE employees
+SET salary = salary * 1.1
 WHERE salary < (
     SELECT AVG(salary) FROM employees
 );
@@ -478,6 +513,33 @@ WHERE salary < (
 ### Example 4: EXISTS/NOT EXISTS Examples
 
 ```sql
+-- Create additional sample data
+ALTER TABLE customers ADD COLUMN status TEXT DEFAULT 'inactive';
+
+ALTER TABLE orders ADD COLUMN order_date TEXT;
+
+UPDATE orders SET order_date = '2023-11-15' WHERE id = 1;
+UPDATE orders SET order_date = '2023-11-20' WHERE id = 2;
+UPDATE orders SET order_date = '2023-12-01' WHERE id = 3;
+
+CREATE TABLE logs (
+    id INTEGER PRIMARY KEY,
+    message TEXT,
+    created_at TEXT
+);
+
+CREATE TABLE archive_status (
+    id INTEGER PRIMARY KEY,
+    status TEXT
+);
+
+-- Insert sample data
+INSERT INTO logs VALUES
+    (1, 'System started', '2023-01-01'),
+    (2, 'User login', '2023-12-01');
+
+INSERT INTO archive_status VALUES (1, 'completed');
+
 -- Check if any premium products exist
 SELECT 'Premium products available' as message
 WHERE EXISTS (
@@ -500,7 +562,7 @@ WHERE NOT EXISTS (
 UPDATE customers
 SET status = 'active'
 WHERE EXISTS (
-    SELECT 1 FROM orders 
+    SELECT 1 FROM orders
     WHERE order_date > DATE('now', '-30 days')
 );
 ```
@@ -508,14 +570,22 @@ WHERE EXISTS (
 ### Example 5: Find Orphaned Records
 
 ```sql
+-- Alter products table to include category_id
+ALTER TABLE products ADD COLUMN category_id INTEGER;
+
+-- Update category_id based on category names
+UPDATE products SET category_id = 1 WHERE category = 'Electronics';
+UPDATE products SET category_id = 2 WHERE category = 'Books';
+UPDATE products SET category_id = 3 WHERE category = 'Clothing';
+
 -- Find products that reference non-existent categories
-SELECT * FROM products 
+SELECT * FROM products
 WHERE category_id NOT IN (
     SELECT id FROM categories
 );
 
 -- Find orders without valid customers
-SELECT * FROM orders 
+SELECT * FROM orders
 WHERE customer_id NOT IN (
     SELECT id FROM customers
 );

@@ -26,21 +26,37 @@ logo: "/assets/img/logo-horizontal.svg"
 # Color scheme
 color_scheme: blue
 
+callouts:
+  highlight:
+    color: yellow
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: purple
+  warning:
+    title: Warning
+    color: red
+
 just_the_docs:
   collections:
     docs:
 
 # Default layouts
 defaults:
-   - scope:
-       path: ""
-       type: "docs"
-     values:
-       layout: "default"
-   - scope:
-       path: ""
-     values:
-       layout: "default"
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+    values:
+      layout: "default"
 
 plugins:
   - jekyll-sitemap
@@ -73,4 +89,3 @@ gh_edit_link: true # show or hide edit this page link
 gh_edit_link_text: "Edit this page on GitHub."
 gh_edit_repository: "https://github.com/oxibase/oxibase" # the github URL for your repo
 gh_edit_branch: "main" # the branch that your docs is served from
-

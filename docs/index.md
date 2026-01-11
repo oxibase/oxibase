@@ -14,26 +14,32 @@ persistent operation modes.
 
 ### **Core Philosophy:** 
 
-Oxibase rejects the traditional separation of "application server" and "database
-server" as an artifact of historical hardware constraints. By co-locating
-computation and data, the system eliminates network latency and serialization
-overhead inherent in distributed architectures. This "computation to data"
-approach enables user-defined functions in multiple languages to execute within
-transaction scope, directly where data resides.
+Oxibase rejects the traditional separation of _"application server"_ and
+_"database server"_ as an artifact of historical hardware constraints. By
+co-locating computation and data, the system eliminates complexity, network
+latency and serialization overhead inherent in distributed architectures. This
+_"computation to data"_ approach enables user-defined business logic in multiple
+languages and paradigms to execute within transaction scope, directly/close to
+where data resides thanks to data locality awareness of the system.
 
 ### **Current State:** 
 
-An embedded SQL database with 100+ built-in functions, three index types
-(B-tree, Hash, Bitmap), cost-based query optimization, and advanced SQL features
-including window functions, recursive CTEs, and time-travel queries.
+An embedded SQL database with three index types (B-tree, Hash, Bitmap),
+cost-based query optimization, built-in functions, user-defined functions, and
+advanced SQL features including window functions, recursive CTEs, and
+time-travel queries.
 
 ### **Future Vision:** 
 
 Evolution toward a distributed unikernel-based system with kernel-integrated
-performance, embedding a multiple computational paradigms, autonomous scaling,
-and in-database machine learning. The roadmap progresses from embedded scripting
-(Phase 1) through distributed consensus (Phase 3) to self-managing
-infrastructure with GPU-accelerated ML inference (Phase 4).
+performance, embedding a multiple computational paradigms with libraries to
+support a fast development, auto-scaling thanks to in-database machine learning.
+The project roadmap outlines a strategic progression, starting with the
+development of the core computation layer (Phase 0). Then the focus will shift
+to external accessibility (Phase 2) to facilitate seamless integration with
+broader ecosystems. The system is then envisioned to evolve into a horizontally
+scalable architecture (Phase 3), ultimately becoming a fully autonomous,
+self-managing infrastructure (Phase 4).
 
 
 ## Project Goals
