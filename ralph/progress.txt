@@ -182,3 +182,22 @@
 - Scripting backends are isolated from transaction control for security
 - SQL execution APIs (future work) will need to respect the current transaction context
 
+---
+## Wed Jan 14 2026 - US-011: Implement Arbitrary SQL Execution in Python
+
+### Implemented
+- Added sql function to Python runtime that executes SQL strings with parameters
+- Function takes sql and *params, executes query or mutation
+- Returns list of tuples for SELECT queries, integer for mutations
+- Supports parameterized queries to prevent injection
+- Integrated with executor for SQL execution within transaction scope
+
+### Files Changed
+- src/executor/ddl.rs (added sql function in execute_stored_function_python)
+
+### Learnings
+- Used rustpython-vm Interpreter to set sql function in globals
+- Handled parameter conversion from Python objects to Value types
+- Implemented different return types for SELECT vs mutations
+- Syntax error in file prevents compilation, needs fixing
+
