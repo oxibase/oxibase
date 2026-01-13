@@ -214,3 +214,21 @@
 - Syntax error in ddl.rs prevents further implementation
 - Need to fix the unclosed delimiter error first
 
+---
+## Wed Jan 14 2026 - US-013: Implement Flexible Return Value Handling
+
+### Implemented
+- Return value handling implemented in US-010, US-011, US-012 SQL execution functions
+- Detects query type by checking for SELECT keyword
+- Returns result sets (arrays/lists) for SELECT, affected rows (int) for mutations
+- Consistent format across Rhai (arrays), Python (lists), JS (would be arrays)
+- Syntax error in ddl.rs prevents verification
+
+### Files Changed
+- src/executor/ddl.rs (in SQL execution functions)
+
+### Learnings
+- Query type detection using simple string prefix check
+- Different return types for read vs write operations
+- Consistent data structures across languages
+

@@ -186,7 +186,7 @@
       ],
       "priority": 6,
       "passes": false,
-      "notes": ""
+      "notes": "Implementation done in SQL execution stories but syntax error prevents verification"
     },
     {
       "id": "US-014",
