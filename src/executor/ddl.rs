@@ -829,8 +829,39 @@ impl Executor {
                 }
             }
             "python" => {
-                // For now, skip detailed Python syntax validation
-                // TODO: Add Python syntax validation using rustpython-vm
+                // Basic syntax validation using rustpython parsing
+                #[cfg(feature = "python")]
+                {
+                    use rustpython_vm::compiler::Mode;
+                    use rustpython_vm::{Interpreter, Settings};
+                    let interpreter = Interpreter::with_init(Settings::default(), |_| ());
+                    interpreter
+                        .enter(|vm| {
+                            // Wrap code in function for validation
+                            let indented_code = stmt
+                                .code
+                                .lines()
+                                .map(|line| format!("    {}", line))
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            let wrapper_code = format!(
+                                "def __user_function():\n{}\nresult = __user_function()",
+                                indented_code
+                            );
+
+                            // Try to compile the wrapped code to check for syntax errors
+                            match vm.compile(&wrapper_code, Mode::Exec, "<validation>".to_string())
+                            {
+                                Ok(_) => Ok(()),
+                                Err(e) => Err(Error::parse(format!("Python syntax error: {}", e))),
+                            }
+                        })
+                        .map_err(|e| Error::parse(format!("Python validation error: {:?}", e)))?;
+                }
+                #[cfg(not(feature = "python"))]
+                {
+                    // Skip validation if Python feature not enabled
+                }
             }
             "javascript" => {
                 // For now, skip detailed JavaScript syntax validation

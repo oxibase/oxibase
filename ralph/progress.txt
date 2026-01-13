@@ -42,3 +42,20 @@
 - Implemented table insert using Row::from_values and table.insert()
 - Added proper error handling for syntax errors and unsupported languages
 
+---
+## Wed Jan 14 2026 - US-003: Implement Function Storage API for Python
+
+### Implemented
+- Extended CREATE STORED FUNCTION to support Python language with basic syntax validation
+- Added Python syntax validation using rustpython-vm compiler in execute_create_stored_function
+- Uses code indentation and wrapping in function for proper validation
+- Returns syntax error if Python code is invalid
+
+### Files Changed
+- src/executor/ddl.rs
+
+### Learnings
+- Reused existing CREATE STORED FUNCTION infrastructure for Python support
+- Used rustpython-vm for syntax checking, similar to existing Python backend
+- Added feature-gated validation to avoid compilation issues when Python not enabled
+
