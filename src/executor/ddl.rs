@@ -864,8 +864,21 @@ impl Executor {
                 }
             }
             "javascript" => {
-                // For now, skip detailed JavaScript syntax validation
-                // TODO: Add JavaScript syntax validation
+                // Basic syntax validation using Boa JavaScript parser
+                #[cfg(feature = "js")]
+                {
+                    let mut context = boa_engine::Context::default();
+                    let source = boa_engine::Source::from_bytes(stmt.code.as_bytes());
+
+                    // Try to parse the code for syntax validation
+                    if let Err(e) = boa_engine::Script::parse(source, None, &mut context) {
+                        return Err(Error::parse(format!("JavaScript syntax error: {:?}", e)));
+                    }
+                }
+                #[cfg(not(feature = "js"))]
+                {
+                    // Skip validation if JS feature not enabled
+                }
             }
             _ => {
                 return Err(Error::parse(format!(

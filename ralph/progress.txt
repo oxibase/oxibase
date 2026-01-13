@@ -59,3 +59,20 @@
 - Used rustpython-vm for syntax checking, similar to existing Python backend
 - Added feature-gated validation to avoid compilation issues when Python not enabled
 
+---
+## Wed Jan 14 2026 - US-004: Implement Function Storage API for JavaScript
+
+### Implemented
+- Extended CREATE STORED FUNCTION to support JavaScript language with basic syntax validation
+- Added JavaScript syntax validation using boa_engine parser in execute_create_stored_function
+- Uses boa_engine::Script::parse for syntax checking
+- Returns syntax error if JavaScript code is invalid
+
+### Files Changed
+- src/executor/ddl.rs
+
+### Learnings
+- Reused existing CREATE STORED FUNCTION infrastructure for JavaScript support
+- Used boa_engine for syntax checking, similar to existing JavaScript backend
+- Added feature-gated validation to avoid compilation issues when JS not enabled
+
