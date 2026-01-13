@@ -1,0 +1,9 @@
+{
+  "active": true,
+  "iteration": 1,
+  "maxIterations": 0,
+  "completionPromise": "COMPLETE",
+  "prompt": "Implement stored procedures in the three main scripting languages supported by oxibase. Run lint & tests after each change. Output <promise>COMPLETE</promise> when all tests pass.",
+  "startedAt": "2026-01-13T21:57:52.690Z",
+  "model": "Grok Code Fast 1"
+}

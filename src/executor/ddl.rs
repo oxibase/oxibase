@@ -30,6 +30,9 @@ use crate::storage::functions::{
     StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
 };
 use crate::storage::traits::{result::EmptyResult, Engine, QueryResult};
+use crate::storage::{
+    is_stored_functions_table, StoredScriptFunction, CREATE_STORED_FUNCTIONS_SQL, STORED_FUNCTIONS,
+};
 use rustc_hash::FxHashMap;
 
 use serde_json;
@@ -840,6 +843,24 @@ impl Executor {
         Ok(())
     }
 
+    /// Ensure the stored functions system table exists
+    pub(crate) fn ensure_stored_functions_table_exists(&self) -> Result<()> {
+        // Check if table exists first - need a transaction
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_stored_functions_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(STORED_FUNCTIONS));
+        drop(tx); // Drop transaction before creating tables
+
+        if !has_stored_functions_table {
+            // Parse and execute CREATE TABLE for stored functions
+            self.execute_stored_functions_sql(CREATE_STORED_FUNCTIONS_SQL)?;
+        }
+
+        Ok(())
+    }
+
     /// Check if a function exists in the system table
     fn function_exists(&self, function_name: &str) -> Result<bool> {
         let tx = self.engine.begin_transaction()?;
@@ -929,6 +950,20 @@ impl Executor {
 
     /// Execute SQL statement for functions (helper for system table creation)
     fn execute_functions_sql(&self, sql: &str) -> Result<()> {
+        let mut parser = crate::parser::Parser::new(sql);
+        let program = parser
+            .parse_program()
+            .map_err(|e| Error::parse(e.to_string()))?;
+
+        for stmt in &program.statements {
+            let ctx = ExecutionContext::default();
+            self.execute_statement(stmt, &ctx)?;
+        }
+
+        Ok(())
+    }
+
+    fn execute_stored_functions_sql(&self, sql: &str) -> Result<()> {
         let mut parser = crate::parser::Parser::new(sql);
         let program = parser
             .parse_program()

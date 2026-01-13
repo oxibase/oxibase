@@ -1,0 +1,206 @@
+{
+  "project": "Stored Functions in Rhai, Python, and JavaScript",
+  "branchName": "ralph/stored-functions-in-rhai-python-and-javascript",
+  "description": "Implement support for stored functions written in Rhai, Python, and JavaScript. These functions will be stored in the database similar to User-Defined Functions (UDFs) and can be executed. Stored functions support transaction management where they can run inside database transactions, but cannot initiate transactions themselves. Rolling back a transaction after executing a stored procedure reverts all effects. Functions can execute arbitrary SQL queries and return values, either as single scalars or result sets depending on the query type.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create Database Schema for Stored Functions",
+      "description": "As a database administrator, I want a database schema to store stored functions, so that functions can be persisted with their code, language, and metadata.",
+      "acceptanceCriteria": [
+        "Table created with columns: id, name, language (enum: rhai, python, javascript), code (text), created_at, updated_at",
+        "Unique constraint on name",
+        "Indexes on language and name for efficient lookup",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Implement Function Storage API for Rhai",
+      "description": "As a developer, I want an API to store Rhai functions in the database, so that Rhai code can be saved and retrieved.",
+      "acceptanceCriteria": [
+        "Function to insert Rhai code into the stored_functions table",
+        "Validation that code is valid Rhai syntax before storage",
+        "Return success/error response",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement Function Storage API for Python",
+      "description": "As a developer, I want an API to store Python functions in the database, so that Python code can be saved and retrieved.",
+      "acceptanceCriteria": [
+        "Function to insert Python code into the stored_functions table",
+        "Basic syntax validation for Python code",
+        "Return success/error response",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Implement Function Storage API for JavaScript",
+      "description": "As a developer, I want an API to store JavaScript functions in the database, so that JavaScript code can be saved and retrieved.",
+      "acceptanceCriteria": [
+        "Function to insert JavaScript code into the stored_functions table",
+        "Basic syntax validation for JavaScript code",
+        "Return success/error response",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Implement Function Retrieval API",
+      "description": "As a developer, I want an API to retrieve stored functions by name or ID, so that functions can be loaded for execution.",
+      "acceptanceCriteria": [
+        "Function to query stored_functions by name",
+        "Function to query by ID",
+        "Return function metadata and code",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Create Rhai Execution Engine",
+      "description": "As a system, I want an execution engine for Rhai functions, so that stored Rhai code can be run.",
+      "acceptanceCriteria": [
+        "Rhai runtime integration",
+        "Function to execute Rhai code with parameters",
+        "Error handling for execution failures",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Create Python Execution Engine",
+      "description": "As a system, I want an execution engine for Python functions, so that stored Python code can be run.",
+      "acceptanceCriteria": [
+        "Python interpreter integration",
+        "Function to execute Python code with parameters",
+        "Sandboxed execution to prevent system access",
+        "Error handling for execution failures",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Create JavaScript Execution Engine",
+      "description": "As a system, I want an execution engine for JavaScript functions, so that stored JavaScript code can be run.",
+      "acceptanceCriteria": [
+        "JavaScript runtime integration (e.g., V8 or similar)",
+        "Function to execute JavaScript code with parameters",
+        "Sandboxed execution to prevent system access",
+        "Error handling for execution failures",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Integrate Transaction Management for Stored Functions",
+      "description": "As a developer, I want stored functions to run within existing database transactions, so that function effects can be rolled back if needed.",
+      "acceptanceCriteria": [
+        "Execution context detects active transaction",
+        "Functions run within transaction scope",
+        "No ability for functions to start new transactions",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Implement Arbitrary SQL Execution in Rhai",
+      "description": "As a Rhai function author, I want to execute arbitrary SQL from Rhai code, so that database operations can be performed.",
+      "acceptanceCriteria": [
+        "Rhai API to execute SQL strings",
+        "Support for parameterized queries to prevent injection",
+        "Return results as appropriate type (scalar or result set)",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Implement Arbitrary SQL Execution in Python",
+      "description": "As a Python function author, I want to execute arbitrary SQL from Python code, so that database operations can be performed.",
+      "acceptanceCriteria": [
+        "Python API to execute SQL strings",
+        "Support for parameterized queries",
+        "Return results as Python data structures",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Implement Arbitrary SQL Execution in JavaScript",
+      "description": "As a JavaScript function author, I want to execute arbitrary SQL from JavaScript code, so that database operations can be performed.",
+      "acceptanceCriteria": [
+        "JavaScript API to execute SQL strings",
+        "Support for parameterized queries",
+        "Return results as JavaScript objects/arrays",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Implement Flexible Return Value Handling",
+      "description": "As a stored function, I want to return values from SQL executions appropriately, so that callers can access results.",
+      "acceptanceCriteria": [
+        "Detect query type (SELECT vs INSERT/UPDATE/DELETE)",
+        "Return result sets for SELECT queries",
+        "Return affected rows or last insert ID for mutations",
+        "Consistent return format across languages",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Add Function Execution API",
+      "description": "As a application, I want an API to execute stored functions by name with parameters, so that functions can be called from the application layer.",
+      "acceptanceCriteria": [
+        "Endpoint to call function by name",
+        "Pass parameters to function execution",
+        "Return function results or errors",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

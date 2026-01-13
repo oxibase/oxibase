@@ -1,0 +1,21 @@
+---
+## Wed Jan 14 2026 - US-001: Create Database Schema for Stored Functions
+
+### Implemented
+- Created `src/storage/stored_functions.rs` with CREATE_STORED_FUNCTIONS_SQL constant defining the stored_functions table schema
+- Added stored_functions module to `src/storage/mod.rs` and re-exported types
+- Added imports and functions in `src/executor/ddl.rs` to ensure the table can be created
+- Table includes: id (auto-increment primary key), name (text, unique), language (enum check), code (text), created_at/updated_at (timestamps)
+- Added indexes on language and name columns for efficient lookup
+- Code compiles successfully (typecheck passes)
+
+### Files Changed
+- src/storage/stored_functions.rs (new file)
+- src/storage/mod.rs
+- src/executor/ddl.rs
+
+### Learnings
+- Followed existing pattern from functions.rs for system tables
+- Used CHECK constraint for language enum validation
+- Added re-exports with alias to avoid naming conflicts
+

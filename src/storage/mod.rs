@@ -27,6 +27,7 @@ pub mod functions;
 pub mod index;
 pub mod mvcc;
 pub mod statistics;
+pub mod stored_functions;
 pub mod traits;
 
 // Re-export main expression types at storage level for convenience
@@ -83,3 +84,9 @@ pub use statistics::{
 
 // Re-export Functions types
 pub use functions::{is_functions_table, StoredFunction, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS};
+
+// Re-export Stored Functions types
+pub use stored_functions::{
+    is_stored_functions_table, StoredFunction as StoredScriptFunction, CREATE_STORED_FUNCTIONS_SQL,
+    STORED_FUNCTIONS,
+};
