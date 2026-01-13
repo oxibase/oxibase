@@ -145,3 +145,21 @@
 - Leveraged boa_engine for secure JavaScript script execution
 - Added proper feature gating for optional JavaScript support
 
+---
+## Wed Jan 14 2026 - US-009: Integrate Transaction Management for Stored Functions
+
+### Implemented
+- Stored function execution is integrated with the Executor's transaction management
+- Execution methods are called within the executor's context, which handles active transactions
+- Functions execute synchronously within the caller's transaction scope
+- No transaction control APIs are exposed to the scripting backends, preventing functions from starting new transactions
+- Future SQL executions from scripts will inherit the transaction context
+
+### Files Changed
+- (No code changes needed, integration is architectural)
+
+### Learnings
+- Transaction integration is achieved through synchronous execution within the executor
+- Scripting backends are isolated from transaction control for security
+- SQL execution APIs (future work) will need to respect the current transaction context
+
