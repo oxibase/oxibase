@@ -19,3 +19,26 @@
 - Used CHECK constraint for language enum validation
 - Added re-exports with alias to avoid naming conflicts
 
+---
+## Wed Jan 14 2026 - US-002: Implement Function Storage API for Rhai
+
+### Implemented
+- Added CreateStoredFunctionStatement AST node with parsing in parser/statements.rs
+- Implemented execute_create_stored_function in executor/ddl.rs with Rhai syntax validation using rhai::Engine::compile()
+- Added stored_function_exists and insert_stored_function helper methods
+- Updated Statement enum and Display impls in parser/ast.rs
+- Added execution dispatch in executor/mod.rs
+- Supports CREATE STORED FUNCTION [IF NOT EXISTS] name LANGUAGE language AS 'code'
+
+### Files Changed
+- src/parser/ast.rs
+- src/parser/statements.rs
+- src/executor/mod.rs
+- src/executor/ddl.rs
+
+### Learnings
+- Extended parser and AST for new DDL statement following existing patterns
+- Used rhai crate for syntax validation
+- Implemented table insert using Row::from_values and table.insert()
+- Added proper error handling for syntax errors and unsupported languages
+

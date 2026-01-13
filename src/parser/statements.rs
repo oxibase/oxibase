@@ -1302,13 +1302,26 @@ impl Parser {
             self.next_token();
             self.parse_create_view_statement()
                 .map(Statement::CreateView)
+        } else if self.peek_token_is_keyword("STORED") {
+            self.next_token();
+            if self.peek_token_is_keyword("FUNCTION") {
+                self.next_token();
+                self.parse_create_stored_function_statement()
+                    .map(Statement::CreateStoredFunction)
+            } else {
+                self.add_error(format!(
+                    "expected FUNCTION after STORED at {}",
+                    self.cur_token.position
+                ));
+                None
+            }
         } else if self.peek_token_is_keyword("FUNCTION") {
             self.next_token();
             self.parse_create_function_statement()
                 .map(Statement::CreateFunction)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after CREATE at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, or STORED after CREATE at {}",
                 self.cur_token.position
             ));
             None
@@ -1983,6 +1996,69 @@ impl Parser {
             return_type,
             language,
             body,
+            if_not_exists,
+        })
+    }
+
+    /// Parse a CREATE STORED FUNCTION statement
+    fn parse_create_stored_function_statement(&mut self) -> Option<CreateStoredFunctionStatement> {
+        let token = self.cur_token.clone();
+
+        // Optional IF NOT EXISTS
+        let if_not_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("NOT") {
+                return None;
+            }
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Function name (identifier)
+        if !self.expect_peek(TokenType::Identifier) {
+            self.add_error(format!(
+                "expected function name at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+        let name = self.cur_token.literal.clone();
+
+        // LANGUAGE
+        if !self.expect_keyword("LANGUAGE") {
+            return None;
+        }
+
+        // Language identifier
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let language = self.cur_token.literal.clone();
+
+        // AS
+        if !self.expect_keyword("AS") {
+            return None;
+        }
+
+        // Code as string literal
+        if !self.expect_peek(TokenType::String) {
+            self.add_error(format!(
+                "expected string literal for function code at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+        let code = self.cur_token.literal.trim_matches('\'').to_string();
+
+        Some(CreateStoredFunctionStatement {
+            token,
+            name,
+            language,
+            code,
             if_not_exists,
         })
     }

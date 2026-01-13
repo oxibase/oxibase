@@ -624,6 +624,9 @@ impl Executor {
             Statement::Explain(stmt) => self.execute_explain(stmt, &ctx),
             Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
             Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
+            Statement::CreateStoredFunction(stmt) => {
+                self.execute_create_stored_function(stmt, &ctx)
+            }
             Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
         }
     }

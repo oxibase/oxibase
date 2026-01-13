@@ -1323,6 +1323,7 @@ pub enum Statement {
     DropSchema(DropSchemaStatement),
     UseSchema(UseSchemaStatement),
     CreateFunction(CreateFunctionStatement),
+    CreateStoredFunction(CreateStoredFunctionStatement),
     DropFunction(DropFunctionStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
@@ -1363,6 +1364,7 @@ impl fmt::Display for Statement {
             Statement::DropSchema(s) => write!(f, "{}", s),
             Statement::UseSchema(s) => write!(f, "{}", s),
             Statement::CreateFunction(s) => write!(f, "{}", s),
+            Statement::CreateStoredFunction(s) => write!(f, "{}", s),
             Statement::DropFunction(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
@@ -2086,6 +2088,16 @@ pub struct CreateFunctionStatement {
     pub if_not_exists: bool,
 }
 
+/// CREATE STORED FUNCTION statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateStoredFunctionStatement {
+    pub token: Token,
+    pub name: String,
+    pub language: String,
+    pub code: String,
+    pub if_not_exists: bool,
+}
+
 /// Function parameter
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionParameter {
@@ -2115,6 +2127,20 @@ impl fmt::Display for CreateFunctionStatement {
             self.body.replace("'", "''")
         ));
         write!(f, "{}", result)
+    }
+}
+
+impl fmt::Display for CreateStoredFunctionStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE STORED FUNCTION ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        write!(
+            f,
+            "{} {} LANGUAGE {} AS '{}'",
+            result, self.name, self.language, self.code
+        )
     }
 }
 

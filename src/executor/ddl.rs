@@ -801,6 +801,62 @@ impl Executor {
         Ok(Box::new(EmptyResult::new()))
     }
 
+    /// Execute a CREATE STORED FUNCTION statement
+    pub(crate) fn execute_create_stored_function(
+        &self,
+        stmt: &CreateStoredFunctionStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Ensure the stored functions system table exists
+        self.ensure_stored_functions_table_exists()?;
+
+        // Check if stored function already exists
+        let name_upper = stmt.name.to_uppercase();
+        if self.stored_function_exists(&name_upper)? {
+            if stmt.if_not_exists {
+                return Ok(Box::new(EmptyResult::new()));
+            }
+            return Err(Error::FunctionAlreadyExists(name_upper.clone()));
+        }
+
+        // Validate language and basic syntax
+        match stmt.language.to_lowercase().as_str() {
+            "rhai" => {
+                // Validate Rhai syntax by compiling
+                let engine = rhai::Engine::new();
+                if let Err(e) = engine.compile(&stmt.code) {
+                    return Err(Error::parse(format!("Rhai syntax error: {}", e)));
+                }
+            }
+            "python" => {
+                // For now, skip detailed Python syntax validation
+                // TODO: Add Python syntax validation using rustpython-vm
+            }
+            "javascript" => {
+                // For now, skip detailed JavaScript syntax validation
+                // TODO: Add JavaScript syntax validation
+            }
+            _ => {
+                return Err(Error::parse(format!(
+                    "Unsupported language: {}",
+                    stmt.language
+                )));
+            }
+        }
+
+        // Insert stored function into system table
+        self.insert_stored_function(&StoredScriptFunction {
+            id: 0, // Will be set by auto-increment
+            name: stmt.name.clone(),
+            language: stmt.language.clone(),
+            code: stmt.code.clone(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        })?;
+
+        Ok(Box::new(EmptyResult::new()))
+    }
+
     /// Execute a DROP FUNCTION statement
     pub(crate) fn execute_drop_function(
         &self,
@@ -857,6 +913,50 @@ impl Executor {
             // Parse and execute CREATE TABLE for stored functions
             self.execute_stored_functions_sql(CREATE_STORED_FUNCTIONS_SQL)?;
         }
+
+        Ok(())
+    }
+
+    /// Check if a stored function exists in the system table
+    fn stored_function_exists(&self, name: &str) -> Result<bool> {
+        let tx = self.engine.begin_transaction()?;
+        let table = match tx.get_table(STORED_FUNCTIONS) {
+            Ok(table) => table,
+            Err(_) => return Ok(false), // Table doesn't exist, so function doesn't exist
+        };
+
+        // Query for function by name (name is at index 1)
+        let mut scanner = table.scan(&[], None)?;
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Text(func_name)) = row.get(1) {
+                if func_name.eq_ignore_ascii_case(name) {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Insert a stored function into the system table
+    fn insert_stored_function(&self, stored_function: &StoredScriptFunction) -> Result<()> {
+        let mut tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table(STORED_FUNCTIONS)?;
+
+        // Create row with values in schema order (id is auto-increment, set to NULL)
+        let values = vec![
+            Value::Null(DataType::Integer), // id (auto-increment)
+            Value::Text(Arc::from(stored_function.name.clone())), // name
+            Value::Text(Arc::from(stored_function.language.clone())), // language
+            Value::Text(Arc::from(stored_function.code.clone())), // code
+            Value::Timestamp(stored_function.created_at), // created_at
+            Value::Timestamp(stored_function.updated_at), // updated_at
+        ];
+
+        let row = Row::from_values(values);
+        table.insert(row)?;
+        tx.commit()?;
 
         Ok(())
     }
