@@ -76,3 +76,21 @@
 - Used boa_engine for syntax checking, similar to existing JavaScript backend
 - Added feature-gated validation to avoid compilation issues when JS not enabled
 
+---
+## Wed Jan 14 2026 - US-005: Implement Function Retrieval API
+
+### Implemented
+- Added get_stored_function_by_name function to query stored_functions table by name
+- Added get_stored_function_by_id function to query by ID
+- Both functions return Option<StoredScriptFunction> with all metadata and code
+- Functions scan the table and construct the struct from row data
+- Proper error handling for missing table or invalid data
+
+### Files Changed
+- src/executor/ddl.rs
+
+### Learnings
+- Used table.scan() to iterate through rows, similar to stored_function_exists
+- Mapped row values to StoredScriptFunction struct fields
+- Added proper defaults for missing or invalid data
+

@@ -983,6 +983,148 @@ impl Executor {
         Ok(false)
     }
 
+    /// Get a stored function by name
+    pub fn get_stored_function_by_name(&self, name: &str) -> Result<Option<StoredScriptFunction>> {
+        let tx = self.engine.begin_transaction()?;
+        let table = match tx.get_table(STORED_FUNCTIONS) {
+            Ok(table) => table,
+            Err(_) => return Ok(None), // Table doesn't exist
+        };
+
+        // Query for function by name (name is at index 1)
+        let mut scanner = table.scan(&[], None)?;
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Text(func_name)) = row.get(1) {
+                if func_name.eq_ignore_ascii_case(name) {
+                    // Found it, construct the StoredScriptFunction
+                    let id = row
+                        .get(0)
+                        .and_then(|v| match v {
+                            Value::Integer(i) => Some(*i as i64),
+                            _ => None,
+                        })
+                        .unwrap_or(0);
+
+                    let name = func_name.to_string();
+
+                    let language = row
+                        .get(2)
+                        .and_then(|v| match v {
+                            Value::Text(s) => Some(s.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+
+                    let code = row
+                        .get(3)
+                        .and_then(|v| match v {
+                            Value::Text(s) => Some(s.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+
+                    let created_at = row
+                        .get(4)
+                        .and_then(|v| match v {
+                            Value::Timestamp(ts) => Some(*ts),
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| chrono::Utc::now());
+
+                    let updated_at = row
+                        .get(5)
+                        .and_then(|v| match v {
+                            Value::Timestamp(ts) => Some(*ts),
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| chrono::Utc::now());
+
+                    return Ok(Some(StoredScriptFunction {
+                        id,
+                        name,
+                        language,
+                        code,
+                        created_at,
+                        updated_at,
+                    }));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Get a stored function by ID
+    pub fn get_stored_function_by_id(&self, id: i64) -> Result<Option<StoredScriptFunction>> {
+        let tx = self.engine.begin_transaction()?;
+        let table = match tx.get_table(STORED_FUNCTIONS) {
+            Ok(table) => table,
+            Err(_) => return Ok(None), // Table doesn't exist
+        };
+
+        // Query for function by id (id is at index 0)
+        let mut scanner = table.scan(&[], None)?;
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Integer(row_id)) = row.get(0) {
+                if *row_id == id {
+                    // Found it, construct the StoredScriptFunction
+                    let name = row
+                        .get(1)
+                        .and_then(|v| match v {
+                            Value::Text(s) => Some(s.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+
+                    let language = row
+                        .get(2)
+                        .and_then(|v| match v {
+                            Value::Text(s) => Some(s.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+
+                    let code = row
+                        .get(3)
+                        .and_then(|v| match v {
+                            Value::Text(s) => Some(s.to_string()),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+
+                    let created_at = row
+                        .get(4)
+                        .and_then(|v| match v {
+                            Value::Timestamp(ts) => Some(*ts),
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| chrono::Utc::now());
+
+                    let updated_at = row
+                        .get(5)
+                        .and_then(|v| match v {
+                            Value::Timestamp(ts) => Some(*ts),
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| chrono::Utc::now());
+
+                    return Ok(Some(StoredScriptFunction {
+                        id,
+                        name,
+                        language,
+                        code,
+                        created_at,
+                        updated_at,
+                    }));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
     /// Insert a stored function into the system table
     fn insert_stored_function(&self, stored_function: &StoredScriptFunction) -> Result<()> {
         let mut tx = self.engine.begin_transaction()?;
