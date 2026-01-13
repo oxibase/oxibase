@@ -128,3 +128,20 @@
 - Leveraged rustpython-vm for secure Python script execution
 - Added proper feature gating for optional Python support
 
+---
+## Wed Jan 14 2026 - US-008: Create JavaScript Execution Engine
+
+### Implemented
+- Added execute_stored_function_javascript method in ddl.rs using BoaBackend
+- Integrates with boa_engine for JavaScript execution with sandboxing
+- Takes StoredScriptFunction, args, and param_names for execution
+- Feature-gated to avoid compilation issues when JS not enabled
+
+### Files Changed
+- src/executor/ddl.rs
+
+### Learnings
+- Used existing BoaBackend which provides sandboxed execution
+- Leveraged boa_engine for secure JavaScript script execution
+- Added proper feature gating for optional JavaScript support
+

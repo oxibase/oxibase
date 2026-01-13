@@ -24,7 +24,9 @@
 //! - DROP VIEW
 
 use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
-use crate::functions::backends::{python::PythonBackend, rhai::RhaiBackend, ScriptingBackend};
+use crate::functions::backends::{
+    boa::BoaBackend, python::PythonBackend, rhai::RhaiBackend, ScriptingBackend,
+};
 use crate::functions::{FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
 use crate::storage::functions::{
@@ -1152,6 +1154,24 @@ impl Executor {
         #[cfg(not(feature = "python"))]
         {
             Err(Error::internal("Python support not enabled"))
+        }
+    }
+
+    /// Execute a stored JavaScript function with parameters
+    pub fn execute_stored_function_javascript(
+        &self,
+        stored_function: &StoredScriptFunction,
+        args: &[Value],
+        param_names: &[&str],
+    ) -> Result<Value> {
+        #[cfg(feature = "js")]
+        {
+            let backend = BoaBackend::new();
+            backend.execute(&stored_function.code, args, param_names)
+        }
+        #[cfg(not(feature = "js"))]
+        {
+            Err(Error::internal("JavaScript support not enabled"))
         }
     }
 
