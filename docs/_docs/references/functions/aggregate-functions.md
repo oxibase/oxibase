@@ -6,8 +6,16 @@ nav_order: 3
 ---
 
 # Aggregate Functions
+{: .no_toc}
 
 Oxibase supports standard SQL aggregate functions that operate on multiple rows to calculate a single result. These functions are typically used with GROUP BY clauses for summarizing data.
+
+#### Table of Contents
+{: .no_toc}
+
+1. TOC
+{:toc}
+
 
 ## Basic Aggregate Functions
 

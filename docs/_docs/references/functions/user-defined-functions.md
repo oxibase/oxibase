@@ -2,7 +2,7 @@
 layout: default
 title: "User-Defined Functions"
 parent: Functions
-nav_order: 4
+nav_order: 5
 ---
 
 # User-Defined Functions

@@ -19,284 +19,68 @@ nav_order: 1
 ---
 
 
-This document provides a comprehensive reference for the SQL functions supported by Oxibase, categorized by function type.
+This document provides an overview of the SQL functions supported by Oxibase. For detailed documentation on each function type, see the dedicated guides below.
 
-## Aggregate Functions
+## Function Types
 
-Aggregate functions perform a calculation on a set of values and return a single value.
+### Aggregate Functions
+Aggregate functions perform calculations on sets of values to return a single result, typically used with GROUP BY clauses for data summarization.
 
-### AVG
+**[View Aggregate Functions Guide →]({% link _docs/references/functions/aggregate-functions.md %})**
 
-Calculates the average of a numeric column.
+### Scalar Functions
+Scalar functions operate on individual values and return a single result. They include string manipulation, numeric operations, date/time processing, type conversion, and more.
 
+**[View Scalar Functions Guide →]({% link _docs/references/functions/scalar-functions.md %})**
+
+### Window Functions
+Window functions perform calculations across related rows without grouping them into a single output row, enabling advanced analytical queries.
+
+**[View Window Functions Guide →]({% link _docs/references/functions/window-functions.md %})**
+
+## Usage Examples
+
+### Basic Function Usage
 ```sql
-SELECT AVG(price) FROM products;
+-- Scalar function
+SELECT UPPER(name), LENGTH(description) FROM products;
+
+-- Aggregate function
+SELECT category, COUNT(*), AVG(price) FROM products GROUP BY category;
+
+-- Window function
+SELECT name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) as rank FROM employees;
 ```
-
-### COUNT
-
-Counts the number of rows or non-NULL values.
-
-```sql
--- Count all rows
-SELECT COUNT(*) FROM users;
-
--- Count non-NULL values in a column
-SELECT COUNT(email) FROM users;
-```
-
-### FIRST
-
-Returns the first value in a group.
-
-```sql
-SELECT category, FIRST(name) FROM products GROUP BY category;
-```
-
-### LAST
-
-Returns the last value in a group.
-
-```sql
-SELECT category, LAST(name) FROM products GROUP BY category;
-```
-
-### MAX
-
-Returns the maximum value from a column.
-
-```sql
-SELECT MAX(price) FROM products;
-```
-
-### MIN
-
-Returns the minimum value from a column.
-
-```sql
-SELECT MIN(price) FROM products;
-```
-
-### SUM
-
-Calculates the sum of values in a numeric column.
-
-```sql
-SELECT SUM(quantity * price) FROM order_items;
-```
-
-## Scalar Functions
-
-Scalar functions operate on a single value and return a single value.
-
-### String Functions
-
-#### CONCAT
-
-Concatenates two or more strings.
-
-```sql
-SELECT CONCAT(first_name, ' ', last_name) FROM users;
-```
-
-#### LENGTH
-
-Returns the length of a string.
-
-```sql
-SELECT name, LENGTH(name) FROM products;
-```
-
-#### LOWER
-
-Converts a string to lowercase.
-
-```sql
-SELECT LOWER(email) FROM users;
-```
-
-#### UPPER
-
-Converts a string to uppercase.
-
-```sql
-SELECT UPPER(country_code) FROM locations;
-```
-
-#### SUBSTRING
-
-Extracts a portion of a string.
-
-```sql
--- Syntax: SUBSTRING(string, start_position, length)
-SELECT SUBSTRING(description, 1, 100) FROM products;
-```
-
-#### COLLATE
-
-Compares strings using specific collation rules.
-
-```sql
-SELECT * FROM users ORDER BY name COLLATE NOCASE;
-```
-
-### Numeric Functions
-
-#### ABS
-
-Returns the absolute value of a number.
-
-```sql
-SELECT ABS(temperature) FROM weather_data;
-```
-
-#### CEILING
-
-Rounds a number up to the nearest integer.
-
-```sql
-SELECT CEILING(price) FROM products;
-```
-
-#### FLOOR
-
-Rounds a number down to the nearest integer.
-
-```sql
-SELECT FLOOR(price) FROM products;
-```
-
-#### ROUND
-
-Rounds a number to a specified number of decimal places.
-
-```sql
--- Round to nearest integer
-SELECT ROUND(price) FROM products;
-
--- Round to 2 decimal places
-SELECT ROUND(price, 2) FROM products;
-```
-
-### Date and Time Functions
-
-#### NOW
-
-Returns the current date and time.
-
-```sql
-SELECT NOW();
-```
-
-#### DATE_TRUNC
-
-Truncates a timestamp to a specified precision.
-
-```sql
--- Truncate to day (removes time component)
-SELECT DATE_TRUNC('day', timestamp) FROM events;
-
--- Truncate to month
-SELECT DATE_TRUNC('month', timestamp) FROM events;
-```
-
-#### TIME_TRUNC
-
-Truncates a time or timestamp to a specified precision.
-
-```sql
--- Truncate to hour
-SELECT TIME_TRUNC('hour', timestamp) FROM events;
-
--- Truncate to minute
-SELECT TIME_TRUNC('minute', timestamp) FROM events;
-```
-
-### Type Conversion Functions
-
-#### CAST
-
-Converts a value from one data type to another.
-
-```sql
--- Convert string to integer
-SELECT CAST(value AS INT) FROM data;
-
--- Convert string to timestamp
-SELECT CAST(date_string AS TIMESTAMP) FROM events;
-```
-
-### Conditional Functions
-
-#### COALESCE
-
-Returns the first non-NULL value from a list of expressions.
-
-```sql
-SELECT COALESCE(preferred_name, first_name, 'Unknown') FROM users;
-```
-
-## Window Functions
-
-Window functions perform calculations across a set of rows related to the current row.
-
-### ROW_NUMBER
-
-Assigns a unique sequential integer to each row within a partition.
-
-```sql
-SELECT name, department, salary,
-       ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) as rank
-FROM employees;
-```
-
-## Advanced Usage
 
 ### Function Chaining
-
-Functions can be nested to perform complex operations:
-
+Functions can be nested for complex operations:
 ```sql
 SELECT ROUND(AVG(price), 2) FROM products;
 ```
 
-### Functions in WHERE Clauses
-
-Functions can be used in WHERE clauses to filter data:
-
+### Functions in Queries
+Functions can be used in SELECT, WHERE, GROUP BY, HAVING, and ORDER BY clauses:
 ```sql
-SELECT * FROM products WHERE LOWER(name) LIKE '%organic%';
-```
-
-### Functions in GROUP BY and HAVING
-
-Functions can be used in GROUP BY and HAVING clauses:
-
-```sql
-SELECT DATE_TRUNC('month', order_date) as month, SUM(total) as monthly_sales
+SELECT DATE_TRUNC('month', order_date) as month, SUM(total) as sales
 FROM orders
+WHERE order_date >= DATE_SUB(NOW(), 1, 'year')
 GROUP BY DATE_TRUNC('month', order_date)
-HAVING SUM(total) > 10000;
+HAVING SUM(total) > 10000
+ORDER BY month;
 ```
 
-## Implementation Details
+## Additional Resources
 
-Oxibase's function implementation is modular and extensible:
+- **[User-Defined Functions](user-defined-functions.md)**: Creating custom functions with scripting backends
+- **[Stored Procedures](procedures.md)**: Multi-statement procedures (planned feature)
+- **[SQL Features](../sql-features/)**: Advanced SQL capabilities including ROLLUP/CUBE operations
 
-- **Function Registry** - Central registry of all available functions
-- **Type Checking** - Functions validate argument types at parse time
-- **Function Categories** - Organized into scalar, aggregate, and window functions
-- **Custom Implementations** - Each function has a specialized implementation for performance
+## Implementation Notes
 
-Functions are defined in:
-- `src/functions/aggregate/` - Aggregate function implementations
-- `src/functions/scalar/` - Scalar function implementations
-- `src/functions/window/` - Window function implementations
-- `src/functions/registry.rs` - Function registration system
+OxiBase's function system is designed for performance and extensibility:
+- **Modular Architecture**: Functions are organized by type for easy maintenance
+- **Type Safety**: Arguments are validated at parse time
+- **Multiple Backends**: Support for different scripting languages for UDFs
+- **Optimization**: Many functions can be pushed down to storage layer
 
-## Performance Considerations
-
-- Avoid using functions on indexed columns in WHERE clauses, as this may prevent index usage
-- Some functions can be pushed down to the storage layer for better performance
-- Window functions may require multiple passes over the data
-- Complex function chains may impact query performance
+For detailed implementation information, see the individual function guides.
