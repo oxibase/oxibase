@@ -24,6 +24,7 @@
 //! - DROP VIEW
 
 use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
+use crate::functions::backends::{rhai::RhaiBackend, ScriptingBackend};
 use crate::functions::{FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
 use crate::storage::functions::{
@@ -1123,6 +1124,17 @@ impl Executor {
         }
 
         Ok(None)
+    }
+
+    /// Execute a stored Rhai function with parameters
+    pub fn execute_stored_function_rhai(
+        &self,
+        stored_function: &StoredScriptFunction,
+        args: &[Value],
+        param_names: &[&str],
+    ) -> Result<Value> {
+        let backend = RhaiBackend::new();
+        backend.execute(&stored_function.code, args, param_names)
     }
 
     /// Insert a stored function into the system table

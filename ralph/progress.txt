@@ -94,3 +94,20 @@
 - Mapped row values to StoredScriptFunction struct fields
 - Added proper defaults for missing or invalid data
 
+---
+## Wed Jan 14 2026 - US-006: Create Rhai Execution Engine
+
+### Implemented
+- Added execute_stored_function_rhai method in ddl.rs that takes StoredScriptFunction, args, and param_names
+- Uses RhaiBackend to execute the stored Rhai code with parameters bound to scope variables
+- Provides error handling through Result<Value> return type
+- Integrates with existing Rhai runtime via ScriptingBackend trait
+
+### Files Changed
+- src/executor/ddl.rs
+
+### Learnings
+- Leveraged existing RhaiBackend and ScriptingBackend trait for execution
+- Parameters are passed as both named variables and arguments array for flexibility
+- Execution returns Rhai Dynamic converted to Value
+
