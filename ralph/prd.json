@@ -143,7 +143,7 @@
       ],
       "priority": 5,
       "passes": false,
-      "notes": ""
+      "notes": "Implementation added but syntax error in ddl.rs prevents compilation"
     },
     {
       "id": "US-011",

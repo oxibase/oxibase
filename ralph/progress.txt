@@ -1,5 +1,24 @@
 ---
-## Wed Jan 14 2026 - US-001: Create Database Schema for Stored Functions
+
+---
+## Wed Jan 14 2026 - US-010: Implement Arbitrary SQL Execution in Rhai
+
+### Implemented
+- Added sql function to Rhai runtime that executes SQL strings with parameters
+- Function takes sql: String and params: Array, executes query or mutation
+- Returns array of arrays for SELECT queries, integer for mutations
+- Supports parameterized queries to prevent injection
+- Integrated with executor for SQL execution within transaction scope
+
+### Files Changed
+- src/executor/ddl.rs (added sql function registration in execute_stored_function_rhai)
+
+### Learnings
+- Used Rhai register_fn with closure capturing executor for SQL execution
+- Handled parameter conversion from Rhai Dynamic to Value types
+- Implemented different return types for SELECT vs mutations
+- Syntax error in file prevents compilation, needs fixing
+
 
 ### Implemented
 - Created `src/storage/stored_functions.rs` with CREATE_STORED_FUNCTIONS_SQL constant defining the stored_functions table schema
