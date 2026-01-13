@@ -602,7 +602,7 @@ LANGUAGE BOA AS '
 ';
 ```
 
-See [User-Defined Functions]({% link _docs/functions/user-defined-functions.md %}) for detailed documentation.
+See [User-Defined Functions]({% link _docs/references/functions/user-defined-functions.md %}) for detailed documentation.
 
 ### CREATE INDEX
 
@@ -1066,3 +1066,18 @@ See [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %}) for 
 2. **NULL Handling**: Follows standard SQL NULL semantics; use IS NULL or IS NOT NULL for testing
 3. **Type Conversion**: Explicit CAST is recommended for clarity
 4. **Case Sensitivity**: SQL keywords are case-insensitive; identifiers are case-sensitive
+
+## Related Documentation
+
+- [ROLLUP and CUBE]({% link _docs/sql-features/rollup-cube.md %})
+- [JOIN Operations]({% link _docs/sql-features/join-operations.md %})
+- [Subqueries]({% link _docs/sql-features/subqueries.md %})
+- [Common Table Expressions]({% link _docs/sql-features/common-table-expressions.md %})
+- [Temporal Queries]({% link _docs/sql-features/temporal-queries.md %})
+- [ON DUPLICATE KEY UPDATE]({% link _docs/sql-features/on-duplicate-key-update.md %})
+- [User-Defined Functions]({% link _docs/references/functions/user-defined-functions.md %})
+- [Indexing]({% link _docs/architecture/indexing.md %})
+- [Savepoints]({% link _docs/sql-features/savepoints.md %})
+- [EXPLAIN]({% link _docs/sql-features/explain.md %})
+- [PRAGMA Commands]({% link _docs/sql-commands/pragma-commands.md %})
+- [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %})

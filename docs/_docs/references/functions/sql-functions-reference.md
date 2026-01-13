@@ -6,6 +6,18 @@ nav_order: 1
 ---
 
 # SQL Functions Reference
+{: .no_toc}
+
+---
+
+#### Table of Contents
+{: .no_toc}
+
+1. TOC
+{:toc}
+
+---
+
 
 This document provides a comprehensive reference for the SQL functions supported by Oxibase, categorized by function type.
 

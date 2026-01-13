@@ -6,11 +6,10 @@ nav_exclude: true
 
 <div style="text-align: center;"><img src="assets/img/logo.svg" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
 
-Oxibase is an autonomous relational database management operating system (DBMOS)
-written in Rust that embodies a _"Modern Mainframe"_ philosophy: bringing
-computation directly to data. The system provides ACID-compliant transactions
-with multi-version concurrency control (MVCC), supporting both in-memory and
-persistent operation modes.
+Oxibase is an autonomous database management operating system (DBMOS) that
+embodies a _"Modern Mainframe"_ philosophy: bringing computation directly to
+data. It aims to become a self-contained computational runtime, providing a
+complete solution for data management and computation.
 
 ### **Core Philosophy:** 
 
@@ -31,23 +30,33 @@ time-travel queries.
 
 ### **Future Vision:** 
 
-Evolution toward a distributed unikernel-based system with kernel-integrated
-performance, embedding a multiple computational paradigms with libraries to
-support a fast development, auto-scaling thanks to in-database machine learning.
-The project roadmap outlines a strategic progression, starting with the
-development of the core computation layer (Phase 0). Then the focus will shift
-to external accessibility (Phase 2) to facilitate seamless integration with
-broader ecosystems. The system is then envisioned to evolve into a horizontally
-scalable architecture (Phase 3), ultimately becoming a fully autonomous,
-self-managing infrastructure (Phase 4).
+The goal is evolution toward a distributed computational runtime in a
+unikernel-based system {% cite unikernels %} that embeds a multiple
+computational paradigms for fast development and auto-scaling. It aims to
+revisit some of the ideas behind IBM System i {% cite IBM_i %} with a
+fresh and open-source approach. The goal is to provide storage (everything is a
+relational object), business-logic (SQL, JS, Python and Rhai), API (REST, gRPC,
+WebSocket), orchestration, self-monitoring, self-tracing, version-control,
+authorization, authentication, and encryption through a unified interface in the
+form of Relational Database Management System (RDBMS). 
 
+The project roadmap outlines a strategic progression, starting with the
+development of the core experience (Phase 0), as an small embedded system with
+the goal of providing a self-contained computational experience, providing a
+comprehensive environment for both development and deployment. The system should
+provide support to store data, store and execute procedures, debug them, monitor
+and trace them. This should serve as a demo of the system's capabilities, to
+understand if the DevEx is viable.
+
+For detailed information about each phase, see the [full roadmap]({% link
+_docs/roadmap.md %}).
 
 ## Project Goals
 
-- **Self-sufficiency:** Oxibase aspires to be a fully self-contained system,
-  minimizing external dependencies for both development and deployment. The
-  database should provide everything needed—compute, storage, logic, and
-  orchestration—within a cohesive environment.
+- **Self-sufficiency:** Oxibase aspires to be a fully self-contained
+  computational runtime, providing a comprehensive environment for both
+  development and deployment. The system should provide everything needed within
+  a cohesive environment. 
 - **Strong Opinions:** The architecture and feature set are intentionally
   opinionated, favoring bold, clear principles over generic extensibility.
   Decisions are made for users to reduce ambiguity and increase focus.
@@ -75,9 +84,6 @@ self-managing infrastructure (Phase 4).
   automation or a “bottleneck” for throughput—will be preferred.
 - **Generic Extensibility:** Oxibase is explicitly not “one size fits all.” It
   targets specific philosophies and refuses to chase universal flexibility.
-
-For detailed information about each phase, see the [full roadmap]({% link
-_docs/roadmap.md %}).
 
 ## New to Oxibase?
 

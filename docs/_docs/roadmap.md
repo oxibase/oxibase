@@ -1,17 +1,15 @@
 ---
 layout: default
 title: "Roadmap"
-parent: Getting Started
 ---
 
 # Oxibase Roadmap
 
-Oxibase is evolving into a distributed, autonomous database system that bridges embedded logic with global resilience. This roadmap outlines the journey from a single-node, scriptable database to a self-managing, AI-enhanced platform.
+The roadmap outlines the journey from a single-node into scalable distributed
+autonomous system. The goal is not to become the fastest, the most scalable
+solution but to learn and explore how the computation and data processing
+paradigms can be rethought.
 
-
-## Phase 1: Foundation
-
-These parallel efforts establish Oxibase's core capabilities and prepare for scaling. They focus on single-node enhancements that enable seamless development, connectivity, and deployment without relying on external systems.
 
 _Figure 1: Current Priorities Dependency Flow_
 
@@ -19,18 +17,18 @@ _Figure 1: Current Priorities Dependency Flow_
 classDiagram
     %% --- RELATIONSHIPS ---
     %% Use the short class names here, not "Layer.Class"
-    Computational_Layer ..> Web_Interface
-    Computational_Layer ..> External_Gateway
-    Computational_Layer ..> Performance
+    Validation ..> External_Gateway
+    Validation ..> Workstation
+    Validation ..> Performance
 
-    Web_Interface ..> Horizontal_Architecture
+    Workstation ..> Horizontal_Architecture
     External_Gateway ..> Horizontal_Architecture
     Performance ..> Horizontal_Architecture
     Unikernel_Compiler ..> Horizontal_Architecture
 
     %% --- LAYERS & CLASS DEFINITIONS ---
 
-    class Computational_Layer {
+    class Validation {
         - Embedded Scripting Languages
         - Stored functions
         - Triggers
@@ -39,15 +37,20 @@ classDiagram
         - FaaS-like DevEx
         - Out-of-core processing
     }
-    class Web_Interface {
+    class External_Gateway {
         - DML routes
         - REST / GraphQL endpoints
         - HTML Render
-    }
-    class External_Gateway {
         - Postgres Wire Protocol Server
         - Role based authorization control
         - Authentication
+    }
+    class Workstation {
+        - Manage any object
+        - Develop any object
+        - Debug Queries step-by-step
+        - Debug stored procedures
+        
     }
 
     class Performance {
@@ -55,7 +58,7 @@ classDiagram
         - Out-of-core processing
         - Self-monitoring
         - Undo-log based MVCC
-        - Copy-on-write checkopoint
+        - Copy-on-write checkpoint
         - Row level replication
         - Storage backends
     }
@@ -63,7 +66,6 @@ classDiagram
     class Horizontal_Architecture {
         - Deterministic Simulator
         - Failure simulation
-        - Logic and storage separation
         - Dedicated Clustering
         - Sharding
         - Geolocation
@@ -91,7 +93,122 @@ classDiagram
 
 ```
 
-## Current Object Support
+### Phase 0: Validation
+
+No idea survives alone. No open-source project can thrive without community
+support. We need to validate our vision and gather feedback from the community.
+This phase will focus on building a strong developer experience and validating
+through community engagement, documentation, and user testing.
+
+Starting with the initial release of the core experience as an small embedded
+system providing a self-contained computational experience. The system needs to
+provide support to store relational data in an MVCC (Multi-Version Concurrency
+Control) system, store and execute procedures, debug them, monitor and trace
+them, invoke them and finally provide a dev-friendly interface for interacting
+with the system. This should serve as a demo of the system's capabilities.
+
+#### Goal
+Validate the development experience and build a community around the project.
+
+### Phase 1: Foundation
+
+Parallel efforts to establish Oxibase's core capabilities and prepare for
+scaling. They focus on single-node enhancements that enable seamless
+development, connectivity, and deployment without relying on external systems.
+
+- **Optimize the Wire Protocols**: Implement [FlightSQL] for high-performance
+  client connections and [PostgresSQL wire protocol] for seamless integration.
+- **Query engine optimization**: Add [DataFusion] for query parsing, planning,
+  and optimization of `executor/`. Adopting [Apache Arrow's][Arrow] memory management and
+  data structures to optimize data loading and spill-to-disk operations.
+- **MVCC storage optimization**: Add [Vortex] for compressed columnar
+  storage that supports random access for efficient data retrieval for the
+  `mvcc` layer.
+- **Catalog optimization**: Use [Iceberg] for efficient metadata management and
+  leverage the DataFusion interface.
+- **Implement Hermit Unikernel**: Add unikernel compilation support for
+  bare-metal performance.
+
+#### Goal
+Leverage the open-source data community to build a reliable system that can
+handle large-scale data processing and storage.
+
+
+### Phase 2a: Scale
+
+Explore distributing the system across multiple nodes, with a focus on
+multi-node parallelism, and distributed storage. Explore having dedicated
+nodes for metadata management, compute, and data storage.
+
+- **Support for distributed execution**: Implement [Ballista] for distributed
+  execution and scaling across nodes.
+- **Metadata layer**: Implement a consensus protocol to manage metadata between
+  nodes.
+- **Use a deterministic simulator**: Simulate failure points in the system to
+  prepare for horizontal scaling by testing most scenarios without real-world
+  risks.
+- **Distributed Storage**: Distribute storage for fault tolerance.
+    - **Geo-replication**: Implement geo-replication for data redundancy and
+      availability.
+    - **Data Partitioning**: Implement data partitioning for efficient data
+      distribution.
+    - **Data locality**: Implement data locality for efficient and/or compliant
+      data access and computation.
+    - **Sharding**: Implement sharding for horizontal scaling.
+
+#### Goal
+Scale horizontally.
+
+
+### Phase 2b: Workstation
+
+Create an Integrated Development Environment (IDE) for local and remote
+management of the system. It should serve as an object manager and debugger at
+the same time, providing a seamless experience for developers. Draw inspiration
+from IDEs like Zed for code editing; Chrome DevTools for the debugging
+experience; and DataGrip for the Database Management.
+
+#### Goal
+Create a workstation that serves developers of all levels to create, test, and
+deploy applications.
+
+### Phase 3: Auto Scaling
+
+Explore how the system can autonomously scale resources based on demand. Explore
+distributing data and computation based on the workload as well as the
+availability of adding resources on demand for elastic scaling.
+
+- **Load Balancing**: Use the internal resource monitoring to implement load
+  balancing for efficient resource utilization.
+- **Third-party resource allocation**: Integrate with cloud providers and
+  third-party resource allocation services for dynamic resource management.
+- **Data lifecycle management**: Implement a comprehensive data lifecycle
+  management system to ensure data is properly managed throughout its entire
+  lifecycle. Use different policies for data retention, backup, and deletion.
+
+#### Goal
+Global autonomous computing environment.
+
+## Current Goals 
+
+### Working areas
+
+- [x] **Relational Database**: Add support for relational databases in the executor layer.
+- [x] **User defined Functions**: Use SQL scripting and scripting language to define functions.
+- [ ] **Server mode**: Implement a server binary to run the system standalone.
+- [ ] **Stored Procedures**: Add support for stored procedures in the executor layer.
+    - [ ] **Transaction management**: Add support for transaction management in the executor layer.
+    - [ ] **Service invocation**: Add support for service invocation with a webserver.
+    - [ ] **Scheduling**: Add support for scheduling procedures.
+    - [ ] **Triggers**: Add support for triggers in the executor layer, on insert, update or delete.
+- [ ] **Debugging**: Add support for debugging in the executor layer.
+    - [ ] **Debug Adapter Protocol**: Add support for the Debug Adapter Protocol for queries and procedures.
+    - [ ] **Tracing**: Add activation of tracing and storage in the storage layer.
+    - [ ] **Logging**: Add support for logging.
+- [ ] **Authorization**: Add Casbin-rs for role-based (objects) and attribute-based (row-level) authorization.
+    - [ ] **Security**: Add support for security in the executor layer.
+
+### Supported objects
 
 | Object Type | Status | Notes |
 |-------------|--------|-------|
@@ -110,156 +227,20 @@ classDiagram
 | Roles/Users | Missing | No user/role management |
 | Publications/Subscriptions | Missing | No logical replication support |
 
-### Embedded Scripting Languages
-
-Embed scripting languages (e.g., Rhai, Python, TypeScript) into Oxibase for database-stored functions and triggers. This enables a FaaS-like experience where developers focus on data and business logic. Functions run within transactions, with debugger support for seamless DDL schema creation and function development.
-
-**Benefits:** Faster prototyping, reduced app layers, in-transaction logic execution.
-**Dependencies:** None (foundational).
-**Blocks:** Web Server Exposure, Postgres Wire Protocol, Deterministic Simulator.
-**Example:**
-
-```sql
-CREATE FUNCTION calculate_total(price INT, tax FLOAT) RETURNS FLOAT AS 'return price * (1 + tax);';
-```
+## Other ideas
 
 ### Declarative Schema Migration
 
-Modify the schema by applying DDL from files describing it (oxigration) or from DML manipulation of special schemas.
+Modify the schema by applying DDL in static create files stored in the database version management system.
+(oxigration) or from DML manipulation of special schemas.
 
-- **Benefits:** Safe, automated migrations without manual scripts; version-controlled schema evolution.
-- **Dependencies:** Embedded Scripting Languages (for custom migration logic if needed).
-- **The Philosophy:** Rejection of imperative "up/down" scripts.
-- **The Mechanism:** Users define the _desired_ end-state of a table in a generic format (YAML/SQL). Oxibase calculates the diff between the live schema and the desired schema, generates the DAG of changes, and executes them safely.
-- **The Tech:** A built-in "Schema Diff Engine" that locks the catalog, detects conflicts, and performs online DDL changes (e.g. blue-green deployments with no downtime column additions).
 
-### TUI Manager
-
-Connect to the database, list all the objects, perform operations, write functions and debug them.
-
-- **Benefits:** Intuitive, keyboard-driven interface for developers; no need for external tools.
-- **Dependencies:** Postgres Wire Protocol Server (for connection).
-- **Blocks:** None (enhances usability across phases).
-- **Example:** Launch TUI, navigate tables, edit functions with live debugging output.
-
-### Web Server Exposure
-
-Expose the database to the open internet via a web-server. Routes are configured as DML, allowing HTML rendering or execution of stored functions. Supports REST and GraphQL endpoints following RBAC, similar to PostgREST and Hasura.
-
-- **Benefits:** Direct API exposure without middleware, secure access control.
-- **Dependencies:** Embedded Scripting Languages (for function execution).
-- **Blocks:** Horizontal Scaling.
-- **Example:** Route config as DML: `GET /users/:id` maps to `SELECT * FROM users WHERE id = $1;` with RBAC checks.
-
-### Postgres Wire Protocol Server
-
-Implement a server following the Postgres wire protocol to enable third-party applications to connect remotely. This allows for remote control of instances and supports vertical scaling initially, with preparation for horizontal scaling.
-
-- **Benefits:** Compatibility with existing tools, remote management.
-- **Dependencies:** Embedded Scripting Languages (for stored procedures).
-- **Blocks:** Horizontal Scaling.
-- **Example:** Connect via `psql` or any Postgres client for queries and control.
-
-### Deterministic Simulator
-
-Build a deterministic simulator to simulate failure points in the system. This prepares for horizontal scaling by testing most scenarios without real-world risks.
-
-- **Benefits:** Safe testing of scaling edge cases, faster iteration.
-- **Dependencies:** Embedded Scripting Languages (to simulate logic).
-- **Blocks:** Horizontal Scaling.
-- **Example:** Simulate node failures and verify recovery without hardware setup.
-
-### Unikernel Compilation
-
-Compile the entire system into a unikernel to avoid conflicts with OS paging systems and eliminate the need for a general-purpose OS. Results in easily bootable machine images with deep kernel integration.
-
-- **Benefits:** Minimal footprint, faster boot, enhanced security, and privileged hardware access including direct NVMe queue manipulation, lock-free page-table walks, zero-copy data paths, and active virtual memory management for optimal performance in high-performance workloads.
-- **Dependencies:** All prior efforts (to compile a complete system).
-- **Blocks:** Horizontal Scaling.
-- **Example:** Boot Oxibase directly on hardware without an OS layer, leveraging kernel primitives for 40x faster page checks and query-plan-aware scheduling.
-- **Research Foundation:** Builds on CumulusDB's unikernel approach for cloud-native DBMS. See the [Architecture docs]({% link _docs/architecture/index.md %}) for detailed kernel integration benefits and references.
-
-## Phase 2: Single Node Efficiency
-
-_Goal: Unify operational needs into Oxibase itself. This should result in a streamlined architecture where all logic, data management, and deployment workflows are centralized and deeply integrated, reducing operational complexity, sources of drift, and points of manual intervention._
-
-### Self-monitoring
-
-Leverage Oxibase’s own storage engine to persist all operational logs, traces, audit trails, and performance metrics within the database itself. This ensures full visibility into database activity—every query, error, slow operation, execution trace, and internal metric is available for inspection, analysis, and automated alerting through SQL queries. In addition to traditional logging, distributed tracing will capture detailed, end-to-end flows across internal components and user-defined functions, enabling developers to correlate events, diagnose latency sources, and map cause-and-effect throughout the system. Such integrated monitoring and tracing removes the dependency on external logging and APM stacks, facilitates forensic analysis, and enables fine-grained usage analytics necessary for self-tuning and auditing. All monitoring and trace data can be queried, aggregated, and retained according to customizable retention policies, supporting both real-time dashboards and historical analysis.
-
-### Multiple Storage Backends
-
-Provide support for pluggable storage backends so that different classes of data can be stored using the most appropriate technology (e.g., SSDs for fast access, cloud object stores for durability, in-memory for temporary data, etc.). Oxibase will allow administrators and application logic to select the storage backend on a per-table or per-dataset basis. This enables cost-effective scaling and performance optimization, matching hot transactional data with low-latency storage and archiving infrequently accessed data on lower-cost mediums, all managed transparently by the database.
-
-### Data lifecycle
-
-Implement fine-grained data lifecycle management policies directly within the database. Users will be able to define rules to automatically migrate or transform data between storage tiers based on its age, usage patterns, or business requirements (e.g., move data older than 30 days from “hot” SSD-backed tables to “cold” object storage, or automatically delete expired records). Lifecycle actions will be orchestrated as background jobs, minimizing disruption and freeing users from manual maintenance. The system’s awareness of data age, access frequency, and storage tier provides seamless compliance with retention policies and optimizes both performance and storage costs.
-
-### Separation of Compute & Storage
-
-- **The Concept:** A new node type that _has no storage engine_.
-- **The Flow:** Client sends a heavy calculation request to the Cluster. The Leader routes the request to a "Worker Node." The Worker Node pulls data from the "Data Node" (via network), runs the Wasm logic, and returns the result.
-- **Result:** Elastic scaling of logic independent of storage size.
-
-## Phase 3: Distributed system (Scale)
-
-_Goal: Achieve infinite horizontal scale and global resilience._
-
-### Multi-Master (Consensus)
-
-- **The Build:** Integrate `openraft`.
-- **The Mechanism:** Transition from simple WAL shipping to a Consensus Log. Every write is proposed to a Raft group.
-- **The Guarantee:** Linearizable consistency. No more "split-brain" scenarios.
-
-### Data Rebalancing (Sharding)
-
-- **The Logic:** Implement Consistent Hashing (e.g., Ring Topology).
-- **The Automation:** When a new Data Node joins, the cluster automatically calculates which shard ranges it owns. Existing nodes background-stream the relevant SSTables to the new node.
-- **Zero Downtime:** The switch-over happens atomically once data is synchronized.
-
-### Geo-Sharding (Locality)
-
-- **The Feature:** `PARTITION BY REGION`.
-- **The Logic:** Rows tagged with `region='eu-west'` are physically stored only on nodes tagged `eu-west`.
-- **The Benefit:** Regulatory compliance (GDPR) and speed of light latency optimizations for local users.
-
-### Gossip Protocol
-
-- **The Build:** Implement SWIM (Scalable Weakly-consistent Infection-style Process Group Membership).
-- **The Usage:** Nodes "gossip" heartbeats. If a node stops gossiping, the cluster marks it dead and triggers rebalancing automatically. No central "Zookeeper" required.
-
-## Phase 4: The Autonomous Cloud (The Singularity)
-
-_Goal: The database manages its own physical existence and evolves into an AI platform._
-
-### Autonomous Networking
-
-- **The Build:** Private WireGuard network where nodes startup autonomously.
-- **The Mechanism:** The system evaluates available resources and distributes computing/storage across nodes dynamically.
-- **The Benefit:** Self-managing clusters, optimal resource use.
-- **Example:** Nodes join via WireGuard, auto-balance load based on CPU/storage metrics.
-
-### Auto-Infra Management (The DB is the Terraform)
-
-- **The Concept:** Oxibase includes API clients for cloud providers.
-- **The Trigger:** Monitor internal metrics (e.g., "CPU > 80%").
-- **The Action:** The Leader executes `POST /run-instances` to AWS EC2 directly to spawn a new Oxibase Unikernel node. It bootstraps itself and joins the cluster via Gossip.
-- **Result:** Self-replicating infrastructure.
-
-### In-Database ML (Inference)
-
-- **The Interface:** SQL extensions. `SELECT PREDICT(model_id, input_data) FROM stream`.
-- **The Runtime:** Integrate `wasi-nn` (WebAssembly Neural Network interface). This allows loading ONNX or TensorFlow Lite models directly into the kernel memory.
-- **Use Case:** Real-time fraud detection within the transaction scope.
-
-### GPU Inference
-
-- **The Hard Part:** Unikernels usually lack proprietary GPU drivers (Nvidia).
-- **The Solution:** PCI passthrough. We map the GPU memory space directly to the Oxibase address space.
-- **The Benefit:** Zero-latency memory transfer between the Database Buffer Pool and the GPU VRAM. No copying data over PCIe to user-space and back.
-
-### GPU Training
-
-- **The Endgame:** Federated learning.
-- **The Mechanism:** The cluster orchestrates a training job where each Data Node trains a local model on its shard of data (using its local GPU) and sends only the weight updates (gradients) to the Leader to aggregate.
-- **Result:** Training massive models on petabytes of data without ever moving the data across the network.
+[DataFusion]: https://datafusion.apache.org/
+[Arrow]: https://arrow.apache.org/
+[Vortex]: https://docs.vortex.dev/
+[FlightSQL]: https://arrow.apache.org/docs/format/FlightSql.html
+[PostgresSQL wire protocol]: https://github.com/datafusion-contrib/datafusion-postgres
+[Ballista]: https://datafusion.apache.org/ballista/
+[Raft]: https://github.com/tikv/raft-rs
+[Iceberg]: https://github.com/apache/iceberg-rust/
+[FDW]: https://github.com/supabase/wrappers

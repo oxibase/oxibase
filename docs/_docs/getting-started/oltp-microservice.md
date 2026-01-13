@@ -368,3 +368,9 @@ curl -X DELETE http://127.0.0.1:3000/tasks/1
 You've built an OLTP microservice with Oxibase as the embedded database,
 handling CRUD operations with transactions. The service uses persistent storage
 and demonstrates RESTful API design with proper error handling.
+
+
+## Next Steps
+
+- Use Oxibase as a [library]({% link _docs/tutorials/installation.md %}) in a larger application
+- Use Oxibase as a [standalone database server](#)

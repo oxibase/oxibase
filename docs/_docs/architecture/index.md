@@ -109,26 +109,6 @@ The Storage layer implements multi-version concurrency control (MVCC), indexing,
 - `WALManager` - Write-ahead log for durability and crash recovery (storage/persistence/wal.rs)
 - `PersistenceManager` - Snapshot creation and restoration (storage/persistence/manager.rs)
 
-## Kernel Integration Benefits
-
-OxiBase builds on research from CumulusDB[^4], a unikernel-based DBMS that integrates kernel primitives for optimal performance, inspired by related work on OS-DBMS co-design[^1], virtual memory snapshots[^2], buffer management[^3], and OS-oriented systems[^5][^9]. Kernel integration provides privileged access to hardware and OS resources, enabling features that traditional layered architectures cannot achieve.
-
-### Privileged Hardware Access
-- **Direct NVMe Queue Access**: Bypass OS storage layers for kernel-bypass I/O, reducing latency in high-performance SSD scenarios.
-- **Lock-Free Page-Table Walks**: Concurrent, lock-free access to MMU structures for fast virtual-page presence checks (demonstrated 40x speedup in CumulusDB benchmarks[^4]).
-- **IRQ and CPU Management**: Manipulate interrupt vectors, block IRQs, and control CPU shutdown for query-plan-aware scheduling.
-
-### Zero-Copy Data Paths
-- Stream data from query execution to network results without copying, leveraging hypervisor-shared memory regions[^4].
-- Elastic resource allocation through hypercalls for dynamic VM scaling[^4].
-
-### Active Virtual Memory Management
-- Virtual memory as an active abstraction, with inconsistent TLB states handled efficiently for concurrent OLTP/OLAP workloads[^4].
-- Advanced snapshots using ad-hoc parallelization and reader-side TLB invalidation, avoiding TLB shootdowns[^8], with evaluation of virtual memory primitives[^6] and support for heterogeneous hardware[^7].
-
-These benefits align with OxiBase's unikernel compilation goals, enabling full hardware exploitation without OS overhead. See the [Future Vision](../reference/libraries/20-12-2025/raw/oxibase_oxibase/Future_Vision_Modern_Mainframe.md) for roadmap details.
-
-
 ## Module Organization
 
 The codebase is organized into distinct modules with minimal cross-dependencies:
@@ -292,23 +272,3 @@ graph TB
 - `Row` - Vector of `Value` objects representing a table row (core/row.rs)
 - `Schema` - Table metadata including columns and indexes (core/schema.rs)
 - `DataType` - Enum of supported SQL types (core/types.rs)
-
-
----
-[^1]: Jana Giceva, Tudor-Ioan Salomie, Adrian Schüpbach, et al. "COD: Database / Operating System Co-Design". In: CIDR. 2013.
-
-[^2]: Alfons Kemper and Thomas Neumann. "HyPer: A hybrid OLTP&OLAP main memory database system based on virtual memory snapshots". In: ICDE. 2011. DOI: 10.1109/ICDE.2011.5767867.
-
-[^3]: Viktor Leis, Adnan Alhomssi, Tobias Ziegler, et al. "Virtual-Memory Assisted Buffer Management". In: Proceedings of the ACM SIGMOD/PODS International Conference on Management of Data. Seattle, WA, USA: ACM, June 2023. DOI: 10.1145/3588687.
-
-[^4]: Viktor Leis and Christian Dietrich. "Cloud-Native Database Systems and Unikernels: Reimagining OS Abstractions for Modern Hardware [Vision]". In: Proceedings of the 50th International Conference on Very Large Data Bases. Vision Paper, Accepted with availability check. Guangzhou, China: VLDB Endowment, Aug. 2024.
-
-[^5]: Qian Li, Peter Kraft, Kostis Kaffes, et al. "A Progress Report on DBOS: A Database-oriented Operating System". In: CIDR. 2022.
-
-[^6]: Yannick Loeck and Christian Dietrich. "Evaluation and Reﬁnement of an Explicit Virtual-Memory Primitive". In: IEEE Access 11 (Dec. 2023), pp. 136855–136868. DOI: 10.1109/ACCESS.2023.3338149.
-
-[^7]: Jan Mühlig, Michael Müller, Olaf Spinczyk, et al. "mxkernel: A Novel System Software Stack for Data Processing on Modern Hardware". In: Datenbank-Spektrum 20.3 (2020). DOI: 10.1007/s13222-020-00357-5.
-
-[^8]: Ankur Sharma, Felix Martin Schuhknecht, and Jens Dittrich. "Accelerating Analytical Processing in MVCC using Fine-Granular High-Frequency Virtual Snapshotting". In: SIGMOD. 2018. DOI: 10.1145/3183713.3196904.
-
-[^9]: Athinagoras Skiadopoulos, Qian Li, Peter Kraft, et al. "DBOS: A DBMS-oriented Operating System". In: PVLDB 15.1 (2021). DOI: 10.14778/3485450.3485454.

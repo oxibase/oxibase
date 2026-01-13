@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Date and Time Handling
-parent: Data Types
+parent: How to Guides
 nav_order: 2
 ---
 
@@ -276,3 +276,8 @@ Based on the implementation, Oxibase has the following limitations for date and 
 4. **Use TIME_TRUNC for Time Series**: For time series data, use TIME_TRUNC to bucket data into regular intervals for analysis.
 
 5. **Store in UTC**: Always store timestamps in UTC for consistency, especially when working with data across different time zones.
+
+
+## Next Steps
+
+- Check the reference documentation for more details on date and time functions.

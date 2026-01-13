@@ -272,7 +272,7 @@ Now that you've learned the basics, you might want to explore:
 
 - [Connection Strings]({% link _docs/references/connection-strings.md %}) - More connection options
 - [SQL Commands]({% link _docs/sql-commands/sql-commands.md %}) - Comprehensive SQL reference
-- [Data Types]({% link _docs/data-types/data-types.md %}) - Detailed information on data types
+- [Data Types]({% link _docs/references/data-types.md %}) - Detailed information on data types
 - [Indexing]({% link _docs/architecture/indexing.md %}) - How to optimize queries with indexes
 - [Transaction Isolation]({% link _docs/architecture/transaction-isolation.md %}) - How transactions work
 

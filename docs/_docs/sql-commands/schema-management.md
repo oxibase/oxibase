@@ -229,7 +229,7 @@ LANGUAGE BOA AS 'return arguments[0] + arguments[1];';
 SELECT add_numbers(5, 3) as sum;  -- Returns 8
 ```
 
-See the [User-Defined Functions]({% link _docs/functions/user-defined-functions.md %}) documentation for detailed information about creating and using custom functions.
+See the [User-Defined Functions] documentation for detailed information about creating and using custom functions.
 
 ## Schema Information
 
@@ -270,3 +270,5 @@ Under the hood, Oxibase's schema management is implemented with the following co
 - Certain ALTER TABLE operations may require significant processing time on large tables
 - Currently, online schema changes for large tables may temporarily block writes
 - There are limits on the number of columns and indexes per table for performance reasons
+
+[User-Defined Functions]: {% link _docs/references/functions/user-defined-functions.md %}

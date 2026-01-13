@@ -29,6 +29,12 @@
                     {{ content }}
                   {% endif %}
 
+                  {% capture cited_count %}{% bibliography_count --cited %}{% endcapture %}
+                  {% if cited_count != "0" %}
+                    <hr>
+                    {% bibliography --cited_in_order %}
+                  {% endif %}
+
                   {% if page.has_toc != false %}
                     {% include components/children_nav.html %}
                   {% endif %}

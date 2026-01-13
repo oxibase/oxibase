@@ -1,13 +1,24 @@
 ---
 layout: default
 title: Data Types in Oxibase
-parent: Data Types
-nav_order: 1
+parent: References
+nav_order: 3
 ---
 
 # Data Types in Oxibase
+{: .no_toc}
 
 This document provides information about the data types supported in Oxibase, based on evidence from test files and implementations.
+
+---
+
+#### Table of Contents
+{: .no-toc}
+
+1. TOC
+{:toc}
+
+---
 
 ## Supported Data Types
 
@@ -124,19 +135,58 @@ Features:
 
 ### JSON
 
-JSON-formatted data:
+Oxibase implements a dedicated JSON data type:
 
 ```sql
--- Column definition
-CREATE TABLE example (
-    id INTEGER PRIMARY KEY,
-    data JSON
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  attributes JSON
 );
+```
 
--- Example values
-INSERT INTO example VALUES (1, '{"name": "John", "age": 30}');
-INSERT INTO example VALUES (2, '[1, 2, 3, 4, 5]');
-INSERT INTO example VALUES (3, '{"nested": {"a": 1, "b": 2}, "array": [1, 2, 3]}');
+The JSON data type in Oxibase supports:
+
+- **Objects** - Collection of key-value pairs: `{"name": "value", "name2": "value2"}`
+- **Arrays** - Ordered collection of values: `[1, 2, 3, "text", true]`
+- **Nested structures** - Complex combinations of objects and arrays
+- **Primitive values** - Numbers, strings, booleans, and null
+- **NULL constraints** - `NOT NULL` constraints can be applied to JSON columns
+
+#### JSON Validation
+
+Oxibase validates JSON syntax during insertion:
+
+```sql
+-- Valid JSON will be accepted
+INSERT INTO products (id, name, attributes) VALUES (4, 'Valid', '{"brand":"Example"}');
+
+-- Invalid JSON will be rejected
+INSERT INTO products (id, name, attributes) VALUES (5, 'Invalid', '{brand:"Example"}');
+-- Error: Invalid JSON format
+```
+
+Oxibase validates these examples of properly formatted JSON:
+
+```
+{"name":"John","age":30}
+[1,2,3,4]
+{"user":{"name":"John","age":30}}
+[{"name":"John"},{"name":"Jane"}]
+[]
+{}
+{"":""}
+```
+
+And these examples of invalid JSON:
+
+```
+{name:"John"}        -- Missing quotes around property name
+{"name":"John"       -- Missing closing brace
+{"name":"John",}     -- Trailing comma
+{"name":John}        -- Missing quotes around string value
+{name}               -- Invalid format
+[1,2,3,}             -- Mismatched brackets
 ```
 
 Features:
@@ -144,100 +194,8 @@ Features:
 - Nested structures
 - Validation of JSON syntax on insert
 - Basic equality comparison
-- More details in the dedicated [JSON Support]({% link _docs/data-types/json-support.md %}) documentation
+- JSON functions available (see [Scalar Functions]({% link _docs/references/functions/scalar-functions.md %}))
 
-## Column Constraints
-
-Oxibase supports several column constraints:
-
-### PRIMARY KEY
-
-Uniquely identifies each row in a table:
-
-```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    name TEXT
-);
-
--- With AUTO_INCREMENT
-CREATE TABLE orders (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    product TEXT
-);
-```
-
-### NOT NULL
-
-Ensures a column cannot contain NULL values:
-
-```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL
-);
-```
-
-### UNIQUE
-
-Ensures all values in a column are distinct:
-
-```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    email TEXT UNIQUE,
-    username TEXT UNIQUE
-);
-
--- Duplicate values will be rejected
-INSERT INTO users VALUES (1, 'alice@test.com', 'alice');
-INSERT INTO users VALUES (2, 'alice@test.com', 'bob');  -- Error: unique constraint failed
-```
-
-### DEFAULT
-
-Specifies a default value when none is provided:
-
-```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    name TEXT DEFAULT 'Unknown',
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Insert without specifying defaulted columns
-INSERT INTO users (id) VALUES (1);
--- Result: id=1, name='Unknown', active=true, created_at=<current time>
-```
-
-Supported default values:
-- Literal values: `'text'`, `123`, `3.14`, `true`, `false`
-- `NULL`
-- `CURRENT_TIMESTAMP` or `NOW()` for timestamps
-
-### CHECK
-
-Validates that values satisfy a condition (column-level constraint):
-
-```sql
-CREATE TABLE employees (
-    id INTEGER PRIMARY KEY,
-    age INTEGER CHECK(age >= 18 AND age <= 120),
-    salary FLOAT CHECK(salary > 0),
-    status TEXT CHECK(status IN ('active', 'inactive', 'pending'))
-);
-
--- Valid insert
-INSERT INTO employees VALUES (1, 25, 50000, 'active');
-
--- Invalid insert - fails CHECK constraint
-INSERT INTO employees VALUES (2, -5, 50000, 'active');
--- Error: CHECK constraint failed for column age: (age >= 18 AND age <= 120)
-```
-
-Note: CHECK must be specified as a column constraint (inline with column definition), not as a table-level constraint.
 
 ## NULL Values
 
