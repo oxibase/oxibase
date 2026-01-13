@@ -111,3 +111,20 @@
 - Parameters are passed as both named variables and arguments array for flexibility
 - Execution returns Rhai Dynamic converted to Value
 
+---
+## Wed Jan 14 2026 - US-007: Create Python Execution Engine
+
+### Implemented
+- Added execute_stored_function_python method in ddl.rs using PythonBackend
+- Integrates with rustpython-vm for Python execution with sandboxing
+- Takes StoredScriptFunction, args, and param_names for execution
+- Feature-gated to avoid compilation issues when Python not enabled
+
+### Files Changed
+- src/executor/ddl.rs
+
+### Learnings
+- Used existing PythonBackend which provides sandboxed execution
+- Leveraged rustpython-vm for secure Python script execution
+- Added proper feature gating for optional Python support
+
