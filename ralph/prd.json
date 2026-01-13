@@ -200,7 +200,7 @@
       ],
       "priority": 7,
       "passes": false,
-      "notes": ""
+      "notes": "Not implemented due to syntax error in ddl.rs preventing compilation"
     }
   ]
 }

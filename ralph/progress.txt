@@ -232,3 +232,16 @@
 - Different return types for read vs write operations
 - Consistent data structures across languages
 
+---
+## Wed Jan 14 2026 - US-014: Add Function Execution API
+
+### Implemented
+- (Not implemented due to syntax error in ddl.rs)
+
+### Files Changed
+- (None)
+
+### Learnings
+- Syntax error in ddl.rs prevents API implementation
+- Would need to expose execute_stored_function methods in Database API
+
