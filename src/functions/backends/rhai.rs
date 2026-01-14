@@ -121,46 +121,52 @@ impl ScriptingBackend for RhaiBackend {
         engine.register_fn("to_float", |v: f64| v);
         engine.register_fn("to_string", |v: String| v);
 
-        // Clone the database for the closure
-        let db_clone = Arc::clone(&db);
-        engine.register_fn("execute", move |sql: &str| -> Result<Dynamic> {
-            // Determine query type and execute accordingly
-            let sql_upper = sql.trim_start().to_uppercase();
-            if sql_upper.starts_with("SELECT") {
-                // SELECT queries return rows
-                match db_clone.query(sql, ()) {
-                    Ok(rows) => {
-                        let mut result_array = rhai::Array::new();
-                        for row_result in rows {
-                            let row = row_result?;
-                            let mut row_map = rhai::Map::new();
-                            for (i, column) in row.columns().iter().enumerate() {
-                                let value = match row.get::<Value>(i) {
-                                    Ok(val) => match val {
-                                        Value::Integer(i) => Dynamic::from(i),
-                                        Value::Float(f) => Dynamic::from(f),
-                                        Value::Text(s) => Dynamic::from(s.as_ref().to_string()),
-                                        Value::Boolean(b) => Dynamic::from(b),
-                                        _ => Dynamic::from(()), // null/unknown
-                                    },
-                                    Err(_) => Dynamic::from(()),
+        // Use the database for the closure
+        let db = db.clone();
+        engine.register_fn(
+            "execute",
+            move |sql: &str| -> std::result::Result<Dynamic, Box<rhai::EvalAltResult>> {
+                // Determine query type and execute accordingly
+                let sql_upper = sql.trim_start().to_uppercase();
+                if sql_upper.starts_with("SELECT") {
+                    // SELECT queries return rows
+                    match db.query(sql, ()) {
+                        Ok(rows) => {
+                            let mut result_array = rhai::Array::new();
+                            for row_result in rows {
+                                let row = match row_result {
+                                    Ok(r) => r,
+                                    Err(e) => return Err(format!("SQL row error: {}", e).into()),
                                 };
-                                row_map.insert(column.clone().into(), value);
+                                let mut row_map = rhai::Map::new();
+                                for (i, column) in row.columns().iter().enumerate() {
+                                    let value = match row.get::<Value>(i) {
+                                        Ok(val) => match val {
+                                            Value::Integer(i) => Dynamic::from(i),
+                                            Value::Float(f) => Dynamic::from(f),
+                                            Value::Text(s) => Dynamic::from(s.as_ref().to_string()),
+                                            Value::Boolean(b) => Dynamic::from(b),
+                                            _ => Dynamic::from(()), // null/unknown
+                                        },
+                                        Err(_) => Dynamic::from(()),
+                                    };
+                                    row_map.insert(column.clone().into(), value);
+                                }
+                                result_array.push(Dynamic::from(row_map));
                             }
-                            result_array.push(Dynamic::from(row_map));
+                            Ok(Dynamic::from(result_array))
                         }
-                        Ok(Dynamic::from(result_array))
+                        Err(e) => Err(format!("SQL execution error: {}", e).into()),
                     }
-                    Err(e) => Err(Error::internal(format!("SQL execution error: {}", e))),
+                } else {
+                    // DML/DDL queries return affected row count or success
+                    match db.execute(sql, ()) {
+                        Ok(_) => Ok(Dynamic::from(())),
+                        Err(e) => Err(format!("SQL execution error: {}", e).into()),
+                    }
                 }
-            } else {
-                // DML/DDL queries return affected row count or success
-                match db_clone.execute(sql, ()) {
-                    Ok(count) => Ok(Dynamic::from(count)),
-                    Err(e) => Err(Error::internal(format!("SQL execution error: {}", e))),
-                }
-            }
-        });
+            },
+        );
 
         // Bind arguments to scope using parameter names
         for (i, arg) in args.iter().enumerate() {
@@ -179,8 +185,14 @@ impl ScriptingBackend for RhaiBackend {
         }
 
         // Execute the procedure code
-        match engine.eval_with_scope::<()>(&mut scope, code) {
-            Ok(_) => Ok(()),
+        match engine.eval_with_scope::<rhai::Dynamic>(&mut scope, code) {
+            Ok(result) => {
+                if result.is_unit() {
+                    Ok(())
+                } else {
+                    Err(Error::internal("Procedure did not return unit"))
+                }
+            }
             Err(e) => Err(Error::internal(format!(
                 "Rhai procedure execution error: {}",
                 e

@@ -76,8 +76,12 @@ struct DatabaseInner {
 
 impl Drop for DatabaseInner {
     fn drop(&mut self) {
-        // Close the engine when the last reference is dropped
-        let _ = self.engine.close_engine();
+        // Only close the engine if this is NOT an internal connection
+        // Internal connections (created via with_engine) share the engine instance
+        // and should not close it when dropped.
+        if !self.dsn.starts_with("internal://") {
+            let _ = self.engine.close_engine();
+        }
     }
 }
 

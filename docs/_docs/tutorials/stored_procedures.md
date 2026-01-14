@@ -44,14 +44,12 @@ Let's create a simple procedure to log transactions. This procedure will take an
 ```sql
 CREATE PROCEDURE log_transaction(acc_id INTEGER, amt FLOAT, trans_type TEXT)
 LANGUAGE rhai AS '
-    let timestamp = now().to_string(); // Assuming a now() helper or string generation
-    let sql = `INSERT INTO transaction_log (account_id, amount, type, timestamp) 
-               VALUES (${acc_id}, ${amt}, "${trans_type}", "${timestamp}")`;
-    execute(sql);
+    let timestamp = "2023-01-01T12:00:00Z"; // For demo purposes, using a fixed timestamp
+    execute(`INSERT INTO transaction_log (account_id, amount, type, timestamp) VALUES (${acc_id}, ${amt}, ''${trans_type}'', ''${timestamp}'')`);
 ';
 ```
 
-> **Note**: In Rhai, you can use backticks for template strings to easily embed variables.
+> **Note**: Rhai supports string interpolation with backticks, and you can execute SQL queries using the built-in `execute()` function. Note the double single quotes (`''`) for escaping single quotes within SQL strings.
 
 ## 3. Implementing Business Logic
 
@@ -59,7 +57,7 @@ Now, let's create a more complex procedure to handle fund transfers. This proced
 1. Check if the source account exists and has sufficient funds.
 2. Deduct the amount from the source account.
 3. Add the amount to the destination account.
-4. Log both actions using our logical flow.
+4. Log both actions by calling our `log_transaction` procedure.
 
 ```sql
 CREATE PROCEDURE transfer(from_id INTEGER, to_id INTEGER, amount FLOAT)
@@ -69,27 +67,28 @@ LANGUAGE rhai AS '
     if src_rows.len() == 0 {
         throw "Source account not found";
     }
-    
+
     let dest_rows = execute(`SELECT id FROM accounts WHERE id = ${to_id}`);
     if dest_rows.len() == 0 {
         throw "Destination account not found";
     }
-    
+
     let balance = src_rows[0].balance;
     if balance < amount {
         throw `Insufficient funds: Balance is ${balance}, required ${amount}`;
     }
-    
+
     // 2. Perform Transfer
     execute(`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${from_id}`);
     execute(`UPDATE accounts SET balance = balance + ${amount} WHERE id = ${to_id}`);
-    
-    // 3. Log Operations (Manual logging for this example)
-    // In a real scenario, you might call another procedure or insert directly
-    execute(`INSERT INTO transaction_log (account_id, amount, type) VALUES (${from_id}, ${-amount}, "TRANSFER_OUT")`);
-    execute(`INSERT INTO transaction_log (account_id, amount, type) VALUES (${to_id}, ${amount}, "TRANSFER_IN")`);
+
+    // 3. Log Transaction
+    execute(`CALL log_transaction(${from_id}, ${amount}, ''debit'')`);
+    execute(`CALL log_transaction(${to_id}, ${amount}, ''credit'')`);
 ';
 ```
+
+> **Note**: Procedures can call other procedures using `CALL` statements within the `execute()` function. This allows you to build complex logic by composing smaller procedures.
 
 ## 4. Executing Procedures
 
@@ -108,7 +107,14 @@ SELECT * FROM accounts;
 
 -- Check the log
 SELECT * FROM transaction_log;
+-- Should show two entries: debit from Alice and credit to Bob
 ```
+
+> **Note**: Procedures are automatically persisted to the database and will be available after restarting Oxibase. You can inspect all stored procedures by querying the system table:
+>
+> ```sql
+> SELECT schema, name, language FROM _sys_procedures;
+> ```
 
 ## 5. Error Handling and Transactions
 
@@ -117,19 +123,46 @@ Procedures work seamlessly with transactions. If an error occurs (like "Insuffic
 ```sql
 BEGIN;
 -- Try to transfer more than Alice has
-CALL transfer(1, 2, 5000.0); 
+CALL transfer(1, 2, 5000.0);
 -- This will throw an error: "Insufficient funds..."
-COMMIT; -- The commit will not happen for the failed operations if the client handles the error correctly, 
-        -- or the engine rolls back the statement.
+COMMIT; -- The transaction will be rolled back due to the error
 ```
+
+## 6. Managing Procedures
+
+You can also drop procedures when they're no longer needed:
+
+```sql
+-- Drop a specific procedure
+DROP PROCEDURE transfer;
+
+-- Drop a procedure if it exists
+DROP PROCEDURE IF EXISTS log_transaction;
+```
+
+## 7. Advanced Features
+
+### Procedure Parameters
+
+Procedures support various parameter types:
+- `INTEGER` for integer values
+- `FLOAT` for floating-point numbers
+- `TEXT` for string values
+- `BOOLEAN` for boolean values
+
+### Return Values
+
+Currently, procedures don't return values directly, but you can use `execute()` to run SELECT queries and work with the results within the procedure.
 
 ## Summary
 
 In this tutorial, you learned how to:
-- Create stored procedures using `CREATE PROCEDURE`.
-- Use the `rhai` language backend to write procedural logic.
-- Execute SQL queries within procedures using the `execute()` function.
-- Handle parameters and errors.
-- Call procedures using `CALL`.
+- Create stored procedures using `CREATE PROCEDURE` with the Rhai scripting language.
+- Use the `execute()` function to run SQL queries within procedures.
+- Handle parameters, validation, and error handling in Rhai scripts.
+- Call procedures from other procedures to build complex logic.
+- Execute procedures using `CALL` statements.
+- Drop procedures using `DROP PROCEDURE`.
+- Work with procedures in transaction contexts.
 
-Stored procedures are a powerful way to keep your data logic close to your data, improving performance and consistency.
+Stored procedures are automatically persisted and will survive database restarts. They provide a powerful way to encapsulate business logic on the database server, improving both performance and data consistency.

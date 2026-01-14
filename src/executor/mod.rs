@@ -383,33 +383,47 @@ impl Executor {
         // Load each procedure from the system table
         while scanner.next() {
             let row = scanner.row();
-            // Schema: id(0), schema(1), name(2), parameters(3), language(4), code(5)
-            if let (
-                Some(Value::Text(_schema)),
-                Some(Value::Text(name)),
-                Some(Value::Text(parameters_json)),
-                Some(Value::Text(language)),
-                Some(Value::Text(code)),
-            ) = (row.get(1), row.get(2), row.get(3), row.get(4), row.get(5))
-            {
-                // Parse parameters from JSON
-                let stored_parameters: Vec<crate::storage::procedures::StoredParameter> =
-                    serde_json::from_str(parameters_json).map_err(|e| {
-                        Error::internal(format!("Failed to parse procedure parameters: {}", e))
-                    })?;
 
-                // Convert to parameter names
-                let param_names: Vec<String> =
-                    stored_parameters.iter().map(|sp| sp.name.clone()).collect();
+            // Extract values manually to handle variants
+            let name = match row.get(2) {
+                Some(Value::Text(s)) => s,
+                _ => continue,
+            };
 
-                // Register the procedure (ignore schema for now)
-                self.procedure_registry.register(
-                    name.to_string(),
-                    code.to_string(),
-                    language.to_string(),
-                    param_names,
-                )?;
-            }
+            let parameters_json = match row.get(3) {
+                Some(Value::Text(s)) => s,
+                Some(Value::Json(s)) => s,
+                _ => continue,
+            };
+
+            let language = match row.get(4) {
+                Some(Value::Text(s)) => s,
+                _ => continue,
+            };
+
+            let code = match row.get(5) {
+                Some(Value::Text(s)) => s,
+                _ => continue,
+            };
+
+            // Parse parameters from JSON
+            let stored_parameters: Vec<crate::storage::procedures::StoredParameter> =
+                match serde_json::from_str(parameters_json) {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
+
+            // Convert to parameter names
+            let param_names: Vec<String> =
+                stored_parameters.iter().map(|sp| sp.name.clone()).collect();
+
+            // Register the procedure (ignore schema for now)
+            self.procedure_registry.register(
+                name.to_string(),
+                code.to_string(),
+                language.to_string(),
+                param_names,
+            )?;
         }
 
         Ok(())
