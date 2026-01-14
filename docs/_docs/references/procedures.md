@@ -1,7 +1,7 @@
 ---
 layout: default
-title: "Procedures"
-parent: Functions
+title: Stored Procedures
+parent: References
 nav_order: 6
 ---
 

@@ -1,13 +1,20 @@
 ---
 layout: default
 title: SQL Commands
-parent: SQL Commands
+parent: References 
 nav_order: 1
 ---
 
 # SQL Commands
+{: .no_toc}
 
 This document provides a comprehensive reference to SQL commands supported by Oxibase.
+
+#### Table of contents
+{: .no_toc}
+
+1. TOC
+{:toc}
 
 ## Data Manipulation Language (DML)
 
@@ -641,7 +648,7 @@ CREATE UNIQUE INDEX idx_unique_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_name ON products (name);
 ```
 
-See [Indexing]({% link _docs/architecture/indexing.md %}) for detailed documentation.
+See [Indexing]({% link _docs/explanations/architecture/indexing.md %}) for detailed documentation.
 
 ### DROP INDEX
 
@@ -1076,7 +1083,7 @@ See [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %}) for 
 - [Temporal Queries]({% link _docs/sql-features/temporal-queries.md %})
 - [ON DUPLICATE KEY UPDATE]({% link _docs/sql-features/on-duplicate-key-update.md %})
 - [User-Defined Functions]({% link _docs/references/functions/user-defined-functions.md %})
-- [Indexing]({% link _docs/architecture/indexing.md %})
+- [Indexing]({% link _docs/explanations/architecture/indexing.md %})
 - [Savepoints]({% link _docs/sql-features/savepoints.md %})
 - [EXPLAIN]({% link _docs/sql-features/explain.md %})
 - [PRAGMA Commands]({% link _docs/sql-commands/pragma-commands.md %})

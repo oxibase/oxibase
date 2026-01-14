@@ -24,8 +24,9 @@
 
 ## Overview
 
-OxiBase is a research platform focused on bringing computation as close as
-possible to the data itself, leveraging unikernel technology for kernel-integrated performance. Our goal is to investigate how embedding
+OxiBase is a research project focused on bringing computation as close as
+possible to the data itself, leveraging unikernel technology for
+kernel-integrated performance. Our goal is to investigate how embedding
 computation within the database management system, by co-locating logic and
 data, can eliminate inefficiencies and complexities and enable self-managing
 systems. We want to provide user-defined functions and libraries to empower
@@ -51,103 +52,9 @@ bifurcation of "App Server" and "Database Server" was necessitated by hardware
 constraints that have since been mitigated through advances in computing
 density. By experimentally collapsing this separation, Oxibase positions the
 DBMS not merely as a storage substrate but as the active computational core of
-operations, enabling co-location of logic and data to eliminate observed
-network latency and serialization inefficiencies in contemporary distributed
+operations, enabling co-location of logic and data to eliminate observed network
+latency and serialization inefficiencies in contemporary distributed
 architectures.
-
-This research draws from CumulusDB's unikernel approach, integrating kernel primitives for hardware-optimized performance. See the [Architecture docs](docs/_docs/architecture/index.md) for kernel integration benefits and references.
-
-### Project Philosophy
-
-- **Self-sufficiency:** Oxibase aspires to be a fully self-contained system, minimizing external dependencies for both development and deployment.
-- **Strong Opinions:** The architecture and feature set are intentionally opinionated, favoring bold, clear principles over generic extensibility.
-- **Learning & Research:** Oxibase is a playground for exploring new ideas in database systems, distributed architectures, transactionality, and co-location of data and logic. Continuous learning and disseminating insights are core to the project.
-- **Heavily Tested:** Reliability and correctness matter deeply. Features and infrastructure are expected to be exhaustively tested.
-- **Accessible for Humans:** Readability and clarity of code, configuration, and operation are prioritized—even at the expense of some automation or performance.
-
-#### Explicit Non-Goals
-
-- **Maximum Performance:** Raw benchmark performance is not the primary pursuit. Reasonable performance is preferred, but clarity and correctness take precedence.
-- **Strict Standards Conformance:** While best effort will be made for compatibility (e.g., SQL, network protocols), strict adherence to industry standards is not a goal. Deviations may be made for clarity, simplicity, or research motivations.
-- **Prioritizing Automation Over Clarity:** Design choices that favor ease of maintenance, modification, or explanation—even if that leads to less automation or a "bottleneck" for throughput—will be preferred.
-- **Generic Extensibility:** Oxibase is explicitly not "one size fits all." It targets specific philosophies and refuses to chase universal flexibility.
-
-Currently, active efforts focus on embedded scripting, web exposure, wire protocol support, simulation for scaling, unikernel compilation, and autonomous networking:
-
-```mermaid
-classDiagram
-    %% --- RELATIONSHIPS ---
-    %% Use the short class names here, not "Layer.Class"
-    Computational_Layer ..> Web_Interface
-    Computational_Layer ..> External_Gateway
-    Computational_Layer ..> Performance
-
-    Web_Interface ..> Horizontal_Architecture
-    External_Gateway ..> Horizontal_Architecture
-    Performance ..> Horizontal_Architecture
-    Unikernel_Compiler ..> Horizontal_Architecture
-
-    %% --- LAYERS & CLASS DEFINITIONS ---
-
-    class Computational_Layer {
-        - Embedded Scripting Languages ✅
-        - Stored functions
-        - Triggers
-        - Queues
-        - Debugger support
-        - FaaS-like DevEx
-    }
-    class Web_Interface {
-        - DML routes
-        - REST / GraphQL endpoints
-        - HTML Render
-    }
-    class External_Gateway {
-        - Postgres Wire Protocol Server
-        - Role based authorization control
-        - Authentication
-    }
-
-    class Performance {
-        - Vertical scaling support
-        - Out-of-core processing
-        - Self-monitoring
-        - Undo-log based MVCC
-        - Copy-on-write checkopoint
-        - Row level replication
-        - Storage backends
-    }
-
-    class Horizontal_Architecture {
-        - Deterministic Simulator
-        - Failure simulation
-        - Logic and storage separation
-        - Dedicated Clustering
-        - Sharding
-        - Geolocation
-        - Distributed Computation
-        - Data / Computation rebalancing
-    }
-
-    class Unikernel_Compiler {
-        - Unikernel Compilation
-        - OS-free images
-        - Bootable image generation
-        - SQL based OS management
-    }
-
-    class Kernel_Integration {
-        - Zero-copy data paths
-        - Privileged hardware access
-        - Lock-free page-table walks
-        - Active virtual memory
-        - Elastic resource allocation
-    }
-
-    Unikernel_Compiler ..> Kernel_Integration
-    Kernel_Integration ..> Horizontal_Architecture
-
-```
 
 See [our roadmap](./docs/_docs/roadmap.md) for details.
 
@@ -175,7 +82,7 @@ src/
 ```bash
 # Add to Cargo.toml
 [dependencies]
-oxibase = "0.1"
+oxibase = "0.3"
 ```
 
 Or build from source:
@@ -196,6 +103,15 @@ cargo build --release
 
 ## Quick Start
 
+### Command Line
+
+```bash
+./oxibase                                    # In-memory REPL
+./oxibase --db "file:///path/to/data"        # Persistent database
+./oxibase -q "SELECT 1 + 1"                  # Execute query directly
+```
+
+
 ### As a Library
 
 ```rust
@@ -214,14 +130,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-```
-
-### Command Line
-
-```bash
-./oxibase                                    # In-memory REPL
-./oxibase --db "file:///path/to/data"        # Persistent database
-./oxibase -q "SELECT 1 + 1"                  # Execute query directly
 ```
 
 ## Features
@@ -409,54 +317,6 @@ WHERE c.country = 'US';
 | `TIMESTAMP` | Date and time         | `'2024-01-15 10:30:00'` |
 | `JSON`      | JSON data             | `'{"key": "value"}'`    |
 
-## Object Support
-
-| Object Type | Status | Notes |
-|-------------|--------|-------|
-| Schemas | Available | CREATE SCHEMA/DROP SCHEMA support |
-| User-defined Functions | Available | CREATE FUNCTION/DROP FUNCTION |
-| Stored Procedures | Missing | No CREATE PROCEDURE/DROP PROCEDURE |
-| Materialized Views | Missing | No CREATE MATERIALIZED VIEW |
-| Custom Types/Domains | Missing | No CREATE TYPE/CREATE DOMAIN |
-| Rules | Missing | No CREATE RULE/DROP RULE |
-| Extensions | Missing | No CREATE EXTENSION |
-| Foreign Data Wrappers | Missing | No foreign table support |
-| Aggregates | Missing | No custom aggregate functions |
-| Operators | Missing | No custom operator definitions |
-| Event Triggers | Missing | No DDL event triggers |
-| Tablespaces | Missing | No CREATE TABLESPACE |
-| Roles/Users | Missing | No user/role management |
-| Publications/Subscriptions | Missing | No logical replication support |
-
-## Built-in Functions
-
-### String Functions
-
-`UPPER`, `LOWER`, `LENGTH`, `TRIM`, `LTRIM`, `RTRIM`, `CONCAT`, `SUBSTRING`, `REPLACE`, `REVERSE`, `LEFT`, `RIGHT`, `LPAD`, `RPAD`, `REPEAT`, `POSITION`, `LOCATE`, `INSTR`, `SPLIT_PART`, `INITCAP`, `ASCII`, `CHR`, `TRANSLATE`
-
-### Math Functions
-
-`ABS`, `CEIL`, `FLOOR`, `ROUND`, `TRUNC`, `SQRT`, `POWER`, `MOD`, `SIGN`, `GREATEST`, `LEAST`, `EXP`, `LN`, `LOG`, `LOG10`, `LOG2`, `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2`, `DEGREES`, `RADIANS`, `PI`, `RAND`, `RANDOM`
-
-### Date/Time Functions
-
-`NOW`, `CURRENT_DATE`, `CURRENT_TIME`, `CURRENT_TIMESTAMP`, `EXTRACT`, `DATE_TRUNC`, `DATE_ADD`, `DATE_SUB`, `DATEDIFF`, `YEAR`, `MONTH`, `DAY`, `HOUR`, `MINUTE`, `SECOND`, `DAYOFWEEK`, `DAYOFYEAR`, `WEEK`, `QUARTER`, `TO_CHAR`, `TO_DATE`, `TO_TIMESTAMP`
-
-### JSON Functions
-
-`JSON_EXTRACT`, `JSON_EXTRACT_PATH`, `JSON_TYPE`, `JSON_TYPEOF`, `JSON_VALID`, `JSON_KEYS`, `JSON_ARRAY_LENGTH`
-
-### Aggregate Functions
-
-`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `STDDEV`, `STDDEV_POP`, `STDDEV_SAMP`, `VARIANCE`, `VAR_POP`, `VAR_SAMP`, `STRING_AGG`, `ARRAY_AGG`, `FIRST`, `LAST`, `BIT_AND`, `BIT_OR`, `BIT_XOR`, `BOOL_AND`, `BOOL_OR`
-
-### Window Functions
-
-`ROW_NUMBER`, `RANK`, `DENSE_RANK`, `NTILE`, `LAG`, `LEAD`, `FIRST_VALUE`, `LAST_VALUE`, `NTH_VALUE`, `PERCENT_RANK`, `CUME_DIST`
-
-### Other Functions
-
-`COALESCE`, `NULLIF`, `CAST`, `CASE`, `IF`, `IIF`, `NVL`, `NVL2`, `DECODE`, `GREATEST`, `LEAST`, `GENERATE_SERIES`
 
 ## Persistence
 

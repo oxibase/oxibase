@@ -2,7 +2,7 @@
 layout: default
 title: Embedded API Reference
 parent: References
-nav_order: 1
+nav_order: 3
 ---
 
 # Embedded API Reference

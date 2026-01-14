@@ -2,7 +2,7 @@
 layout: default
 title: "Unikernel"
 parent: Explanations
-nav_order: 9
+nav_order: 3
 ---
 
 ## Kernel Integration Benefits

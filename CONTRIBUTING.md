@@ -1,4 +1,4 @@
-# Contributing to OxiBase
+# Contributing to Oxibase
 
 Thank you for your interest in contributing to OxiBase! This document provides guidelines and information about the contribution process.
 

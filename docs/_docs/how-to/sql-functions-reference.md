@@ -1,11 +1,11 @@
 ---
 layout: default
-title: SQL Functions Reference
-parent: Functions
+title: SQL Functions
+parent: How to Guides
 nav_order: 1
 ---
 
-# SQL Functions Reference
+# How to use SQL Functions
 {: .no_toc}
 
 ---
