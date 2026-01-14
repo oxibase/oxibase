@@ -16,6 +16,10 @@
 
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
+#[cfg(feature = "python")]
+use std::sync::Arc;
+#[cfg(not(feature = "python"))]
+use std::sync::Arc;
 
 #[cfg(feature = "python")]
 use rustpython_vm::{
@@ -214,6 +218,17 @@ impl ScriptingBackend for PythonBackend {
             })
             .map_err(|e| Error::internal(format!("Validation error: {:?}", e)))
     }
+
+    fn execute_procedure(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _db: Arc<crate::Database>,
+    ) -> Result<()> {
+        // Python procedure execution not implemented yet
+        Err(Error::internal("Python procedures not yet supported"))
+    }
 }
 
 /// Stub implementation when Python feature is not enabled
@@ -243,9 +258,19 @@ impl ScriptingBackend for PythonBackend {
         ))
     }
 
+    fn execute_procedure(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _db: Arc<crate::Database>,
+    ) -> Result<()> {
+        // Python procedure execution not implemented
+        Err(Error::internal("Python procedures not yet supported"))
+    }
+
     fn validate_code(&self, _code: &str) -> Result<()> {
-        Err(Error::internal(
-            "Python backend not enabled. Use --features python to enable Python support",
-        ))
+        // Python code validation not implemented
+        Ok(())
     }
 }

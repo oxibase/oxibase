@@ -1324,6 +1324,9 @@ pub enum Statement {
     UseSchema(UseSchemaStatement),
     CreateFunction(CreateFunctionStatement),
     DropFunction(DropFunctionStatement),
+    CreateProcedure(CreateProcedureStatement),
+    DropProcedure(DropProcedureStatement),
+    CallProcedure(CallProcedureStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1364,6 +1367,9 @@ impl fmt::Display for Statement {
             Statement::UseSchema(s) => write!(f, "{}", s),
             Statement::CreateFunction(s) => write!(f, "{}", s),
             Statement::DropFunction(s) => write!(f, "{}", s),
+            Statement::CreateProcedure(s) => write!(f, "{}", s),
+            Statement::DropProcedure(s) => write!(f, "{}", s),
+            Statement::CallProcedure(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -2428,6 +2434,85 @@ impl fmt::Display for AnalyzeStatement {
             Some(name) => write!(f, "ANALYZE {}", name),
             None => write!(f, "ANALYZE"),
         }
+    }
+}
+
+/// CREATE PROCEDURE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateProcedureStatement {
+    pub token: Token,
+    pub procedure_name: FunctionName,
+    pub parameters: Vec<FunctionParameter>,
+    pub language: String,
+    pub body: String,
+    pub if_not_exists: bool,
+}
+
+impl fmt::Display for CreateProcedureStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE PROCEDURE ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        result.push_str(&self.procedure_name.to_string());
+
+        // Parameters
+        result.push('(');
+        for (i, param) in self.parameters.iter().enumerate() {
+            if i > 0 {
+                result.push_str(", ");
+            }
+            result.push_str(&param.name.to_string());
+            result.push(' ');
+            result.push_str(&param.data_type);
+        }
+        result.push(')');
+
+        result.push_str(&format!(" LANGUAGE {} AS '{}'", self.language, self.body));
+        write!(f, "{}", result)
+    }
+}
+
+/// DROP PROCEDURE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropProcedureStatement {
+    pub token: Token,
+    pub procedure_name: FunctionName,
+    pub if_exists: bool,
+}
+
+impl fmt::Display for DropProcedureStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("DROP PROCEDURE ");
+        if self.if_exists {
+            result.push_str("IF EXISTS ");
+        }
+        result.push_str(&self.procedure_name.to_string());
+        write!(f, "{}", result)
+    }
+}
+
+/// CALL PROCEDURE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallProcedureStatement {
+    pub token: Token,
+    pub procedure_name: FunctionName,
+    pub arguments: Vec<Expression>,
+}
+
+impl fmt::Display for CallProcedureStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CALL ");
+        result.push_str(&self.procedure_name.to_string());
+        result.push('(');
+        for (i, arg) in self.arguments.iter().enumerate() {
+            if i > 0 {
+                result.push_str(", ");
+            }
+            result.push_str(&arg.to_string());
+        }
+        result.push(')');
+        write!(f, "{}", result)
     }
 }
 

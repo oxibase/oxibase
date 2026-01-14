@@ -117,6 +117,20 @@ pub struct Database {
 }
 
 impl Database {
+    /// Create a database instance with an existing engine
+    ///
+    /// This is primarily used internally for procedures that need database access
+    /// within the executor context.
+    pub fn with_engine(engine: Arc<MVCCEngine>) -> Result<Self> {
+        let inner = Arc::new(DatabaseInner {
+            engine: engine.clone(),
+            executor: Mutex::new(crate::executor::Executor::new(engine)),
+            dsn: "internal://".to_string(), // Dummy DSN for internal use
+        });
+
+        Ok(Database { inner })
+    }
+
     /// Open a database connection
     ///
     /// The DSN (Data Source Name) specifies the database location:

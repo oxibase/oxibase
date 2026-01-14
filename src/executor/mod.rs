@@ -77,6 +77,7 @@ use crate::core::{Error, Result, Value};
 use crate::functions::{global_registry, FunctionDataType, FunctionRegistry, FunctionSignature};
 use crate::parser::ast::{Program, Statement};
 use crate::parser::Parser;
+use crate::procedures::ProcedureRegistry;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::{Engine, QueryResult, Table, Transaction};
 
@@ -159,6 +160,8 @@ pub struct Executor {
     engine: Arc<MVCCEngine>,
     /// Function registry for scalar, aggregate, and window functions
     function_registry: Arc<FunctionRegistry>,
+    /// Procedure registry for stored procedures
+    procedure_registry: Arc<ProcedureRegistry>,
     /// Default isolation level for transactions
     default_isolation_level: crate::core::IsolationLevel,
     /// Query cache for parsed statements
@@ -174,9 +177,12 @@ pub struct Executor {
 impl Executor {
     /// Create a new executor with the given storage engine
     pub fn new(engine: Arc<MVCCEngine>) -> Self {
+        let function_registry = Arc::clone(global_registry());
+        let backend_registry = function_registry.backend_registry();
         let executor = Self {
             engine,
-            function_registry: Arc::clone(global_registry()),
+            function_registry,
+            procedure_registry: Arc::new(ProcedureRegistry::new(backend_registry)),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::default(),
             semantic_cache: SemanticCache::default(),
@@ -187,6 +193,10 @@ impl Executor {
         // Load user-defined functions from system table
         // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
+
+        // Load stored procedures from system table
+        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
+        let _ = executor.load_procedures();
 
         executor
     }
@@ -196,9 +206,11 @@ impl Executor {
         engine: Arc<MVCCEngine>,
         function_registry: Arc<FunctionRegistry>,
     ) -> Self {
+        let backend_registry = function_registry.backend_registry();
         let executor = Self {
             engine,
             function_registry,
+            procedure_registry: Arc::new(ProcedureRegistry::new(backend_registry)),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::default(),
             semantic_cache: SemanticCache::default(),
@@ -210,14 +222,21 @@ impl Executor {
         // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
 
+        // Load stored procedures from system table
+        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
+        let _ = executor.load_procedures();
+
         executor
     }
 
     /// Create a new executor with a custom cache size
     pub fn with_cache_size(engine: Arc<MVCCEngine>, cache_size: usize) -> Self {
+        let function_registry = Arc::new(FunctionRegistry::new());
+        let backend_registry = function_registry.backend_registry();
         let executor = Self {
             engine,
-            function_registry: Arc::new(FunctionRegistry::new()),
+            function_registry,
+            procedure_registry: Arc::new(ProcedureRegistry::new(backend_registry)),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::new(cache_size),
             semantic_cache: SemanticCache::default(),
@@ -227,6 +246,9 @@ impl Executor {
 
         // Load user-defined functions from system table
         let _ = executor.load_functions();
+
+        // Load stored procedures from system table
+        let _ = executor.load_procedures();
 
         executor
     }
@@ -339,6 +361,60 @@ impl Executor {
         Ok(())
     }
 
+    /// Load stored procedures from the system table during startup
+    fn load_procedures(&self) -> Result<()> {
+        use crate::storage::procedures::SYS_PROCEDURES;
+
+        // Check if the procedures system table exists
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_procedures_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+
+        if !has_procedures_table {
+            // No procedures table yet, nothing to load
+            return Ok(());
+        }
+
+        let table = tx.get_table(SYS_PROCEDURES)?;
+        let mut scanner = table.scan(&[], None)?;
+
+        // Load each procedure from the system table
+        while scanner.next() {
+            let row = scanner.row();
+            // Schema: id(0), schema(1), name(2), parameters(3), language(4), code(5)
+            if let (
+                Some(Value::Text(_schema)),
+                Some(Value::Text(name)),
+                Some(Value::Text(parameters_json)),
+                Some(Value::Text(language)),
+                Some(Value::Text(code)),
+            ) = (row.get(1), row.get(2), row.get(3), row.get(4), row.get(5))
+            {
+                // Parse parameters from JSON
+                let stored_parameters: Vec<crate::storage::procedures::StoredParameter> =
+                    serde_json::from_str(parameters_json).map_err(|e| {
+                        Error::internal(format!("Failed to parse procedure parameters: {}", e))
+                    })?;
+
+                // Convert to parameter names
+                let param_names: Vec<String> =
+                    stored_parameters.iter().map(|sp| sp.name.clone()).collect();
+
+                // Register the procedure (ignore schema for now)
+                self.procedure_registry.register(
+                    name.to_string(),
+                    code.to_string(),
+                    language.to_string(),
+                    param_names,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Get or create a table within the active transaction
     /// Returns (table, should_auto_commit) where should_auto_commit is false if there's an active transaction
     #[allow(dead_code)]
@@ -412,6 +488,11 @@ impl Executor {
     /// Get the function registry
     pub fn function_registry(&self) -> &Arc<FunctionRegistry> {
         &self.function_registry
+    }
+
+    /// Get the procedure registry
+    pub fn procedure_registry(&self) -> &Arc<ProcedureRegistry> {
+        &self.procedure_registry
     }
 
     /// Execute a SQL query string
@@ -625,6 +706,9 @@ impl Executor {
             Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
             Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
             Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
+            Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
+            Statement::DropProcedure(stmt) => self.execute_drop_procedure(stmt, &ctx),
+            Statement::CallProcedure(stmt) => self.execute_call_procedure(stmt, &ctx),
         }
     }
 

@@ -302,6 +302,7 @@ pub static KEYWORDS: &[&str] = &[
     "TABLES",
     "VIEWS",
     "INDEXES",
+    "CALL",
     "CASCADE",
     "RESTRICT",
     "INDEX",
