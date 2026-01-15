@@ -98,6 +98,15 @@ pub(crate) enum DeferredDdlOperation {
         name: String,
         tables: Vec<(String, crate::core::Schema)>,
     }, // Undo by recreating
+    CreateProcedure {
+        name: String,
+        code: String,
+        language: String,
+        param_names: Vec<String>,
+    }, // Undo by unregistering (for drop undo)
+    DropProcedure {
+        name: String,
+    }, // Undo by re-registering (for create undo)
 }
 
 use crate::storage::functions::StoredParameter;

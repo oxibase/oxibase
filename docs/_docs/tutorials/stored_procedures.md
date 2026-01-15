@@ -1,11 +1,11 @@
 ---
 layout: default
-title: "Tutorial: Stored Procedures"
+title: "Stored Procedures"
 parent: Tutorials
 nav_order: 4
 ---
 
-# Tutorial: Working with Stored Procedures
+# Working with Stored Procedures
 
 This tutorial guides you through creating and using stored procedures in Oxibase using the Rhai scripting language. Stored procedures allow you to encapsulate complex logic and database operations on the server side.
 

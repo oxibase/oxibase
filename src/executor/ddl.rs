@@ -901,6 +901,16 @@ impl Executor {
             return Err(e);
         }
 
+        // Check if there's an active transaction for undo logging
+        let mut active_tx = self.active_transaction.lock().unwrap();
+        if let Some(ref mut tx_state) = *active_tx {
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::DropProcedure {
+                    name: procedure_name_upper,
+                });
+        }
+
         Ok(Box::new(EmptyResult::new()))
     }
 
@@ -911,20 +921,43 @@ impl Executor {
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let procedure_name = stmt.procedure_name.value();
+        let procedure_name_upper = procedure_name.to_uppercase();
 
         // Check if procedure exists
-        if !self.procedure_exists(&procedure_name)? {
+        if !self.procedure_exists(&procedure_name_upper)? {
             if stmt.if_exists {
                 return Ok(Box::new(EmptyResult::new()));
             }
             return Err(Error::ProcedureNotFound(procedure_name.clone()));
         }
 
-        // Delete procedure from system table
-        self.delete_procedure(&procedure_name)?;
+        // Get the procedure data before deleting
+        let procedure = self
+            .procedure_registry
+            .get(&procedure_name_upper)
+            .ok_or_else(|| Error::ProcedureNotFound(procedure_name.clone()))?;
+        let code = procedure.code().to_string();
+        let language = procedure.language().to_string();
+        let param_names = procedure.param_names().to_vec();
 
         // Unregister the procedure from the registry
-        self.procedure_registry.unregister(&procedure_name)?;
+        self.procedure_registry.unregister(&procedure_name_upper)?;
+
+        // Delete procedure from system table
+        self.delete_procedure(&procedure_name_upper)?;
+
+        // Check if there's an active transaction for undo logging
+        let mut active_tx = self.active_transaction.lock().unwrap();
+        if let Some(ref mut tx_state) = *active_tx {
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::CreateProcedure {
+                    name: procedure_name_upper,
+                    code,
+                    language,
+                    param_names: param_names.to_vec(),
+                });
+        }
 
         Ok(Box::new(EmptyResult::new()))
     }

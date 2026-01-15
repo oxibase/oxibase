@@ -4815,6 +4815,21 @@ impl Executor {
                                 let _ = self.engine.create_table(schema);
                             }
                         }
+                        super::DeferredDdlOperation::CreateProcedure {
+                            name,
+                            code,
+                            language,
+                            param_names,
+                        } => {
+                            // Undo DropProcedure by re-registering
+                            let _ =
+                                self.procedure_registry
+                                    .register(name, code, language, param_names);
+                        }
+                        super::DeferredDdlOperation::DropProcedure { name } => {
+                            // Undo CreateProcedure by unregistering
+                            let _ = self.procedure_registry.unregister(&name);
+                        }
                     }
                 }
 
