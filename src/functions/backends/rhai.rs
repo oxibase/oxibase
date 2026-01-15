@@ -131,9 +131,9 @@ impl ScriptingBackend for RhaiBackend {
                 if sql_upper.starts_with("SELECT") {
                     // SELECT queries return rows
                     match db.query(sql, ()) {
-                        Ok(rows) => {
+                        Ok(rows_iter) => {
                             let mut result_array = rhai::Array::new();
-                            for row_result in rows {
+                            for row_result in rows_iter {
                                 let row = match row_result {
                                     Ok(r) => r,
                                     Err(e) => return Err(format!("SQL row error: {}", e).into()),

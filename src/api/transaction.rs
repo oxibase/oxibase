@@ -36,6 +36,7 @@ use crate::core::{Error, Result, Row, Value};
 use crate::executor::context::ExecutionContext;
 use crate::executor::expression::ExpressionEval;
 use crate::executor::result::ExecutorMemoryResult;
+use crate::executor::Executor;
 use crate::parser::ast::{Expression, Statement};
 use crate::parser::Parser;
 use crate::storage::traits::{QueryResult, Transaction as StorageTransaction};
@@ -50,15 +51,20 @@ use super::rows::Rows;
 /// Must be explicitly committed or rolled back.
 pub struct Transaction {
     tx: Option<Box<dyn StorageTransaction>>,
+    executor: std::sync::Arc<std::sync::Mutex<Executor>>,
     committed: bool,
     rolled_back: bool,
 }
 
 impl Transaction {
     /// Create a new transaction wrapper
-    pub(crate) fn new(tx: Box<dyn StorageTransaction>) -> Self {
+    pub(crate) fn new(
+        tx: Box<dyn StorageTransaction>,
+        executor: std::sync::Arc<std::sync::Mutex<Executor>>,
+    ) -> Self {
         Self {
             tx: Some(tx),
+            executor,
             committed: false,
             rolled_back: false,
         }
@@ -411,6 +417,13 @@ impl Transaction {
                     result_columns,
                     result_rows,
                 )))
+            }
+            Statement::CallProcedure(stmt) => {
+                let executor = self
+                    .executor
+                    .lock()
+                    .map_err(|_| Error::LockAcquisitionFailed("executor".to_string()))?;
+                executor.execute_call_procedure(stmt, ctx)
             }
             _ => Err(Error::NotSupportedMessage(
                 "Only DML statements are supported in transactions".to_string(),

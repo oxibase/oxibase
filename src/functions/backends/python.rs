@@ -16,9 +16,6 @@
 
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
-#[cfg(feature = "python")]
-use std::sync::Arc;
-#[cfg(not(feature = "python"))]
 use std::sync::Arc;
 
 #[cfg(feature = "python")]

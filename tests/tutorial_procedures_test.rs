@@ -133,3 +133,53 @@ fn test_tutorial_procedures() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+#[test]
+fn test_call_in_transaction() -> Result<(), Box<dyn std::error::Error>> {
+    let db = Database::open("memory://")?;
+
+    // Create accounts table
+    db.execute(
+        "CREATE TABLE accounts (id INTEGER PRIMARY KEY, name TEXT, balance FLOAT)",
+        (),
+    )?;
+    db.execute(
+        "INSERT INTO accounts VALUES (1, 'Alice', 1000.0), (2, 'Bob', 500.0)",
+        (),
+    )?;
+
+    // Create transfer procedure
+    db.execute(
+        r#"CREATE PROCEDURE transfer(from_id INTEGER, to_id INTEGER, amount FLOAT)
+        LANGUAGE rhai AS '
+            let src_rows = execute(`SELECT balance FROM accounts WHERE id = ${from_id}`);
+            if src_rows.len() == 0 {
+                throw "Source account not found";
+            }
+            let dest_rows = execute(`SELECT id FROM accounts WHERE id = ${to_id}`);
+            if dest_rows.len() == 0 {
+                throw "Destination account not found";
+            }
+            let balance = src_rows[0].balance;
+            if balance < amount {
+                throw `Insufficient funds: Balance is ${balance}, required ${amount}`;
+            }
+            execute(`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${from_id}`);
+            execute(`UPDATE accounts SET balance = balance + ${amount} WHERE id = ${to_id}`);
+        '"#,
+        (),
+    )?;
+
+    // Test CALL in transaction
+    let mut tx = db.begin()?;
+    tx.execute("CALL transfer(1, 2, 300.0)", ())?;
+    tx.commit()?;
+
+    // Verify transfer happened
+    let alice_balance: f64 = db.query_one("SELECT balance FROM accounts WHERE id = 1", ())?;
+    assert_eq!(alice_balance, 700.0);
+    let bob_balance: f64 = db.query_one("SELECT balance FROM accounts WHERE id = 2", ())?;
+    assert_eq!(bob_balance, 800.0);
+
+    Ok(())
+}
