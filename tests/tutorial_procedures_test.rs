@@ -277,3 +277,55 @@ fn test_show_procedures_and_routines() -> Result<(), Box<dyn std::error::Error>>
 
     Ok(())
 }
+
+#[test]
+fn test_routine_aliases() -> Result<(), Box<dyn std::error::Error>> {
+    let db = Database::open("memory://")?;
+
+    // Test CREATE ROUTINE as alias for CREATE PROCEDURE
+    db.execute(
+        "CREATE ROUTINE test_routine_alias(param1 INTEGER) LANGUAGE rhai AS '// test'",
+        (),
+    )?;
+
+    // Test SHOW ROUTINES as alias for SHOW PROCEDURES
+    let mut result = db.query("SHOW ROUTINES", ())?;
+    let mut found = false;
+    while let Some(row_result) = result.next() {
+        let row = row_result?;
+        if let Ok(Value::Text(name)) = row.get::<Value>(0) {
+            if name.as_ref() == "TEST_ROUTINE_ALIAS" {
+                found = true;
+                // Check that it's recognized as a procedure
+                if let Ok(Value::Text(lang)) = row.get::<Value>(2) {
+                    assert_eq!(lang.as_ref(), "rhai");
+                }
+            }
+        }
+    }
+    assert!(
+        found,
+        "ROUTINE should be created and shown via SHOW ROUTINES"
+    );
+
+    // Test DROP ROUTINE as alias for DROP PROCEDURE
+    db.execute("DROP ROUTINE test_routine_alias", ())?;
+
+    // Verify it's gone
+    let mut result = db.query("SHOW PROCEDURES", ())?;
+    let mut found_after_drop = false;
+    while let Some(row_result) = result.next() {
+        let row = row_result?;
+        if let Ok(Value::Text(name)) = row.get::<Value>(0) {
+            if name.as_ref() == "TEST_ROUTINE_ALIAS" {
+                found_after_drop = true;
+            }
+        }
+    }
+    assert!(
+        !found_after_drop,
+        "ROUTINE should be dropped via DROP ROUTINE"
+    );
+
+    Ok(())
+}

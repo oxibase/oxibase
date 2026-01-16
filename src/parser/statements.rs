@@ -1313,9 +1313,13 @@ impl Parser {
             self.next_token();
             self.parse_create_procedure_statement()
                 .map(Statement::CreateProcedure)
+        } else if self.peek_token_is_keyword("ROUTINE") {
+            self.next_token();
+            self.parse_create_procedure_statement()
+                .map(Statement::CreateProcedure)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, or PROCEDURE after CREATE at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, or ROUTINE after CREATE at {}",
                 self.cur_token.position
             ));
             None
@@ -2024,9 +2028,13 @@ impl Parser {
             self.next_token();
             self.parse_drop_procedure_statement()
                 .map(Statement::DropProcedure)
+        } else if self.peek_token_is_keyword("ROUTINE") {
+            self.next_token();
+            self.parse_drop_procedure_statement()
+                .map(Statement::DropProcedure)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, or PROCEDURE after DROP at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, or ROUTINE after DROP at {}",
                 self.cur_token.position
             ));
             None
@@ -2695,6 +2703,12 @@ impl Parser {
             Some(Statement::ShowProcedures(ShowProceduresStatement {
                 token,
                 plural,
+            }))
+        } else if self.peek_token_is_keyword("ROUTINES") {
+            self.next_token();
+            Some(Statement::ShowProcedures(ShowProceduresStatement {
+                token,
+                plural: true,
             }))
         } else {
             self.add_error(format!(
