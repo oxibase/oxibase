@@ -2687,6 +2687,15 @@ impl Parser {
                 token,
                 plural,
             }))
+        } else if self.peek_token_is_keyword("PROCEDURES")
+            || self.peek_token_is_keyword("PROCEDURE")
+        {
+            let plural = self.peek_token_is_keyword("PROCEDURES");
+            self.next_token();
+            Some(Statement::ShowProcedures(ShowProceduresStatement {
+                token,
+                plural,
+            }))
         } else {
             self.add_error(format!(
                 "unsupported SHOW statement at {}",

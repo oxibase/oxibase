@@ -15,6 +15,7 @@
 //! Tests based on the Stored Procedures tutorial
 
 use oxibase::api::Database;
+use oxibase::core::Value;
 
 #[test]
 fn test_tutorial_procedures() -> Result<(), Box<dyn std::error::Error>> {
@@ -180,6 +181,99 @@ fn test_call_in_transaction() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(alice_balance, 700.0);
     let bob_balance: f64 = db.query_one("SELECT balance FROM accounts WHERE id = 2", ())?;
     assert_eq!(bob_balance, 800.0);
+
+    Ok(())
+}
+
+#[test]
+fn test_show_procedures_and_routines() -> Result<(), Box<dyn std::error::Error>> {
+    let db = Database::open("memory://")?;
+
+    // Create a procedure
+    db.execute("CREATE PROCEDURE test_proc(param1 INTEGER, param2 TEXT) LANGUAGE rhai AS '// Simple procedure'", ())?;
+
+    // Check if procedure was created
+    let mut check = db.query(
+        "SELECT name FROM _sys_procedures WHERE name = 'TEST_PROC'",
+        (),
+    )?;
+    let mut count = 0;
+    while let Some(_) = check.next() {
+        count += 1;
+    }
+    assert_eq!(count, 1, "Procedure should be created");
+
+    // Test SHOW PROCEDURES
+    let mut result = db.query("SHOW PROCEDURES", ())?;
+    let mut found = false;
+    while let Some(row_result) = result.next() {
+        let row = row_result?;
+        if let Ok(Value::Text(name)) = row.get::<Value>(0) {
+            if name.as_ref() == "TEST_PROC" {
+                found = true;
+                // Check args format
+                if let Ok(Value::Text(args)) = row.get::<Value>(1) {
+                    assert!(args.as_ref().contains("param1 INTEGER"));
+                    assert!(args.as_ref().contains("param2 TEXT"));
+                }
+                // Check language
+                if let Ok(Value::Text(lang)) = row.get::<Value>(2) {
+                    assert_eq!(lang.as_ref(), "rhai");
+                }
+                // Check body
+                if let Ok(Value::Text(body)) = row.get::<Value>(3) {
+                    assert!(body.as_ref().contains("Simple procedure"));
+                }
+                // Check schema
+                if let Ok(Value::Text(schema)) = row.get::<Value>(4) {
+                    assert_eq!(schema.as_ref(), "public");
+                }
+            }
+        }
+    }
+    assert!(found, "test_proc should be found in SHOW PROCEDURES");
+
+    // Test information_schema.routines
+    let mut result = db.query(
+        "SELECT * FROM information_schema.routines WHERE routine_name = 'TEST_PROC'",
+        (),
+    )?;
+    let mut found_routine = false;
+    while let Some(row_result) = result.next() {
+        let row = row_result?;
+        if let (
+            Ok(Value::Text(_specific_catalog)),
+            Ok(Value::Text(_specific_schema)),
+            Ok(Value::Text(specific_name)),
+            Ok(Value::Text(_routine_catalog)),
+            Ok(Value::Text(_routine_schema)),
+            Ok(Value::Text(routine_name)),
+            Ok(Value::Text(routine_type)),
+            data_type,
+            Ok(Value::Text(_routine_definition)),
+        ) = (
+            row.get::<Value>(0),
+            row.get::<Value>(1),
+            row.get::<Value>(2),
+            row.get::<Value>(3),
+            row.get::<Value>(4),
+            row.get::<Value>(5),
+            row.get::<Value>(6),
+            row.get::<Value>(7),
+            row.get::<Value>(8),
+        ) {
+            if routine_name.as_ref() == "TEST_PROC" {
+                found_routine = true;
+                assert_eq!(specific_name.as_ref(), "TEST_PROC");
+                assert_eq!(routine_type.as_ref(), "PROCEDURE");
+                assert!(matches!(data_type, Ok(Value::Null(_)))); // Procedures don't have return type
+            }
+        }
+    }
+    assert!(
+        found_routine,
+        "TEST_PROC should be found in information_schema.routines"
+    );
 
     Ok(())
 }

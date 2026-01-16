@@ -30,7 +30,7 @@ use crate::parser::ast::*;
 use crate::storage::functions::{
     StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
 };
-use crate::storage::procedures::{StoredProcedure, CREATE_PROCEDURES_SQL, SYS_PROCEDURES};
+use crate::storage::procedures::{StoredProcedure, SYS_PROCEDURES};
 use crate::storage::traits::{result::EmptyResult, Engine, QueryResult};
 use rustc_hash::FxHashMap;
 
@@ -1027,6 +1027,26 @@ impl Executor {
         Ok(())
     }
 
+    /// Ensure the procedures system table exists
+    pub(crate) fn ensure_procedures_table_exists(&self) -> Result<()> {
+        use crate::storage::procedures::{CREATE_PROCEDURES_SQL, SYS_PROCEDURES};
+
+        // Check if table exists first - need a transaction
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_procedures_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+        drop(tx); // Drop transaction before creating tables
+
+        if !has_procedures_table {
+            // Parse and execute CREATE TABLE for procedures
+            self.execute_procedures_sql(CREATE_PROCEDURES_SQL)?;
+        }
+
+        Ok(())
+    }
+
     /// Check if a function exists in the system table
     fn function_exists(&self, function_name: &str) -> Result<bool> {
         let tx = self.engine.begin_transaction()?;
@@ -1129,19 +1149,16 @@ impl Executor {
         Ok(())
     }
 
-    /// Ensure the procedures system table exists
-    pub(crate) fn ensure_procedures_table_exists(&self) -> Result<()> {
-        // Check if table exists first - need a transaction
-        let tx = self.engine.begin_transaction()?;
-        let tables = tx.list_tables()?;
-        let has_procedures_table = tables
-            .iter()
-            .any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
-        drop(tx); // Drop transaction before creating tables
+    /// Execute SQL statement for procedures (helper for system table creation)
+    fn execute_procedures_sql(&self, sql: &str) -> Result<()> {
+        let mut parser = crate::parser::Parser::new(sql);
+        let program = parser
+            .parse_program()
+            .map_err(|e| Error::parse(e.to_string()))?;
 
-        if !has_procedures_table {
-            // Parse and execute CREATE TABLE for procedures
-            self.execute_procedures_sql(CREATE_PROCEDURES_SQL)?;
+        for stmt in &program.statements {
+            let ctx = ExecutionContext::default();
+            self.execute_statement(stmt, &ctx)?;
         }
 
         Ok(())
@@ -1230,21 +1247,6 @@ impl Executor {
         }
 
         tx.commit()?;
-
-        Ok(())
-    }
-
-    /// Execute SQL statement for procedures (helper for system table creation)
-    fn execute_procedures_sql(&self, sql: &str) -> Result<()> {
-        let mut parser = crate::parser::Parser::new(sql);
-        let program = parser
-            .parse_program()
-            .map_err(|e| Error::parse(e.to_string()))?;
-
-        for stmt in &program.statements {
-            let ctx = ExecutionContext::default();
-            self.execute_statement(stmt, &ctx)?;
-        }
 
         Ok(())
     }

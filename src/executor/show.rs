@@ -321,6 +321,86 @@ impl Executor {
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
     }
 
+    /// Execute SHOW PROCEDURES statement
+    pub(crate) fn execute_show_procedures(
+        &self,
+        _stmt: &ShowProceduresStatement,
+        ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Ensure procedures table exists
+        self.ensure_procedures_table_exists()?;
+
+        // Select all procedures from system table
+        let sql =
+            "SELECT schema, name, parameters, language, code FROM _sys_procedures ORDER BY name";
+        let mut parser = Parser::new(sql);
+        let program = parser.parse_program().map_err(|e| Error::Parse {
+            message: format!("Failed to parse internal query: {}", e),
+        })?;
+        if let Some(Statement::Select(select_stmt)) = program.statements.into_iter().next() {
+            let mut result = self.execute_select(&select_stmt, ctx)?;
+            let mut rows: Vec<Row> = Vec::new();
+            while result.next() {
+                let row = result.row();
+                if let (
+                    schema_val,
+                    Some(Value::Text(name)),
+                    Some(Value::Json(params_json)),
+                    Some(Value::Text(language)),
+                    Some(Value::Text(code)),
+                ) = (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4))
+                {
+                    // Parse parameters JSON
+                    let parameters: Vec<StoredParameter> = serde_json::from_str(params_json)
+                        .map_err(|e| Error::Internal {
+                            message: format!("Failed to parse procedure parameters: {}", e),
+                        })?;
+
+                    // Format parameters as "(name type, name type, ...)"
+                    let args = if parameters.is_empty() {
+                        "()".to_string()
+                    } else {
+                        format!(
+                            "({})",
+                            parameters
+                                .iter()
+                                .map(|p| format!("{} {}", p.name, p.data_type))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    };
+
+                    let schema_str = match schema_val {
+                        Some(Value::Text(s)) => s.clone(),
+                        _ => Arc::from("public"),
+                    };
+
+                    rows.push(Row::from_values(vec![
+                        Value::Text(name.clone()),
+                        Value::Text(Arc::from(args)),
+                        Value::Text(language.clone()),
+                        Value::Text(code.clone()),
+                        Value::Text(schema_str),
+                    ]));
+                }
+            }
+
+            let columns = vec![
+                "name".to_string(),
+                "args".to_string(),
+                "language".to_string(),
+                "body".to_string(),
+                "schema".to_string(),
+            ];
+
+            Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+        } else {
+            Err(Error::Internal {
+                message: "Failed to parse SHOW PROCEDURES query".to_string(),
+            })
+        }
+    }
+
     /// Execute SHOW FUNCTIONS statement
     pub(crate) fn execute_show_functions(
         &self,

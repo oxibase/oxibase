@@ -1336,6 +1336,7 @@ pub enum Statement {
     ShowTables(ShowTablesStatement),
     ShowViews(ShowViewsStatement),
     ShowFunctions(ShowFunctionsStatement),
+    ShowProcedures(ShowProceduresStatement),
     ShowCreateTable(ShowCreateTableStatement),
     ShowCreateView(ShowCreateViewStatement),
     ShowIndexes(ShowIndexesStatement),
@@ -1379,6 +1380,7 @@ impl fmt::Display for Statement {
             Statement::ShowTables(s) => write!(f, "{}", s),
             Statement::ShowViews(s) => write!(f, "{}", s),
             Statement::ShowFunctions(s) => write!(f, "{}", s),
+            Statement::ShowProcedures(s) => write!(f, "{}", s),
             Statement::ShowCreateTable(s) => write!(f, "{}", s),
             Statement::ShowCreateView(s) => write!(f, "{}", s),
             Statement::ShowIndexes(s) => write!(f, "{}", s),
@@ -2333,6 +2335,23 @@ impl fmt::Display for ShowFunctionsStatement {
             write!(f, "SHOW FUNCTIONS")
         } else {
             write!(f, "SHOW FUNCTION")
+        }
+    }
+}
+
+/// SHOW PROCEDURES statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShowProceduresStatement {
+    pub token: Token,
+    pub plural: bool,
+}
+
+impl fmt::Display for ShowProceduresStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.plural {
+            write!(f, "SHOW PROCEDURES")
+        } else {
+            write!(f, "SHOW PROCEDURE")
         }
     }
 }

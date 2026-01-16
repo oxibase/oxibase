@@ -719,6 +719,7 @@ impl Executor {
             Statement::ShowTables(stmt) => self.execute_show_tables(stmt, &ctx),
             Statement::ShowViews(stmt) => self.execute_show_views(stmt, &ctx),
             Statement::ShowFunctions(stmt) => self.execute_show_functions(stmt, &ctx),
+            Statement::ShowProcedures(stmt) => self.execute_show_procedures(stmt, &ctx),
             Statement::ShowCreateTable(stmt) => self.execute_show_create_table(stmt, &ctx),
             Statement::ShowCreateView(stmt) => self.execute_show_create_view(stmt, &ctx),
             Statement::ShowIndexes(stmt) => self.execute_show_indexes(stmt, &ctx),

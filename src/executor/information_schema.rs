@@ -47,6 +47,7 @@ impl Executor {
             "views" => self.build_views_result(),
             "statistics" => self.build_statistics_result(),
             "sequences" => self.build_sequences_result(),
+            "routines" => self.build_routines_result(),
             _ => Err(Error::TableNotFoundByName(format!(
                 "information_schema.{}",
                 schema_table
@@ -330,6 +331,114 @@ impl Executor {
                 }
             }
         }
+
+        Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
+    }
+
+    /// Build information_schema.routines result
+    fn build_routines_result(&self) -> Result<Box<dyn QueryResult>> {
+        // Columns: specific_catalog, specific_schema, specific_name, routine_catalog,
+        //          routine_schema, routine_name, routine_type, data_type, routine_definition
+        let columns = vec![
+            "specific_catalog".to_string(),
+            "specific_schema".to_string(),
+            "specific_name".to_string(),
+            "routine_catalog".to_string(),
+            "routine_schema".to_string(),
+            "routine_name".to_string(),
+            "routine_type".to_string(),
+            "data_type".to_string(),
+            "routine_definition".to_string(),
+        ];
+
+        let mut rows: Vec<Row> = Vec::new();
+
+        // Query _sys_procedures for user procedures
+        let sql =
+            "SELECT schema, name, parameters, language, code FROM _sys_procedures ORDER BY name";
+        let mut parser = Parser::new(sql);
+        if let Ok(program) = parser.parse_program() {
+            if let Some(Statement::Select(stmt)) = program.statements.into_iter().next() {
+                if let Ok(mut result) = self.execute_select(&stmt, &ExecutionContext::default()) {
+                    while result.next() {
+                        let row = result.row();
+                        if let (
+                            schema_val,
+                            Some(Value::Text(name)),
+                            Some(Value::Json(_params)),
+                            Some(Value::Text(_language)),
+                            Some(Value::Text(code)),
+                        ) = (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4))
+                        {
+                            let routine_schema = match schema_val {
+                                Some(Value::Text(s)) => s.clone(),
+                                _ => Arc::from("public"),
+                            };
+
+                            rows.push(Row::from_values(vec![
+                                Value::Text(Arc::from("def")),       // specific_catalog
+                                Value::Text(routine_schema.clone()), // specific_schema
+                                Value::Text(name.clone()),           // specific_name
+                                Value::Text(Arc::from("def")),       // routine_catalog
+                                Value::Text(routine_schema),         // routine_schema
+                                Value::Text(name.clone()),           // routine_name
+                                Value::Text(Arc::from("PROCEDURE")), // routine_type
+                                Value::Null(DataType::Text), // data_type (procedures don't return values)
+                                Value::Text(code.clone()),   // routine_definition
+                            ]));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Also include built-in functions as routines
+        let function_registry = self.function_registry();
+        let scalar_functions = function_registry.list_scalars();
+        let aggregate_functions = function_registry.list_aggregates();
+        let window_functions = function_registry.list_windows();
+
+        // Helper function to convert FunctionDataType to string
+        fn function_data_type_to_string(dtype: &crate::functions::FunctionDataType) -> String {
+            match dtype {
+                crate::functions::FunctionDataType::Any => "ANY".to_string(),
+                crate::functions::FunctionDataType::Integer => "INTEGER".to_string(),
+                crate::functions::FunctionDataType::Float => "FLOAT".to_string(),
+                crate::functions::FunctionDataType::String => "TEXT".to_string(),
+                crate::functions::FunctionDataType::Boolean => "BOOLEAN".to_string(),
+                crate::functions::FunctionDataType::Timestamp => "TIMESTAMP".to_string(),
+                crate::functions::FunctionDataType::Date => "DATE".to_string(),
+                crate::functions::FunctionDataType::Time => "TIME".to_string(),
+                crate::functions::FunctionDataType::DateTime => "TIMESTAMP".to_string(),
+                crate::functions::FunctionDataType::Json => "JSON".to_string(),
+                crate::functions::FunctionDataType::Unknown => "UNKNOWN".to_string(),
+            }
+        }
+
+        // Helper function to add functions
+        let mut add_functions = |funcs: Vec<String>, routine_type: &str| {
+            for func_name in funcs {
+                if let Some(func_info) = function_registry.get_info(&func_name) {
+                    let return_type_str =
+                        function_data_type_to_string(&func_info.signature.return_type);
+                    rows.push(Row::from_values(vec![
+                        Value::Text(Arc::from("def")),
+                        Value::Text(Arc::from("sys")),
+                        Value::Text(Arc::from(func_name.as_str())),
+                        Value::Text(Arc::from("def")),
+                        Value::Text(Arc::from("sys")),
+                        Value::Text(Arc::from(func_name.as_str())),
+                        Value::Text(Arc::from(routine_type)),
+                        Value::Text(Arc::from(return_type_str.as_str())),
+                        Value::Null(DataType::Text), // No definition for built-ins
+                    ]));
+                }
+            }
+        };
+
+        add_functions(scalar_functions, "FUNCTION");
+        add_functions(aggregate_functions, "FUNCTION");
+        add_functions(window_functions, "FUNCTION");
 
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
     }
