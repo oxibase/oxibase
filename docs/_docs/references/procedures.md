@@ -29,6 +29,8 @@ LANGUAGE backend AS 'procedure_body';
 - `backend`: The scripting language used (currently `rhai` is supported).
 - `procedure_body`: The code string enclosed in single quotes.
 
+**Note**: `CREATE ROUTINE` is also supported as an alias for `CREATE PROCEDURE`.
+
 ### Calling a Procedure
 
 ```sql
@@ -43,6 +45,16 @@ CALL procedure_name(argument_list);
 ```sql
 DROP PROCEDURE [IF EXISTS] procedure_name;
 ```
+
+**Note**: `DROP ROUTINE` is also supported as an alias for `DROP PROCEDURE`.
+
+### Showing Procedures
+
+```sql
+SHOW PROCEDURES;
+```
+
+**Note**: `SHOW ROUTINES` is also supported as an alias for `SHOW PROCEDURES`.
 
 ## Supported Languages
 
