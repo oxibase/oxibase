@@ -81,10 +81,13 @@
 //! ```
 
 pub mod database;
+pub mod database_ops;
 pub mod params;
 pub mod rows;
 pub mod statement;
 pub mod transaction;
+
+pub use database_ops::DatabaseOps;
 
 pub use database::{Database, FromValue};
 pub use params::{NamedParams, Params, ToParam};

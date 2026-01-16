@@ -171,10 +171,12 @@ impl ScriptingBackend for BoaBackend {
         _code: &str,
         _args: &[Value],
         _param_names: &[&str],
-        _db: std::sync::Arc<crate::Database>,
+        _db: Box<dyn crate::api::DatabaseOps>,
     ) -> Result<()> {
-        // Boa procedure execution not implemented yet
-        Err(Error::internal("Boa/JS procedures not yet supported"))
+        // TODO: Implement Boa procedure execution
+        Err(crate::core::Error::NotSupportedMessage(
+            "Boa procedures not yet implemented".to_string(),
+        ))
     }
 }
 

@@ -15,9 +15,9 @@
 //! Rhai scripting backend for user-defined functions
 
 use super::ScriptingBackend;
+use crate::api::DatabaseOps;
 use crate::core::{Error, Result, Value};
 use rhai::{Dynamic, Engine, Scope};
-use std::sync::Arc;
 
 /// Rhai scripting backend
 pub struct RhaiBackend {
@@ -109,7 +109,7 @@ impl ScriptingBackend for RhaiBackend {
         code: &str,
         args: &[Value],
         param_names: &[&str],
-        db: Arc<crate::Database>,
+        db: Box<dyn DatabaseOps>,
     ) -> Result<()> {
         let mut scope = Scope::new();
 
@@ -122,7 +122,7 @@ impl ScriptingBackend for RhaiBackend {
         engine.register_fn("to_string", |v: String| v);
 
         // Use the database for the closure
-        let db = db.clone();
+        let db = std::sync::Arc::new(std::sync::Mutex::new(db));
         engine.register_fn(
             "execute",
             move |sql: &str| -> std::result::Result<Dynamic, Box<rhai::EvalAltResult>> {
@@ -130,7 +130,7 @@ impl ScriptingBackend for RhaiBackend {
                 let sql_upper = sql.trim_start().to_uppercase();
                 if sql_upper.starts_with("SELECT") {
                     // SELECT queries return rows
-                    match db.query(sql, ()) {
+                    match db.lock().unwrap().query(sql, ()) {
                         Ok(rows_iter) => {
                             let mut result_array = rhai::Array::new();
                             for row_result in rows_iter {
@@ -160,7 +160,7 @@ impl ScriptingBackend for RhaiBackend {
                     }
                 } else {
                     // DML/DDL queries return affected row count or success
-                    match db.execute(sql, ()) {
+                    match db.lock().unwrap().execute(sql, ()) {
                         Ok(_) => Ok(Dynamic::from(())),
                         Err(e) => Err(format!("SQL execution error: {}", e).into()),
                     }

@@ -16,7 +16,6 @@
 
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
-use std::sync::Arc;
 
 #[cfg(feature = "python")]
 use rustpython_vm::{
@@ -221,7 +220,7 @@ impl ScriptingBackend for PythonBackend {
         _code: &str,
         _args: &[Value],
         _param_names: &[&str],
-        _db: Arc<crate::Database>,
+        _db: Box<dyn crate::api::DatabaseOps>,
     ) -> Result<()> {
         // Python procedure execution not implemented yet
         Err(Error::internal("Python procedures not yet supported"))
@@ -257,13 +256,15 @@ impl ScriptingBackend for PythonBackend {
 
     fn execute_procedure(
         &self,
-        _code: &str,
-        _args: &[Value],
-        _param_names: &[&str],
-        _db: Arc<crate::Database>,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        _db: Box<dyn crate::api::DatabaseOps>,
     ) -> Result<()> {
-        // Python procedure execution not implemented
-        Err(Error::internal("Python procedures not yet supported"))
+        // TODO: Implement Python procedure execution
+        Err(crate::core::Error::NotSupportedMessage(
+            "Python procedures not yet implemented".to_string(),
+        ))
     }
 
     fn validate_code(&self, _code: &str) -> Result<()> {

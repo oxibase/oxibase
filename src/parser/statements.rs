@@ -1314,9 +1314,12 @@ impl Parser {
             self.parse_create_procedure_statement()
                 .map(Statement::CreateProcedure)
         } else if self.peek_token_is_keyword("ROUTINE") {
-            self.next_token();
-            self.parse_create_procedure_statement()
-                .map(Statement::CreateProcedure)
+            #[allow(clippy::if_same_then_else)]
+            {
+                self.next_token();
+                self.parse_create_procedure_statement()
+                    .map(Statement::CreateProcedure)
+            }
         } else {
             self.add_error(format!(
                 "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, or ROUTINE after CREATE at {}",
@@ -2029,9 +2032,12 @@ impl Parser {
             self.parse_drop_procedure_statement()
                 .map(Statement::DropProcedure)
         } else if self.peek_token_is_keyword("ROUTINE") {
-            self.next_token();
-            self.parse_drop_procedure_statement()
-                .map(Statement::DropProcedure)
+            #[allow(clippy::if_same_then_else)]
+            {
+                self.next_token();
+                self.parse_drop_procedure_statement()
+                    .map(Statement::DropProcedure)
+            }
         } else {
             self.add_error(format!(
                 "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, or ROUTINE after DROP at {}",

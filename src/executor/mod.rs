@@ -267,6 +267,24 @@ impl Executor {
         self.active_transaction.lock().unwrap().is_some()
     }
 
+    /// Set the active transaction (for internal use)
+    pub fn set_active_transaction(&self, tx: Option<Box<dyn crate::storage::traits::Transaction>>) {
+        *self.active_transaction.lock().unwrap() = tx.map(|transaction| ActiveTransaction {
+            transaction,
+            tables: FxHashMap::default(),
+            ddl_undo_log: Vec::new(),
+        });
+    }
+
+    /// Take the active transaction (for internal use)
+    pub fn take_active_transaction(&self) -> Option<Box<dyn crate::storage::traits::Transaction>> {
+        self.active_transaction
+            .lock()
+            .unwrap()
+            .take()
+            .map(|at| at.transaction)
+    }
+
     /// Get the query planner (lazily initialized)
     fn get_query_planner(&self) -> &QueryPlanner {
         self.query_planner

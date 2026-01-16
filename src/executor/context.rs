@@ -259,7 +259,7 @@ pub fn cache_exists_pred_key(subquery_key: String, pred_key: String) {
 ///
 /// Note: This struct uses Arc for immutable shared data to make cloning cheap
 /// during correlated subquery processing where context is cloned per row.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ExecutionContext {
     /// Query parameters ($1, $2, etc.) - wrapped in Arc for cheap cloning
     params: Arc<Vec<Value>>,
@@ -292,6 +292,9 @@ pub struct ExecutionContext {
     cte_data: Option<Arc<CteDataMap>>,
     /// Current transaction ID for CURRENT_TRANSACTION_ID() function
     transaction_id: Option<u64>,
+    /// Storage transaction for executing within a transaction context
+    #[allow(dead_code)]
+    storage_transaction: Option<Box<dyn crate::storage::traits::Transaction>>,
 }
 
 /// Type alias for CTE data map to reduce type complexity
@@ -302,6 +305,27 @@ use crate::storage::traits::Engine;
 impl Default for ExecutionContext {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Clone for ExecutionContext {
+    fn clone(&self) -> Self {
+        Self {
+            params: self.params.clone(),
+            named_params: self.named_params.clone(),
+            auto_commit: self.auto_commit,
+            cancelled: self.cancelled.clone(),
+            current_schema: self.current_schema.clone(),
+            session_vars: self.session_vars.clone(),
+            timeout_ms: self.timeout_ms,
+            view_depth: self.view_depth,
+            query_depth: self.query_depth,
+            outer_row: self.outer_row.clone(),
+            outer_columns: self.outer_columns.clone(),
+            cte_data: self.cte_data.clone(),
+            transaction_id: self.transaction_id,
+            storage_transaction: None, // Don't clone transaction
+        }
     }
 }
 
@@ -322,6 +346,7 @@ impl ExecutionContext {
             outer_columns: None,
             cte_data: None,
             transaction_id: None,
+            storage_transaction: None,
         }
     }
 
@@ -448,6 +473,7 @@ impl ExecutionContext {
             outer_columns: self.outer_columns.clone(),
             cte_data: self.cte_data.clone(),
             transaction_id: self.transaction_id,
+            storage_transaction: None, // Don't clone transaction across contexts
         }
     }
 
@@ -468,6 +494,7 @@ impl ExecutionContext {
             outer_columns: self.outer_columns.clone(),
             cte_data: self.cte_data.clone(),
             transaction_id: self.transaction_id,
+            storage_transaction: None, // Don't clone transaction across contexts
         }
     }
 
@@ -503,6 +530,7 @@ impl ExecutionContext {
             outer_columns: Some(outer_columns), // Arc clone = cheap
             cte_data: self.cte_data.clone(),    // Arc clone = cheap
             transaction_id: self.transaction_id,
+            storage_transaction: None, // Don't clone transaction across contexts
         }
     }
 
@@ -538,6 +566,7 @@ impl ExecutionContext {
             outer_columns: self.outer_columns.clone(),
             cte_data: Some(cte_data),
             transaction_id: self.transaction_id,
+            storage_transaction: None, // Don't clone transaction across contexts
         }
     }
 
@@ -567,6 +596,7 @@ impl ExecutionContext {
             outer_columns: self.outer_columns.clone(),
             cte_data: self.cte_data.clone(),
             transaction_id: Some(txn_id),
+            storage_transaction: None, // Don't clone transaction across contexts
         }
     }
 

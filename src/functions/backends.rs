@@ -43,7 +43,7 @@ pub trait ScriptingBackend {
         code: &str,
         args: &[Value],
         param_names: &[&str],
-        db: Arc<crate::Database>,
+        db: Box<dyn crate::api::DatabaseOps>,
     ) -> Result<()>;
 
     /// Validate that the code is syntactically correct for this backend
