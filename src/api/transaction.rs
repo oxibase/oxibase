@@ -58,6 +58,7 @@ pub struct Transaction {
     committed: bool,
     rolled_back: bool,
     is_procedure_tx: bool,
+    nested: bool,
 }
 
 impl Transaction {
@@ -72,6 +73,7 @@ impl Transaction {
             committed: false,
             rolled_back: false,
             is_procedure_tx: false,
+            nested: false,
         }
     }
 
@@ -233,17 +235,7 @@ impl Transaction {
         // Execute each statement
         let mut last_result: Option<Box<dyn QueryResult>> = None;
         for statement in &program.statements {
-            if is_procedure_tx {
-                // For procedure transactions, delegate directly to executor
-                last_result = Some(
-                    self.executor
-                        .lock()
-                        .unwrap()
-                        .execute_statement(statement, &ctx)?,
-                );
-            } else {
-                last_result = Some(self.execute_statement(statement, &ctx)?);
-            }
+            last_result = Some(self.execute_statement(statement, &ctx)?);
         }
 
         // Restore active transaction
@@ -304,6 +296,7 @@ impl Transaction {
                     committed: false,
                     rolled_back: false,
                     is_procedure_tx: true,
+                    nested: true,
                 }));
                 let db_ops: Box<dyn DatabaseOps> =
                     Box::new(TransactionDatabase::new(Arc::clone(&tx_arc)));
@@ -333,14 +326,21 @@ impl Transaction {
             return Err(Error::TransactionEnded);
         }
 
-        let mut guard = self.tx.lock().unwrap();
-        if guard.is_none() {
-            return Err(Error::TransactionNotStarted);
-        }
+        if self.is_procedure_tx {
+            if let Some(mut tx) = self.executor.lock().unwrap().take_active_transaction() {
+                tx.commit()?;
+                self.committed = true;
+            }
+        } else {
+            let mut guard = self.tx.lock().unwrap();
+            if guard.is_none() {
+                return Err(Error::TransactionNotStarted);
+            }
 
-        if let Some(mut tx) = guard.take() {
-            tx.commit()?;
-            self.committed = true;
+            if let Some(mut tx) = guard.take() {
+                tx.commit()?;
+                self.committed = true;
+            }
         }
 
         Ok(())
@@ -358,14 +358,21 @@ impl Transaction {
             return Ok(()); // Already rolled back
         }
 
-        let mut guard = self.tx.lock().unwrap();
-        if guard.is_none() {
-            return Err(Error::TransactionNotStarted);
-        }
+        if self.is_procedure_tx {
+            if let Some(mut tx) = self.executor.lock().unwrap().take_active_transaction() {
+                tx.rollback()?;
+                self.rolled_back = true;
+            }
+        } else {
+            let mut guard = self.tx.lock().unwrap();
+            if guard.is_none() {
+                return Err(Error::TransactionNotStarted);
+            }
 
-        if let Some(mut tx) = guard.take() {
-            tx.rollback()?;
-            self.rolled_back = true;
+            if let Some(mut tx) = guard.take() {
+                tx.rollback()?;
+                self.rolled_back = true;
+            }
         }
 
         Ok(())
@@ -374,9 +381,13 @@ impl Transaction {
 
 impl Drop for Transaction {
     fn drop(&mut self) {
-        // Auto-rollback if not committed
+        // Auto-commit for procedure transactions, auto-rollback for regular transactions
         if !self.committed && !self.rolled_back {
-            let _ = self.rollback();
+            if self.is_procedure_tx && !self.nested {
+                let _ = self.commit();
+            } else if !self.is_procedure_tx {
+                let _ = self.rollback();
+            }
         }
     }
 }
