@@ -71,6 +71,7 @@ pub mod executor;
 pub mod functions;
 pub mod optimizer;
 pub mod parser;
+pub mod procedures;
 pub mod storage;
 
 // Re-export main types for convenience

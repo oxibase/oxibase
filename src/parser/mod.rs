@@ -110,6 +110,7 @@ pub use ast::{
     ShowCreateTableStatement,
     ShowFunctionsStatement,
     ShowIndexesStatement,
+    ShowProceduresStatement,
     ShowTablesStatement,
     SimpleTableSource,
     StarExpression,

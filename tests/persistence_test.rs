@@ -118,13 +118,17 @@ fn test_persistence_transaction_commit() {
         .unwrap();
 
         // Use explicit transaction
-        let mut tx = db.begin().unwrap();
-        eprintln!("Transaction ID: {}", tx.id());
-        tx.execute("INSERT INTO orders (id, amount) VALUES (1, 100)", ())
+        let tx = db.begin().unwrap();
+        eprintln!("Transaction ID: {}", tx.lock().unwrap().id());
+        tx.lock()
+            .unwrap()
+            .execute("INSERT INTO orders (id, amount) VALUES (1, 100)", ())
             .unwrap();
-        tx.execute("INSERT INTO orders (id, amount) VALUES (2, 200)", ())
+        tx.lock()
+            .unwrap()
+            .execute("INSERT INTO orders (id, amount) VALUES (2, 200)", ())
             .unwrap();
-        tx.commit().unwrap();
+        tx.lock().unwrap().commit().unwrap();
         eprintln!("Transaction committed");
 
         // Verify

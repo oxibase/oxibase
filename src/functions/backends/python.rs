@@ -214,6 +214,17 @@ impl ScriptingBackend for PythonBackend {
             })
             .map_err(|e| Error::internal(format!("Validation error: {:?}", e)))
     }
+
+    fn execute_procedure(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _db: Box<dyn crate::api::DatabaseOps>,
+    ) -> Result<()> {
+        // Python procedure execution not implemented yet
+        Err(Error::internal("Python procedures not yet supported"))
+    }
 }
 
 /// Stub implementation when Python feature is not enabled
@@ -243,9 +254,21 @@ impl ScriptingBackend for PythonBackend {
         ))
     }
 
-    fn validate_code(&self, _code: &str) -> Result<()> {
-        Err(Error::internal(
-            "Python backend not enabled. Use --features python to enable Python support",
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        _db: Box<dyn crate::api::DatabaseOps>,
+    ) -> Result<()> {
+        // TODO: Implement Python procedure execution
+        Err(crate::core::Error::NotSupportedMessage(
+            "Python procedures not yet implemented".to_string(),
         ))
+    }
+
+    fn validate_code(&self, _code: &str) -> Result<()> {
+        // Python code validation not implemented
+        Ok(())
     }
 }

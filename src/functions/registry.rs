@@ -35,7 +35,7 @@ use super::aggregate::{
     StddevSampFunction, StringAggFunction, SumFunction, VarPopFunction, VarSampFunction,
     VarianceFunction,
 };
-use super::backends::create_backend_registry;
+use super::backends::{create_backend_registry, BackendRegistry};
 use super::scalar::{
     AbsFunction, CastFunction, CeilFunction, CeilingFunction, CharFunction, CharLengthFunction,
     CoalesceFunction, CollateFunction, ConcatFunction, ConcatWsFunction, CosFunction,
@@ -443,6 +443,14 @@ impl FunctionRegistry {
     pub fn list_windows(&self) -> Vec<String> {
         let funcs = self.window_functions.read().unwrap();
         funcs.keys().cloned().collect()
+    }
+
+    /// Get the backend registry
+    pub fn backend_registry(&self) -> Arc<BackendRegistry> {
+        self.user_defined_functions
+            .read()
+            .unwrap()
+            .backend_registry()
     }
 
     /// Check if a language is supported for user-defined functions

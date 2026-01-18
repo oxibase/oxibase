@@ -165,6 +165,19 @@ impl ScriptingBackend for BoaBackend {
             Err(e) => Err(Error::internal(format!("Boa syntax error: {:?}", e))),
         }
     }
+
+    fn execute_procedure(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _db: Box<dyn crate::api::DatabaseOps>,
+    ) -> Result<()> {
+        // TODO: Implement Boa procedure execution
+        Err(crate::core::Error::NotSupportedMessage(
+            "Boa procedures not yet implemented".to_string(),
+        ))
+    }
 }
 
 /// Stub implementation when Boa feature is not enabled
@@ -189,6 +202,18 @@ impl ScriptingBackend for BoaBackend {
     }
 
     fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
+        Err(Error::internal(
+            "Boa backend not enabled. Use --features js to enable JavaScript/TypeScript support",
+        ))
+    }
+
+    fn execute_procedure(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _db: Arc<crate::Database>,
+    ) -> Result<()> {
         Err(Error::internal(
             "Boa backend not enabled. Use --features js to enable JavaScript/TypeScript support",
         ))

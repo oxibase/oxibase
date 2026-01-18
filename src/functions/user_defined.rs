@@ -119,6 +119,11 @@ impl UserDefinedFunctionRegistry {
         }
     }
 
+    /// Get the backend registry
+    pub fn backend_registry(&self) -> Arc<BackendRegistry> {
+        self.backend_registry.clone()
+    }
+
     /// Register a user-defined function
     pub fn register(
         &mut self,

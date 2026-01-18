@@ -70,14 +70,19 @@ static DATABASE_REGISTRY: std::sync::LazyLock<RwLock<HashMap<String, Arc<Databas
 /// Inner database state (shared between Database instances with same DSN)
 struct DatabaseInner {
     engine: Arc<MVCCEngine>,
-    executor: Mutex<Executor>,
+    executor: Arc<Mutex<Executor>>,
     dsn: String,
+    is_transactional: bool,
 }
 
 impl Drop for DatabaseInner {
     fn drop(&mut self) {
-        // Close the engine when the last reference is dropped
-        let _ = self.engine.close_engine();
+        // Only close the engine if this is NOT an internal connection
+        // Internal connections (created via with_engine) share the engine instance
+        // and should not close it when dropped.
+        if !self.dsn.starts_with("internal://") {
+            let _ = self.engine.close_engine();
+        }
     }
 }
 
@@ -117,6 +122,36 @@ pub struct Database {
 }
 
 impl Database {
+    /// Create a database instance with an existing engine
+    ///
+    /// This is primarily used internally for procedures that need database access
+    /// within the executor context.
+    pub fn with_engine(engine: Arc<MVCCEngine>) -> Result<Self> {
+        let inner = Arc::new(DatabaseInner {
+            engine: engine.clone(),
+            executor: Arc::new(Mutex::new(Executor::new(engine))),
+            dsn: "internal://".to_string(),
+            is_transactional: false,
+        });
+
+        Ok(Database { inner })
+    }
+
+    /// Create a database instance with an existing executor
+    ///
+    /// This is used for procedures that need to execute within the same transaction context.
+    pub fn with_executor(executor: Arc<Mutex<crate::executor::Executor>>) -> Result<Self> {
+        let engine = executor.lock().unwrap().engine().clone();
+        let inner = Arc::new(DatabaseInner {
+            engine,
+            executor,
+            dsn: "internal://".to_string(), // Dummy DSN for internal use
+            is_transactional: true,
+        });
+
+        Ok(Database { inner })
+    }
+
     /// Open a database connection
     ///
     /// The DSN (Data Source Name) specifies the database location:
@@ -193,8 +228,9 @@ impl Database {
 
         let inner = Arc::new(DatabaseInner {
             engine,
-            executor: Mutex::new(executor),
+            executor: Arc::new(Mutex::new(executor)),
             dsn: dsn.to_string(),
+            is_transactional: false,
         });
 
         // Store in registry
@@ -219,8 +255,9 @@ impl Database {
 
         let inner = Arc::new(DatabaseInner {
             engine,
-            executor: Mutex::new(executor),
+            executor: Arc::new(Mutex::new(executor)),
             dsn: "memory://".to_string(),
+            is_transactional: false,
         });
 
         Ok(Database { inner })
@@ -396,6 +433,16 @@ impl Database {
     /// )?;
     /// ```
     pub fn execute<P: Params>(&self, sql: &str, params: P) -> Result<i64> {
+        if self.inner.is_transactional {
+            // For transactional databases, we need to handle the deadlock
+            // Since the executor is already locked by the outer transaction,
+            // we can't lock it again. Instead, execute using a different approach.
+            // For now, return an error to indicate this needs to be handled differently
+            return Err(Error::internal(
+                "Transactional database execution not yet implemented",
+            ));
+        }
+
         let executor = self
             .inner
             .executor
@@ -750,7 +797,7 @@ impl Database {
     /// tx.execute("INSERT INTO users VALUES ($1, $2)", (1, "Alice"))?;
     /// tx.commit()?;
     /// ```
-    pub fn begin(&self) -> Result<Transaction> {
+    pub fn begin(&self) -> Result<Arc<std::sync::Mutex<Transaction>>> {
         self.begin_with_isolation(IsolationLevel::ReadCommitted)
     }
 
@@ -766,7 +813,10 @@ impl Database {
     /// tx.execute("UPDATE users SET balance = balance - 100 WHERE id = $1", (1,))?;
     /// tx.commit()?;
     /// ```
-    pub fn begin_with_isolation(&self, isolation: IsolationLevel) -> Result<Transaction> {
+    pub fn begin_with_isolation(
+        &self,
+        isolation: IsolationLevel,
+    ) -> Result<Arc<std::sync::Mutex<Transaction>>> {
         let executor = self
             .inner
             .executor
@@ -774,7 +824,10 @@ impl Database {
             .map_err(|_| Error::LockAcquisitionFailed("executor".to_string()))?;
 
         let tx = executor.begin_transaction_with_isolation(isolation)?;
-        Ok(Transaction::new(tx))
+        Ok(Arc::new(std::sync::Mutex::new(Transaction::new(
+            tx,
+            Arc::clone(&self.inner.executor),
+        ))))
     }
 
     /// Get the underlying storage engine

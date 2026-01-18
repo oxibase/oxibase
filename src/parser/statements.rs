@@ -47,6 +47,9 @@ impl Parser {
                 "DROP" => self.parse_drop_statement(),
                 "ALTER" => self.parse_alter_statement().map(Statement::AlterTable),
                 "USE" => self.parse_use_statement().map(Statement::UseSchema),
+                "CALL" => self
+                    .parse_call_procedure_statement()
+                    .map(Statement::CallProcedure),
                 "BEGIN" => self.parse_begin_statement().map(Statement::Begin),
                 "COMMIT" => self.parse_commit_statement().map(Statement::Commit),
                 "ROLLBACK" => self.parse_rollback_statement().map(Statement::Rollback),
@@ -1306,9 +1309,20 @@ impl Parser {
             self.next_token();
             self.parse_create_function_statement()
                 .map(Statement::CreateFunction)
+        } else if self.peek_token_is_keyword("PROCEDURE") {
+            self.next_token();
+            self.parse_create_procedure_statement()
+                .map(Statement::CreateProcedure)
+        } else if self.peek_token_is_keyword("ROUTINE") {
+            #[allow(clippy::if_same_then_else)]
+            {
+                self.next_token();
+                self.parse_create_procedure_statement()
+                    .map(Statement::CreateProcedure)
+            }
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after CREATE at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, or ROUTINE after CREATE at {}",
                 self.cur_token.position
             ));
             None
@@ -2013,9 +2027,20 @@ impl Parser {
             self.next_token();
             self.parse_drop_function_statement()
                 .map(Statement::DropFunction)
+        } else if self.peek_token_is_keyword("PROCEDURE") {
+            self.next_token();
+            self.parse_drop_procedure_statement()
+                .map(Statement::DropProcedure)
+        } else if self.peek_token_is_keyword("ROUTINE") {
+            #[allow(clippy::if_same_then_else)]
+            {
+                self.next_token();
+                self.parse_drop_procedure_statement()
+                    .map(Statement::DropProcedure)
+            }
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after DROP at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, or ROUTINE after DROP at {}",
                 self.cur_token.position
             ));
             None
@@ -2676,6 +2701,21 @@ impl Parser {
                 token,
                 plural,
             }))
+        } else if self.peek_token_is_keyword("PROCEDURES")
+            || self.peek_token_is_keyword("PROCEDURE")
+        {
+            let plural = self.peek_token_is_keyword("PROCEDURES");
+            self.next_token();
+            Some(Statement::ShowProcedures(ShowProceduresStatement {
+                token,
+                plural,
+            }))
+        } else if self.peek_token_is_keyword("ROUTINES") {
+            self.next_token();
+            Some(Statement::ShowProcedures(ShowProceduresStatement {
+                token,
+                plural: true,
+            }))
         } else {
             self.add_error(format!(
                 "unsupported SHOW statement at {}",
@@ -2810,6 +2850,147 @@ impl Parser {
         }
 
         list
+    }
+
+    /// Parse a CREATE PROCEDURE statement
+    fn parse_create_procedure_statement(&mut self) -> Option<CreateProcedureStatement> {
+        let token = self.cur_token.clone();
+
+        // Optional IF NOT EXISTS
+        let if_not_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("NOT") {
+                return None;
+            }
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Procedure name
+        let procedure_name = self.parse_function_name()?;
+
+        // Parameters
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+            self.add_error(format!("expected '(' at {}", self.cur_token.position));
+            return None;
+        }
+
+        let mut parameters = Vec::new();
+        if !self.peek_token_is_punctuator(")") {
+            loop {
+                if !self.expect_peek(TokenType::Identifier) {
+                    return None;
+                }
+                let param_name =
+                    Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+                let param_type = self.parse_data_type()?;
+                parameters.push(FunctionParameter {
+                    name: param_name,
+                    data_type: param_type,
+                });
+
+                if !self.peek_token_is_punctuator(",") {
+                    break;
+                }
+                self.next_token(); // consume comma
+            }
+        }
+
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            self.add_error(format!("expected ')' at {}", self.cur_token.position));
+            return None;
+        }
+
+        // LANGUAGE
+        if !self.expect_keyword("LANGUAGE") {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let language = self.cur_token.literal.clone();
+
+        // AS
+        if !self.expect_keyword("AS") {
+            return None;
+        }
+
+        // Procedure body as string literal
+        if !self.expect_peek(TokenType::String) {
+            self.add_error(format!(
+                "expected string literal for procedure body at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+        let body = self.cur_token.literal.trim_matches('\'').to_string();
+
+        Some(CreateProcedureStatement {
+            token,
+            procedure_name,
+            parameters,
+            language,
+            body,
+            if_not_exists,
+        })
+    }
+
+    /// Parse a DROP PROCEDURE statement
+    fn parse_drop_procedure_statement(&mut self) -> Option<DropProcedureStatement> {
+        let token = self.cur_token.clone();
+
+        // Check for IF EXISTS
+        let if_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse procedure name (simple or qualified)
+        let procedure_name = self.parse_function_name()?;
+
+        Some(DropProcedureStatement {
+            token,
+            procedure_name,
+            if_exists,
+        })
+    }
+
+    /// Parse a CALL PROCEDURE statement
+    fn parse_call_procedure_statement(&mut self) -> Option<CallProcedureStatement> {
+        let token = self.cur_token.clone();
+
+        // Parse procedure name
+        let procedure_name = self.parse_function_name()?;
+
+        // Arguments
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+            self.add_error(format!("expected '(' at {}", self.cur_token.position));
+            return None;
+        }
+
+        let arguments = self.parse_expression_list();
+
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            self.add_error(format!("expected ')' at {}", self.cur_token.position));
+            return None;
+        }
+
+        Some(CallProcedureStatement {
+            token,
+            procedure_name,
+            arguments,
+        })
     }
 }
 
@@ -3048,6 +3229,44 @@ mod tests {
                 assert!(select.offset.is_some());
             }
             _ => panic!("expected SelectStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_create_procedure() {
+        let stmt = parse_stmt("CREATE PROCEDURE test_proc(a INTEGER, b TEXT) LANGUAGE RHAI AS 'execute(\"SELECT 1\");'").unwrap();
+        match stmt {
+            Statement::CreateProcedure(proc) => {
+                assert_eq!(proc.procedure_name.value(), "test_proc");
+                assert_eq!(proc.parameters.len(), 2);
+                assert_eq!(proc.language, "RHAI");
+                assert_eq!(proc.body, "execute(\"SELECT 1\");");
+            }
+            _ => panic!("expected CreateProcedureStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_drop_procedure() {
+        let stmt = parse_stmt("DROP PROCEDURE test_proc").unwrap();
+        match stmt {
+            Statement::DropProcedure(proc) => {
+                assert_eq!(proc.procedure_name.value(), "test_proc");
+                assert!(!proc.if_exists);
+            }
+            _ => panic!("expected DropProcedureStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_call_procedure() {
+        let stmt = parse_stmt("CALL test_proc(42, 'hello')").unwrap();
+        match stmt {
+            Statement::CallProcedure(call) => {
+                assert_eq!(call.procedure_name.value(), "test_proc");
+                assert_eq!(call.arguments.len(), 2);
+            }
+            _ => panic!("expected CallProcedureStatement"),
         }
     }
 }

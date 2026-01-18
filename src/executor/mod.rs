@@ -77,6 +77,7 @@ use crate::core::{Error, Result, Value};
 use crate::functions::{global_registry, FunctionDataType, FunctionRegistry, FunctionSignature};
 use crate::parser::ast::{Program, Statement};
 use crate::parser::Parser;
+use crate::procedures::ProcedureRegistry;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::{Engine, QueryResult, Table, Transaction};
 
@@ -97,6 +98,15 @@ pub(crate) enum DeferredDdlOperation {
         name: String,
         tables: Vec<(String, crate::core::Schema)>,
     }, // Undo by recreating
+    CreateProcedure {
+        name: String,
+        code: String,
+        language: String,
+        param_names: Vec<String>,
+    }, // Undo by unregistering (for drop undo)
+    DropProcedure {
+        name: String,
+    }, // Undo by re-registering (for create undo)
 }
 
 use crate::storage::functions::StoredParameter;
@@ -159,6 +169,8 @@ pub struct Executor {
     engine: Arc<MVCCEngine>,
     /// Function registry for scalar, aggregate, and window functions
     function_registry: Arc<FunctionRegistry>,
+    /// Procedure registry for stored procedures
+    procedure_registry: Arc<ProcedureRegistry>,
     /// Default isolation level for transactions
     default_isolation_level: crate::core::IsolationLevel,
     /// Query cache for parsed statements
@@ -174,9 +186,12 @@ pub struct Executor {
 impl Executor {
     /// Create a new executor with the given storage engine
     pub fn new(engine: Arc<MVCCEngine>) -> Self {
+        let function_registry = Arc::clone(global_registry());
+        let backend_registry = function_registry.backend_registry();
         let executor = Self {
             engine,
-            function_registry: Arc::clone(global_registry()),
+            function_registry,
+            procedure_registry: Arc::new(ProcedureRegistry::new(backend_registry)),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::default(),
             semantic_cache: SemanticCache::default(),
@@ -187,6 +202,10 @@ impl Executor {
         // Load user-defined functions from system table
         // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
+
+        // Load stored procedures from system table
+        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
+        let _ = executor.load_procedures();
 
         executor
     }
@@ -196,9 +215,11 @@ impl Executor {
         engine: Arc<MVCCEngine>,
         function_registry: Arc<FunctionRegistry>,
     ) -> Self {
+        let backend_registry = function_registry.backend_registry();
         let executor = Self {
             engine,
             function_registry,
+            procedure_registry: Arc::new(ProcedureRegistry::new(backend_registry)),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::default(),
             semantic_cache: SemanticCache::default(),
@@ -210,14 +231,21 @@ impl Executor {
         // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
 
+        // Load stored procedures from system table
+        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
+        let _ = executor.load_procedures();
+
         executor
     }
 
     /// Create a new executor with a custom cache size
     pub fn with_cache_size(engine: Arc<MVCCEngine>, cache_size: usize) -> Self {
+        let function_registry = Arc::new(FunctionRegistry::new());
+        let backend_registry = function_registry.backend_registry();
         let executor = Self {
             engine,
-            function_registry: Arc::new(FunctionRegistry::new()),
+            function_registry,
+            procedure_registry: Arc::new(ProcedureRegistry::new(backend_registry)),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::new(cache_size),
             semantic_cache: SemanticCache::default(),
@@ -228,12 +256,33 @@ impl Executor {
         // Load user-defined functions from system table
         let _ = executor.load_functions();
 
+        // Load stored procedures from system table
+        let _ = executor.load_procedures();
+
         executor
     }
 
     /// Check if there is an active explicit transaction
     pub fn has_active_transaction(&self) -> bool {
         self.active_transaction.lock().unwrap().is_some()
+    }
+
+    /// Set the active transaction (for internal use)
+    pub fn set_active_transaction(&self, tx: Option<Box<dyn crate::storage::traits::Transaction>>) {
+        *self.active_transaction.lock().unwrap() = tx.map(|transaction| ActiveTransaction {
+            transaction,
+            tables: FxHashMap::default(),
+            ddl_undo_log: Vec::new(),
+        });
+    }
+
+    /// Take the active transaction (for internal use)
+    pub fn take_active_transaction(&self) -> Option<Box<dyn crate::storage::traits::Transaction>> {
+        self.active_transaction
+            .lock()
+            .unwrap()
+            .take()
+            .map(|at| at.transaction)
     }
 
     /// Get the query planner (lazily initialized)
@@ -339,6 +388,74 @@ impl Executor {
         Ok(())
     }
 
+    /// Load stored procedures from the system table during startup
+    fn load_procedures(&self) -> Result<()> {
+        use crate::storage::procedures::SYS_PROCEDURES;
+
+        // Check if the procedures system table exists
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_procedures_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+
+        if !has_procedures_table {
+            // No procedures table yet, nothing to load
+            return Ok(());
+        }
+
+        let table = tx.get_table(SYS_PROCEDURES)?;
+        let mut scanner = table.scan(&[], None)?;
+
+        // Load each procedure from the system table
+        while scanner.next() {
+            let row = scanner.row();
+
+            // Extract values manually to handle variants
+            let name = match row.get(2) {
+                Some(Value::Text(s)) => s,
+                _ => continue,
+            };
+
+            let parameters_json = match row.get(3) {
+                Some(Value::Text(s)) => s,
+                Some(Value::Json(s)) => s,
+                _ => continue,
+            };
+
+            let language = match row.get(4) {
+                Some(Value::Text(s)) => s,
+                _ => continue,
+            };
+
+            let code = match row.get(5) {
+                Some(Value::Text(s)) => s,
+                _ => continue,
+            };
+
+            // Parse parameters from JSON
+            let stored_parameters: Vec<crate::storage::procedures::StoredParameter> =
+                match serde_json::from_str(parameters_json) {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
+
+            // Convert to parameter names
+            let param_names: Vec<String> =
+                stored_parameters.iter().map(|sp| sp.name.clone()).collect();
+
+            // Register the procedure (ignore schema for now)
+            self.procedure_registry.register(
+                name.to_string(),
+                code.to_string(),
+                language.to_string(),
+                param_names,
+            )?;
+        }
+
+        Ok(())
+    }
+
     /// Get or create a table within the active transaction
     /// Returns (table, should_auto_commit) where should_auto_commit is false if there's an active transaction
     #[allow(dead_code)]
@@ -412,6 +529,11 @@ impl Executor {
     /// Get the function registry
     pub fn function_registry(&self) -> &Arc<FunctionRegistry> {
         &self.function_registry
+    }
+
+    /// Get the procedure registry
+    pub fn procedure_registry(&self) -> &Arc<ProcedureRegistry> {
+        &self.procedure_registry
     }
 
     /// Execute a SQL query string
@@ -615,6 +737,7 @@ impl Executor {
             Statement::ShowTables(stmt) => self.execute_show_tables(stmt, &ctx),
             Statement::ShowViews(stmt) => self.execute_show_views(stmt, &ctx),
             Statement::ShowFunctions(stmt) => self.execute_show_functions(stmt, &ctx),
+            Statement::ShowProcedures(stmt) => self.execute_show_procedures(stmt, &ctx),
             Statement::ShowCreateTable(stmt) => self.execute_show_create_table(stmt, &ctx),
             Statement::ShowCreateView(stmt) => self.execute_show_create_view(stmt, &ctx),
             Statement::ShowIndexes(stmt) => self.execute_show_indexes(stmt, &ctx),
@@ -625,6 +748,9 @@ impl Executor {
             Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
             Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
             Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
+            Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
+            Statement::DropProcedure(stmt) => self.execute_drop_procedure(stmt, &ctx),
+            Statement::CallProcedure(stmt) => self.execute_call_procedure(stmt, &ctx),
         }
     }
 

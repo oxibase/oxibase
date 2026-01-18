@@ -23,12 +23,16 @@
 //! - CREATE VIEW
 //! - DROP VIEW
 
+use crate::api::database_ops::DatabaseWrapper;
+use crate::api::Database;
+use crate::api::DatabaseOps;
 use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
 use crate::functions::{FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
 use crate::storage::functions::{
     StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
 };
+use crate::storage::procedures::{StoredProcedure, SYS_PROCEDURES};
 use crate::storage::traits::{result::EmptyResult, Engine, QueryResult};
 use rustc_hash::FxHashMap;
 
@@ -824,6 +828,192 @@ impl Executor {
         Ok(Box::new(EmptyResult::new()))
     }
 
+    /// Execute a CREATE PROCEDURE statement
+    pub(crate) fn execute_create_procedure(
+        &self,
+        stmt: &CreateProcedureStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Ensure the procedures system table exists
+        self.ensure_procedures_table_exists()?;
+
+        // Check if procedure already exists
+        let procedure_name_upper = stmt.procedure_name.value().to_uppercase();
+        if self.procedure_exists(&procedure_name_upper)? {
+            if stmt.if_not_exists {
+                return Ok(Box::new(EmptyResult::new()));
+            }
+            return Err(Error::internal(format!(
+                "Procedure '{}' already exists",
+                procedure_name_upper
+            )));
+        }
+
+        // Convert parameters to simplified format
+        let stored_parameters: Vec<crate::storage::procedures::StoredParameter> = stmt
+            .parameters
+            .iter()
+            .map(|p| crate::storage::procedures::StoredParameter {
+                name: p.name.value.clone(),
+                data_type: p.data_type.clone(),
+            })
+            .collect();
+
+        // Collect parameter names
+        let param_names: Vec<String> = stmt
+            .parameters
+            .iter()
+            .map(|p| p.name.value.clone())
+            .collect();
+
+        // Check if the backend exists for this language
+        if !self
+            .procedure_registry
+            .is_language_supported(&stmt.language)
+        {
+            return Err(Error::internal(format!(
+                "Unsupported language: {}",
+                stmt.language
+            )));
+        }
+
+        // Register the procedure in the registry first
+        self.procedure_registry.register(
+            procedure_name_upper.clone(),
+            stmt.body.clone(),
+            stmt.language.clone(),
+            param_names,
+        )?;
+
+        // Create stored procedure record
+        let stored_procedure = StoredProcedure {
+            id: 0, // Will be set by database
+            schema: stmt.procedure_name.schema().map(|s| s.to_uppercase()),
+            name: procedure_name_upper.clone(),
+            parameters: stored_parameters,
+            language: stmt.language.clone(),
+            code: stmt.body.clone(),
+        };
+
+        // Insert procedure into system table
+        // If this fails, we need to unregister from the registry to maintain consistency
+        if let Err(e) = self.insert_procedure(&stored_procedure) {
+            // Rollback registry registration on database insert failure
+            let _ = self.procedure_registry.unregister(&procedure_name_upper);
+            return Err(e);
+        }
+
+        // Check if there's an active transaction for undo logging
+        let mut active_tx = self.active_transaction.lock().unwrap();
+        if let Some(ref mut tx_state) = *active_tx {
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::DropProcedure {
+                    name: procedure_name_upper,
+                });
+        }
+
+        Ok(Box::new(EmptyResult::new()))
+    }
+
+    /// Execute a DROP PROCEDURE statement
+    pub(crate) fn execute_drop_procedure(
+        &self,
+        stmt: &DropProcedureStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let procedure_name = stmt.procedure_name.value();
+        let procedure_name_upper = procedure_name.to_uppercase();
+
+        // Check if procedure exists
+        if !self.procedure_exists(&procedure_name_upper)? {
+            if stmt.if_exists {
+                return Ok(Box::new(EmptyResult::new()));
+            }
+            return Err(Error::ProcedureNotFound(procedure_name.clone()));
+        }
+
+        // Get the procedure data before deleting
+        let procedure = self
+            .procedure_registry
+            .get(&procedure_name_upper)
+            .ok_or_else(|| Error::ProcedureNotFound(procedure_name.clone()))?;
+        let code = procedure.code().to_string();
+        let language = procedure.language().to_string();
+        let param_names = procedure.param_names().to_vec();
+
+        // Unregister the procedure from the registry
+        self.procedure_registry.unregister(&procedure_name_upper)?;
+
+        // Delete procedure from system table
+        self.delete_procedure(&procedure_name_upper)?;
+
+        // Check if there's an active transaction for undo logging
+        let mut active_tx = self.active_transaction.lock().unwrap();
+        if let Some(ref mut tx_state) = *active_tx {
+            tx_state
+                .ddl_undo_log
+                .push(super::DeferredDdlOperation::CreateProcedure {
+                    name: procedure_name_upper,
+                    code,
+                    language,
+                    param_names: param_names.to_vec(),
+                });
+        }
+
+        Ok(Box::new(EmptyResult::new()))
+    }
+
+    /// Execute a CALL PROCEDURE statement
+    pub(crate) fn execute_call_procedure(
+        &self,
+        stmt: &CallProcedureStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let procedure_name = stmt.procedure_name.value();
+
+        // Get the procedure from the registry
+        let procedure = self
+            .procedure_registry
+            .get(&procedure_name)
+            .ok_or_else(|| Error::ProcedureNotFound(procedure_name.clone()))?;
+
+        // Evaluate the arguments
+        let mut args = Vec::new();
+        for arg in &stmt.arguments {
+            // For DDL context, we need to evaluate the expression
+            // Since DDL doesn't have table context, use empty column list
+            let mut eval = ExpressionEval::compile(arg, &[])?;
+            let value = eval.eval_slice(&[])?;
+            args.push(value);
+        }
+
+        // Get the backend for this procedure
+        let backend_registry = self.function_registry.backend_registry();
+        let backend = backend_registry
+            .get_backend(procedure.language())
+            .ok_or_else(|| {
+                Error::internal(format!(
+                    "No backend found for language: {}",
+                    procedure.language()
+                ))
+            })?;
+
+        // Create a database connection for the procedure
+        // Use the same engine so procedures can execute SQL
+        let db = Database::with_engine(Arc::clone(&self.engine))?;
+        let db = Arc::new(db);
+        let db_ops: Box<dyn DatabaseOps> = Box::new(DatabaseWrapper::new(db));
+
+        // Execute the procedure
+        let param_names_str: Vec<&str> =
+            procedure.param_names().iter().map(|s| s.as_str()).collect();
+        backend.execute_procedure(procedure.code(), &args, &param_names_str, db_ops)?;
+
+        // Return empty result since procedures don't return values
+        Ok(Box::new(EmptyResult::new()))
+    }
+
     /// Ensure the functions system table exists
     pub(crate) fn ensure_functions_table_exists(&self) -> Result<()> {
         // Check if table exists first - need a transaction
@@ -835,6 +1025,26 @@ impl Executor {
         if !has_functions_table {
             // Parse and execute CREATE TABLE for functions
             self.execute_functions_sql(CREATE_FUNCTIONS_SQL)?;
+        }
+
+        Ok(())
+    }
+
+    /// Ensure the procedures system table exists
+    pub(crate) fn ensure_procedures_table_exists(&self) -> Result<()> {
+        use crate::storage::procedures::{CREATE_PROCEDURES_SQL, SYS_PROCEDURES};
+
+        // Check if table exists first - need a transaction
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_procedures_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+        drop(tx); // Drop transaction before creating tables
+
+        if !has_procedures_table {
+            // Parse and execute CREATE TABLE for procedures
+            self.execute_procedures_sql(CREATE_PROCEDURES_SQL)?;
         }
 
         Ok(())
@@ -938,6 +1148,108 @@ impl Executor {
             let ctx = ExecutionContext::default();
             self.execute_statement(stmt, &ctx)?;
         }
+
+        Ok(())
+    }
+
+    /// Execute SQL statement for procedures (helper for system table creation)
+    fn execute_procedures_sql(&self, sql: &str) -> Result<()> {
+        let mut parser = crate::parser::Parser::new(sql);
+        let program = parser
+            .parse_program()
+            .map_err(|e| Error::parse(e.to_string()))?;
+
+        for stmt in &program.statements {
+            let ctx = ExecutionContext::default();
+            self.execute_statement(stmt, &ctx)?;
+        }
+
+        Ok(())
+    }
+
+    /// Check if a procedure exists in the system table
+    fn procedure_exists(&self, procedure_name: &str) -> Result<bool> {
+        let tx = self.engine.begin_transaction()?;
+        let table = match tx.get_table(SYS_PROCEDURES) {
+            Ok(table) => table,
+            Err(_) => return Ok(false), // Table doesn't exist, so procedure doesn't exist
+        };
+
+        // Query for procedure by name (name is now at index 2, schema at index 1)
+        let mut scanner = table.scan(&[], None)?;
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Text(name)) = row.get(2) {
+                if name.eq_ignore_ascii_case(procedure_name) {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Insert a procedure into the system table
+    fn insert_procedure(&self, procedure: &StoredProcedure) -> Result<()> {
+        let mut tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table(SYS_PROCEDURES)?;
+
+        // Serialize parameters to JSON
+        let parameters_json = serde_json::to_string(&procedure.parameters).map_err(|e| {
+            Error::internal(format!("Failed to serialize procedure parameters: {}", e))
+        })?;
+
+        // Create row with values in schema order (id is auto-increment, set to NULL)
+        let schema_value = match &procedure.schema {
+            Some(schema) => Value::Text(Arc::from(schema.clone())),
+            None => Value::Null(DataType::Text),
+        };
+
+        let values = vec![
+            Value::Null(DataType::Integer),                 // id (auto-increment)
+            schema_value,                                   // schema
+            Value::Text(Arc::from(procedure.name.clone())), // name
+            Value::Json(Arc::from(parameters_json)),        // parameters
+            Value::Text(Arc::from(procedure.language.clone())), // language
+            Value::Text(Arc::from(procedure.code.clone())), // code
+        ];
+
+        let row = Row::from_values(values);
+        table.insert(row)?;
+        tx.commit()?;
+
+        Ok(())
+    }
+
+    /// Delete a procedure from the system table
+    fn delete_procedure(&self, procedure_name: &str) -> Result<()> {
+        let mut tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table(SYS_PROCEDURES)?;
+
+        // Find the procedure ID by name
+        let mut scanner = table.scan(&[], None)?;
+        let mut procedure_id: Option<Value> = None;
+
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(Value::Text(name)) = row.get(2) {
+                if name.eq_ignore_ascii_case(procedure_name) {
+                    procedure_id = row.get(0).cloned(); // ID is at index 0
+                    break;
+                }
+            }
+        }
+
+        if let Some(id_value) = procedure_id {
+            // Delete by ID using WHERE expression
+            use crate::storage::expression::{ComparisonExpr, Expression as StorageExpr};
+            let mut id_expr = ComparisonExpr::new("id", crate::core::Operator::Eq, id_value);
+            let schema = table.schema();
+            id_expr.prepare_for_schema(schema);
+            table.delete(Some(&id_expr))?;
+        }
+
+        tx.commit()?;
 
         Ok(())
     }

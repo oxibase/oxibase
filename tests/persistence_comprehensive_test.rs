@@ -285,10 +285,12 @@ fn test_transaction_rollback_not_persisted() {
             .unwrap();
 
         // Start transaction, insert, then rollback
-        let mut tx = db.begin().unwrap();
-        tx.execute("INSERT INTO test (id, value) VALUES (2, 200)", ())
+        let tx = db.begin().unwrap();
+        tx.lock()
+            .unwrap()
+            .execute("INSERT INTO test (id, value) VALUES (2, 200)", ())
             .unwrap();
-        tx.rollback().unwrap();
+        tx.lock().unwrap().rollback().unwrap();
 
         let count: i64 = db.query_one("SELECT COUNT(*) FROM test", ()).unwrap();
         assert_eq!(count, 1, "Should have only 1 row after rollback");

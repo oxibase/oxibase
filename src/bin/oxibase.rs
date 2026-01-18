@@ -18,6 +18,7 @@
 
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, IsTerminal};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use clap::Parser;
@@ -134,7 +135,7 @@ struct Args {
 /// CLI state for interactive mode
 struct Cli {
     db: Database,
-    tx: Option<ApiTransaction>,
+    tx: Option<Arc<Mutex<ApiTransaction>>>,
     in_transaction: bool,
     json_output: bool,
     limit: usize,
@@ -369,8 +370,8 @@ impl Cli {
             return Err("not in a transaction".to_string());
         }
 
-        if let Some(mut tx) = self.tx.take() {
-            tx.commit().map_err(|e| e.to_string())?;
+        if let Some(tx) = self.tx.take() {
+            tx.lock().unwrap().commit().map_err(|e| e.to_string())?;
         }
 
         self.in_transaction = false;
@@ -383,8 +384,8 @@ impl Cli {
             return Err("not in a transaction".to_string());
         }
 
-        if let Some(mut tx) = self.tx.take() {
-            tx.rollback().map_err(|e| e.to_string())?;
+        if let Some(tx) = self.tx.take() {
+            tx.lock().unwrap().rollback().map_err(|e| e.to_string())?;
         }
 
         self.in_transaction = false;
@@ -394,8 +395,11 @@ impl Cli {
 
     fn execute_read_query(&mut self, query: &str) -> Result<(), String> {
         let rows_result = if self.in_transaction {
-            if let Some(ref mut tx) = self.tx {
-                tx.query(query, ()).map_err(|e| e.to_string())?
+            if let Some(ref tx) = self.tx {
+                tx.lock()
+                    .unwrap()
+                    .query(query, ())
+                    .map_err(|e| e.to_string())?
             } else {
                 return Err("Transaction not available".to_string());
             }
@@ -433,8 +437,11 @@ impl Cli {
 
     fn execute_write_query(&mut self, query: &str) -> Result<(), String> {
         let rows_affected = if self.in_transaction {
-            if let Some(ref mut tx) = self.tx {
-                tx.execute(query, ()).map_err(|e| e.to_string())?
+            if let Some(ref tx) = self.tx {
+                tx.lock()
+                    .unwrap()
+                    .execute(query, ())
+                    .map_err(|e| e.to_string())?
             } else {
                 return Err("Transaction not available".to_string());
             }

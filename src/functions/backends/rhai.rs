@@ -15,8 +15,9 @@
 //! Rhai scripting backend for user-defined functions
 
 use super::ScriptingBackend;
+use crate::api::DatabaseOps;
 use crate::core::{Error, Result, Value};
-use rhai::{Engine, Scope};
+use rhai::{Dynamic, Engine, Scope};
 
 /// Rhai scripting backend
 pub struct RhaiBackend {
@@ -100,6 +101,102 @@ impl ScriptingBackend for RhaiBackend {
                 }
             }
             Err(e) => Err(Error::internal(format!("Rhai execution error: {}", e))),
+        }
+    }
+
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        db: Box<dyn DatabaseOps>,
+    ) -> Result<()> {
+        let mut scope = Scope::new();
+
+        // Create a custom engine with the execute function
+        let mut engine = Engine::new();
+
+        // Register custom functions for type conversions (same as main engine)
+        engine.register_fn("to_int", |v: i64| v);
+        engine.register_fn("to_float", |v: f64| v);
+        engine.register_fn("to_string", |v: String| v);
+
+        // Use the database for the closure
+        let db = std::sync::Arc::new(std::sync::Mutex::new(db));
+        engine.register_fn(
+            "execute",
+            move |sql: &str| -> std::result::Result<Dynamic, Box<rhai::EvalAltResult>> {
+                // Determine query type and execute accordingly
+                let sql_upper = sql.trim_start().to_uppercase();
+                if sql_upper.starts_with("SELECT") {
+                    // SELECT queries return rows
+                    match db.lock().unwrap().query(sql, ()) {
+                        Ok(rows_iter) => {
+                            let mut result_array = rhai::Array::new();
+                            for row_result in rows_iter {
+                                let row = match row_result {
+                                    Ok(r) => r,
+                                    Err(e) => return Err(format!("SQL row error: {}", e).into()),
+                                };
+                                let mut row_map = rhai::Map::new();
+                                for (i, column) in row.columns().iter().enumerate() {
+                                    let value = match row.get::<Value>(i) {
+                                        Ok(val) => match val {
+                                            Value::Integer(i) => Dynamic::from(i),
+                                            Value::Float(f) => Dynamic::from(f),
+                                            Value::Text(s) => Dynamic::from(s.as_ref().to_string()),
+                                            Value::Boolean(b) => Dynamic::from(b),
+                                            _ => Dynamic::from(()), // null/unknown
+                                        },
+                                        Err(_) => Dynamic::from(()),
+                                    };
+                                    row_map.insert(column.clone().into(), value);
+                                }
+                                result_array.push(Dynamic::from(row_map));
+                            }
+                            Ok(Dynamic::from(result_array))
+                        }
+                        Err(e) => Err(format!("SQL execution error: {}", e).into()),
+                    }
+                } else {
+                    // DML/DDL queries return affected row count or success
+                    match db.lock().unwrap().execute(sql, ()) {
+                        Ok(_) => Ok(Dynamic::from(())),
+                        Err(e) => Err(format!("SQL execution error: {}", e).into()),
+                    }
+                }
+            },
+        );
+
+        // Bind arguments to scope using parameter names
+        for (i, arg) in args.iter().enumerate() {
+            let var_name = param_names[i];
+            match arg {
+                Value::Integer(i) => scope.push(var_name, *i),
+                Value::Float(f) => scope.push(var_name, *f),
+                Value::Text(s) => scope.push(var_name, s.as_ref().to_string()),
+                Value::Boolean(b) => scope.push(var_name, *b),
+                _ => {
+                    return Err(Error::internal(
+                        "Unsupported argument type for Rhai procedure",
+                    ))
+                }
+            };
+        }
+
+        // Execute the procedure code
+        match engine.eval_with_scope::<rhai::Dynamic>(&mut scope, code) {
+            Ok(result) => {
+                if result.is_unit() {
+                    Ok(())
+                } else {
+                    Err(Error::internal("Procedure did not return unit"))
+                }
+            }
+            Err(e) => Err(Error::internal(format!(
+                "Rhai procedure execution error: {}",
+                e
+            ))),
         }
     }
 

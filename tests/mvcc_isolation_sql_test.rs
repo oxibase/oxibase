@@ -41,12 +41,14 @@ fn test_uncommitted_not_visible() {
     .expect("Failed to insert");
 
     // Start a transaction and update
-    let mut tx = db.begin().expect("Failed to begin transaction");
-    tx.execute(
-        "UPDATE test_isolation SET value = 'updated' WHERE id = 1",
-        (),
-    )
-    .expect("Failed to update in tx");
+    let tx = db.begin().expect("Failed to begin transaction");
+    tx.lock()
+        .unwrap()
+        .execute(
+            "UPDATE test_isolation SET value = 'updated' WHERE id = 1",
+            (),
+        )
+        .expect("Failed to update in tx");
 
     // Query from main connection should still see old value
     let result = db
@@ -61,7 +63,7 @@ fn test_uncommitted_not_visible() {
     }
 
     // Rollback the transaction
-    tx.rollback().expect("Failed to rollback");
+    tx.lock().unwrap().rollback().expect("Failed to rollback");
 }
 
 /// Test that committed changes are visible (using statement-based transactions)
@@ -255,14 +257,18 @@ fn test_read_own_changes() {
     )
     .expect("Failed to create table");
 
-    let mut tx = db.begin().expect("Failed to begin");
+    let tx = db.begin().expect("Failed to begin");
 
     // Insert in transaction
-    tx.execute("INSERT INTO test_own (id, value) VALUES (1, 'new')", ())
+    tx.lock()
+        .unwrap()
+        .execute("INSERT INTO test_own (id, value) VALUES (1, 'new')", ())
         .expect("Failed to insert");
 
     // Should be able to read our own uncommitted insert
     let result = tx
+        .lock()
+        .unwrap()
         .query("SELECT value FROM test_own WHERE id = 1", ())
         .expect("Failed to query in tx");
 
@@ -275,7 +281,7 @@ fn test_read_own_changes() {
     }
     assert!(found, "Should be able to read own uncommitted insert");
 
-    tx.commit().expect("Failed to commit");
+    tx.lock().unwrap().commit().expect("Failed to commit");
 }
 
 /// Test aggregate functions in transactions

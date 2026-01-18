@@ -9,101 +9,118 @@ nav_order: 6
 
 Stored procedures are blocks of code that can be executed on the database server. Unlike user-defined functions, procedures can:
 
-- Execute multiple SQL statements
+- Execute arbitrary SQL statements using the `execute(sql)` function
 - Access database context and metadata
 - Perform data modifications (INSERT, UPDATE, DELETE)
-- Control transaction flow (COMMIT, ROLLBACK)
-- Return multiple result sets
+- Run within the caller's transaction context
+- Handle complex business logic with control flow (if/else, loops)
 
 ## Syntax
+
+### Creating a Procedure
 
 ```sql
 CREATE PROCEDURE procedure_name(parameter_list)
 LANGUAGE backend AS 'procedure_body';
 ```
 
-## Parameters
+- `procedure_name`: The unique name of the procedure.
+- `parameter_list`: A comma-separated list of parameters (e.g., `id INTEGER, name TEXT`).
+- `backend`: The scripting language used (currently `rhai` is supported).
+- `procedure_body`: The code string enclosed in single quotes.
 
-Procedures support the same parameter types as functions:
-- Named parameters: `param_name TYPE`
-- Input parameters only (procedures don't return values like functions)
+**Note**: `CREATE ROUTINE` is also supported as an alias for `CREATE PROCEDURE`.
 
-## Supported Backends
+### Calling a Procedure
 
-- **Rhai**: Lightweight scripting with access to database context
-- **Boa**: Full JavaScript/TypeScript runtime
-- **Python**: Python scripting environment
+```sql
+CALL procedure_name(argument_list);
+```
+
+- `procedure_name`: The name of the procedure to call.
+- `argument_list`: The values to pass to the procedure.
+
+### Dropping a Procedure
+
+```sql
+DROP PROCEDURE [IF EXISTS] procedure_name;
+```
+
+**Note**: `DROP ROUTINE` is also supported as an alias for `DROP PROCEDURE`.
+
+### Showing Procedures
+
+```sql
+SHOW PROCEDURES;
+```
+
+**Note**: `SHOW ROUTINES` is also supported as an alias for `SHOW PROCEDURES`.
+
+## Supported Languages
+
+Currently, **Rhai** is the primary supported backend for stored procedures.
+
+### Rhai Backend
+Rhai is an embedded scripting language for Rust that provides a safe and easy way to write logic.
+- **Syntax**: Similar to Rust and JavaScript.
+- **Database Access**: Use the `execute(sql)` function to run SQL queries.
+- **Return Values**:
+  - For `SELECT` queries, `execute()` returns an array of row objects (maps).
+  - For `INSERT/UPDATE/DELETE`, `execute()` returns the number of affected rows.
 
 ## Examples
 
-### Rhai Procedure
+### Basic Procedure
 
 ```sql
-CREATE PROCEDURE update_inventory(product_id INTEGER, quantity_change INTEGER)
-LANGUAGE RHAI AS '
-    // Query current inventory
-    let current = query_one("SELECT quantity FROM inventory WHERE id = ?", [product_id]);
+CREATE PROCEDURE greet_user(name TEXT)
+LANGUAGE rhai AS '
+    let message = "Hello, " + name + "!";
+    print(message);
     
-    // Update with new quantity
-    let new_quantity = current + quantity_change;
-    execute("UPDATE inventory SET quantity = ? WHERE id = ?", [new_quantity, product_id]);
-    
-    // Log the change
-    execute("INSERT INTO inventory_log (product_id, change_amount, new_total) VALUES (?, ?, ?)", 
-            [product_id, quantity_change, new_quantity]);
+    // Log the greeting to a table
+    execute(`INSERT INTO logs (message) VALUES ("${message}")`);
 ';
 ```
 
-### Calling Procedures
+### Data Modification
 
 ```sql
--- Execute a procedure
-CALL update_inventory(123, -5);
-
--- Procedures don't return values, but can affect multiple tables
+CREATE PROCEDURE transfer_funds(from_id INTEGER, to_id INTEGER, amount FLOAT)
+LANGUAGE rhai AS '
+    // Check balance
+    let rows = execute(`SELECT balance FROM accounts WHERE id = ${from_id}`);
+    if rows.len() == 0 {
+        throw "Source account not found";
+    }
+    
+    let balance = rows[0].balance;
+    if balance < amount {
+        throw "Insufficient funds";
+    }
+    
+    // Perform transfer
+    execute(`UPDATE accounts SET balance = balance - ${amount} WHERE id = ${from_id}`);
+    execute(`UPDATE accounts SET balance = balance + ${amount} WHERE id = ${to_id}`);
+';
 ```
-
-## Differences from Functions
-
-| Aspect | Functions | Procedures |
-|--------|-----------|------------|
-| Return Values | Always return a single value | No return values |
-| SQL Usage | Can be used in SELECT, WHERE, etc. | Called with CALL statement |
-| Side Effects | Pure functions (no side effects) | Can modify data and state |
-| Context Access | Limited to input parameters | Full access to database context |
-| Multiple Results | Single result | Can return multiple result sets |
-
-## Use Cases
-
-- **Data Processing**: Batch operations, ETL processes
-- **Business Logic**: Complex workflows, validations
-- **Maintenance**: Database cleanup, archiving
-- **Reporting**: Multi-step report generation
 
 ## Transaction Control
 
-Procedures can control transactions explicitly:
+Procedures execute within the transaction context of the caller.
+- If called inside a `BEGIN...COMMIT` block, the procedure's actions are part of that transaction.
+- If an error occurs within the procedure (e.g., a thrown exception or SQL error), the transaction is aborted.
 
 ```sql
-CREATE PROCEDURE transfer_funds(from_account INTEGER, to_account INTEGER, amount DECIMAL)
-LANGUAGE RHAI AS '
-    begin_transaction();
-    
-    try {
-        // Debit from account
-        execute("UPDATE accounts SET balance = balance - ? WHERE id = ?", [amount, from_account]);
-        
-        // Credit to account  
-        execute("UPDATE accounts SET balance = balance + ? WHERE id = ?", [amount, to_account]);
-        
-        commit();
-    } catch (error) {
-        rollback();
-        throw error;
-    }
-';
+BEGIN;
+CALL transfer_funds(1, 2, 100.0);
+COMMIT;
 ```
 
----
+## System Tables
 
-*Note: Stored procedures are planned for a future release. This page serves as a placeholder for upcoming functionality.*
+Stored procedures are stored in the `_sys_procedures` system table. You can query this table to see defined procedures:
+
+```sql
+SELECT * FROM _sys_procedures;
+```

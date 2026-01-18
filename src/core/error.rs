@@ -224,6 +224,10 @@ pub enum Error {
     #[error("function '{0}' not found")]
     FunctionNotFound(String),
 
+    /// Procedure not found
+    #[error("procedure '{0}' not found")]
+    ProcedureNotFound(String),
+
     // =========================================================================
     // Lock errors
     // =========================================================================

@@ -37,6 +37,15 @@ pub trait ScriptingBackend {
     /// Execute script code with the given arguments and parameter names
     fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value>;
 
+    /// Execute procedure code with database access
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        db: Box<dyn crate::api::DatabaseOps>,
+    ) -> Result<()>;
+
     /// Validate that the code is syntactically correct for this backend
     fn validate_code(&self, code: &str) -> Result<()>;
 }
