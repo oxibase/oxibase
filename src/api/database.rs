@@ -130,7 +130,7 @@ impl Database {
         let inner = Arc::new(DatabaseInner {
             engine: engine.clone(),
             executor: Arc::new(Mutex::new(Executor::new(engine))),
-            dsn: "memory://".to_string(),
+            dsn: "internal://".to_string(),
             is_transactional: false,
         });
 

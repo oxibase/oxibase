@@ -317,7 +317,7 @@ fn test_show_procedures_and_routines() -> Result<(), Box<dyn std::error::Error>>
 
     // Test information_schema.routines
     let result = db.query(
-        "SELECT * FROM information_schema.routines WHERE routine_name = 'TEST_PROC'",
+        "SELECT routine_name FROM information_schema.routines WHERE routine_name = 'TEST_PROC'",
         (),
     )?;
     let mut found_routine = false;
