@@ -37,7 +37,7 @@
 //   └─────────────┘     └──────────────┘     └─────────────┘
 
 mod compiler;
-mod evaluator_bridge;
+pub mod evaluator_bridge;
 mod ops;
 mod program;
 mod vm;

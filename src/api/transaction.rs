@@ -43,6 +43,10 @@ use crate::storage::traits::{QueryResult, Transaction as StorageTransaction};
 use super::database::FromValue;
 use super::params::Params;
 use super::rows::Rows;
+use crate::api::database_ops::{DatabaseOps, TransactionDatabase};
+use crate::executor::expression::evaluator_bridge::ExpressionEval;
+
+use crate::storage::traits::EmptyResult;
 
 /// Transaction represents a database transaction
 ///
@@ -79,8 +83,12 @@ impl Transaction {
         if self.rolled_back {
             return Err(Error::TransactionEnded);
         }
+        // For procedure transactions, tx is always None and they're always active
+        if self.is_procedure_tx {
+            return Ok(());
+        }
         let guard = self.tx.lock().unwrap();
-        if guard.is_none() && !self.is_procedure_tx {
+        if guard.is_none() {
             return Err(Error::TransactionNotStarted);
         }
         Ok(())
@@ -260,18 +268,48 @@ impl Transaction {
     ) -> Result<Box<dyn QueryResult>> {
         match statement {
             Statement::CallProcedure(stmt) => {
-                let executor = self
-                    .executor
-                    .lock()
-                    .map_err(|_| Error::LockAcquisitionFailed("executor".to_string()))?;
+                let (procedure, backend, args, param_names_str) = {
+                    let executor = self
+                        .executor
+                        .lock()
+                        .map_err(|_| Error::LockAcquisitionFailed("executor".to_string()))?;
+                    let procedure_name = stmt.procedure_name.value();
+                    let procedure = executor
+                        .procedure_registry()
+                        .get(&procedure_name)
+                        .ok_or_else(|| Error::ProcedureNotFound(procedure_name.clone()))?;
+                    let mut args = Vec::new();
+                    for arg in &stmt.arguments {
+                        let mut eval = ExpressionEval::compile(arg, &[])?;
+                        let value = eval.eval_slice(&[])?;
+                        args.push(value);
+                    }
+                    let fr = executor.function_registry();
+                    let br = fr.backend_registry();
+                    let backend = br
+                        .get_backend(procedure.language())
+                        .ok_or_else(|| {
+                            Error::internal(format!(
+                                "No backend found for language: {}",
+                                procedure.language()
+                            ))
+                        })?
+                        .clone();
+                    let param_names_str: Vec<String> = procedure.param_names().to_vec();
+                    (procedure, backend, args, param_names_str)
+                };
                 let tx_arc = Arc::new(std::sync::Mutex::new(Transaction {
-                    tx: std::sync::Mutex::new(None), // Don't share the transaction object, use the same executor
+                    tx: std::sync::Mutex::new(None),
                     executor: Arc::clone(&self.executor),
                     committed: false,
                     rolled_back: false,
                     is_procedure_tx: true,
                 }));
-                executor.execute_call_procedure_in_transaction(stmt, ctx, tx_arc)
+                let db_ops: Box<dyn DatabaseOps> =
+                    Box::new(TransactionDatabase::new(Arc::clone(&tx_arc)));
+                let param_refs: Vec<&str> = param_names_str.iter().map(|s| s.as_str()).collect();
+                backend.execute_procedure(procedure.code(), &args, &param_refs, db_ops)?;
+                Ok(Box::new(EmptyResult::new()))
             }
             _ => self
                 .executor

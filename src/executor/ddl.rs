@@ -23,7 +23,7 @@
 //! - CREATE VIEW
 //! - DROP VIEW
 
-use crate::api::database_ops::{DatabaseWrapper, TransactionDatabase};
+use crate::api::database_ops::DatabaseWrapper;
 use crate::api::Database;
 use crate::api::DatabaseOps;
 use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
@@ -1009,56 +1009,6 @@ impl Executor {
         let param_names_str: Vec<&str> =
             procedure.param_names().iter().map(|s| s.as_str()).collect();
         backend.execute_procedure(procedure.code(), &args, &param_names_str, db_ops)?;
-
-        // Return empty result since procedures don't return values
-        Ok(Box::new(EmptyResult::new()))
-    }
-
-    /// Execute a CALL PROCEDURE statement within a transaction
-    pub(crate) fn execute_call_procedure_in_transaction(
-        &self,
-        stmt: &CallProcedureStatement,
-        _ctx: &ExecutionContext,
-        tx: Arc<std::sync::Mutex<crate::api::Transaction>>,
-    ) -> Result<Box<dyn QueryResult>> {
-        let procedure_name = stmt.procedure_name.value();
-
-        // Get the procedure from the registry
-        let procedure = self
-            .procedure_registry
-            .get(&procedure_name)
-            .ok_or_else(|| Error::ProcedureNotFound(procedure_name.clone()))?;
-
-        // Evaluate the arguments
-        let mut args = Vec::new();
-        for arg in &stmt.arguments {
-            // For DDL context, we need to evaluate the expression
-            // Since DDL doesn't have table context, use empty column list
-            let mut eval = ExpressionEval::compile(arg, &[])?;
-            let value = eval.eval_slice(&[])?;
-            args.push(value);
-        }
-
-        // Get the backend for this procedure
-        let backend_registry = self.function_registry.backend_registry();
-        let backend = backend_registry
-            .get_backend(procedure.language())
-            .ok_or_else(|| {
-                Error::internal(format!(
-                    "No backend found for language: {}",
-                    procedure.language()
-                ))
-            })?;
-
-        // Create a transactional database that executes within the transaction context
-        let db_ops: Box<dyn DatabaseOps> = Box::new(TransactionDatabase::new(Arc::clone(&tx)));
-
-        // Execute the procedure
-        let param_names_str: Vec<&str> =
-            procedure.param_names().iter().map(|s| s.as_str()).collect();
-        let result = backend.execute_procedure(procedure.code(), &args, &param_names_str, db_ops);
-
-        result?;
 
         // Return empty result since procedures don't return values
         Ok(Box::new(EmptyResult::new()))
