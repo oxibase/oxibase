@@ -801,6 +801,18 @@ impl Database {
         self.begin_with_isolation(IsolationLevel::ReadCommitted)
     }
 
+    /// Begin a new transaction with a specific isolation level (simple)
+    ///
+    /// This is the simple version without locking overhead.
+    pub fn begin_with_isolation_simple(&self, isolation: IsolationLevel) -> Result<Transaction> {
+        let executor = &self.inner.executor;
+        let tx = executor
+            .lock()
+            .unwrap()
+            .begin_transaction_with_isolation(isolation)?;
+        Ok(Transaction::new(tx, Arc::clone(&self.inner.executor)))
+    }
+
     /// Begin a new transaction with a specific isolation level
     ///
     /// # Examples
@@ -810,8 +822,8 @@ impl Database {
     ///
     /// let tx = db.begin_with_isolation(IsolationLevel::Snapshot)?;
     /// // All reads in this transaction see a consistent snapshot
-    /// tx.execute("UPDATE users SET balance = balance - 100 WHERE id = $1", (1,))?;
-    /// tx.commit()?;
+    /// tx.lock().unwrap().execute("UPDATE users SET balance = balance - 100 WHERE id = $1", (1,))?;
+    /// tx.lock().unwrap().commit()?;
     /// ```
     pub fn begin_with_isolation(
         &self,
