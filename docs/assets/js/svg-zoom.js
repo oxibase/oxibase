@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
     dragThreshold: 5,
     // The icon provided by the user
     expandIconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M216,48V96a8,8,0,0,1-16,0V67.31l-42.34,42.35a8,8,0,0,1-11.32-11.32L188.69,56H160a8,8,0,0,1,0-16h48A8,8,0,0,1,216,48ZM98.34,146.34,56,188.69V160a8,8,0,0,0-16,0v48a8,8,0,0,0,8,8H96a8,8,0,0,0,0-16H67.31l42.35-42.34a8,8,0,0,0-11.32-11.32ZM208,152a8,8,0,0,0-8,8v28.69l-42.34-42.35a8,8,0,0,0-11.32-11.32L188.69,200H160a8,8,0,0,0,0,16h48a8,8,0,0,0,8-8V160A8,8,0,0,0,208,152ZM67.31,56H96a8,8,0,0,0,0-16H48a8,8,0,0,0-8,8V96a8,8,0,0,0,16,0V67.31l42.34,42.35a8,8,0,0,0,11.32-11.32Z"></path></svg>`,
+    resetIconSvg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 32 32"><path d="M18,28A12,12,0,1,0,6,16v6.2L2.4,18.6,1,20l6,6,6-6-1.4-1.4L8,22.2V16H8A10,10,0,1,1,18,26Z"/></svg>`,
   };
 
   // --- Global State ---
@@ -34,6 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let uiState = {
     activeSvg: null, // The SVG currently being hovered
     expandBtn: null,
+    resetBtn: null,
     modalOverlay: null,
     modalContent: null,
   };
@@ -48,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (
       !svg ||
       svg.closest(".svg-pan-expand-btn") ||
+      svg.closest(".svg-pan-reset-btn") ||
       !svg.id.startsWith("mermaid-")
     )
       return null;
@@ -75,6 +78,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 width: 32px;
             }
             .svg-pan-expand-btn:hover {
+                background: white;
+                color: black;
+            }
+            .svg-pan-reset-btn {
+                position: absolute;
+                z-index: 9999;
+                cursor: pointer;
+                background: rgba(255, 255, 255, 0.9);
+                border-radius: 4px;
+                padding: 6px;
+                display: none;
+                color: #333;
+                transition: background 0.1s; /* Only animate background, not position */
+                height: 32px;
+                width: 32px;
+            }
+            .svg-pan-reset-btn:hover {
                 background: white;
                 color: black;
             }
@@ -135,6 +155,25 @@ document.addEventListener("DOMContentLoaded", function () {
             .svg-pan-modal-close:hover {
                 background: white;
             }
+            .svg-pan-modal-reset {
+                position: absolute;
+                top: 15px;
+                right: 60px; /* Position left of the close button */
+                background: rgba(255,255,255,0.8);
+                border: none;
+                border-radius: 50%;
+                width: 36px;
+                height: 36px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10;
+                transition: background 0.2s;
+            }
+            .svg-pan-modal-reset:hover {
+                background: white;
+            }
         `;
     document.head.appendChild(style);
   };
@@ -147,6 +186,14 @@ document.addEventListener("DOMContentLoaded", function () {
     btn.title = "Expand View";
     document.body.appendChild(btn);
     uiState.expandBtn = btn;
+
+    // 1.5. Reset Button
+    const resetBtn = document.createElement("div");
+    resetBtn.className = "svg-pan-reset-btn";
+    resetBtn.innerHTML = CONFIG.resetIconSvg;
+    resetBtn.title = "Reset Zoom & Pan";
+    document.body.appendChild(resetBtn);
+    uiState.resetBtn = resetBtn;
 
     // 2. Modal Overlay
     const overlay = document.createElement("div");
@@ -172,24 +219,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Events
     btn.addEventListener("click", openModal);
+    resetBtn.addEventListener("click", resetZoom);
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) closeModal();
     });
   };
 
   const updateButtonPosition = () => {
-    if (!uiState.activeSvg || !uiState.expandBtn) return;
+    if (!uiState.activeSvg || !uiState.expandBtn || !uiState.resetBtn) return;
 
     const rect = uiState.activeSvg.getBoundingClientRect();
     const btnSize = 34; // approx size with padding
+    const gap = 5;
 
     // Position top-right corner of SVG, accounting for scroll
     const top = rect.top + window.scrollY + 10;
-    const left = rect.left + rect.width + window.scrollX - btnSize - 10;
+    const expandLeft = rect.left + rect.width + window.scrollX - btnSize - 10;
+    const resetLeft = expandLeft - btnSize - gap;
 
     uiState.expandBtn.style.top = `${top}px`;
-    uiState.expandBtn.style.left = `${left}px`;
+    uiState.expandBtn.style.left = `${expandLeft}px`;
     uiState.expandBtn.style.display = "block";
+
+    uiState.resetBtn.style.top = `${top}px`;
+    uiState.resetBtn.style.left = `${resetLeft}px`;
+    uiState.resetBtn.style.display = "block";
   };
 
   const openModal = () => {
@@ -197,6 +251,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Clone the SVG
     const clone = uiState.activeSvg.cloneNode(true);
+    // Copy the original viewbox data attribute
+    if (uiState.activeSvg.dataset.originalViewbox) {
+      clone.dataset.originalViewbox = uiState.activeSvg.dataset.originalViewbox;
+    }
 
     // Ensure clone fills container (remove fixed w/h if present)
     clone.removeAttribute("width");
@@ -211,6 +269,20 @@ document.addEventListener("DOMContentLoaded", function () {
     const closeBtn = uiState.modalContent.querySelector(".svg-pan-modal-close");
     uiState.modalContent.innerHTML = "";
     uiState.modalContent.appendChild(closeBtn);
+
+    // Create and add the reset button for the modal
+    const modalResetBtn = document.createElement("button");
+    modalResetBtn.className = "svg-pan-modal-reset";
+    modalResetBtn.innerHTML = CONFIG.resetIconSvg;
+    modalResetBtn.title = "Reset Zoom & Pan";
+    modalResetBtn.onclick = () => {
+      const originalViewBox = clone.dataset.originalViewbox;
+      if (originalViewBox) {
+        clone.setAttribute("viewBox", originalViewBox);
+      }
+    };
+    uiState.modalContent.appendChild(modalResetBtn);
+
     uiState.modalContent.appendChild(clone);
 
     // Show Modal
@@ -228,10 +300,23 @@ document.addEventListener("DOMContentLoaded", function () {
         const closeBtn = uiState.modalContent.querySelector(
           ".svg-pan-modal-close",
         );
+        // Also find the reset button if it exists
+        const resetBtn = uiState.modalContent.querySelector(
+          ".svg-pan-modal-reset",
+        );
         uiState.modalContent.innerHTML = "";
-        uiState.modalContent.appendChild(closeBtn);
+        if (closeBtn) uiState.modalContent.appendChild(closeBtn);
+        if (resetBtn) uiState.modalContent.appendChild(resetBtn);
       }
     }, 300);
+  };
+
+  const resetZoom = () => {
+    if (!uiState.activeSvg) return;
+    const originalViewBox = uiState.activeSvg.dataset.originalViewbox;
+    if (originalViewBox) {
+      uiState.activeSvg.setAttribute("viewBox", originalViewBox);
+    }
   };
 
   // =========================================================
@@ -251,7 +336,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // console.log("Hovering:", e.target, "Detected SVG:", getTargetSvg(e));
 
     const svg = getTargetSvg(e);
-    const overBtn = e.target.closest(".svg-pan-expand-btn");
+    const overBtn = e.target.closest(".svg-pan-expand-btn, .svg-pan-reset-btn");
 
     // Case 1: Mouse is over an actual SVG (not our button icon)
     if (svg) {
@@ -260,6 +345,13 @@ document.addEventListener("DOMContentLoaded", function () {
         uiState.expandBtn.style.display === "none"
       ) {
         uiState.activeSvg = svg;
+        // Store original viewbox if we haven't already
+        if (!svg.dataset.originalViewbox) {
+          const viewBox = svg.getAttribute("viewBox");
+          if (viewBox) {
+            svg.dataset.originalViewbox = viewBox;
+          }
+        }
         updateButtonPosition();
       }
     }
@@ -272,6 +364,7 @@ document.addEventListener("DOMContentLoaded", function () {
     else {
       if (uiState.activeSvg) {
         uiState.expandBtn.style.display = "none";
+        if (uiState.resetBtn) uiState.resetBtn.style.display = "none";
         uiState.activeSvg = null;
       }
     }
@@ -339,7 +432,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!svg) return;
 
     // Don't trigger drag if clicking the expand button
-    if (e.target.closest(".svg-pan-expand-btn")) return;
+    if (
+      e.target.closest(".svg-pan-expand-btn") ||
+      e.target.closest(".svg-pan-reset-btn")
+    )
+      return;
 
     e.preventDefault();
 
