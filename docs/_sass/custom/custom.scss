@@ -132,8 +132,13 @@ a {
     }
 }
 
-.search-results {
-    z-index: 100;
+.search-active {
+    .search {
+        z-index: 101;
+    }
+    .search-overlay {
+        z-index: 100;
+    }
 }
 
 // Remove max-width from .main to allow wider layout

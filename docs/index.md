@@ -9,36 +9,38 @@ nav_exclude: true
 Oxibase is an autonomous database management operating system (DBMOS) that
 embodies a _"Modern Mainframe"_ philosophy: bringing computation directly to
 data. It aims to become a self-contained computational runtime, providing a
-complete solution for data management and computation.
+complete solution from the management of the hardware to the data management,
+computation, communications, authentication and authorization.
 
 ### **Core Philosophy:** 
 
-Oxibase rejects the traditional separation of _"application server"_ and
+Oxibase revisits the traditional separation of _"application server"_ and
 _"database server"_ as an artifact of historical hardware constraints. By
-co-locating computation and data, the system eliminates complexity, network
-latency and serialization overhead inherent in distributed architectures. This
-_"computation to data"_ approach enables user-defined business logic in multiple
-languages and paradigms to execute within transaction scope, directly/close to
-where data resides thanks to data locality awareness of the system.
+co-locating computation and data, the system looks to eliminates complexity,
+network latency and serialization overhead inherent in distributed
+architectures. This _"computation to data"_ approach want to enable user-defined
+business logic in multiple languages and paradigms to execute within transaction
+scope, directly/close to where data resides thanks to data locality awareness of
+the system.
 
 ### **Current State:** 
 
-An embedded SQL database with three index types (B-tree, Hash, Bitmap),
-cost-based query optimization, built-in functions, user-defined functions, and
-advanced SQL features including window functions, recursive CTEs, and
-time-travel queries.
+Right now, Oxibase encloses an embedded relational database with three index
+types (B-tree, Hash, Bitmap), cost-based query optimization, built-in functions,
+user-defined functions, and advanced SQL features including window functions,
+recursive CTEs, and time-travel queries.
 
 ### **Future Vision:** 
 
 The goal is evolution toward a distributed computational runtime in a
 unikernel-based system {% cite unikernels %} that embeds a multiple
 computational paradigms for fast development and auto-scaling. It aims to
-revisit some of the ideas behind IBM System i {% cite IBM_i %} with a
-fresh and open-source approach. The goal is to provide storage (everything is a
-relational object), business-logic (SQL, JS, Python and Rhai), API (REST, gRPC,
-WebSocket), orchestration, self-monitoring, self-tracing, version-control,
-authorization, authentication, and encryption through a unified interface in the
-form of Relational Database Management System (RDBMS). 
+revisit some of the ideas behind IBM System i {% cite IBM_i %} with a fresh
+approach. The goal is to provide storage (everything is a relational
+object), business-logic (SQL, JS, Python and Rhai), API (REST, gRPC, WebSocket),
+orchestration, self-monitoring, self-tracing, version-control, authorization,
+authentication, and encryption through a unified interface in the form of
+cite dbos %}. 
 
 The project roadmap outlines a strategic progression, starting with the
 development of the core experience (Phase 0), as an small embedded system with

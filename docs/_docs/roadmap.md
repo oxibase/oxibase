@@ -4,12 +4,12 @@ title: "Roadmap"
 ---
 
 # Oxibase Roadmap
+{: .no_toc}
 
 The roadmap outlines the journey from a single-node into scalable distributed
 autonomous system. The goal is not to become the fastest, the most scalable
 solution but to learn and explore how the computation and data processing
 paradigms can be rethought.
-
 
 _Figure 1: Current Priorities Dependency Flow_
 
@@ -92,6 +92,15 @@ classDiagram
     Kernel_Integration ..> Horizontal_Architecture
 
 ```
+
+#### Table of contents
+{: .no_toc}
+
+1. TOC
+{:toc}
+
+
+## Phases
 
 ### Phase 0: Validation
 
@@ -189,7 +198,12 @@ availability of adding resources on demand for elastic scaling.
 #### Goal
 Global autonomous computing environment.
 
+
+---
+
 ## Current Goals 
+
+We are currently at [Phase 0](#phase-0-validation).
 
 ### Working areas
 
@@ -232,7 +246,17 @@ Global autonomous computing environment.
 ### Declarative Schema Migration
 
 Modify the schema by applying DDL in static create files stored in the database version management system.
-(oxigration) or from DML manipulation of special schemas.
+(oxigration) or 
+
+### Automatic blue-green migrations 
+
+Any schema changes triggers an automatic blue-green migration. 
+
+### DML based schema migrations
+
+Setup an special internal schema that let's the user use DML to manipulate the
+schema of the database with DML in stead of DDL, bringing the DevEx of [aquameta].
+
 
 
 [DataFusion]: https://datafusion.apache.org/
@@ -244,3 +268,4 @@ Modify the schema by applying DDL in static create files stored in the database 
 [Raft]: https://github.com/tikv/raft-rs
 [Iceberg]: https://github.com/apache/iceberg-rust/
 [FDW]: https://github.com/supabase/wrappers
+[aquameta]: https://github.com/aquameta/meta_triggers
