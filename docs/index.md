@@ -40,7 +40,7 @@ approach. The goal is to provide storage (everything is a relational
 object), business-logic (SQL, JS, Python and Rhai), API (REST, gRPC, WebSocket),
 orchestration, self-monitoring, self-tracing, version-control, authorization,
 authentication, and encryption through a unified interface in the form of
-cite dbos %}. 
+{% cite dbos %}. 
 
 The project roadmap outlines a strategic progression, starting with the
 development of the core experience (Phase 0), as an small embedded system with
