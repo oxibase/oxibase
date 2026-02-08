@@ -23,6 +23,7 @@ pub mod python;
 pub mod rhai;
 
 use crate::core::{Result, Value};
+use crate::storage::traits::Transaction;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -35,7 +36,13 @@ pub trait ScriptingBackend {
     fn supported_languages(&self) -> &[&'static str];
 
     /// Execute script code with the given arguments and parameter names
-    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value>;
+    fn execute(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        txn: Option<&dyn Transaction>,
+    ) -> Result<Value>;
 
     /// Validate that the code is syntactically correct for this backend
     fn validate_code(&self, code: &str) -> Result<()>;

@@ -16,6 +16,7 @@
 
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
+use crate::storage::traits::Transaction;
 
 use boa_engine::object::builtins::JsArray;
 #[cfg(feature = "js")]
@@ -59,7 +60,13 @@ impl ScriptingBackend for BoaBackend {
         &["boa", "deno", "javascript", "js", "typescript", "ts"]
     }
 
-    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
+    fn execute(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        _txn: Option<&dyn Transaction>,
+    ) -> Result<Value> {
         // Create a new JavaScript context for each function call
         let mut context = create_secure_context();
 
@@ -188,7 +195,13 @@ impl ScriptingBackend for BoaBackend {
         &["boa", "deno", "javascript", "js", "typescript", "ts"]
     }
 
-    fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
+    fn execute(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _txn: Option<&dyn Transaction>,
+    ) -> Result<Value> {
         Err(Error::internal(
             "Boa backend not enabled. Use --features js to enable JavaScript/TypeScript support",
         ))

@@ -14,9 +14,12 @@
 
 //! Rhai scripting backend for user-defined functions
 
+mod db;
+
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
-use rhai::{Engine, Scope};
+use crate::storage::traits::Transaction;
+use rhai::{Engine, Scope, Dynamic};
 
 /// Rhai scripting backend
 pub struct RhaiBackend {
@@ -35,6 +38,18 @@ impl RhaiBackend {
 
         Self { engine }
     }
+
+    /// Convert OxiBase Value to Rhai Dynamic
+    fn value_to_dynamic(&self, value: &Value) -> Dynamic {
+        match value {
+            Value::Integer(i) => Dynamic::from(*i),
+            Value::Float(f) => Dynamic::from(*f),
+            Value::Text(s) => Dynamic::from(s.as_ref().to_string()),
+            Value::Boolean(b) => Dynamic::from(*b),
+            Value::Null(_) => Dynamic::UNIT,
+            _ => Dynamic::UNIT, // Fallback
+        }
+    }
 }
 
 impl Default for RhaiBackend {
@@ -52,8 +67,20 @@ impl ScriptingBackend for RhaiBackend {
         &["rhai"]
     }
 
-    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
+    fn execute(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        txn: Option<&dyn Transaction>,
+    ) -> Result<Value> {
         let mut scope = Scope::new();
+
+        // If a transaction is provided, we could register db functions into the scope
+        // or a custom module. For now, we'll focus on the arguments.
+        if let Some(_t) = txn {
+            // TODO: Bind the db bridge to the scope
+        }
 
         // Create arguments array for compatibility
         let mut args_array = rhai::Array::new();

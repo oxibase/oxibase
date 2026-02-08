@@ -16,6 +16,7 @@
 
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
+use crate::storage::traits::Transaction;
 
 #[cfg(feature = "python")]
 use rustpython_vm::{
@@ -134,7 +135,13 @@ impl ScriptingBackend for PythonBackend {
         &["python", "py"]
     }
 
-    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
+    fn execute(
+        &self,
+        code: &str,
+        args: &[Value],
+        param_names: &[&str],
+        _txn: Option<&dyn Transaction>,
+    ) -> Result<Value> {
         // Create a new interpreter for each execution (isolation)
         let interpreter = Interpreter::with_init(Settings::default(), |_| ());
 
@@ -237,7 +244,13 @@ impl ScriptingBackend for PythonBackend {
         &["python", "py"]
     }
 
-    fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
+    fn execute(
+        &self,
+        _code: &str,
+        _args: &[Value],
+        _param_names: &[&str],
+        _txn: Option<&dyn Transaction>,
+    ) -> Result<Value> {
         Err(Error::internal(
             "Python backend not enabled. Use --features python to enable Python support",
         ))

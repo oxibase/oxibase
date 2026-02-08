@@ -90,6 +90,7 @@ impl ScalarFunction for UserDefinedScalarFunction {
                 .iter()
                 .map(|s| s.as_str())
                 .collect::<Vec<_>>(),
+            None, // TODO: Pass transaction context
         )
     }
 
