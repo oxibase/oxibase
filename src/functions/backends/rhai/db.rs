@@ -17,9 +17,8 @@
 //! Provides the 'db' module to Rhai scripts for interacting with the database
 //! within the current transaction context.
 
-use rhai::{Dynamic, Engine, ImmutableString, Map};
-use crate::core::{Value, DataType};
 use crate::storage::traits::Transaction;
+use rhai::{Dynamic, Engine, ImmutableString};
 
 /// Bridge for database operations within a Rhai script
 pub struct RhaiDbBridge<'a> {
@@ -32,18 +31,20 @@ impl<'a> RhaiDbBridge<'a> {
     }
 
     /// Execute a query and return results as a list of maps
-    pub fn query(&self, sql: ImmutableString) -> Dynamic {
+    #[allow(dead_code)]
+    pub fn query(&self, _sql: ImmutableString) -> Dynamic {
         // For now, this is a placeholder for the real query execution engine
         // We will need to bridge this to the SQL parser/optimizer
-        let mut results = rhai::Array::new();
-        
+        let results = rhai::Array::new();
+
         // Example: logic to execute via self.txn.get_table(...) or a query engine
         // Placeholder return
         results.into()
     }
 
     /// Execute a command (INSERT/UPDATE/DELETE) and return affected rows
-    pub fn exec(&self, sql: ImmutableString) -> i64 {
+    #[allow(dead_code)]
+    pub fn exec(&self, _sql: ImmutableString) -> i64 {
         // Placeholder for command execution
         0
     }
@@ -51,7 +52,7 @@ impl<'a> RhaiDbBridge<'a> {
 
 /// Register the 'db' module in the Rhai engine
 pub fn register_db_module(engine: &mut Engine) {
-    // We register the bridge functions here. 
+    // We register the bridge functions here.
     // Since 'txn' is a reference, we use Rhai's closure-based registration
     // that captures the reference during the execute call.
 }

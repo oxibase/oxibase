@@ -19,7 +19,7 @@ mod db;
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
 use crate::storage::traits::Transaction;
-use rhai::{Engine, Scope, Dynamic};
+use rhai::{Dynamic, Engine, Scope};
 
 /// Rhai scripting backend
 pub struct RhaiBackend {
@@ -35,6 +35,9 @@ impl RhaiBackend {
         engine.register_fn("to_int", |v: i64| v);
         engine.register_fn("to_float", |v: f64| v);
         engine.register_fn("to_string", |v: String| v);
+
+        // Register the database module
+        db::register_db_module(&mut engine);
 
         Self { engine }
     }
