@@ -2339,10 +2339,18 @@ impl TransactionVersionStore {
 
                 // Claim the row for update
                 self.parent_store.try_claim_row(row_id, self.txn_id)?;
-            }
 
-            // Insert new version history for this row
-            self.local_versions.insert(row_id, vec![rv]);
+                // Insert new version history for this row (only if not already present)
+                self.local_versions.insert(row_id, vec![rv]);
+            } else {
+                // If it's already in the write-set but not in local_versions (shouldn't happen with current logic)
+                // or if we somehow missed the local_versions check above
+                if let Some(versions) = self.local_versions.get_mut(&row_id) {
+                    versions.push(rv);
+                } else {
+                    self.local_versions.insert(row_id, vec![rv]);
+                }
+            }
         }
         Ok(())
     }
@@ -2534,12 +2542,16 @@ impl fmt::Debug for TransactionVersionStore {
             .finish()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::Value;
-    use std::sync::atomic::AtomicI64;
+// Ensure transaction version store is cleaned up on drop
+impl Drop for TransactionVersionStore {
+    fn drop(&mut self) {
+        // If the transaction wasn't committed, release all row claims in the parent store
+        // We only do this if we have uncommitted writes (write_set entries that were claimed)
+        for &row_id in self.write_set.keys() {
+            self.parent_store.release_row_claim(row_id, self.txn_id);
+        }
+    }
+}
 
     /// Simple visibility checker for testing
     struct TestVisibilityChecker {
@@ -2784,4 +2796,3 @@ mod tests {
         let visible = store.get_visible_version(100, 2);
         assert!(visible.is_none());
     }
-}
