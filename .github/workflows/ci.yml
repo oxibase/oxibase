@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, feat/* ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop, feat/* ]
 
 # Cancel previous runs when new commits are pushed
 concurrency:
