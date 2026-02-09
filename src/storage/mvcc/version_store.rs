@@ -2553,6 +2553,12 @@ impl Drop for TransactionVersionStore {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::Value;
+    use std::sync::atomic::AtomicI64;
+
     /// Simple visibility checker for testing
     struct TestVisibilityChecker {
         current_seq: AtomicI64,
@@ -2796,3 +2802,4 @@ impl Drop for TransactionVersionStore {
         let visible = store.get_visible_version(100, 2);
         assert!(visible.is_none());
     }
+}
