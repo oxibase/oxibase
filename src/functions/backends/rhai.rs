@@ -14,12 +14,10 @@
 
 //! Rhai scripting backend for user-defined functions
 
-mod db;
-
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
 use crate::storage::traits::Transaction;
-use rhai::{Dynamic, Engine, Scope};
+use rhai::{Engine, Scope};
 
 /// Rhai scripting backend
 pub struct RhaiBackend {
@@ -36,23 +34,7 @@ impl RhaiBackend {
         engine.register_fn("to_float", |v: f64| v);
         engine.register_fn("to_string", |v: String| v);
 
-        // Register the database module
-        db::register_db_module(&mut engine);
-
         Self { engine }
-    }
-
-    /// Convert OxiBase Value to Rhai Dynamic
-    #[allow(dead_code)]
-    fn value_to_dynamic(&self, value: &Value) -> Dynamic {
-        match value {
-            Value::Integer(i) => Dynamic::from(*i),
-            Value::Float(f) => Dynamic::from(*f),
-            Value::Text(s) => Dynamic::from(s.as_ref().to_string()),
-            Value::Boolean(b) => Dynamic::from(*b),
-            Value::Null(_) => Dynamic::UNIT,
-            _ => Dynamic::UNIT, // Fallback
-        }
     }
 }
 
