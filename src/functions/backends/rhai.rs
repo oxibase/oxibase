@@ -43,6 +43,7 @@ impl RhaiBackend {
     }
 
     /// Convert OxiBase Value to Rhai Dynamic
+    #[allow(dead_code)]
     fn value_to_dynamic(&self, value: &Value) -> Dynamic {
         match value {
             Value::Integer(i) => Dynamic::from(*i),
