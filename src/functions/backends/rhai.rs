@@ -14,6 +14,8 @@
 
 //! Rhai scripting backend for user-defined functions
 
+mod bridge;
+
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
 use crate::storage::traits::Transaction;
@@ -33,6 +35,9 @@ impl RhaiBackend {
         engine.register_fn("to_int", |v: i64| v);
         engine.register_fn("to_float", |v: f64| v);
         engine.register_fn("to_string", |v: String| v);
+
+        // Register database bridge functions
+        bridge::register_db_functions(&mut engine);
 
         Self { engine }
     }
@@ -60,37 +65,22 @@ impl ScriptingBackend for RhaiBackend {
         param_names: &[&str],
         txn: Option<&dyn Transaction>,
     ) -> Result<Value> {
-        let mut scope = Scope::new();
+        // Set up the transaction guard if a transaction is provided
+        let _guard = txn.map(bridge::TxnGuard::new);
 
-        // If a transaction is provided, we could register db functions into the scope
-        // or a custom module. For now, we'll focus on the arguments.
-        if let Some(_t) = txn {
-            // TODO: Bind the db bridge to the scope
-        }
+        let mut scope = Scope::new();
 
         // Create arguments array for compatibility
         let mut args_array = rhai::Array::new();
         for arg in args {
-            match arg {
-                Value::Integer(i) => args_array.push(rhai::Dynamic::from(*i)),
-                Value::Float(f) => args_array.push(rhai::Dynamic::from(*f)),
-                Value::Text(s) => args_array.push(rhai::Dynamic::from(s.as_ref().to_string())),
-                Value::Boolean(b) => args_array.push(rhai::Dynamic::from(*b)),
-                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
-            };
+            args_array.push(bridge::value_to_dynamic(arg));
         }
         scope.push("arguments", args_array);
 
         // Bind arguments to scope using parameter names
         for (i, arg) in args.iter().enumerate() {
             let var_name = param_names[i];
-            match arg {
-                Value::Integer(i) => scope.push(var_name, *i),
-                Value::Float(f) => scope.push(var_name, *f),
-                Value::Text(s) => scope.push(var_name, s.as_ref().to_string()),
-                Value::Boolean(b) => scope.push(var_name, *b),
-                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
-            };
+            scope.push(var_name, bridge::value_to_dynamic(arg));
         }
 
         // Execute the script
@@ -109,7 +99,7 @@ impl ScriptingBackend for RhaiBackend {
                 } else if result.is::<bool>() {
                     Ok(Value::Boolean(result.cast::<bool>()))
                 } else {
-                    Err(Error::internal("Unsupported return type from Rhai script"))
+                    Ok(Value::Null(crate::core::types::DataType::Null))
                 }
             }
             Err(e) => Err(Error::internal(format!("Rhai execution error: {}", e))),

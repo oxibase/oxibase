@@ -45,7 +45,7 @@ use crate::storage::traits::{QueryResult, Table};
 ///
 /// tx.commit()?;
 /// ```
-pub trait Transaction: Send {
+pub trait Transaction: Send + Sync {
     /// Begins the transaction
     fn begin(&mut self) -> Result<()>;
 
