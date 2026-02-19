@@ -2803,3 +2803,54 @@ mod tests {
         assert!(visible.is_none());
     }
 }
+#[cfg(test)]
+mod additional_tests {
+    use super::*;
+    use std::sync::Arc;
+    use crate::core::Row;
+
+    #[test]
+    fn test_transaction_version_store_drop_releases_claims() {
+        let store = Arc::new(VersionStore::new("test_table".to_string(), test_schema()));
+        let txn_id = 1;
+
+        {
+            let mut tvs = TransactionVersionStore::new(Arc::clone(&store), txn_id);
+            let row = Row::from(vec![Value::from(42)]);
+            
+            // Claim row and put version
+            tvs.put(100, row, false).unwrap();
+            
+            // Verify it is claimed in parent store
+            assert!(store.is_row_claimed_by(100, txn_id));
+        } // tvs drops here
+
+        // Verify claim is released automatically by Drop implementation
+        assert!(!store.is_row_claimed_by(100, txn_id), "Row claim should be released on Drop");
+    }
+
+    #[test]
+    fn test_transaction_version_store_history_integrity() {
+        let store = Arc::new(VersionStore::new("test_table".to_string(), test_schema()));
+        let mut tvs = TransactionVersionStore::new(Arc::clone(&store), 1);
+        
+        let row1 = Row::from(vec![Value::from(10)]);
+        let row2 = Row::from(vec![Value::from(20)]);
+        
+        // Multiple puts to same row in one transaction
+        tvs.put(100, row1, false).unwrap();
+        tvs.put(100, row2, false).unwrap();
+        
+        // Verify local version history has 2 versions
+        let local_versions = tvs.local_versions.get(&100).expect("Should have local versions");
+        assert_eq!(local_versions.len(), 2, "Should preserve history of updates within transaction");
+        
+        // Latest value should be 20
+        let current = tvs.get(100).unwrap();
+        if let Value::Integer(i) = current.get_value(0).unwrap() {
+            assert_eq!(*i, 20);
+        } else {
+            panic!("Expected integer value");
+        }
+    }
+}
