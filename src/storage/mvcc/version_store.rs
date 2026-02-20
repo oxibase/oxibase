@@ -2804,11 +2804,6 @@ mod tests {
     }
 }
 #[cfg(test)]
-mod additional_tests {
-    use super::*;
-    use std::sync::Arc;
-    use crate::core::Row;
-
     #[test]
     fn test_transaction_version_store_drop_releases_claims() {
         let store = Arc::new(VersionStore::new("test_table".to_string(), test_schema()));
@@ -2843,7 +2838,7 @@ mod additional_tests {
         
         // Verify local version history has 2 versions
         let local_versions = tvs.local_versions.get(&100).expect("Should have local versions");
-        assert_eq!(local_versions.len(), 2, "Should preserve history of updates within transaction");
+        assert_eq!(local_versions.len(), 2);
         
         // Latest value should be 20
         let current = tvs.get(100).unwrap();
