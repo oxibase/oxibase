@@ -2836,7 +2836,10 @@ mod tests {
         tvs.put(100, row2, false).unwrap();
 
         // Verify local version history has 2 versions
-        let local_versions = tvs.local_versions.get(&100).expect("Should have local versions");
+        let local_versions = tvs
+            .local_versions
+            .get(&100)
+            .expect("Should have local versions");
         assert_eq!(local_versions.len(), 2);
 
         // Latest value should be 20
