@@ -2802,8 +2802,6 @@ mod tests {
         let visible = store.get_visible_version(100, 2);
         assert!(visible.is_none());
     }
-}
-#[cfg(test)]
     #[test]
     fn test_transaction_version_store_drop_releases_claims() {
         let store = Arc::new(VersionStore::new("test_table".to_string(), test_schema()));
@@ -2821,7 +2819,7 @@ mod tests {
         } // tvs drops here
 
         // Verify claim is released automatically by Drop implementation
-        assert!(!store.is_row_claimed_by(100, txn_id), "Row claim should be released on Drop");
+        assert!(!store.is_row_claimed_by(100, txn_id));
     }
 
     #[test]
