@@ -227,7 +227,7 @@ impl Transaction {
                         let target_type = schema.columns[i].data_type;
                         values.push(val.coerce_to_type(target_type));
                     }
-                    
+
                     // Pad missing columns
                     while values.len() < schema.columns.len() {
                         values.push(Value::null_unknown());
@@ -236,19 +236,21 @@ impl Transaction {
                     // Validate foreign keys
                     for fk in &schema.foreign_keys {
                         let fk_value = &values[fk.column_id];
-                        if fk_value.is_null() { continue; }
-                        
+                        if fk_value.is_null() {
+                            continue;
+                        }
+
                         let ref_table_name = fk.referenced_table.to_lowercase();
                         let ref_table = tx.get_table(&ref_table_name)?;
                         let ref_schema = ref_table.schema();
-                        
+
                         let mut expr = crate::storage::expression::ComparisonExpr::new(
                             fk.referenced_column_name.clone(),
                             crate::core::Operator::Eq,
                             fk_value.clone(),
                         );
                         StorageExpression::prepare_for_schema(&mut expr, ref_schema);
-                        
+
                         let mut scanner = ref_table.scan(&[0], Some(&expr))?;
                         if !scanner.next() {
                             return Err(Error::ReferentialIntegrityViolation {
