@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -251,7 +252,7 @@ pub trait Table: Send + Sync {
     fn update(
         &mut self,
         where_expr: Option<&dyn Expression>,
-        setter: &mut dyn FnMut(Row) -> (Row, bool),
+        setter: &mut dyn FnMut(Row) -> Result<(Row, bool)>,
     ) -> Result<i32>;
 
     /// Deletes rows matching the given expression

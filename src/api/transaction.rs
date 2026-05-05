@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -260,20 +261,11 @@ impl Transaction {
                 // Create VM for expression execution (reused for all rows)
                 let mut vm = ExprVM::new();
 
-                // CRITICAL: Capture errors from setter since closure can't return Result
-                use std::cell::RefCell;
-                let update_error: RefCell<Option<Error>> = RefCell::new(None);
-
-                let mut setter = |row: Row| -> (Row, bool) {
-                    // If we already have an error, skip processing
-                    if update_error.borrow().is_some() {
-                        return (row, false);
-                    }
-
+                let mut setter = |row: Row| -> Result<(Row, bool)> {
                     // Check WHERE clause if present (uses thread-local VM internally)
                     if let Some(ref filter) = where_filter {
                         if !filter.matches(&row) {
-                            return (row, false);
+                            return Ok((row, false));
                         }
                     }
 
@@ -288,8 +280,7 @@ impl Transaction {
                         match vm.execute(program, &exec_ctx) {
                             Ok(v) => updates_to_apply.push((*idx, v)),
                             Err(e) => {
-                                *update_error.borrow_mut() = Some(e);
-                                return (row, false);
+                                return Err(e);
                             }
                         }
                     }
@@ -300,16 +291,11 @@ impl Transaction {
                         new_values[idx] = value;
                     }
 
-                    (Row::from_values(new_values), true)
+                    Ok((Row::from_values(new_values), true))
                 };
 
                 // Use None for where_expr since we handle WHERE in the setter
                 let updated_count = table.update(None, &mut setter)?;
-
-                // Check if any errors were captured during update
-                if let Some(err) = update_error.into_inner() {
-                    return Err(err);
-                }
 
                 Ok(Box::new(ExecResult::with_rows_affected(
                     updated_count as i64,

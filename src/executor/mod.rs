@@ -82,6 +82,7 @@ use crate::storage::traits::{Engine, QueryResult, Table, Transaction};
 
 /// DDL operations for transactional undo
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum DeferredDdlOperation {
     CreateTable {
         name: String,

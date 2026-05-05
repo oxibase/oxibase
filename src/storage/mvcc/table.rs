@@ -1247,7 +1247,7 @@ impl Table for MVCCTable {
     fn update(
         &mut self,
         where_expr: Option<&dyn Expression>,
-        setter: &mut dyn FnMut(Row) -> (Row, bool),
+        setter: &mut dyn FnMut(Row) -> Result<(Row, bool)>,
     ) -> Result<i32> {
         // OPTIMIZATION: Borrow schema instead of cloning - saves allocation per update
         let schema = &self.cached_schema;
@@ -1276,7 +1276,7 @@ impl Table for MVCCTable {
                 if let Some(row) = row {
                     // Normalize row to match current schema (handles ALTER TABLE ADD/DROP COLUMN)
                     let row = self.normalize_row_to_schema(row, schema);
-                    let (updated_row, _) = setter(row);
+                    let (updated_row, _) = setter(row)?;
                     self.txn_versions
                         .write()
                         .unwrap()
@@ -1335,13 +1335,13 @@ impl Table for MVCCTable {
                 // OPTIMIZATION: Apply setter in-place, avoiding intermediate Vec allocation
                 // Update local rows (these already have write-set tracking)
                 for (_, row) in &mut local_rows_to_update {
-                    let (updated_row, _) = setter(std::mem::take(row));
+                    let (updated_row, _) = setter(std::mem::take(row))?;
                     *row = updated_row;
                 }
 
                 // Update rows from version store with pre-fetched originals
                 for (_, row, _) in &mut rows_with_originals {
-                    let (updated_row, _) = setter(std::mem::take(row));
+                    let (updated_row, _) = setter(std::mem::take(row))?;
                     *row = updated_row;
                 }
 
@@ -1411,11 +1411,11 @@ impl Table for MVCCTable {
         let mut all_updated: Vec<(i64, Row)> =
             Vec::with_capacity(rows_to_update.len() + local_rows_to_update.len());
         for (row_id, row) in rows_to_update {
-            let (updated_row, _) = setter(row);
+            let (updated_row, _) = setter(row)?;
             all_updated.push((row_id, updated_row));
         }
         for (row_id, row) in local_rows_to_update {
-            let (updated_row, _) = setter(row);
+            let (updated_row, _) = setter(row)?;
             all_updated.push((row_id, updated_row));
         }
 
@@ -2858,7 +2858,7 @@ mod tests {
             .update(None, &mut |row| {
                 let mut new_row = row.clone();
                 let _ = new_row.set(1, Value::Integer(20));
-                (new_row, false)
+                Ok((new_row, false))
             })
             .unwrap();
 
