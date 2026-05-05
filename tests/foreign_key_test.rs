@@ -173,7 +173,11 @@ fn test_schema_evolution_and_transaction_inserts() {
     let db = Database::open_in_memory().unwrap();
 
     // 1. Create categories
-    db.execute("CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT)", ()).unwrap();
+    db.execute(
+        "CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT)",
+        (),
+    )
+    .unwrap();
     db.execute(
         "INSERT INTO categories (id, name, description) VALUES (1, 'Electronics', 'Electronic devices and gadgets'), (2, 'Accessories', 'Peripherals and accessories for devices')",
         ()
@@ -192,18 +196,31 @@ fn test_schema_evolution_and_transaction_inserts() {
     ).unwrap();
 
     // 3. Evolve schema: Add column and populate it
-    db.execute("ALTER TABLE products ADD COLUMN category_id INTEGER", ()).unwrap();
-    db.execute("UPDATE products SET category_id = 1 WHERE category = 'Electronics'", ()).unwrap();
-    db.execute("UPDATE products SET category_id = 2 WHERE category = 'Accessories'", ()).unwrap();
+    db.execute("ALTER TABLE products ADD COLUMN category_id INTEGER", ())
+        .unwrap();
+    db.execute(
+        "UPDATE products SET category_id = 1 WHERE category = 'Electronics'",
+        (),
+    )
+    .unwrap();
+    db.execute(
+        "UPDATE products SET category_id = 2 WHERE category = 'Accessories'",
+        (),
+    )
+    .unwrap();
 
     // 4. Add foreign key constraint
     db.execute("ALTER TABLE products ADD CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL", ()).unwrap();
 
     // 5. Transaction with partial insert
     let mut tx = db.begin().unwrap();
-    tx.execute("UPDATE products SET price = price * 0.9 WHERE category = 'Electronics'", ()).unwrap();
-    
-    // Notice that category_id is missing in this INSERT statement! 
+    tx.execute(
+        "UPDATE products SET price = price * 0.9 WHERE category = 'Electronics'",
+        (),
+    )
+    .unwrap();
+
+    // Notice that category_id is missing in this INSERT statement!
     // It should be padded with NULL and should not fail with "invalid column count"
     tx.execute(
         "INSERT INTO products (id, name, description, price, category, in_stock, created_at) VALUES (6, 'Tablet', '12.9-inch iPad Pro', 999.99, 'Electronics', TRUE, NOW())",
@@ -213,10 +230,14 @@ fn test_schema_evolution_and_transaction_inserts() {
     tx.commit().unwrap();
 
     // Verify row 6 was added successfully
-    let mut select = db.query("SELECT id, name, category_id FROM products WHERE id = 6", ()).unwrap();
+    let mut select = db
+        .query(
+            "SELECT id, name, category_id FROM products WHERE id = 6",
+            (),
+        )
+        .unwrap();
     let row = select.next().unwrap().unwrap();
     assert_eq!(row.get_value(0).unwrap(), &Value::Integer(6));
     assert_eq!(row.get_value(1).unwrap(), &Value::text("Tablet"));
     assert_eq!(row.get_value(2).unwrap(), &Value::null_unknown()); // Padded as NULL
 }
-
