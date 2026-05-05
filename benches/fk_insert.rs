@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use criterion::{criterion_group, criterion_main, Criterion};
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use oxibase::Database;
 
 fn fk_insert_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("insert_performance");
-    
+
     group.bench_function("insert_no_fk", |b| {
         let db = Database::open_in_memory().unwrap();
-        db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER)", ()).unwrap();
-        
+        db.execute(
+            "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER)",
+            (),
+        )
+        .unwrap();
+
         let mut i = 0;
         b.iter(|| {
             i += 1;
@@ -34,11 +36,12 @@ fn fk_insert_benchmark(c: &mut Criterion) {
 
     group.bench_function("insert_with_fk", |b| {
         let db = Database::open_in_memory().unwrap();
-        db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)", ()).unwrap();
+        db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)", ())
+            .unwrap();
         db.execute("INSERT INTO users (id) VALUES (1)", ()).unwrap();
-        
+
         db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, FOREIGN KEY (user_id) REFERENCES users(id))", ()).unwrap();
-        
+
         let mut i = 0;
         b.iter(|| {
             i += 1;
@@ -46,7 +49,7 @@ fn fk_insert_benchmark(c: &mut Criterion) {
             db.execute(black_box(&sql), ()).unwrap()
         });
     });
-    
+
     group.finish();
 }
 

@@ -30,3 +30,8 @@ The system is an autonomous relational database management system.
 - CI automatically runs `make lint`, `cargo nextest` across features (`js`, `python`), and checks licenses.
 - Code coverage is uploaded to Codecov via `cargo llvm-cov` (`make coverage`).
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
+
+<!-- SPECKIT START -->
+/Users/gabriel.maeztu/repos/oxibase-fk/specs/001-foreign-key/plan.md
+<!-- SPECKIT END -->
+
