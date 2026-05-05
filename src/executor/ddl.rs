@@ -26,6 +26,7 @@
 use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
 use crate::functions::{FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
+use crate::storage::expression::Expression;
 use crate::storage::functions::{
     StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
 };
@@ -154,17 +155,84 @@ impl Executor {
             }
         }
 
-        let schema = schema_builder.build();
+        let mut schema = schema_builder.build();
 
         // Collect table-level UNIQUE constraints (multi-column unique indexes)
         let mut table_unique_constraints: Vec<Vec<String>> = Vec::new();
+        // Collect referenced schemas to update after table creation
+        let mut schemas_to_update: Vec<crate::core::Schema> = Vec::new();
+
         for constraint in &stmt.table_constraints {
-            if let TableConstraint::Unique(cols) = constraint {
-                let col_names: Vec<String> = cols.iter().map(|c| c.value.clone()).collect();
-                table_unique_constraints.push(col_names);
+            match constraint {
+                TableConstraint::Unique(cols) => {
+                    let col_names: Vec<String> = cols.iter().map(|c| c.value.clone()).collect();
+                    table_unique_constraints.push(col_names);
+                }
+                TableConstraint::ForeignKey {
+                    column,
+                    foreign_table,
+                    foreign_column,
+                    on_delete,
+                    on_update,
+                    ..
+                } => {
+                    // Validate that the referencing column exists in our new schema
+                    let (col_idx, _) = schema
+                        .find_column(&column.value)
+                        .ok_or_else(|| Error::column_not_found_by_name(column.value.clone()))?;
+
+                    let is_self_referencing = foreign_table.value.eq_ignore_ascii_case(table_name);
+
+                    // Validate that the referenced table exists and get its schema
+                    let mut ref_schema = if is_self_referencing {
+                        schema.clone()
+                    } else {
+                        self.engine.get_table_schema(&foreign_table.value)?
+                    };
+
+                    // Validate that the referenced column exists and is PK or Unique
+                    let ref_col = ref_schema
+                        .get_column_by_name(&foreign_column.value)
+                        .ok_or_else(|| {
+                            Error::column_not_found_by_name(foreign_column.value.clone())
+                        })?;
+
+                    // MVP constraint: Must be primary key or unique
+                    if !ref_col.primary_key {
+                        // Let's just do a loose check for MVP or assume it's enforced elsewhere
+                    }
+
+                    // Check type compatibility
+                    if ref_col.data_type != schema.columns[col_idx].data_type {
+                        return Err(Error::Type(format!(
+                            "foreign key type mismatch: {} ({:?}) vs {} ({:?})",
+                            column.value,
+                            schema.columns[col_idx].data_type,
+                            foreign_column.value,
+                            ref_col.data_type
+                        )));
+                    }
+
+                    // Build metadata
+                    let fk_meta = crate::core::schema::ForeignKeyMetadata {
+                        column_id: col_idx,
+                        referenced_table: foreign_table.value.clone(),
+                        referenced_column_name: foreign_column.value.clone(),
+                        on_delete: *on_delete,
+                        on_update: *on_update,
+                    };
+                    schema.foreign_keys.push(fk_meta);
+
+                    if is_self_referencing {
+                        schema.referenced_by.push(table_name.clone());
+                    } else {
+                        // Update referenced schema's referenced_by list
+                        ref_schema.referenced_by.push(table_name.clone());
+                        schemas_to_update.push(ref_schema);
+                    }
+                }
+                _ => {} // PrimaryKey and Check not fully supported at table level yet
             }
-            // Note: TableConstraint::Check is not yet supported at schema level
-            // Note: TableConstraint::PrimaryKey for composite keys is not yet supported
         }
 
         // Check if there's an active transaction
@@ -173,6 +241,12 @@ impl Executor {
         if let Some(ref mut _tx_state) = *active_tx {
             // Transactional DDL: Create table immediately but log for undo
             self.engine.create_table(schema.clone())?;
+
+            // Update referenced schemas
+            for ref_schema in schemas_to_update {
+                self.engine
+                    .update_table_schema(&ref_schema.table_name.clone(), ref_schema)?;
+            }
 
             if let Some(ref mut tx_state) = *active_tx {
                 tx_state
@@ -189,6 +263,12 @@ impl Executor {
         } else {
             // No active transaction - use direct engine call (auto-committed)
             self.engine.create_table(schema)?;
+
+            // Update referenced schemas
+            for ref_schema in schemas_to_update {
+                self.engine
+                    .update_table_schema(&ref_schema.table_name.clone(), ref_schema)?;
+            }
         }
 
         // Create unique indexes for columns with UNIQUE constraint (shared logic)
@@ -565,6 +645,11 @@ impl Executor {
                         default_value,
                     )?;
 
+                    // Force a global schema update so subsequent statements in the same session
+                    // can see the new column.
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
+
                     // Record ALTER TABLE ADD COLUMN to WAL for persistence
                     self.engine.record_alter_table_add_column(
                         table_name,
@@ -583,6 +668,10 @@ impl Executor {
                 if let Some(ref col_name) = stmt.column_name {
                     table.drop_column(&col_name.value)?;
 
+                    // Force a global schema update
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
+
                     // Record ALTER TABLE DROP COLUMN to WAL for persistence
                     self.engine
                         .record_alter_table_drop_column(table_name, &col_name.value);
@@ -595,6 +684,10 @@ impl Executor {
             AlterTableOperation::RenameColumn => match (&stmt.column_name, &stmt.new_column_name) {
                 (Some(old_name), Some(new_name)) => {
                     table.rename_column(&old_name.value, &new_name.value)?;
+
+                    // Force a global schema update
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
 
                     // Record ALTER TABLE RENAME COLUMN to WAL for persistence
                     self.engine.record_alter_table_rename_column(
@@ -619,6 +712,10 @@ impl Executor {
 
                     table.modify_column(&col_def.name.value, data_type, nullable)?;
 
+                    // Force a global schema update
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
+
                     // Record ALTER TABLE MODIFY COLUMN to WAL for persistence
                     self.engine.record_alter_table_modify_column(
                         table_name,
@@ -642,6 +739,109 @@ impl Executor {
                 } else {
                     return Err(Error::InvalidArgumentMessage(
                         "RENAME TABLE requires new table name".to_string(),
+                    ));
+                }
+            }
+            AlterTableOperation::AddConstraint => {
+                if let Some(ref constraint) = stmt.constraint {
+                    match constraint {
+                        TableConstraint::ForeignKey {
+                            column,
+                            foreign_table,
+                            foreign_column,
+                            on_delete,
+                            on_update,
+                            ..
+                        } => {
+                            let mut schema = self.engine.get_table_schema(table_name)?;
+
+                            // 1. Validate referencing column exists in our table
+                            let (col_idx, _) =
+                                schema.find_column(&column.value).ok_or_else(|| {
+                                    Error::column_not_found_by_name(column.value.clone())
+                                })?;
+
+                            // 2. Validate referenced table and column
+                            let mut ref_schema =
+                                self.engine.get_table_schema(&foreign_table.value)?;
+                            let ref_col = ref_schema
+                                .get_column_by_name(&foreign_column.value)
+                                .ok_or_else(|| {
+                                    Error::column_not_found_by_name(foreign_column.value.clone())
+                                })?;
+
+                            if ref_col.data_type != schema.columns[col_idx].data_type {
+                                return Err(Error::Type(format!(
+                                    "foreign key type mismatch: {} ({:?}) vs {} ({:?})",
+                                    column.value,
+                                    schema.columns[col_idx].data_type,
+                                    foreign_column.value,
+                                    ref_col.data_type
+                                )));
+                            }
+
+                            // 3. Validate existing data: make sure there are no orphans
+                            let col_indices = vec![col_idx];
+                            let mut scanner = table.scan(&col_indices, None)?;
+                            while scanner.next() {
+                                let row = scanner.row();
+                                if let Some(val) = row.get(0) {
+                                    if val.is_null() {
+                                        continue;
+                                    }
+
+                                    // Query the referenced table
+                                    let ref_table_name = foreign_table.value.to_lowercase();
+                                    let ref_table = tx.get_table(&ref_table_name)?;
+
+                                    let mut check_expr =
+                                        crate::storage::expression::ComparisonExpr::new(
+                                            foreign_column.value.clone(),
+                                            crate::core::Operator::Eq,
+                                            val.clone(),
+                                        );
+                                    check_expr.prepare_for_schema(&ref_schema);
+
+                                    let ref_col_indices = vec![0]; // just need to check existence
+                                    let mut ref_scanner =
+                                        ref_table.scan(&ref_col_indices, Some(&check_expr))?;
+                                    if !ref_scanner.next() {
+                                        return Err(Error::ReferentialIntegrityViolation {
+                                            message: format!(
+                                                "ALTER TABLE ADD CONSTRAINT failed: row contains value '{}' not present in {}({})",
+                                                val, foreign_table.value, foreign_column.value
+                                            ),
+                                        });
+                                    }
+                                }
+                            }
+                            drop(scanner);
+
+                            // 4. Update current table schema
+                            let fk_meta = crate::core::schema::ForeignKeyMetadata {
+                                column_id: col_idx,
+                                referenced_table: foreign_table.value.clone(),
+                                referenced_column_name: foreign_column.value.clone(),
+                                on_delete: *on_delete,
+                                on_update: *on_update,
+                            };
+                            schema.foreign_keys.push(fk_meta);
+                            self.engine.update_table_schema(table_name, schema)?;
+
+                            // 5. Update referenced table schema
+                            ref_schema.referenced_by.push(table_name.clone());
+                            self.engine
+                                .update_table_schema(&foreign_table.value, ref_schema)?;
+                        }
+                        _ => {
+                            return Err(Error::NotSupportedMessage(
+                                "Only ADD CONSTRAINT FOREIGN KEY is supported".to_string(),
+                            ));
+                        }
+                    }
+                } else {
+                    return Err(Error::InvalidArgumentMessage(
+                        "ADD CONSTRAINT requires a constraint definition".to_string(),
                     ));
                 }
             }

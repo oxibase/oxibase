@@ -1304,6 +1304,7 @@ impl fmt::Display for OrderByExpression {
 
 /// Statement enum representing all statement types
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum Statement {
     Select(SelectStatement),
     Insert(InsertStatement),
@@ -1801,8 +1802,29 @@ impl fmt::Display for ColumnConstraint {
     }
 }
 
+/// Referential action for foreign key constraints
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReferentialAction {
+    Restrict,
+    Cascade,
+    SetNull,
+    NoAction,
+}
+
+impl fmt::Display for ReferentialAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReferentialAction::Restrict => write!(f, "RESTRICT"),
+            ReferentialAction::Cascade => write!(f, "CASCADE"),
+            ReferentialAction::SetNull => write!(f, "SET NULL"),
+            ReferentialAction::NoAction => write!(f, "NO ACTION"),
+        }
+    }
+}
+
 /// Table-level constraint (applied to the table rather than a single column)
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum TableConstraint {
     /// UNIQUE(col1, col2, ...)
     Unique(Vec<Identifier>),
@@ -1810,6 +1832,15 @@ pub enum TableConstraint {
     Check(Box<Expression>),
     /// PRIMARY KEY(col1, col2, ...) - composite primary key (not yet fully supported)
     PrimaryKey(Vec<Identifier>),
+    /// FOREIGN KEY (column) REFERENCES table (column) ON DELETE action ON UPDATE action
+    ForeignKey {
+        name: Option<String>,
+        column: Identifier,
+        foreign_table: Identifier,
+        foreign_column: Identifier,
+        on_delete: ReferentialAction,
+        on_update: ReferentialAction,
+    },
 }
 
 impl fmt::Display for TableConstraint {
@@ -1824,12 +1855,31 @@ impl fmt::Display for TableConstraint {
                 let col_names: Vec<String> = cols.iter().map(|c| c.value.clone()).collect();
                 write!(f, "PRIMARY KEY({})", col_names.join(", "))
             }
+            TableConstraint::ForeignKey {
+                name,
+                column,
+                foreign_table,
+                foreign_column,
+                on_delete,
+                on_update,
+            } => {
+                let mut result = String::new();
+                if let Some(n) = name {
+                    result.push_str(&format!("CONSTRAINT {} ", n));
+                }
+                result.push_str(&format!(
+                    "FOREIGN KEY({}) REFERENCES {}({}) ON DELETE {} ON UPDATE {}",
+                    column, foreign_table, foreign_column, on_delete, on_update
+                ));
+                write!(f, "{}", result)
+            }
         }
     }
 }
 
 /// Helper enum for parsing - either a column definition or a table constraint
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ColumnOrConstraint {
     Column(ColumnDefinition),
     Constraint(TableConstraint),
@@ -1875,10 +1925,12 @@ pub enum AlterTableOperation {
     RenameColumn,
     ModifyColumn,
     RenameTable,
+    AddConstraint,
 }
 
 /// ALTER TABLE statement
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub struct AlterTableStatement {
     pub token: Token,
     pub table_name: Identifier,
@@ -1887,6 +1939,7 @@ pub struct AlterTableStatement {
     pub column_name: Option<Identifier>,
     pub new_column_name: Option<Identifier>,
     pub new_table_name: Option<Identifier>,
+    pub constraint: Option<TableConstraint>,
 }
 
 impl fmt::Display for AlterTableStatement {
@@ -1916,6 +1969,11 @@ impl fmt::Display for AlterTableStatement {
             AlterTableOperation::RenameTable => {
                 if let Some(ref name) = self.new_table_name {
                     result.push_str(&format!("RENAME TO {}", name));
+                }
+            }
+            AlterTableOperation::AddConstraint => {
+                if let Some(ref constraint) = self.constraint {
+                    result.push_str(&format!("ADD {}", constraint));
                 }
             }
         }

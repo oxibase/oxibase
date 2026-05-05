@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,6 +128,10 @@ pub enum Error {
     /// CHECK constraint violation
     #[error("CHECK constraint failed for column {column}: {expression}")]
     CheckConstraintViolation { column: String, expression: String },
+
+    /// Referential integrity violation (foreign key)
+    #[error("referential integrity violation: {message}")]
+    ReferentialIntegrityViolation { message: String },
 
     // =========================================================================
     // Transaction errors
@@ -407,6 +412,13 @@ impl Error {
         }
     }
 
+    /// Create a new ReferentialIntegrityViolation error
+    pub fn referential_integrity_violation(message: impl Into<String>) -> Self {
+        Error::ReferentialIntegrityViolation {
+            message: message.into(),
+        }
+    }
+
     /// Create a new ColumnNotFoundByName error
     pub fn column_not_found_by_name(name: impl Into<String>) -> Self {
         Error::ColumnNotFoundByName { name: name.into() }
@@ -477,6 +489,8 @@ impl Error {
             Error::NotNullConstraint { .. }
                 | Error::PrimaryKeyConstraint { .. }
                 | Error::UniqueConstraint { .. }
+                | Error::CheckConstraintViolation { .. }
+                | Error::ReferentialIntegrityViolation { .. }
         )
     }
 

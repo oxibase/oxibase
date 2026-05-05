@@ -83,6 +83,9 @@ pub trait Engine: Send + Sync {
     /// Gets the schema for a table
     fn get_table_schema(&self, table_name: &str) -> Result<Schema>;
 
+    /// Updates the schema for a table
+    fn update_table_schema(&self, table_name: &str, schema: Schema) -> Result<()>;
+
     /// Lists all indexes for a table
     ///
     /// Returns a map from index name to index type string.

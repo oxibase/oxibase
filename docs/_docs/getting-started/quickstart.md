@@ -166,9 +166,9 @@ SELECT * FROM products;
 -- COMMIT;
 ```
 
-## Using Joins
+## Using Joins and Foreign Keys
 
-Let's create a categories table and join it with our products:
+Let's create a categories table and join it with our products, enforcing the relationship with a Foreign Key constraint:
 
 ```sql
 -- Create categories table
@@ -183,10 +183,16 @@ INSERT INTO categories (id, name, description) VALUES
 (1, 'Electronics', 'Electronic devices and gadgets'),
 (2, 'Accessories', 'Peripherals and accessories for devices');
 
--- Update products to use category ids
+-- Add a category_id column to products
 ALTER TABLE products ADD COLUMN category_id INTEGER;
+
+-- Update products to use category ids
 UPDATE products SET category_id = 1 WHERE category = 'Electronics';
 UPDATE products SET category_id = 2 WHERE category = 'Accessories';
+
+-- Enforce referential integrity by adding a Foreign Key constraint
+-- Setting ON DELETE SET NULL ensures that if a category is deleted, its products are kept but their category_id is set to NULL
+ALTER TABLE products ADD CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL;
 
 -- Join tables to get category information
 SELECT p.id, p.name, p.price, c.name AS category_name, c.description AS category_description

@@ -20,7 +20,7 @@ This document provides information about the constraints supported in Oxibase, b
 
 ---
 
-Oxibase supports several column constraints:
+Oxibase supports several column and table constraints:
 
 ### PRIMARY KEY
 
@@ -65,6 +65,45 @@ CREATE TABLE users (
 -- Duplicate values will be rejected
 INSERT INTO users VALUES (1, 'alice@test.com', 'alice');
 INSERT INTO users VALUES (2, 'alice@test.com', 'bob');  -- Error: unique constraint failed
+```
+
+### FOREIGN KEY
+
+Enforces referential integrity between columns in two tables. A foreign key ensures that a value in the referencing column must either be `NULL` or exist in the referenced column (which is typically a `PRIMARY KEY` or `UNIQUE` constraint).
+
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT
+);
+
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    -- Defines a foreign key inline
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Adding a constraint after table creation
+ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+```
+
+#### Referential Actions
+
+You can define behaviors when the referenced row is deleted (`ON DELETE`) or updated (`ON UPDATE`):
+
+*   **RESTRICT**: (Default) Prevents the deletion or update of a referenced row if dependent rows exist. Returns a referential integrity violation error.
+*   **CASCADE**: Deletes or updates the dependent rows automatically when the referenced row is deleted or updated.
+*   **SET NULL**: Sets the foreign key column in dependent rows to `NULL` when the referenced row is deleted or updated (requires the column to be nullable).
+*   **NO ACTION**: Similar to RESTRICT, prevents the operation.
+
+```sql
+-- Prevents deleting a department if it has employees
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    dept_id INTEGER,
+    FOREIGN KEY (dept_id) REFERENCES departments(id) ON DELETE RESTRICT
+);
 ```
 
 ### DEFAULT

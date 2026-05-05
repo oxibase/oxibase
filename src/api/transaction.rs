@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +39,7 @@ use crate::executor::expression::ExpressionEval;
 use crate::executor::result::ExecutorMemoryResult;
 use crate::parser::ast::{Expression, Statement};
 use crate::parser::Parser;
+use crate::storage::expression::Expression as StorageExpression;
 use crate::storage::traits::{QueryResult, Transaction as StorageTransaction};
 
 use super::database::FromValue;
@@ -204,15 +206,60 @@ impl Transaction {
             Statement::Insert(stmt) => {
                 let table_name = &stmt.table_name.value();
                 let mut table = tx.get_table(table_name)?;
+                let schema = table.schema().clone();
 
                 let mut total_inserted = 0i64;
 
                 for row_values in &stmt.values {
-                    let mut values = Vec::with_capacity(row_values.len());
-                    for expr in row_values {
+                    if row_values.len() > schema.columns.len() {
+                        return Err(Error::InvalidArgumentMessage(format!(
+                            "INSERT has {} columns but {} values",
+                            schema.columns.len(),
+                            row_values.len()
+                        )));
+                    }
+
+                    let mut values = Vec::with_capacity(schema.columns.len());
+                    for (i, expr) in row_values.iter().enumerate() {
                         // Use ExpressionEval for value expression evaluation
                         let mut eval = ExpressionEval::compile(expr, &[])?.with_context(ctx);
-                        values.push(eval.eval_slice(&[])?);
+                        let val = eval.eval_slice(&[])?;
+                        let target_type = schema.columns[i].data_type;
+                        values.push(val.coerce_to_type(target_type));
+                    }
+
+                    // Pad missing columns
+                    while values.len() < schema.columns.len() {
+                        values.push(Value::null_unknown());
+                    }
+
+                    // Validate foreign keys
+                    for fk in &schema.foreign_keys {
+                        let fk_value = &values[fk.column_id];
+                        if fk_value.is_null() {
+                            continue;
+                        }
+
+                        let ref_table_name = fk.referenced_table.to_lowercase();
+                        let ref_table = tx.get_table(&ref_table_name)?;
+                        let ref_schema = ref_table.schema();
+
+                        let mut expr = crate::storage::expression::ComparisonExpr::new(
+                            fk.referenced_column_name.clone(),
+                            crate::core::Operator::Eq,
+                            fk_value.clone(),
+                        );
+                        StorageExpression::prepare_for_schema(&mut expr, ref_schema);
+
+                        let mut scanner = ref_table.scan(&[0], Some(&expr))?;
+                        if !scanner.next() {
+                            return Err(Error::ReferentialIntegrityViolation {
+                                message: format!(
+                                    "FOREIGN KEY constraint failed: value '{}' not present in {}({})",
+                                    fk_value, fk.referenced_table, fk.referenced_column_name
+                                ),
+                            });
+                        }
                     }
 
                     let row = Row::from_values(values);
@@ -260,20 +307,11 @@ impl Transaction {
                 // Create VM for expression execution (reused for all rows)
                 let mut vm = ExprVM::new();
 
-                // CRITICAL: Capture errors from setter since closure can't return Result
-                use std::cell::RefCell;
-                let update_error: RefCell<Option<Error>> = RefCell::new(None);
-
-                let mut setter = |row: Row| -> (Row, bool) {
-                    // If we already have an error, skip processing
-                    if update_error.borrow().is_some() {
-                        return (row, false);
-                    }
-
+                let mut setter = |row: Row| -> Result<(Row, bool)> {
                     // Check WHERE clause if present (uses thread-local VM internally)
                     if let Some(ref filter) = where_filter {
                         if !filter.matches(&row) {
-                            return (row, false);
+                            return Ok((row, false));
                         }
                     }
 
@@ -288,8 +326,7 @@ impl Transaction {
                         match vm.execute(program, &exec_ctx) {
                             Ok(v) => updates_to_apply.push((*idx, v)),
                             Err(e) => {
-                                *update_error.borrow_mut() = Some(e);
-                                return (row, false);
+                                return Err(e);
                             }
                         }
                     }
@@ -300,16 +337,11 @@ impl Transaction {
                         new_values[idx] = value;
                     }
 
-                    (Row::from_values(new_values), true)
+                    Ok((Row::from_values(new_values), true))
                 };
 
                 // Use None for where_expr since we handle WHERE in the setter
                 let updated_count = table.update(None, &mut setter)?;
-
-                // Check if any errors were captured during update
-                if let Some(err) = update_error.into_inner() {
-                    return Err(err);
-                }
 
                 Ok(Box::new(ExecResult::with_rows_affected(
                     updated_count as i64,

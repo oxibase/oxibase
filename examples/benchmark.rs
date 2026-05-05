@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@ const ROW_COUNT: usize = 10_000;
 const ITERATIONS: usize = 100;
 
 fn main() {
-    println!("Starting OxiBase benchmark...");
+    println!("Starting Oxibase benchmark...");
     println!(
         "Configuration: {} rows, {} iterations per test\n",
         ROW_COUNT, ITERATIONS
@@ -77,7 +78,7 @@ fn main() {
             .unwrap();
     }
 
-    println!("Benchmarking OxiBase...\n");
+    println!("Benchmarking Oxibase...\n");
     println!("============================================================");
     println!("OXIBASE BENCHMARK (10,000 rows, 100 iterations, in-memory)");
     println!("============================================================\n");

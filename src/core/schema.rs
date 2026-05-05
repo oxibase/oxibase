@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +20,22 @@
 use std::fmt;
 use std::sync::OnceLock;
 
+use crate::parser::ast::ReferentialAction;
 use chrono::{DateTime, Utc};
 use rustc_hash::FxHashMap;
 
 use super::error::{Error, Result};
 use super::types::DataType;
+
+/// Metadata for a foreign key constraint
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ForeignKeyMetadata {
+    pub column_id: usize,
+    pub referenced_table: String,
+    pub referenced_column_name: String,
+    pub on_delete: ReferentialAction,
+    pub on_update: ReferentialAction,
+}
 
 /// A column definition in a table schema
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -172,6 +184,12 @@ pub struct Schema {
     /// Column definitions
     pub columns: Vec<SchemaColumn>,
 
+    /// Foreign key constraints defined on this table
+    pub foreign_keys: Vec<ForeignKeyMetadata>,
+
+    /// List of tables that have foreign keys referencing this table
+    pub referenced_by: Vec<String>,
+
     /// Creation timestamp
     pub created_at: DateTime<Utc>,
 
@@ -195,6 +213,8 @@ impl Clone for Schema {
             table_name: self.table_name.clone(),
             table_name_lower: self.table_name_lower.clone(),
             columns: self.columns.clone(),
+            foreign_keys: self.foreign_keys.clone(),
+            referenced_by: self.referenced_by.clone(),
             created_at: self.created_at,
             updated_at: self.updated_at,
             column_names_cache: OnceLock::new(), // Don't clone cache, it's recomputed lazily
@@ -208,6 +228,8 @@ impl PartialEq for Schema {
     fn eq(&self, other: &Self) -> bool {
         self.table_name == other.table_name
             && self.columns == other.columns
+            && self.foreign_keys == other.foreign_keys
+            && self.referenced_by == other.referenced_by
             && self.created_at == other.created_at
             && self.updated_at == other.updated_at
     }
@@ -225,6 +247,8 @@ impl Schema {
             table_name: name,
             table_name_lower: name_lower,
             columns,
+            foreign_keys: Vec::new(),
+            referenced_by: Vec::new(),
             created_at: now,
             updated_at: now,
             column_names_cache: OnceLock::new(),
@@ -246,6 +270,8 @@ impl Schema {
             table_name: name,
             table_name_lower: name_lower,
             columns,
+            foreign_keys: Vec::new(),
+            referenced_by: Vec::new(),
             created_at,
             updated_at,
             column_names_cache: OnceLock::new(),

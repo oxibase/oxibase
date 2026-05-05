@@ -195,6 +195,19 @@ impl Executor {
         let mut returning_rows: Vec<Row> = Vec::new();
         let schema_column_names: Vec<String> = table.schema().column_names_owned().to_vec();
 
+        let mut get_table_fn = |name: &str| -> Result<Box<dyn Table>> {
+            if let Some(ref tx) = standalone_tx {
+                tx.get_table(name)
+            } else {
+                let mut active_tx_guard = self.active_transaction.lock().unwrap();
+                active_tx_guard
+                    .as_mut()
+                    .unwrap()
+                    .transaction
+                    .get_table(name)
+            }
+        };
+
         // Check if this is INSERT ... SELECT
         if let Some(ref select_stmt) = stmt.select {
             // Execute the SELECT query
@@ -235,6 +248,12 @@ impl Executor {
                     // Validate coercion didn't silently fail
                     validate_coercion(value, &coerced, &column_names[i], column_types[i])?;
                     row_values[column_indices[i]] = coerced;
+                }
+
+                // Validate Foreign Keys
+                let schema = table.schema().clone();
+                if !schema.foreign_keys.is_empty() {
+                    self.validate_foreign_keys_for_row(&schema, &row_values, &mut get_table_fn)?;
                 }
 
                 // Create row and insert (returns row with AUTO_INCREMENT applied)
@@ -323,6 +342,11 @@ impl Executor {
                     // Validate coercion didn't silently fail
                     validate_coercion(&value, &coerced, &column_names[i], column_types[i])?;
                     row_values[column_indices[i]] = coerced;
+                }
+
+                // Validate Foreign Keys
+                if !schema.foreign_keys.is_empty() {
+                    self.validate_foreign_keys_for_row(&schema, &row_values, &mut get_table_fn)?;
                 }
 
                 // Need to clone for potential update
@@ -420,6 +444,12 @@ impl Executor {
                     // Validate coercion didn't silently fail
                     validate_coercion(&value, &coerced, &column_names[i], column_types[i])?;
                     row_values[column_indices[i]] = coerced;
+                }
+
+                // Validate Foreign Keys
+                let schema = table.schema().clone();
+                if !schema.foreign_keys.is_empty() {
+                    self.validate_foreign_keys_for_row(&schema, &row_values, &mut get_table_fn)?;
                 }
 
                 // Validate CHECK constraints
@@ -531,6 +561,10 @@ impl Executor {
             .iter()
             .any(|(_, expr)| Self::has_subqueries(expr) && Self::has_correlated_subqueries(expr));
 
+        // We must pre-compute updates if there are correlated subqueries OR if we need to validate foreign keys
+        let has_foreign_keys = !schema.foreign_keys.is_empty() || !schema.referenced_by.is_empty();
+        let must_precompute = has_correlated_updates || has_foreign_keys;
+
         // Pre-process update expressions if they contain NON-correlated subqueries
         // Correlated subqueries must be processed per-row with outer row context
         let processed_updates: Option<Vec<(String, Expression)>> =
@@ -627,23 +661,25 @@ impl Executor {
         // Create a setter function that applies updates using pre-computed indices
         // If we need memory filtering, include the WHERE check in the setter
         // For correlated subqueries, we need special handling
-        let rows_affected = if has_correlated_updates {
-            // Path for correlated subqueries: we need to pre-compute all values
-            // because process_correlated_expression calls self methods and can't be
-            // used inside the closure. Strategy:
+        let rows_affected = if must_precompute {
+            // Path for correlated subqueries and foreign keys: we need to pre-compute all values
+            // because process_correlated_expression and fk validation call self methods
+            // and can't be used inside the closure. Strategy:
             // 1. Scan table to find all rows (matching WHERE if applicable)
             // 2. For each row, build outer_row context and evaluate correlated expressions
             // 3. Store computed values keyed by PK
-            // 4. Call table.update with a setter that looks up pre-computed values
+            // 4. Validate foreign keys and referential actions
+            // 5. Call table.update with a setter that looks up pre-computed values
 
             // Get primary key column index
             let pk_indices = schema.primary_key_indices();
             let pk_idx = pk_indices.first().copied().unwrap_or(0);
 
             // Pre-compute values for all rows
-            // Map: pk_value -> Vec<(col_idx, new_value)>
+            // Map: pk_value -> (Row, Vec<(col_idx, new_value)>)
             // OPTIMIZATION: Use AHashMap for Value keys (better hash distribution)
-            let mut precomputed: AHashMap<Value, Vec<(usize, Value)>> = AHashMap::with_capacity(64);
+            let mut precomputed: AHashMap<Value, (Row, Vec<(usize, Value)>)> =
+                AHashMap::with_capacity(64);
 
             // Build column indices for scanning (all columns)
             let all_col_indices: Vec<usize> = (0..column_names_vec.len()).collect();
@@ -725,16 +761,67 @@ impl Executor {
                 outer_row_map = correlated_ctx.outer_row.take().unwrap_or_default();
 
                 if !new_values.is_empty() {
-                    precomputed.insert(pk_value, new_values);
+                    precomputed.insert(pk_value, (row.clone(), new_values));
                 }
             }
             drop(scanner);
 
+            // Validate foreign keys and handle referential actions before applying updates
+            if has_foreign_keys {
+                let mut get_table_fn = |name: &str| -> Result<Box<dyn Table>> {
+                    if let Some(ref tx) = standalone_tx {
+                        tx.get_table(name)
+                    } else {
+                        let mut active_tx_guard = self.active_transaction.lock().unwrap();
+                        active_tx_guard
+                            .as_mut()
+                            .unwrap()
+                            .transaction
+                            .get_table(name)
+                    }
+                };
+
+                for (pk_value, (original_row, updates)) in &precomputed {
+                    // Create the updated row to check constraints against
+                    let mut updated_row = original_row.clone();
+                    for (idx, new_value) in updates {
+                        let _ = updated_row.set(*idx, new_value.clone());
+                    }
+
+                    // 1. Validate foreign keys of this table
+                    if !schema.foreign_keys.is_empty() {
+                        self.validate_foreign_keys_for_row(
+                            schema,
+                            updated_row.as_slice(),
+                            &mut get_table_fn,
+                        )?;
+                    }
+
+                    // 2. Handle referential actions if PK was modified
+                    if !schema.referenced_by.is_empty() {
+                        // Check if PK was actually updated
+                        let pk_updated = updates.iter().any(|(idx, _)| *idx == pk_idx);
+                        if pk_updated {
+                            let new_pk = updated_row.get(pk_idx).unwrap();
+                            // If PK value changed
+                            if pk_value != new_pk {
+                                self.handle_referential_actions(
+                                    schema,
+                                    pk_value,
+                                    Some(new_pk),
+                                    &mut get_table_fn,
+                                )?;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Now update using precomputed values
-            let mut setter = |mut row: Row| -> (Row, bool) {
+            let mut setter = |mut row: Row| -> Result<(Row, bool)> {
                 let pk_value = row.get(pk_idx).cloned().unwrap_or(Value::null_unknown());
 
-                if let Some(updates) = precomputed.get(&pk_value) {
+                if let Some((_, updates)) = precomputed.get(&pk_value) {
                     for (idx, new_value) in updates {
                         let _ = row.set(*idx, new_value.clone());
                     }
@@ -742,16 +829,16 @@ impl Executor {
                     if has_returning {
                         returning_rows.borrow_mut().push(row.clone());
                     }
-                    (row, true)
+                    Ok((row, true))
                 } else {
-                    (row, false)
+                    Ok((row, false))
                 }
             };
 
             table.update(where_expr.as_deref(), &mut setter)?
         } else {
             // Optimized path for non-correlated subqueries
-            let mut setter = |mut row: Row| -> (Row, bool) {
+            let mut setter = |mut row: Row| -> Result<(Row, bool)> {
                 evaluator.set_row_array(&row);
 
                 // If we need in-memory WHERE filtering, check the condition first
@@ -759,7 +846,7 @@ impl Executor {
                     if let Some(ref where_expr) = memory_where_clause {
                         match evaluator.evaluate_bool(where_expr) {
                             Ok(true) => {}
-                            _ => return (row, false),
+                            _ => return Ok((row, false)),
                         }
                     }
                 }
@@ -786,7 +873,7 @@ impl Executor {
                     returning_rows.borrow_mut().push(row.clone());
                 }
 
-                (row, changed)
+                Ok((row, changed))
             };
 
             table.update(where_expr.as_deref(), &mut setter)?
@@ -866,7 +953,7 @@ impl Executor {
 
         // Build WHERE expression - try to convert to storage expression
         // If that fails (complex expression like a + b > 100), fall back to in-memory filtering
-        let schema = table.schema();
+        let schema = table.schema().clone();
 
         // Check if WHERE has correlated subqueries (needs per-row evaluation)
         let has_correlated = if let Some(ref where_clause) = stmt.where_clause {
@@ -892,7 +979,7 @@ impl Executor {
 
                 // Try to push down predicate to storage layer
                 let (storage_expr, needs_mem) =
-                    pushdown::try_pushdown(&processed_where, schema, Some(ctx));
+                    pushdown::try_pushdown(&processed_where, &schema, Some(ctx));
                 if needs_mem {
                     // Complex expression (like a + b > 100) - use in-memory filtering
                     (storage_expr, true, Some(processed_where))
@@ -917,12 +1004,14 @@ impl Executor {
             .map(|c| format!("{}.{}", effective_name, c))
             .collect();
 
+        let has_referential_actions = !schema.referenced_by.is_empty();
+
         // Delete rows
-        let rows_affected = if needs_memory_filter || has_returning {
+        let rows_affected = if needs_memory_filter || has_returning || has_referential_actions {
             // Complex WHERE expression OR RETURNING - need to scan rows first
             // Scan all rows, filter with evaluator, collect for RETURNING, delete matching ones by primary key
             // Clone schema for later use to avoid borrow conflict
-            let schema_clone = schema.clone();
+            // let schema_clone = schema.clone();
 
             // Create evaluator for WHERE filtering
             let mut evaluator = CompiledEvaluator::new(&self.function_registry).with_context(ctx);
@@ -1038,13 +1127,34 @@ impl Executor {
             // Drop scanner to release borrow
             drop(scanner);
 
+            // Handle referential actions before deleting
+            if has_referential_actions {
+                let mut get_table_fn = |name: &str| -> Result<Box<dyn Table>> {
+                    if let Some(ref tx) = standalone_tx {
+                        tx.get_table(name)
+                    } else {
+                        let mut active_tx_guard = self.active_transaction.lock().unwrap();
+                        active_tx_guard
+                            .as_mut()
+                            .unwrap()
+                            .transaction
+                            .get_table(name)
+                    }
+                };
+
+                for (pk_value, _) in &rows_to_delete {
+                    self.handle_referential_actions(&schema, pk_value, None, &mut get_table_fn)?;
+                }
+            }
+
             // Delete matching rows by primary key
             let mut delete_count = 0;
             if let Some(ref pk_name) = pk_col_name {
                 for (pk_value, row_data) in rows_to_delete {
                     let mut pk_expr =
                         ComparisonExpr::new(pk_name, crate::core::Operator::Eq, pk_value);
-                    pk_expr.prepare_for_schema(&schema_clone);
+                    pk_expr.prepare_for_schema(&schema);
+
                     let deleted = table.delete(Some(&pk_expr))?;
                     if deleted > 0 {
                         if let Some(row) = row_data {
@@ -1204,7 +1314,7 @@ impl Executor {
         let mut vm = ExprVM::new();
 
         // Create a setter function that applies the ON DUPLICATE KEY UPDATE
-        let mut setter = |mut row: Row| -> (Row, bool) {
+        let mut setter = |mut row: Row| -> Result<(Row, bool)> {
             // Collect all updates first to avoid borrow conflicts
             let updates_to_apply: Vec<(usize, Value)> = {
                 let row_data = row.as_slice();
@@ -1226,7 +1336,7 @@ impl Executor {
                 let _ = row.set(idx, new_value);
             }
 
-            (row, changed)
+            Ok((row, changed))
         };
 
         // Update the row
@@ -1480,6 +1590,155 @@ impl Executor {
             result_columns,
             result_rows,
         )))
+    }
+
+    /// Handle referential actions on update/delete
+    fn handle_referential_actions(
+        &self,
+        schema: &crate::core::Schema,
+        old_pk_value: &Value,
+        new_pk_value: Option<&Value>, // None means delete, Some means update
+        get_table_mut: &mut dyn FnMut(&str) -> Result<Box<dyn Table>>,
+    ) -> Result<()> {
+        if schema.referenced_by.is_empty() {
+            return Ok(());
+        }
+
+        // We need to check each table that references us
+        for ref_by_name in &schema.referenced_by {
+            let ref_by_name_lower = ref_by_name.to_lowercase();
+            let mut referencing_table = get_table_mut(&ref_by_name_lower)?;
+
+            // Need to clone the schema to avoid borrowing conflicts with `referencing_table`
+            let referencing_schema = referencing_table.schema().clone();
+
+            // Find foreign keys in that table that reference US
+            for fk in &referencing_schema.foreign_keys {
+                if fk.referenced_table.eq_ignore_ascii_case(&schema.table_name) {
+                    // Check if the referenced column is the one being modified
+                    // MVP assumes the referenced column is the PK and that's what we have in old_pk_value
+                    let action = if new_pk_value.is_none() {
+                        fk.on_delete
+                    } else {
+                        fk.on_update
+                    };
+
+                    if action == crate::parser::ast::ReferentialAction::NoAction {
+                        continue;
+                    }
+
+                    // Build WHERE expression to find referencing rows
+                    let mut where_expr = ComparisonExpr::new(
+                        referencing_schema.columns[fk.column_id].name.clone(),
+                        crate::core::Operator::Eq,
+                        old_pk_value.clone(),
+                    );
+                    where_expr.prepare_for_schema(&referencing_schema);
+
+                    match action {
+                        crate::parser::ast::ReferentialAction::Restrict => {
+                            // Check if ANY rows exist
+                            let col_indices = vec![0];
+                            let mut scanner =
+                                referencing_table.scan(&col_indices, Some(&where_expr))?;
+                            if scanner.next() {
+                                let action_str = if new_pk_value.is_none() {
+                                    "DELETE"
+                                } else {
+                                    "UPDATE"
+                                };
+                                return Err(Error::ReferentialIntegrityViolation {
+                                    message: format!(
+                                        "Cannot {} row from {}: referenced by {} in {}",
+                                        action_str,
+                                        schema.table_name,
+                                        fk.referenced_column_name,
+                                        referencing_schema.table_name
+                                    ),
+                                });
+                            }
+                        }
+                        crate::parser::ast::ReferentialAction::Cascade => {
+                            if let Some(new_val) = new_pk_value {
+                                // CASCADE UPDATE
+                                let fk_col_idx = fk.column_id;
+                                let mut setter = |mut row: Row| -> Result<(Row, bool)> {
+                                    let _ = row.set(fk_col_idx, new_val.clone());
+                                    Ok((row, true))
+                                };
+                                referencing_table.update(Some(&where_expr), &mut setter)?;
+                            } else {
+                                // CASCADE DELETE
+                                // Wait! We should recursively handle referential actions if this table is also referenced!
+                                // For MVP, if a cascade delete triggers another delete, we just call delete on the table directly
+                                // However, full cascade recursion is complex. We will do a basic cascade delete.
+                                referencing_table.delete(Some(&where_expr))?;
+                            }
+                        }
+                        crate::parser::ast::ReferentialAction::SetNull => {
+                            if referencing_schema.columns[fk.column_id].nullable {
+                                let fk_col_idx = fk.column_id;
+                                let mut setter = |mut row: Row| -> Result<(Row, bool)> {
+                                    let _ = row.set(fk_col_idx, Value::null_unknown());
+                                    Ok((row, true))
+                                };
+                                referencing_table.update(Some(&where_expr), &mut setter)?;
+                            } else {
+                                return Err(Error::ReferentialIntegrityViolation {
+                                    message: format!(
+                                        "Cannot SET NULL on {}.{} because it is NOT NULL",
+                                        referencing_schema.table_name,
+                                        referencing_schema.columns[fk.column_id].name
+                                    ),
+                                });
+                            }
+                        }
+                        crate::parser::ast::ReferentialAction::NoAction => {} // Already handled
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Validate foreign keys for a single row
+    fn validate_foreign_keys_for_row(
+        &self,
+        schema: &crate::core::Schema,
+        row_values: &[Value],
+        get_table: &mut dyn FnMut(&str) -> Result<Box<dyn Table>>,
+    ) -> Result<()> {
+        for fk in &schema.foreign_keys {
+            let fk_value = &row_values[fk.column_id];
+
+            // NULL values are generally allowed in foreign keys unless NOT NULL is specified
+            if fk_value.is_null() {
+                continue;
+            }
+
+            let ref_table_name = fk.referenced_table.to_lowercase();
+            let ref_table = get_table(&ref_table_name)?;
+            let ref_schema = ref_table.schema();
+
+            let mut expr = ComparisonExpr::new(
+                fk.referenced_column_name.clone(),
+                crate::core::Operator::Eq,
+                fk_value.clone(),
+            );
+            expr.prepare_for_schema(ref_schema);
+
+            let col_indices = vec![0]; // just need to check existence
+            let mut scanner = ref_table.scan(&col_indices, Some(&expr))?;
+            if !scanner.next() {
+                return Err(Error::ReferentialIntegrityViolation {
+                    message: format!(
+                        "FOREIGN KEY constraint failed: value '{}' not present in {}({})",
+                        fk_value, fk.referenced_table, fk.referenced_column_name
+                    ),
+                });
+            }
+        }
+        Ok(())
     }
 
     /// Get a column name for a RETURNING expression

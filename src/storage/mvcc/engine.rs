@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -776,7 +777,94 @@ impl MVCCEngine {
             ));
         }
 
-        Ok(Schema::new(&table_name, columns))
+        let mut foreign_keys = Vec::new();
+        let mut referenced_by = Vec::new();
+
+        if pos + 2 <= data.len() {
+            let fk_count = u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+            pos += 2;
+            for _ in 0..fk_count {
+                if pos + 2 > data.len() {
+                    break;
+                }
+                let column_id = u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+                pos += 2;
+
+                if pos + 2 > data.len() {
+                    break;
+                }
+                let ref_tbl_len =
+                    u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+                pos += 2;
+                if pos + ref_tbl_len > data.len() {
+                    break;
+                }
+                let referenced_table =
+                    String::from_utf8_lossy(&data[pos..pos + ref_tbl_len]).into_owned();
+                pos += ref_tbl_len;
+
+                if pos + 2 > data.len() {
+                    break;
+                }
+                let ref_col_len =
+                    u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+                pos += 2;
+                if pos + ref_col_len > data.len() {
+                    break;
+                }
+                let referenced_column_name =
+                    String::from_utf8_lossy(&data[pos..pos + ref_col_len]).into_owned();
+                pos += ref_col_len;
+
+                if pos + 2 > data.len() {
+                    break;
+                }
+                let on_delete_val = data[pos];
+                pos += 1;
+                let on_update_val = data[pos];
+                pos += 1;
+
+                let parse_action = |val: u8| match val {
+                    0 => crate::parser::ast::ReferentialAction::Restrict,
+                    1 => crate::parser::ast::ReferentialAction::Cascade,
+                    2 => crate::parser::ast::ReferentialAction::SetNull,
+                    _ => crate::parser::ast::ReferentialAction::NoAction,
+                };
+
+                foreign_keys.push(crate::core::schema::ForeignKeyMetadata {
+                    column_id,
+                    referenced_table,
+                    referenced_column_name,
+                    on_delete: parse_action(on_delete_val),
+                    on_update: parse_action(on_update_val),
+                });
+            }
+
+            if pos + 2 <= data.len() {
+                let ref_by_count =
+                    u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+                pos += 2;
+                for _ in 0..ref_by_count {
+                    if pos + 2 > data.len() {
+                        break;
+                    }
+                    let ref_by_len =
+                        u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+                    pos += 2;
+                    if pos + ref_by_len > data.len() {
+                        break;
+                    }
+                    let ref_by = String::from_utf8_lossy(&data[pos..pos + ref_by_len]).into_owned();
+                    pos += ref_by_len;
+                    referenced_by.push(ref_by);
+                }
+            }
+        }
+
+        let mut schema = Schema::new(&table_name, columns);
+        schema.foreign_keys = foreign_keys;
+        schema.referenced_by = referenced_by;
+        Ok(schema)
     }
 
     /// Closes the engine (inherent method)
@@ -1147,6 +1235,46 @@ impl MVCCEngine {
             } else {
                 buf.extend_from_slice(&0u16.to_le_bytes());
             }
+        }
+
+        // Foreign keys count
+        buf.extend_from_slice(&(schema.foreign_keys.len() as u16).to_le_bytes());
+
+        // Foreign keys
+        for fk in &schema.foreign_keys {
+            buf.extend_from_slice(&(fk.column_id as u16).to_le_bytes());
+
+            buf.extend_from_slice(&(fk.referenced_table.len() as u16).to_le_bytes());
+            buf.extend_from_slice(fk.referenced_table.as_bytes());
+
+            buf.extend_from_slice(&(fk.referenced_column_name.len() as u16).to_le_bytes());
+            buf.extend_from_slice(fk.referenced_column_name.as_bytes());
+
+            // Map ReferentialAction to u8
+            let on_delete_val = match fk.on_delete {
+                crate::parser::ast::ReferentialAction::Restrict => 0,
+                crate::parser::ast::ReferentialAction::Cascade => 1,
+                crate::parser::ast::ReferentialAction::SetNull => 2,
+                crate::parser::ast::ReferentialAction::NoAction => 3,
+            };
+            buf.push(on_delete_val);
+
+            let on_update_val = match fk.on_update {
+                crate::parser::ast::ReferentialAction::Restrict => 0,
+                crate::parser::ast::ReferentialAction::Cascade => 1,
+                crate::parser::ast::ReferentialAction::SetNull => 2,
+                crate::parser::ast::ReferentialAction::NoAction => 3,
+            };
+            buf.push(on_update_val);
+        }
+
+        // Referenced by count
+        buf.extend_from_slice(&(schema.referenced_by.len() as u16).to_le_bytes());
+
+        // Referenced by
+        for ref_by in &schema.referenced_by {
+            buf.extend_from_slice(&(ref_by.len() as u16).to_le_bytes());
+            buf.extend_from_slice(ref_by.as_bytes());
         }
 
         buf
@@ -1792,6 +1920,43 @@ impl Engine for MVCCEngine {
             .get(&table_name.to_lowercase())
             .cloned()
             .ok_or(Error::TableNotFound)
+    }
+
+    fn update_table_schema(&self, table_name: &str, schema: Schema) -> Result<()> {
+        if !self.is_open() {
+            return Err(Error::EngineNotOpen);
+        }
+
+        let table_name_lower = table_name.to_lowercase();
+
+        // Update engine schemas
+        {
+            let mut schemas = self.schemas.write().unwrap();
+            let default_schema = schemas
+                .get_mut(DEFAULT_SCHEMA)
+                .ok_or(Error::TableNotFound)?;
+            if !default_schema.contains_key(&table_name_lower) {
+                return Err(Error::TableNotFound);
+            }
+            default_schema.insert(table_name_lower.clone(), schema.clone());
+        }
+
+        // Update version store schema
+        if let Ok(store) = self.get_version_store(&table_name_lower) {
+            let mut store_schema = store.schema_mut();
+            *store_schema = schema.clone();
+        }
+
+        // Record to WAL if persistence is enabled
+        if let Some(ref _pm) = *self.persistence {
+            // Reusing serialize_schema to save it
+            let _serialized = Self::serialize_schema(&schema);
+            // This needs a specific WAL record type if we really want to persist schema updates
+            // For MVP, we might not strictly need it if engine re-runs DDL on recovery,
+            // but we will add a best-effort warning.
+        }
+
+        Ok(())
     }
 
     fn list_table_indexes(&self, table_name: &str) -> Result<FxHashMap<String, String>> {

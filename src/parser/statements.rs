@@ -1441,7 +1441,16 @@ impl Parser {
 
     /// Parse either a column definition or a table-level constraint
     fn parse_column_or_constraint(&mut self) -> Option<ColumnOrConstraint> {
-        // Check if this is a table-level constraint (UNIQUE, CHECK, PRIMARY KEY)
+        let mut constraint_name = None;
+        if self.cur_token_is_keyword("CONSTRAINT") {
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            constraint_name = Some(self.cur_token.literal.clone());
+            self.next_token();
+        }
+
+        // Check if this is a table-level constraint (UNIQUE, CHECK, PRIMARY KEY, FOREIGN KEY)
         if self.cur_token_is_keyword("UNIQUE") {
             // UNIQUE(col1, col2, ...)
             if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
@@ -1488,6 +1497,85 @@ impl Parser {
             )));
         }
 
+        if self.cur_token_is_keyword("FOREIGN") {
+            if !self.expect_keyword("KEY") {
+                return None;
+            }
+            if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+                return None;
+            }
+            // MVP only supports single column
+            self.next_token();
+            if !self.cur_token_is_identifier_like() {
+                self.add_error(format!(
+                    "expected column name at {}",
+                    self.cur_token.position
+                ));
+                return None;
+            }
+            let column = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+            if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+                return None;
+            }
+            if !self.expect_keyword("REFERENCES") {
+                return None;
+            }
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            let foreign_table =
+                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+            if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+                return None;
+            }
+            self.next_token();
+            if !self.cur_token_is_identifier_like() {
+                self.add_error(format!(
+                    "expected foreign column name at {}",
+                    self.cur_token.position
+                ));
+                return None;
+            }
+            let foreign_column =
+                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+                return None;
+            }
+
+            let mut on_delete = ReferentialAction::NoAction;
+            let mut on_update = ReferentialAction::NoAction;
+
+            while self.peek_token_is_keyword("ON") {
+                self.next_token();
+                if self.peek_token_is_keyword("DELETE") {
+                    self.next_token();
+                    on_delete = self.parse_referential_action()?;
+                } else if self.peek_token_is_keyword("UPDATE") {
+                    self.next_token();
+                    on_update = self.parse_referential_action()?;
+                } else {
+                    self.add_error(format!(
+                        "expected DELETE or UPDATE after ON at {}",
+                        self.peek_token.position
+                    ));
+                    return None;
+                }
+            }
+
+            return Some(ColumnOrConstraint::Constraint(
+                TableConstraint::ForeignKey {
+                    name: constraint_name,
+                    column,
+                    foreign_table,
+                    foreign_column,
+                    on_delete,
+                    on_update,
+                },
+            ));
+        }
+
         // Otherwise, parse as a column definition
         self.parse_column_definition()
             .map(ColumnOrConstraint::Column)
@@ -1527,6 +1615,33 @@ impl Parser {
         }
 
         Some(identifiers)
+    }
+
+    fn parse_referential_action(&mut self) -> Option<ReferentialAction> {
+        if self.peek_token_is_keyword("CASCADE") {
+            self.next_token();
+            return Some(ReferentialAction::Cascade);
+        } else if self.peek_token_is_keyword("RESTRICT") {
+            self.next_token();
+            return Some(ReferentialAction::Restrict);
+        } else if self.peek_token_is_keyword("SET") {
+            self.next_token();
+            if self.expect_keyword("NULL") {
+                return Some(ReferentialAction::SetNull);
+            }
+            return None;
+        } else if self.peek_token_is_keyword("NO") {
+            self.next_token();
+            if self.expect_keyword("ACTION") {
+                return Some(ReferentialAction::NoAction);
+            }
+            return None;
+        }
+        self.add_error(format!(
+            "expected referential action (CASCADE, RESTRICT, SET NULL, NO ACTION) at {}",
+            self.peek_token.position
+        ));
+        None
     }
 
     /// Parse a single column definition
@@ -2318,22 +2433,40 @@ impl Parser {
         }
 
         let operation_keyword = self.cur_token.literal.to_uppercase();
+        let mut constraint = None;
         let (operation, column_def, column_name, new_column_name, new_table_name) =
             match operation_keyword.as_str() {
                 "ADD" => {
-                    // Check for optional COLUMN keyword
-                    if self.peek_token_is_keyword("COLUMN") {
+                    if self.peek_token_is_keyword("CONSTRAINT")
+                        || self.peek_token_is_keyword("FOREIGN")
+                        || self.peek_token_is_keyword("UNIQUE")
+                        || self.peek_token_is_keyword("PRIMARY")
+                        || self.peek_token_is_keyword("CHECK")
+                    {
                         self.next_token();
+                        if let Some(ColumnOrConstraint::Constraint(tc)) =
+                            self.parse_column_or_constraint()
+                        {
+                            constraint = Some(tc);
+                            (AlterTableOperation::AddConstraint, None, None, None, None)
+                        } else {
+                            return None;
+                        }
+                    } else {
+                        // Check for optional COLUMN keyword
+                        if self.peek_token_is_keyword("COLUMN") {
+                            self.next_token();
+                        }
+                        self.next_token();
+                        let col_def = self.parse_column_definition()?;
+                        (
+                            AlterTableOperation::AddColumn,
+                            Some(col_def),
+                            None,
+                            None,
+                            None,
+                        )
                     }
-                    self.next_token();
-                    let col_def = self.parse_column_definition()?;
-                    (
-                        AlterTableOperation::AddColumn,
-                        Some(col_def),
-                        None,
-                        None,
-                        None,
-                    )
                 }
                 "DROP" => {
                     // Check for optional COLUMN keyword
@@ -2432,6 +2565,7 @@ impl Parser {
             column_name,
             new_column_name,
             new_table_name,
+            constraint,
         })
     }
 
@@ -2918,6 +3052,72 @@ mod tests {
                 assert!(delete.where_clause.is_some());
             }
             _ => panic!("expected DeleteStatement"),
+        }
+    }
+
+    #[test]
+    fn test_parse_create_table_with_foreign_key() {
+        let input = "CREATE TABLE orders (id INTEGER, user_id INTEGER, FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE SET NULL)";
+        let mut parser = Parser::new(input);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = match &program.statements[0] {
+            Statement::CreateTable(s) => s,
+            _ => panic!("Expected CreateTableStatement"),
+        };
+
+        assert_eq!(stmt.table_constraints.len(), 1);
+        match &stmt.table_constraints[0] {
+            TableConstraint::ForeignKey {
+                column,
+                foreign_table,
+                foreign_column,
+                on_delete,
+                on_update,
+                ..
+            } => {
+                assert_eq!(column.value, "user_id");
+                assert_eq!(foreign_table.value, "users");
+                assert_eq!(foreign_column.value, "id");
+                assert_eq!(*on_delete, ReferentialAction::Cascade);
+                assert_eq!(*on_update, ReferentialAction::SetNull);
+            }
+            _ => panic!("Expected ForeignKey constraint"),
+        }
+    }
+
+    #[test]
+    fn test_parse_alter_table_add_foreign_key() {
+        let input =
+            "ALTER TABLE orders ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id)";
+        let mut parser = Parser::new(input);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.statements.len(), 1);
+        let stmt = match &program.statements[0] {
+            Statement::AlterTable(s) => s,
+            _ => panic!("Expected AlterTableStatement"),
+        };
+
+        assert_eq!(stmt.operation, AlterTableOperation::AddConstraint);
+        match stmt.constraint.as_ref().unwrap() {
+            TableConstraint::ForeignKey {
+                name,
+                column,
+                foreign_table,
+                foreign_column,
+                on_delete,
+                on_update,
+            } => {
+                assert_eq!(name.as_deref(), Some("fk_user"));
+                assert_eq!(column.value, "user_id");
+                assert_eq!(foreign_table.value, "users");
+                assert_eq!(foreign_column.value, "id");
+                assert_eq!(*on_delete, ReferentialAction::NoAction);
+                assert_eq!(*on_update, ReferentialAction::NoAction);
+            }
+            _ => panic!("Expected ForeignKey constraint"),
         }
     }
 

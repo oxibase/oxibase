@@ -11,7 +11,7 @@ This document covers Oxibase's schema management capabilities, including table c
 
 ## Tables and Schemas
 
-OxiBase provides standard SQL DDL (Data Definition Language) statements for managing database schemas, including tables, indexes, and user-defined functions.
+Oxibase provides standard SQL DDL (Data Definition Language) statements for managing database schemas, including tables, indexes, and user-defined functions.
 
 ### Creating Tables
 
@@ -33,8 +33,12 @@ When creating tables, you can specify the following constraints:
 
 - **PRIMARY KEY** - Define a primary key constraint on one or more columns
 - **NOT NULL** - Enforce that a column cannot contain NULL values
+- **UNIQUE** - Enforce that all values in a column are distinct
+- **FOREIGN KEY** - Enforce referential integrity between tables
+- **CHECK** - Validate that values satisfy a boolean condition
+- **DEFAULT** - Provide a default value for a column
 
-**Note**: For uniqueness constraints, use `CREATE UNIQUE INDEX` after table creation.
+**Note**: You can also use `CREATE UNIQUE INDEX` after table creation.
 
 ## Database Schemas
 
@@ -137,6 +141,9 @@ ALTER TABLE users DROP COLUMN is_active;
 
 -- Rename a table
 ALTER TABLE users RENAME TO system_users;
+
+-- Add a constraint
+ALTER TABLE users ADD CONSTRAINT fk_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL;
 ```
 
 ## Data Types
@@ -213,7 +220,7 @@ DROP INDEX idx_user_email;
 
 ## User-Defined Functions
 
-OxiBase supports creating custom functions using JavaScript/TypeScript:
+Oxibase supports creating custom functions using JavaScript/TypeScript:
 
 ### Creating Functions
 
