@@ -644,7 +644,7 @@ impl Executor {
                         default_expr.clone(),
                         default_value,
                     )?;
-                    
+
                     // Force a global schema update so subsequent statements in the same session
                     // can see the new column.
                     let schema = table.schema().clone();
