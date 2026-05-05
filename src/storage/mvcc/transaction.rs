@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,6 +111,9 @@ pub trait TransactionEngineOperations: Send + Sync {
 
     /// Commit all tables for a transaction at once
     fn commit_all_tables(&self, txn_id: i64) -> Result<()>;
+
+    /// Rollback all tables for a transaction at once
+    fn rollback_all_tables(&self, txn_id: i64) -> Result<()>;
 }
 
 impl MvccTransaction {
@@ -406,15 +410,13 @@ impl Transaction for MvccTransaction {
             );
         }
 
-        // Rollback all tables - discard local changes
-        for (_, table) in self.tables.iter_mut() {
-            table.rollback();
-        }
-
-        // Notify engine of rollback
+        // Rollback all tables - discard local changes and release claims at the engine level
         if let Some(ops) = &self.engine_operations {
-            for (_, table) in self.tables.iter() {
-                ops.rollback_table(self.id, table.as_ref());
+            if let Err(e) = ops.rollback_all_tables(self.id) {
+                eprintln!(
+                    "Warning: Failed to rollback all tables for transaction {}: {}",
+                    self.id, e
+                );
             }
         }
 
