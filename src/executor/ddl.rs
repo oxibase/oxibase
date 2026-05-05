@@ -644,6 +644,11 @@ impl Executor {
                         default_expr.clone(),
                         default_value,
                     )?;
+                    
+                    // Force a global schema update so subsequent statements in the same session
+                    // can see the new column.
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
 
                     // Record ALTER TABLE ADD COLUMN to WAL for persistence
                     self.engine.record_alter_table_add_column(
@@ -663,6 +668,10 @@ impl Executor {
                 if let Some(ref col_name) = stmt.column_name {
                     table.drop_column(&col_name.value)?;
 
+                    // Force a global schema update
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
+
                     // Record ALTER TABLE DROP COLUMN to WAL for persistence
                     self.engine
                         .record_alter_table_drop_column(table_name, &col_name.value);
@@ -675,6 +684,10 @@ impl Executor {
             AlterTableOperation::RenameColumn => match (&stmt.column_name, &stmt.new_column_name) {
                 (Some(old_name), Some(new_name)) => {
                     table.rename_column(&old_name.value, &new_name.value)?;
+
+                    // Force a global schema update
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
 
                     // Record ALTER TABLE RENAME COLUMN to WAL for persistence
                     self.engine.record_alter_table_rename_column(
@@ -698,6 +711,10 @@ impl Executor {
                         .any(|c| matches!(c, ColumnConstraint::NotNull));
 
                     table.modify_column(&col_def.name.value, data_type, nullable)?;
+
+                    // Force a global schema update
+                    let schema = table.schema().clone();
+                    self.engine.update_table_schema(table_name, schema)?;
 
                     // Record ALTER TABLE MODIFY COLUMN to WAL for persistence
                     self.engine.record_alter_table_modify_column(
