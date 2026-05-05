@@ -47,7 +47,7 @@ impl PythonBackend {
         Self {}
     }
 
-    /// Convert OxiBase Value to Python object
+    /// Convert Oxibase Value to Python object
     #[allow(dead_code)]
     fn convert_oxibase_to_python(&self, value: &Value, vm: &VirtualMachine) -> Result<PyObjectRef> {
         match value {
@@ -69,7 +69,7 @@ impl PythonBackend {
         }
     }
 
-    /// Convert Python object back to OxiBase Value
+    /// Convert Python object back to Oxibase Value
     fn convert_python_to_oxibase(
         &self,
         py_obj: &PyObjectRef,

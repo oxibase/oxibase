@@ -10,12 +10,12 @@ Sync Impact Report:
 - Follow-up TODOs: Determine original RATIFICATION_DATE if earlier than today.
 -->
 
-# OxiBase Constitution
+# Oxibase Constitution
 
 ## Core Principles
 
 ### I. The Modern Mainframe Monolith
-OxiBase is an autonomous SQL monolith where business logic executes directly within the database engine. N-tier architectural drift is strictly eliminated—no external configuration drift, redundant API layers, or decoupled microservices unless absolutely unavoidable. Infrastructure is Data.
+Oxibase is an autonomous SQL monolith where business logic executes directly within the database engine. N-tier architectural drift is strictly eliminated—no external configuration drift, redundant API layers, or decoupled microservices unless absolutely unavoidable. Infrastructure is Data.
 
 ### II. Strict ACID Integrity
 Data correctness is non-negotiable. Every operation must adhere strictly to ACID properties backed by MVCC (Multi-Version Concurrency Control) and time-travel queries.

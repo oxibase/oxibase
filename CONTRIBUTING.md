@@ -1,6 +1,6 @@
 # Contributing to Oxibase
 
-Thank you for your interest in contributing to OxiBase! This document provides guidelines and information about the contribution process.
+Thank you for your interest in contributing to Oxibase! This document provides guidelines and information about the contribution process.
 
 ## Code of Conduct
 
@@ -8,7 +8,7 @@ By participating in this project, you agree to uphold our Code of Conduct (to be
 
 ## License Information
 
-OxiBase is licensed under the [Apache License, Version 2.0](LICENSE). By contributing to OxiBase, you agree that your contributions will be licensed under the same license.
+Oxibase is licensed under the [Apache License, Version 2.0](LICENSE). By contributing to Oxibase, you agree that your contributions will be licensed under the same license.
 
 ### What this means for contributors
 
@@ -158,4 +158,4 @@ src/
 - [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 - [Apache License 2.0 Explained](https://tldrlegal.com/license/apache-license-2.0-(apache-2.0))
 
-Thank you for contributing to OxiBase!
+Thank you for contributing to Oxibase!

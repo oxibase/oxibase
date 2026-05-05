@@ -1,7 +1,7 @@
 <div align="center">
    <picture>
      <source media="(prefers-color-scheme: dark)" srcset="logo_white.svg">
-     <img src="logo.svg" alt="OxiBase Logo" width="360">
+     <img src="logo.svg" alt="Oxibase Logo" width="360">
    </picture>
 
    <p>Moving computation to data.</p>
@@ -24,7 +24,7 @@
 
 ## Overview
 
-OxiBase is a research project focused on bringing computation as close as
+Oxibase is a research project focused on bringing computation as close as
 possible to the data itself, leveraging unikernel technology for
 kernel-integrated performance. Our goal is to investigate how embedding
 computation within the database management system, by co-locating logic and
@@ -174,7 +174,7 @@ WHERE current.price != historical.price;
 
 ### Index Types
 
-OxiBase automatically selects optimal index types, or you can specify explicitly:
+Oxibase automatically selects optimal index types, or you can specify explicitly:
 
 ```sql
 -- B-tree: Range queries, sorting, prefix matching
@@ -212,7 +212,7 @@ FROM employees;
 
 ### User-Defined Functions
 
-OxiBase supports user-defined functions (UDFs) via three scripting backends for custom logic in SQL queries:
+Oxibase supports user-defined functions (UDFs) via three scripting backends for custom logic in SQL queries:
 
 - **Rhai**: Lightweight, fast scripting language (Rust-based). Ideal for simple calculations and high-performance needs. Always enabled.
 - **Boa (JavaScript)**: Full JavaScript runtime with modern ES features. Best for complex logic, JSON processing, and date manipulation. Enabled with `--features js`.
@@ -320,7 +320,7 @@ WHERE c.country = 'US';
 
 ## Persistence
 
-OxiBase uses write-ahead logging (WAL) with periodic snapshots:
+Oxibase uses write-ahead logging (WAL) with periodic snapshots:
 
 ```bash
 # In-memory (default) - data lost on exit

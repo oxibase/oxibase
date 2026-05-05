@@ -7,7 +7,7 @@ nav_order: 5
 
 # User-Defined Functions
 
-OxiBase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language), with optional support for JavaScript/TypeScript (via Boa) and Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
+Oxibase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language), with optional support for JavaScript/TypeScript (via Boa) and Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
 
 ## Overview
 
@@ -15,7 +15,7 @@ User-defined functions (UDFs) enable you to create custom scalar functions that 
 
 ## Scripting Backends
 
-OxiBase supports multiple scripting backends, each optimized for different use cases:
+Oxibase supports multiple scripting backends, each optimized for different use cases:
 
 ### Rhai Backend (Default)
 - **Language**: `LANGUAGE RHAI`
@@ -55,7 +55,7 @@ cargo build --features js,python
 
 ## Functions vs Stored Procedures
 
-OxiBase currently supports **user-defined functions** but not **stored procedures**. Understanding the difference is important for choosing the right tool for your database logic.
+Oxibase currently supports **user-defined functions** but not **stored procedures**. Understanding the difference is important for choosing the right tool for your database logic.
 
 ### Comparison at a Glance
 
@@ -123,7 +123,7 @@ Procedures are designed for actions that modify data:
 - You need to return multiple result sets
 - Examples: Monthly payroll processing, customer registration, data cleanup
 
-> **Note:** Stored procedures are planned for future implementation in OxiBase but are not currently available.
+> **Note:** Stored procedures are planned for future implementation in Oxibase but are not currently available.
 
 ## Creating User-Defined Functions
 
@@ -156,9 +156,9 @@ User-defined functions can return values of these scalar data types:
 | **`TIMESTAMP`** | Date and time values | `return new Date().toISOString();` |
 | **`JSON`** | JSON documents and objects | `return {name: "John", age: 30};` |
 
-Functions must return exactly one value and declare their return type in the `CREATE FUNCTION` statement. The JavaScript runtime automatically converts return values to the appropriate OxiBase type.
+Functions must return exactly one value and declare their return type in the `CREATE FUNCTION` statement. The JavaScript runtime automatically converts return values to the appropriate Oxibase type.
 
-> **Note:** OxiBase currently only supports scalar user-defined functions. Table-valued functions and stored procedures are planned for future releases.
+> **Note:** Oxibase currently only supports scalar user-defined functions. Table-valued functions and stored procedures are planned for future releases.
 
 ## Function Implementation
 

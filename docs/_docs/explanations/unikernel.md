@@ -7,7 +7,7 @@ nav_order: 3
 
 ## Kernel Integration Benefits
 
-OxiBase builds on research from CumulusDB{% cite unikernels %}, a
+Oxibase builds on research from CumulusDB{% cite unikernels %}, a
 unikernel-based DBMS that integrates kernel primitives for optimal performance,
 inspired by related work on OS-DBMS co-design{% cite cod2013 %}, virtual memory
 snapshots{% cite hyper2011 %}, buffer management{% cite buffer2023 %}, and
@@ -38,6 +38,6 @@ features that traditional layered architectures cannot achieve.
   virtual memory primitives{% cite loeck2023 %} and support for heterogeneous
   hardware{% cite muhlig2020 %}.
 
-These benefits align with OxiBase's unikernel compilation goals, enabling full
+These benefits align with Oxibase's unikernel compilation goals, enabling full
 hardware exploitation without OS overhead. See the [roadmap]({% link
 _docs/roadmap.md %}) for more details.

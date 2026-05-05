@@ -24,7 +24,7 @@ const ROW_COUNT: usize = 10_000;
 const ITERATIONS: usize = 100;
 
 fn main() {
-    println!("Starting OxiBase benchmark...");
+    println!("Starting Oxibase benchmark...");
     println!(
         "Configuration: {} rows, {} iterations per test\n",
         ROW_COUNT, ITERATIONS
@@ -77,7 +77,7 @@ fn main() {
             .unwrap();
     }
 
-    println!("Benchmarking OxiBase...\n");
+    println!("Benchmarking Oxibase...\n");
     println!("============================================================");
     println!("OXIBASE BENCHMARK (10,000 rows, 100 iterations, in-memory)");
     println!("============================================================\n");

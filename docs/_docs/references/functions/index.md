@@ -8,5 +8,5 @@ nav_order: 8
 
 # Functions
 
-Documentation for functions in OxiBase, including built-in aggregate, scalar,
+Documentation for functions in Oxibase, including built-in aggregate, scalar,
 and window functions, as well as user-defined functions.

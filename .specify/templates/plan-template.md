@@ -63,7 +63,7 @@ src/
 tests/             # Integration tests
 ```
 
-**Structure Decision**: [Document which of the OxiBase modules this feature primarily impacts]
+**Structure Decision**: [Document which of the Oxibase modules this feature primarily impacts]
 
 ## Complexity Tracking
 

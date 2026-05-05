@@ -77,7 +77,7 @@ ORDER BY month;
 
 ## Implementation Notes
 
-OxiBase's function system is designed for performance and extensibility:
+Oxibase's function system is designed for performance and extensibility:
 - **Modular Architecture**: Functions are organized by type for easy maintenance
 - **Type Safety**: Arguments are validated at parse time
 - **Multiple Backends**: Support for different scripting languages for UDFs
