@@ -364,33 +364,28 @@ impl Executor {
                         // Handle qualified column names like "c.name" for ORDER BY
                         // First, try matching against SELECT expressions directly
                         for (i, select_expr) in stmt.columns.iter().enumerate() {
-                            match select_expr {
-                                Expression::QualifiedIdentifier(sel_qid) => {
-                                    // Direct match: ORDER BY c.name matches SELECT c.name
+                            if let Expression::QualifiedIdentifier(sel_qid) = select_expr {
+                                // Direct match: ORDER BY c.name matches SELECT c.name
+                                if sel_qid.qualifier.value_lower == qid.qualifier.value_lower
+                                    && sel_qid.name.value_lower == qid.name.value_lower
+                                {
+                                    return Some(i);
+                                }
+                            } else if let Expression::Aliased(aliased) = select_expr {
+                                // Check if the aliased expression matches
+                                if let Expression::QualifiedIdentifier(sel_qid) =
+                                    aliased.expression.as_ref()
+                                {
                                     if sel_qid.qualifier.value_lower == qid.qualifier.value_lower
                                         && sel_qid.name.value_lower == qid.name.value_lower
                                     {
                                         return Some(i);
                                     }
                                 }
-                                Expression::Aliased(aliased) => {
-                                    // Check if the aliased expression matches
-                                    if let Expression::QualifiedIdentifier(sel_qid) =
-                                        aliased.expression.as_ref()
-                                    {
-                                        if sel_qid.qualifier.value_lower
-                                            == qid.qualifier.value_lower
-                                            && sel_qid.name.value_lower == qid.name.value_lower
-                                        {
-                                            return Some(i);
-                                        }
-                                    }
-                                    // Also check if the alias matches the base column name
-                                    if aliased.alias.value_lower == qid.name.value_lower {
-                                        return Some(i);
-                                    }
+                                // Also check if the alias matches the base column name
+                                if aliased.alias.value_lower == qid.name.value_lower {
+                                    return Some(i);
                                 }
-                                _ => {}
                             }
                         }
                         // Fallback: try matching against column names
