@@ -319,3 +319,40 @@ async fn test_dynamic_route_updates() {
     let res3 = app.clone().oneshot(req3).await.unwrap();
     assert_eq!(res3.status(), StatusCode::NOT_FOUND);
 }
+
+#[tokio::test]
+async fn test_dynamic_route_template_inheritance() {
+    let db = setup_db().await;
+    let app = create_router(db.clone());
+
+    // Insert base layout template
+    db.execute(
+        "INSERT INTO templates.source (name, content) VALUES ('layout.html', '<main>{% block content %}{% endblock %}</main>')",
+        (),
+    )
+    .unwrap();
+
+    // Insert child template extending the layout
+    db.execute(
+        "INSERT INTO templates.source (name, content) VALUES ('child.html', '{% extends \"layout.html\" %}{% block content %}<p>Inherited Content!</p>{% endblock %}')",
+        (),
+    )
+    .unwrap();
+
+    // Route for the child template
+    db.execute("INSERT INTO routes.definitions (method, path, template_name) VALUES ('GET', '/inherited', 'child.html')", ()).unwrap();
+
+    // GET /inherited
+    let req = Request::builder()
+        .uri("/inherited")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+
+    // Check if the inherited content is correctly embedded in the layout
+    assert!(body_str.contains("<main><p>Inherited Content!</p></main>"));
+}
