@@ -60,7 +60,7 @@ As a developer, I want to run a single CLI command to read my app's directory st
 - **FR-008**: The `seed` command MUST read all files in the `templates/` directory and insert their contents into the `templates.source` table, using the filename or relative path as the name.
 - **FR-009**: The `seed` command MUST parse JSON files in the `routes/` directory and insert the definitions into the `routes.definitions` table.
 - **FR-010**: The `seed` command MUST load scripts from the `functions/` directory into the appropriate system functions table.
-- **FR-011**: The system MUST support [NEEDS CLARIFICATION: exact error handling strategy if target directory already exists for `create-app` - abort, merge, or overwrite?]
+- **FR-011**: The system MUST abort the `create-app` operation and return an error if the target directory already exists.
 
 ### Key Entities
 
