@@ -139,6 +139,22 @@ enum Commands {
         db_path: String,
     },
 
+    /// Generate a new declarative application scaffold
+    CreateApp {
+        /// The name of the application (used as directory name)
+        name: String,
+    },
+
+    /// Read an application directory and load it into the database
+    Seed {
+        /// The path to the application directory
+        app_dir: String,
+
+        /// Database path (file://<path> or memory://)
+        #[arg(short = 'd', long = "db")]
+        db_path: Option<String>,
+    },
+
     /// Start the Auto-API HTTP Server
     #[cfg(feature = "server")]
     Serve {
@@ -741,6 +757,11 @@ fn main() {
         Some(Commands::Repl { db_path }) => (db_path.clone(), false),
         #[cfg(feature = "server")]
         Some(Commands::Serve { db_path, .. }) => (db_path.clone(), true),
+        Some(Commands::Seed { db_path, .. }) => (
+            db_path.clone().unwrap_or_else(|| "memory://".to_string()),
+            false,
+        ),
+        Some(Commands::CreateApp { .. }) => ("memory://".to_string(), false),
         None => ("memory://".to_string(), false), // Default to repl if no command is provided
     };
 
@@ -770,6 +791,20 @@ fn main() {
     }
 
     match args.command {
+        Some(Commands::CreateApp { name }) => {
+            if let Err(e) = handle_create_app(&name) {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return;
+        }
+        Some(Commands::Seed { app_dir, .. }) => {
+            if let Err(e) = handle_seed(&db, &app_dir) {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return;
+        }
         #[cfg(feature = "server")]
         Some(Commands::Serve { port, host, .. }) => {
             println!("Server starting on {}:{}...", host, port);
@@ -864,6 +899,273 @@ fn main() {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
+}
+
+fn handle_create_app(name: &str) -> Result<(), String> {
+    let app_dir = std::path::Path::new(name);
+
+    if app_dir.exists() {
+        return Err(format!("Directory '{}' already exists. Aborting.", name));
+    }
+
+    // Create directories
+    let dirs = [
+        app_dir.join("data"),
+        app_dir.join("templates"),
+        app_dir.join("routes"),
+        app_dir.join("functions"),
+    ];
+
+    for dir in &dirs {
+        std::fs::create_dir_all(dir)
+            .map_err(|e| format!("Failed to create directory {:?}: {}", dir, e))?;
+    }
+
+    // Write boilerplate files
+    std::fs::write(
+        app_dir.join("data/001_init.sql"),
+        "CREATE TABLE users (id INTEGER PRIMARY KEY AUTO_INCREMENT, name TEXT);\nINSERT INTO users (name) VALUES ('Alice'), ('Bob');\n",
+    ).map_err(|e| format!("Failed to write init.sql: {}", e))?;
+
+    std::fs::write(
+        app_dir.join("templates/layout.html"),
+        "<!DOCTYPE html>\n<html>\n<head><title>My App</title></head>\n<body>\n{% block content %}{% endblock %}\n</body>\n</html>\n",
+    ).map_err(|e| format!("Failed to write layout.html: {}", e))?;
+
+    std::fs::write(
+        app_dir.join("templates/index.html"),
+        "{% extends \"layout.html\" %}\n{% block content %}\n<h1>Hello, App!</h1>\n<ul>\n{% for user in data %}\n  <li>{{ user.name }}</li>\n{% endfor %}\n</ul>\n{% endblock %}\n",
+    ).map_err(|e| format!("Failed to write index.html: {}", e))?;
+
+    std::fs::write(
+        app_dir.join("routes/web.json"),
+        "[\n  {\n    \"method\": \"GET\",\n    \"path\": \"/\",\n    \"template_name\": \"index.html\",\n    \"context_query\": \"SELECT * FROM users\"\n  }\n]\n",
+    ).map_err(|e| format!("Failed to write web.json: {}", e))?;
+
+    std::fs::write(
+        app_dir.join("functions/hello.rhai"),
+        "fn hello(name) {\n    return \"Hello, \" + name + \"!\";\n}\n",
+    )
+    .map_err(|e| format!("Failed to write hello.rhai: {}", e))?;
+
+    println!(
+        "✅ App '{}' created. Run `oxibase seed {} --db file:///target.db` to load it.",
+        name, name
+    );
+
+    Ok(())
+}
+
+fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
+    let app_path = std::path::Path::new(app_dir);
+
+    if !app_path.exists() || !app_path.is_dir() {
+        return Err(format!("Directory '{}' does not exist.", app_dir));
+    }
+
+    // Step A: Init System (DDL must be executed outside the transaction in Oxibase)
+    db.execute("CREATE SCHEMA IF NOT EXISTS routes;", ())
+        .map_err(|e| format!("Failed to create routes schema: {}", e))?;
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS routes.definitions (
+            method TEXT,
+            path TEXT,
+            template_name TEXT,
+            context_query TEXT
+        );",
+        (),
+    )
+    .map_err(|e| format!("Failed to create routes.definitions table: {}", e))?;
+
+    db.execute("CREATE SCHEMA IF NOT EXISTS templates;", ())
+        .map_err(|e| format!("Failed to create templates schema: {}", e))?;
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS templates.source (
+            name TEXT,
+            content TEXT
+        );",
+        (),
+    )
+    .map_err(|e| format!("Failed to create templates.source table: {}", e))?;
+
+    // We assume system schemas might be named differently or `functions` is a keyword.
+    // Let's use `app_functions` instead of `functions` just to be safe if `functions` is reserved.
+    db.execute("CREATE SCHEMA IF NOT EXISTS app_functions;", ())
+        .map_err(|e| format!("Failed to create functions schema: {}", e))?;
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS app_functions.source (
+            name TEXT,
+            content TEXT
+        );",
+        (),
+    )
+    .map_err(|e| format!("Failed to create functions.source table: {}", e))?;
+
+    let mut tx = db
+        .begin()
+        .map_err(|e| format!("Failed to begin transaction: {}", e))?;
+
+    // Step B: Clear Old App State
+    tx.execute("DELETE FROM routes.definitions;", ())
+        .map_err(|e| format!("Failed to clear old routes: {}", e))?;
+    tx.execute("DELETE FROM templates.source;", ())
+        .map_err(|e| format!("Failed to clear old templates: {}", e))?;
+    tx.execute("DELETE FROM app_functions.source;", ())
+        .map_err(|e| format!("Failed to clear old functions: {}", e))?;
+
+    // Step C: Load Data (SQL files)
+    let data_dir = app_path.join("data");
+    if data_dir.exists() && data_dir.is_dir() {
+        let mut sql_files = std::fs::read_dir(&data_dir)
+            .map_err(|e| format!("Failed to read data directory: {}", e))?
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "sql")
+            })
+            .collect::<Vec<_>>();
+
+        // Sort alphabetically
+        sql_files.sort_by_key(|a| a.path());
+
+        for file in sql_files {
+            let content = std::fs::read_to_string(file.path())
+                .map_err(|e| format!("Failed to read {}: {}", file.path().display(), e))?;
+
+            // Split and execute statements
+            let statements = split_sql_statements(&content);
+            for stmt in statements {
+                let stmt = stmt.trim();
+                if stmt.is_empty() {
+                    continue;
+                }
+
+                // DDL statements (like CREATE TABLE) cannot be executed inside a transaction in Oxibase
+                if stmt.to_uppercase().starts_with("CREATE")
+                    || stmt.to_uppercase().starts_with("DROP")
+                    || stmt.to_uppercase().starts_with("ALTER")
+                {
+                    db.execute(stmt, ()).map_err(|e| {
+                        format!(
+                            "Failed to execute DDL from {}: {}",
+                            file.path().display(),
+                            e
+                        )
+                    })?;
+                } else {
+                    tx.execute(stmt, ()).map_err(|e| {
+                        format!(
+                            "Failed to execute DML from {}: {}",
+                            file.path().display(),
+                            e
+                        )
+                    })?;
+                }
+            }
+        }
+    }
+
+    // Step D: Load Templates
+    let templates_dir = app_path.join("templates");
+    if templates_dir.exists() && templates_dir.is_dir() {
+        // Simple 1-level load for now
+        let template_files = std::fs::read_dir(&templates_dir)
+            .map_err(|e| format!("Failed to read templates directory: {}", e))?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().is_file());
+
+        for file in template_files {
+            let file_name = file.file_name().to_string_lossy().to_string();
+            let content = std::fs::read_to_string(file.path())
+                .map_err(|e| format!("Failed to read {}: {}", file.path().display(), e))?;
+
+            tx.execute(
+                "INSERT INTO templates.source (name, content) VALUES (?, ?);",
+                vec![Value::text(file_name), Value::text(content)],
+            )
+            .map_err(|e| format!("Failed to insert template {}: {}", file.path().display(), e))?;
+        }
+    }
+
+    // Step E: Load Routes
+    let routes_dir = app_path.join("routes");
+    if routes_dir.exists() && routes_dir.is_dir() {
+        let route_files = std::fs::read_dir(&routes_dir)
+            .map_err(|e| format!("Failed to read routes directory: {}", e))?
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry.path().is_file()
+                    && entry.path().extension().is_some_and(|ext| ext == "json")
+            });
+
+        for file in route_files {
+            let content = std::fs::read_to_string(file.path())
+                .map_err(|e| format!("Failed to read {}: {}", file.path().display(), e))?;
+
+            let routes: Vec<serde_json::Value> = serde_json::from_str(&content).map_err(|e| {
+                format!("Failed to parse JSON from {}: {}", file.path().display(), e)
+            })?;
+
+            for route in routes {
+                let method = route
+                    .get("method")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("GET");
+                let path = route.get("path").and_then(|v| v.as_str()).unwrap_or("/");
+                let template_name = route
+                    .get("template_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let context_query = route
+                    .get("context_query")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                tx.execute(
+                    "INSERT INTO routes.definitions (method, path, template_name, context_query) VALUES (?, ?, ?, ?);",
+                    vec![
+                        Value::text(method),
+                        Value::text(path),
+                        Value::text(template_name),
+                        Value::text(context_query),
+                    ],
+                )
+                .map_err(|e| format!("Failed to insert route from {}: {}", file.path().display(), e))?;
+            }
+        }
+    }
+
+    // Step F: Load Functions
+    let functions_dir = app_path.join("functions");
+    if functions_dir.exists() && functions_dir.is_dir() {
+        let function_files = std::fs::read_dir(&functions_dir)
+            .map_err(|e| format!("Failed to read functions directory: {}", e))?
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry.path().is_file()
+                    && entry
+                        .path()
+                        .extension()
+                        .is_some_and(|ext| ext == "rhai" || ext == "js" || ext == "py")
+            });
+
+        for file in function_files {
+            let file_name = file.file_name().to_string_lossy().to_string();
+            let content = std::fs::read_to_string(file.path())
+                .map_err(|e| format!("Failed to read {}: {}", file.path().display(), e))?;
+
+            tx.execute(
+                "INSERT INTO app_functions.source (name, content) VALUES (?, ?);",
+                vec![Value::text(file_name), Value::text(content)],
+            )
+            .map_err(|e| format!("Failed to insert function {}: {}", file.path().display(), e))?;
+        }
+    }
+
+    tx.commit()
+        .map_err(|e| format!("Failed to commit transaction: {}", e))?;
+
+    println!("✅ App seeded successfully.");
+    Ok(())
 }
 
 fn execute_from_file(
