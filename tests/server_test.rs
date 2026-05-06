@@ -116,3 +116,87 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!([]));
 }
+
+#[tokio::test]
+async fn test_auto_api_edge_cases_and_errors() {
+    let db = Database::open("memory://").unwrap();
+    db.execute("CREATE TABLE complex_types (id INT, is_active BOOLEAN, score FLOAT, tags JSON, label TEXT)", ())
+        .unwrap();
+    let app = create_router(db);
+
+    // 1. 404s for missing tables
+    let req = Request::builder().uri("/api/nope").body(Body::empty()).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let req = Request::builder().method("POST").uri("/api/nope").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let req = Request::builder().method("PATCH").uri("/api/nope?id=eq.1").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    let req = Request::builder().method("DELETE").uri("/api/nope?id=eq.1").body(Body::empty()).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+    // 2. 400s for empty payloads on POST/PATCH
+    let req = Request::builder().method("POST").uri("/api/complex_types").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let req = Request::builder().method("PATCH").uri("/api/complex_types?id=eq.1").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    // 3. 400s for missing eq. filters on PATCH/DELETE
+    let req = Request::builder().method("PATCH").uri("/api/complex_types").header("content-type", "application/json").body(Body::from(json!({"label": "foo"}).to_string())).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let req = Request::builder().method("DELETE").uri("/api/complex_types").body(Body::empty()).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    // 4. JSON type conversions (inserting null, bool, float, array)
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/complex_types")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({
+            "id": 1,
+            "is_active": true,
+            "score": 42.5,
+            "tags": ["a", "b"],
+            "label": null
+        }).to_string()))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+
+    // Verify type conversions via GET
+    let req = Request::builder().uri("/api/complex_types").body(Body::empty()).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    let body = get_json_response(res).await;
+    assert_eq!(body[0]["is_active"], true);
+    assert_eq!(body[0]["score"], 42.5);
+    assert_eq!(body[0]["tags"], "[\"a\",\"b\"]"); // currently stores complex json as strings
+    assert_eq!(body[0]["label"], Value::Null);
+
+    // 5. 500s for DB execution errors
+    // Bad select column
+    let req = Request::builder().uri("/api/complex_types?select=bad_col").body(Body::empty()).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    // Type mismatch on insert (insert string to int column)
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/complex_types")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({"id": "not_an_int"}).to_string()))
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
