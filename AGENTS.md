@@ -32,6 +32,6 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-/Users/gabriel.maeztu/repos/oxibase/specs/003-auto-api-layer/plan.md
+/Users/gabriel.maeztu/repos/oxibase/specs/004-db-routes-jinja/plan.md
 <!-- SPECKIT END -->
 
