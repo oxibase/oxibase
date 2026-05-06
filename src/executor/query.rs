@@ -5955,11 +5955,9 @@ impl Executor {
                 }
                 match value {
                     Value::Integer(id) => all_row_ids.push(*id),
-                    Value::Float(f) => {
+                    Value::Float(f) if f.fract() == 0.0 => {
                         // Handle case where integer was stored as float
-                        if f.fract() == 0.0 {
-                            all_row_ids.push(*f as i64);
-                        }
+                        all_row_ids.push(*f as i64);
                     }
                     _ => {}
                 }
