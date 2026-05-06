@@ -125,37 +125,73 @@ async fn test_auto_api_edge_cases_and_errors() {
     let app = create_router(db);
 
     // 1. 404s for missing tables
-    let req = Request::builder().uri("/api/nope").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/api/nope")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let req = Request::builder().method("POST").uri("/api/nope").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/nope")
+        .header("content-type", "application/json")
+        .body(Body::from("{}"))
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let req = Request::builder().method("PATCH").uri("/api/nope?id=eq.1").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let req = Request::builder()
+        .method("PATCH")
+        .uri("/api/nope?id=eq.1")
+        .header("content-type", "application/json")
+        .body(Body::from("{}"))
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    let req = Request::builder().method("DELETE").uri("/api/nope?id=eq.1").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .method("DELETE")
+        .uri("/api/nope?id=eq.1")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
     // 2. 400s for empty payloads on POST/PATCH
-    let req = Request::builder().method("POST").uri("/api/complex_types").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/complex_types")
+        .header("content-type", "application/json")
+        .body(Body::from("{}"))
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
-    let req = Request::builder().method("PATCH").uri("/api/complex_types?id=eq.1").header("content-type", "application/json").body(Body::from("{}")).unwrap();
+    let req = Request::builder()
+        .method("PATCH")
+        .uri("/api/complex_types?id=eq.1")
+        .header("content-type", "application/json")
+        .body(Body::from("{}"))
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
     // 3. 400s for missing eq. filters on PATCH/DELETE
-    let req = Request::builder().method("PATCH").uri("/api/complex_types").header("content-type", "application/json").body(Body::from(json!({"label": "foo"}).to_string())).unwrap();
+    let req = Request::builder()
+        .method("PATCH")
+        .uri("/api/complex_types")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({"label": "foo"}).to_string()))
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
-    let req = Request::builder().method("DELETE").uri("/api/complex_types").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .method("DELETE")
+        .uri("/api/complex_types")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
@@ -164,19 +200,25 @@ async fn test_auto_api_edge_cases_and_errors() {
         .method("POST")
         .uri("/api/complex_types")
         .header("content-type", "application/json")
-        .body(Body::from(json!({
-            "id": 1,
-            "is_active": true,
-            "score": 42.5,
-            "tags": ["a", "b"],
-            "label": null
-        }).to_string()))
+        .body(Body::from(
+            json!({
+                "id": 1,
+                "is_active": true,
+                "score": 42.5,
+                "tags": ["a", "b"],
+                "label": null
+            })
+            .to_string(),
+        ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CREATED);
 
     // Verify type conversions via GET
-    let req = Request::builder().uri("/api/complex_types").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/api/complex_types")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     let body = get_json_response(res).await;
     assert_eq!(body[0]["is_active"], true);
@@ -186,7 +228,10 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     // 5. 500s for DB execution errors
     // Bad select column
-    let req = Request::builder().uri("/api/complex_types?select=bad_col").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/api/complex_types?select=bad_col")
+        .body(Body::empty())
+        .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
