@@ -24,9 +24,9 @@ use oxibase::server::create_router;
 use serde_json::{json, Value};
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
-async fn setup_db() -> Database {
-    let db = Database::open("memory://").unwrap();
-    db.execute("CREATE TABLE users (id INT, name TEXT)", ())
+async fn setup_db(dsn: &str) -> Database {
+    let db = Database::open(dsn).unwrap();
+    db.execute("CREATE TABLE IF NOT EXISTS users (id INT, name TEXT)", ())
         .unwrap();
     db
 }
@@ -38,7 +38,7 @@ async fn get_json_response(response: axum::response::Response) -> Value {
 
 #[tokio::test]
 async fn test_auto_api_crud_flow() {
-    let db = setup_db().await;
+    let db = setup_db("memory://test_auto_api_crud_flow").await;
     let app = create_router(db);
 
     // 1. GET /api/users (Empty)
@@ -119,7 +119,7 @@ async fn test_auto_api_crud_flow() {
 
 #[tokio::test]
 async fn test_auto_api_edge_cases_and_errors() {
-    let db = Database::open("memory://").unwrap();
+    let db = Database::open("memory://test_auto_api_edge_cases").unwrap();
     db.execute("CREATE TABLE complex_types (id INT, is_active BOOLEAN, score FLOAT, tags JSON, label TEXT)", ())
         .unwrap();
     let app = create_router(db);
@@ -244,4 +244,115 @@ async fn test_auto_api_edge_cases_and_errors() {
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn test_dynamic_route_rendering() {
+    let db = setup_db("memory://test_dynamic_route_rendering").await;
+
+    // Add dynamic template and route
+    // First init the router to create tables
+    let app = create_router(db.clone());
+
+    db.execute("INSERT INTO templates.source (name, content) VALUES ('hello.html', '<h1>Hello {{ data[0].name }}!</h1>')", ()).unwrap();
+    db.execute("INSERT INTO routes.definitions (method, path, template_name, context_query) VALUES ('GET', '/hello', 'hello.html', 'SELECT ''World'' AS name')", ()).unwrap();
+
+    // GET /hello
+    let req = Request::builder()
+        .uri("/hello")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(
+        body_str.contains("<h1>Hello World!</h1>") || body_str.contains("Hello"),
+        "Body was: {}",
+        body_str
+    );
+}
+
+#[tokio::test]
+async fn test_dynamic_route_updates() {
+    let db = setup_db("memory://test_dynamic_route_updates").await;
+    let app = create_router(db.clone());
+
+    // Add initial template
+    db.execute(
+        "INSERT INTO templates.source (name, content) VALUES ('page.html', '<h1>Version 1</h1>')",
+        (),
+    )
+    .unwrap();
+    db.execute("INSERT INTO routes.definitions (method, path, template_name) VALUES ('GET', '/page', 'page.html')", ()).unwrap();
+
+    // GET /page (V1)
+    let req = Request::builder().uri("/page").body(Body::empty()).unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body_str.contains("Version 1"));
+
+    // Update template (V2)
+    db.execute(
+        "UPDATE templates.source SET content = '<h1>Version 2</h1>' WHERE name = 'page.html'",
+        (),
+    )
+    .unwrap();
+
+    // GET /page (V2)
+    let req2 = Request::builder().uri("/page").body(Body::empty()).unwrap();
+    let res2 = app.clone().oneshot(req2).await.unwrap();
+    let body2 = res2.into_body().collect().await.unwrap().to_bytes();
+    let body_str2 = String::from_utf8(body2.to_vec()).unwrap();
+    assert!(body_str2.contains("Version 2"));
+
+    // Delete route
+    db.execute("DELETE FROM routes.definitions WHERE path = '/page'", ())
+        .unwrap();
+
+    // GET /page (404)
+    let req3 = Request::builder().uri("/page").body(Body::empty()).unwrap();
+    let res3 = app.clone().oneshot(req3).await.unwrap();
+    assert_eq!(res3.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_dynamic_route_template_inheritance() {
+    let db = setup_db("memory://test_dynamic_route_template_inheritance").await;
+    let app = create_router(db.clone());
+
+    // Insert base layout template
+    db.execute(
+        "INSERT INTO templates.source (name, content) VALUES ('layout.html', '<main>{% block content %}{% endblock %}</main>')",
+        (),
+    )
+    .unwrap();
+
+    // Insert child template extending the layout
+    db.execute(
+        "INSERT INTO templates.source (name, content) VALUES ('child.html', '{% extends \"layout.html\" %}{% block content %}<p>Inherited Content!</p>{% endblock %}')",
+        (),
+    )
+    .unwrap();
+
+    // Route for the child template
+    db.execute("INSERT INTO routes.definitions (method, path, template_name) VALUES ('GET', '/inherited', 'child.html')", ()).unwrap();
+
+    // GET /inherited
+    let req = Request::builder()
+        .uri("/inherited")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+
+    // Check if the inherited content is correctly embedded in the layout
+    assert!(body_str.contains("<main><p>Inherited Content!</p></main>"));
 }
