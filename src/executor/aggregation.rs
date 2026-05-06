@@ -2570,10 +2570,7 @@ impl Executor {
 
         // Convert groups to Vec for parallel processing
         // Flatten buckets: each bucket may contain multiple groups (hash collisions)
-        let groups_vec: Vec<GroupEntry> = groups
-            .into_iter()
-            .flat_map(|(_hash, bucket)| bucket)
-            .collect();
+        let groups_vec: Vec<GroupEntry> = groups.into_values().flatten().collect();
 
         // Pre-compile aggregate filter and expression programs for VM-based evaluation
         // CRITICAL: Propagate errors instead of silently ignoring compilation failures

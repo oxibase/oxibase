@@ -2992,6 +2992,23 @@ impl TransactionEngineOperations for EngineOperations {
         Ok(())
     }
 
+    fn rollback_all_tables(&self, txn_id: i64) -> Result<()> {
+        let cache = self.txn_version_stores().read().unwrap();
+
+        for ((cached_txn_id, _), txn_store) in cache.iter() {
+            if *cached_txn_id == txn_id {
+                txn_store.write().unwrap().rollback();
+            }
+        }
+
+        // Clean up the transaction version store cache for this transaction
+        drop(cache);
+        let mut cache = self.txn_version_stores().write().unwrap();
+        cache.retain(|(cached_txn_id, _), _| *cached_txn_id != txn_id);
+
+        Ok(())
+    }
+
     fn create_schema(&self, name: &str) -> Result<()> {
         let name_lower = name.to_lowercase();
         let mut schemas = self.schemas.write().unwrap();
