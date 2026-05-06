@@ -81,6 +81,7 @@ INSERT INTO products VALUES (3, 'Mouse', 45.00);
 Next, write a template that iterates over the `data` array:
 
 ```sql
+{% raw %}
 INSERT INTO templates.source (name, content) 
 VALUES ('products.html', '
 <h1>Our Products</h1>
@@ -92,6 +93,7 @@ VALUES ('products.html', '
   {% endfor %}
 </ul>
 ');
+{% endraw %}
 ```
 
 Finally, bind the route and provide the SQL query:
@@ -110,10 +112,11 @@ When a user accesses `/products`, Oxibase executes the `SELECT` query in real-ti
 
 ## Template Composition (Inheritance)
 
-Oxibase's embedded Jinja engine natively understands relationships between templates stored in the database. You can use standard Jinja tags like `{% extends %}` and `{% block %}` to create reusable layouts.
+Oxibase's embedded Jinja engine natively understands relationships between templates stored in the database. You can use standard Jinja tags like `{% raw %}{% extends %}{% endraw %}` and `{% raw %}{% block %}{% endraw %}` to create reusable layouts.
 
 **1. Create a Base Layout:**
 ```sql
+{% raw %}
 INSERT INTO templates.source (name, content) VALUES ('layout.html', '
 <html>
 <head><title>My App</title></head>
@@ -125,16 +128,19 @@ INSERT INTO templates.source (name, content) VALUES ('layout.html', '
 </body>
 </html>
 ');
+{% endraw %}
 ```
 
 **2. Create a Child Template:**
 ```sql
+{% raw %}
 INSERT INTO templates.source (name, content) VALUES ('home.html', '
 {% extends "layout.html" %}
 {% block content %}
     <h2>Welcome to the Home Page!</h2>
 {% endblock %}
 ');
+{% endraw %}
 ```
 
 When you route a path to `home.html`, the engine will automatically query the database for `layout.html` and compile the full page on the fly.
