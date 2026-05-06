@@ -1093,8 +1093,7 @@ fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
             .map_err(|e| format!("Failed to read routes directory: {}", e))?
             .filter_map(Result::ok)
             .filter(|entry| {
-                entry.path().is_file()
-                    && entry.path().extension().is_some_and(|ext| ext == "json")
+                entry.path().is_file() && entry.path().extension().is_some_and(|ext| ext == "json")
             });
 
         for file in route_files {
