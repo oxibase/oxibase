@@ -24,9 +24,9 @@ use oxibase::server::create_router;
 use serde_json::{json, Value};
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 
-async fn setup_db() -> Database {
-    let db = Database::open("memory://").unwrap();
-    db.execute("CREATE TABLE users (id INT, name TEXT)", ())
+async fn setup_db(dsn: &str) -> Database {
+    let db = Database::open(dsn).unwrap();
+    db.execute("CREATE TABLE IF NOT EXISTS users (id INT, name TEXT)", ())
         .unwrap();
     db
 }
@@ -38,7 +38,7 @@ async fn get_json_response(response: axum::response::Response) -> Value {
 
 #[tokio::test]
 async fn test_auto_api_crud_flow() {
-    let db = setup_db().await;
+    let db = setup_db("memory://test_auto_api_crud_flow").await;
     let app = create_router(db);
 
     // 1. GET /api/users (Empty)
@@ -119,7 +119,7 @@ async fn test_auto_api_crud_flow() {
 
 #[tokio::test]
 async fn test_auto_api_edge_cases_and_errors() {
-    let db = Database::open("memory://").unwrap();
+    let db = Database::open("memory://test_auto_api_edge_cases").unwrap();
     db.execute("CREATE TABLE complex_types (id INT, is_active BOOLEAN, score FLOAT, tags JSON, label TEXT)", ())
         .unwrap();
     let app = create_router(db);
@@ -248,7 +248,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
 #[tokio::test]
 async fn test_dynamic_route_rendering() {
-    let db = setup_db().await;
+    let db = setup_db("memory://test_dynamic_route_rendering").await;
 
     // Add dynamic template and route
     // First init the router to create tables
@@ -277,7 +277,7 @@ async fn test_dynamic_route_rendering() {
 
 #[tokio::test]
 async fn test_dynamic_route_updates() {
-    let db = setup_db().await;
+    let db = setup_db("memory://test_dynamic_route_updates").await;
     let app = create_router(db.clone());
 
     // Add initial template
@@ -322,7 +322,7 @@ async fn test_dynamic_route_updates() {
 
 #[tokio::test]
 async fn test_dynamic_route_template_inheritance() {
-    let db = setup_db().await;
+    let db = setup_db("memory://test_dynamic_route_template_inheritance").await;
     let app = create_router(db.clone());
 
     // Insert base layout template
