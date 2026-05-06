@@ -20,7 +20,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, IsTerminal};
 use std::time::Instant;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, ContentArrangement, Table};
 use rustyline::error::ReadlineError;
 use rustyline::history::DefaultHistory;
@@ -71,11 +71,10 @@ oxibase -d file:///tmp/mydb --profile durable           Use durable preset\n\
 oxibase -d file:///tmp/mydb --sync full --compression off"
 )]
 struct Args {
-    /// Database path (file://<path> or memory://)
-    #[arg(short = 'd', long = "db", default_value = "memory://")]
-    db_path: String,
+    #[command(subcommand)]
+    command: Option<Commands>,
 
-    /// Output results in JSON format
+    /// Output results in JSON format (applies to repl and default modes)
     #[arg(short = 'j', long = "json", default_value = "false")]
     json_output: bool,
 
@@ -129,6 +128,32 @@ struct Args {
     /// Long-running queries will be cancelled after this time.
     #[arg(short = 't', long = "timeout", value_name = "MS", default_value = "0")]
     timeout_ms: u64,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Start the interactive SQL shell (default if no command provided)
+    Repl {
+        /// Database path (file://<path> or memory://)
+        #[arg(short = 'd', long = "db", default_value = "memory://")]
+        db_path: String,
+    },
+
+    /// Start the Auto-API HTTP Server
+    #[cfg(feature = "server")]
+    Serve {
+        /// Database path (file://<path> or memory://)
+        #[arg(short = 'd', long = "db", default_value = "memory://")]
+        db_path: String,
+
+        /// Port to listen on
+        #[arg(short = 'p', long = "port", default_value = "8080")]
+        port: u16,
+
+        /// Host to bind to
+        #[arg(long = "host", default_value = "127.0.0.1")]
+        host: String,
+    },
 }
 
 /// CLI state for interactive mode
@@ -582,8 +607,8 @@ impl Cli {
 }
 
 /// Build DSN with query parameters from CLI args
-fn build_dsn(args: &Args) -> String {
-    let mut dsn = args.db_path.clone();
+fn build_dsn(db_path: &str, args: &Args) -> String {
+    let mut dsn = db_path.to_string();
 
     // Only add params for file:// databases
     if !dsn.starts_with("file://") {
@@ -711,8 +736,21 @@ fn print_persistence_info(args: &Args) {
 fn main() {
     let args = Args::parse();
 
+    // Determine the active command and db_path
+    let (db_path, is_serve) = match &args.command {
+        Some(Commands::Repl { db_path }) => (db_path.clone(), false),
+        #[cfg(feature = "server")]
+        Some(Commands::Serve { db_path, .. }) => (db_path.clone(), true),
+        None => ("memory://".to_string(), false), // Default to repl if no command is provided
+    };
+
     // Build the DSN with optional query parameters
-    let db_path = build_dsn(&args);
+    let db_path = build_dsn(&db_path, &args);
+
+    // Print version info
+    if !is_serve || !args.quiet {
+        println!("Oxibase v{}", version());
+    }
 
     // Open the database
     let db = match Database::open(&db_path) {
@@ -723,14 +761,38 @@ fn main() {
         }
     };
 
-    // Print version info
-    println!("Oxibase v{}", version());
-
     if !args.quiet {
         println!("Connected to database: {}", db_path);
         // Show persistence info for file databases
         if db_path.starts_with("file://") {
             print_persistence_info(&args);
+        }
+    }
+
+    match args.command {
+        #[cfg(feature = "server")]
+        Some(Commands::Serve { port, host, .. }) => {
+            println!("Server starting on {}:{}...", host, port);
+
+            // Build a tokio runtime
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .expect("Failed to build tokio runtime");
+
+            rt.block_on(async {
+                let app = oxibase::server::create_router(db);
+                let addr = format!("{}:{}", host, port);
+                let listener = tokio::net::TcpListener::bind(&addr)
+                    .await
+                    .expect("Failed to bind to port");
+                println!("Listening on {}", addr);
+                axum::serve(listener, app).await.expect("Server failed");
+            });
+            return;
+        }
+        _ => {
+            // Default REPL / execute logic continues below
         }
     }
 
