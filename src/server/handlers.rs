@@ -16,12 +16,13 @@
 // We import required Axum and Oxibase types to be used across handlers.
 
 use crate::api::Database;
+use crate::server::template::create_env;
 use crate::server::AppState;
 use crate::Value;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, Request, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{Html, IntoResponse},
     Json,
 };
 use serde::Deserialize;
@@ -185,6 +186,118 @@ pub async fn get_table(
     }
 
     (StatusCode::OK, Json(JsonValue::Array(all_rows))).into_response()
+}
+
+/// Fallback route handler for dynamic database-driven templates
+pub async fn dynamic_route_handler(
+    State(state): State<AppState>,
+    req: Request,
+) -> impl IntoResponse {
+    let method = req.method().as_str();
+    let path = req.uri().path();
+
+    // Lookup the route
+    let query =
+        "SELECT template_name, context_query FROM routes.definitions WHERE method = ? AND path = ?";
+    let rows_res = match state
+        .db
+        .query(query, vec![Value::text(method), Value::text(path)])
+    {
+        Ok(res) => res,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error finding route: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    let mut matching_rows = vec![];
+    for r in rows_res.flatten() {
+        matching_rows.push(r);
+    }
+
+    if matching_rows.is_empty() {
+        return (StatusCode::NOT_FOUND, "Not Found").into_response();
+    }
+
+    let route_row = &matching_rows[0];
+    let template_name = match route_row.get_value(0) {
+        Some(Value::Text(s)) => s.to_string(),
+        _ => return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid template_name").into_response(),
+    };
+
+    let context_query = match route_row.get_value(1) {
+        Some(Value::Text(s)) => Some(s.to_string()),
+        _ => None,
+    };
+
+    // Build context
+    let mut context = serde_json::Map::new();
+
+    if let Some(ctx_query) = context_query {
+        // Run the query to fetch dynamic context
+        let ctx_rows_res = match state.db.query(&ctx_query, ()) {
+            Ok(res) => res,
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Context query error: {}", e),
+                )
+                    .into_response()
+            }
+        };
+
+        let cols = ctx_rows_res.columns().to_vec();
+        let mut all_rows = Vec::new();
+
+        for row_res in ctx_rows_res {
+            let row = match row_res {
+                Ok(r) => r,
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Row error: {}", e),
+                    )
+                        .into_response()
+                }
+            };
+
+            let mut json_row = serde_json::Map::new();
+            for (i, col_name) in cols.iter().enumerate() {
+                let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                json_row.insert(col_name.clone(), value_to_json(&val));
+            }
+            all_rows.push(JsonValue::Object(json_row));
+        }
+
+        context.insert("data".to_string(), JsonValue::Array(all_rows));
+    }
+
+    // Setup jinja environment
+    let env = create_env(state.db.clone());
+
+    // Render
+    let tmpl = match env.get_template(&template_name) {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template load error: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    match tmpl.render(JsonValue::Object(context)) {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {}", e),
+        )
+            .into_response(),
+    }
 }
 
 pub async fn insert_row(

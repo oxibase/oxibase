@@ -38,6 +38,7 @@ tokio = { version = "1.35", features = ["full"], optional = true }
 # Web server (optional)
 axum = { version = "0.7", optional = true }
 tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
+minijinja = { version = "2", optional = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -98,7 +99,7 @@ tower = { version = "0.5.3", features = ["util"] }
 default = ["cli", "rhai", "server"]
 cli = ["clap", "rustyline", "comfy-table", "dirs"]
 pg-server = ["tokio"]
-server = ["tokio", "axum", "tower-http"]
+server = ["tokio", "axum", "tower-http", "minijinja"]
 simd = []  # Enable SIMD optimizations
 rhai = []  # Rhai scripting backend (always enabled)
 js = ["boa_engine"]  # Boa JavaScript/TypeScript backend
