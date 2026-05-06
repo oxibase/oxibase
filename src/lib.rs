@@ -73,6 +73,9 @@ pub mod optimizer;
 pub mod parser;
 pub mod storage;
 
+#[cfg(feature = "server")]
+pub mod server;
+
 // Re-export main types for convenience
 pub use core::{
     DataType, Error, IndexEntry, IndexType, IsolationLevel, Operator, Result, Row, Schema,

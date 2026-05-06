@@ -32,8 +32,12 @@ dashmap = "5.5"
 crossbeam = "0.8"
 rayon = "1.8"
 
-# Async (for pg-server)
+# Async (for pg-server and server)
 tokio = { version = "1.35", features = ["full"], optional = true }
+
+# Web server (optional)
+axum = { version = "0.7", optional = true }
+tower-http = { version = "0.5", features = ["cors", "trace"], optional = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
@@ -85,13 +89,16 @@ windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_Storage
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+http-body-util = "0.1.3"
 proptest = "1.4"
 tempfile = "3.9"
+tower = { version = "0.5.3", features = ["util"] }
 
 [features]
-default = ["cli", "rhai"]
+default = ["cli", "rhai", "server"]
 cli = ["clap", "rustyline", "comfy-table", "dirs"]
 pg-server = ["tokio"]
+server = ["tokio", "axum", "tower-http"]
 simd = []  # Enable SIMD optimizations
 rhai = []  # Rhai scripting backend (always enabled)
 js = ["boa_engine"]  # Boa JavaScript/TypeScript backend

@@ -29,13 +29,12 @@ classDiagram
     %% --- LAYERS & CLASS DEFINITIONS ---
 
     class Validation {
-        - Embedded Scripting Languages
+        - Embedded Scripting Languages ✅
         - Stored functions
         - Triggers
         - Queues
         - Debugger support
         - FaaS-like DevEx
-        - Out-of-core processing
     }
     class External_Gateway {
         - DML routes
