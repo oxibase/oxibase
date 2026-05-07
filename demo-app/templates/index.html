@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxibase Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; cursor: default; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 4px; border: 2px solid white; }
+    ::-webkit-scrollbar-thumb:hover { background: #D1D5DB; }
+    
+    input[type=checkbox] { cursor: pointer; width: 14px; height: 14px; border-radius: 3px; accent-color: #3B82F6; }
+    
+    .table-cell { padding: 6px 12px; border-right: 1px solid #F3F4F6; border-bottom: 1px solid #F3F4F6; white-space: nowrap; height: 40px; }
+    .table-header { padding: 8px 12px; border-right: 1px solid #F3F4F6; border-bottom: 1px solid #F3F4F6; border-top: 1px solid #F3F4F6; white-space: nowrap; background: #FAFAFA; color: #6B7280; font-weight: 500;}
+
+    /* Sidebar Collapse Styles */
+    #sidebar.collapsed { width: 56px !important; }
+    #sidebar.collapsed .sidebar-text,
+    #sidebar.collapsed .sidebar-title { display: none; }
+    #sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+    #sidebar.collapsed .nav-item i { margin-right: 0 !important; }
+    #sidebar.collapsed .top-actions { justify-content: center; padding-left: 0; padding-right: 0; flex-direction: column; gap: 8px;}
+    #sidebar.collapsed .toggle-container { margin: 0 auto; }
+    #sidebar.collapsed #search-container { display: none !important; }
+  </style>
+</head>
+<body class="bg-white text-[13px] text-[#111827] flex h-screen overflow-hidden selection:bg-blue-100">
+  
+  <!-- Left Sidebar -->
+  <aside id="sidebar" class="w-[240px] relative flex-shrink-0 bg-[#FAFAFA] border-r border-[#E5E7EB] flex flex-col transition-[width] duration-300">
+    <div class="h-12 flex items-center justify-end px-3 hover:bg-gray-100 cursor-pointer top-actions">
+      <!-- Search Input Container -->
+      <div id="search-container" class="absolute left-2 right-12 top-2 h-8 hidden">
+        <input type="text" id="search-input" class="w-full h-full px-2 text-[13px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" placeholder="Search...">
+      </div>
+
+      <div class="flex items-center gap-1.5 text-gray-400 toggle-container">
+        <i id="search-toggle" data-lucide="search" class="w-4 h-4 hover:text-gray-600 cursor-pointer"></i>
+        <i id="sidebar-toggle" data-lucide="panel-left-close" class="w-4 h-4 hover:text-gray-600 cursor-pointer"></i>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto mt-2 overflow-x-hidden">
+      <!-- Workspace -->
+      <div>
+        <div class="px-3 mb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider sidebar-title whitespace-nowrap">Tables</div>
+        <nav class="space-y-0.5">
+          {% set grouped_tables = data | groupby("table_schema") %}
+          {% for schema in grouped_tables %}
+            <div class="px-3 mt-3 mb-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider sidebar-title">{{ schema.grouper }}</div>
+            {% for table in schema.list %}
+              <a href="#" onclick="loadTable('{{ table.full_name }}'); return false;" class="flex items-center gap-2 px-3 py-1.5 text-gray-600 hover:bg-gray-200 nav-item">
+                <i data-lucide="table" class="w-4 h-4 text-blue-600 flex-shrink-0"></i> <span class="sidebar-text truncate">{{ table.table_name }}</span>
+              </a>
+            {% endfor %}
+          {% endfor %}
+        </nav>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col min-w-0 bg-white overflow-hidden">
+    <!-- Top Nav -->
+    <header class="h-12 border-b border-gray-100 px-4 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-2 text-sm font-medium" id="current-table-title">
+        <i data-lucide="database" class="w-4 h-4 text-blue-600"></i>
+        Select a table
+      </div>
+      <div class="flex items-center gap-3 text-gray-500">
+        <button class="px-3 border border-gray-200 shadow-sm py-1 rounded-md text-xs font-semibold flex items-center gap-1 hover:bg-gray-50 text-gray-700">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> New
+        </button>
+        <button class="hover:bg-gray-100 p-1 rounded-md"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+        <div class="flex items-center gap-1 px-1.5 py-1 text-xs border border-gray-200 bg-gray-50 rounded text-gray-400"><i data-lucide="command" class="w-3 h-3"></i> K</div>
+      </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="h-12 px-4 flex items-center justify-between flex-shrink-0 text-sm">
+      <div class="flex items-center gap-2 text-gray-600">
+        <i data-lucide="list" class="w-4 h-4"></i>
+        <span class="font-medium text-gray-900" id="current-table-subtitle">All Rows</span>
+        <span class="text-gray-400" id="row-count">· 0</span>
+        <i data-lucide="chevron-down" class="w-3 h-3 text-gray-400 ml-1 cursor-pointer"></i>
+      </div>
+      <div class="flex items-center gap-4 text-gray-600">
+        <button class="hover:text-gray-900">Filter</button>
+        <button class="hover:text-gray-900">Sort</button>
+        <button class="hover:text-gray-900">Options</button>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="flex-1 overflow-auto bg-white border-t border-gray-200">
+      <table class="w-full text-left border-collapse min-w-max" id="data-table">
+        <thead id="data-thead">
+          <tr>
+            <th class="table-header">Please select a table from the sidebar.</th>
+          </tr>
+        </thead>
+        <tbody id="data-tbody">
+        </tbody>
+      </table>
+    </div>
+  </main>
+  
+  <script>
+    lucide.createIcons();
+
+    // Sidebar Toggle Logic
+    const sidebar = document.getElementById('sidebar');
+    const searchContainer = document.getElementById('search-container');
+    const searchInput = document.getElementById('search-input');
+    let isCollapsed = false;
+
+    // Use event delegation on the body or wrapper since the i tag gets replaced by svg
+    document.body.addEventListener('click', (e) => {
+      // Handle Search Toggle
+      const searchBtn = e.target.closest('#search-toggle');
+      const isClickInsideSearch = searchContainer.contains(e.target);
+
+      if (searchBtn) {
+        if (!isCollapsed) {
+          searchContainer.classList.toggle('hidden');
+          if (!searchContainer.classList.contains('hidden')) {
+            searchInput.focus();
+          }
+        }
+      } else if (!isClickInsideSearch) {
+        searchContainer.classList.add('hidden');
+      }
+
+      // Find closest toggle button
+      const toggleBtn = e.target.closest('#sidebar-toggle');
+      if (!toggleBtn) return;
+
+      isCollapsed = !isCollapsed;
+      sidebar.classList.toggle('collapsed');
+      
+      const newIcon = document.createElement('i');
+      newIcon.id = 'sidebar-toggle';
+      newIcon.setAttribute('data-lucide', isCollapsed ? 'panel-left-open' : 'panel-left-close');
+      newIcon.className = 'w-4 h-4 hover:text-gray-600 cursor-pointer';
+      
+      toggleBtn.replaceWith(newIcon);
+      lucide.createIcons(); 
+    });
+
+    async function loadTable(tableName) {
+      document.getElementById('current-table-title').innerHTML = `<i data-lucide="database" class="w-4 h-4 text-blue-600"></i> ${tableName}`;
+      document.getElementById('current-table-subtitle').innerText = `All Rows`;
+      lucide.createIcons();
+
+      try {
+        const response = await fetch(`/api/${tableName}`);
+        if (!response.ok) throw new Error('Failed to fetch table data');
+        const rows = await response.json();
+        
+        document.getElementById('row-count').innerText = `· ${rows.length}`;
+
+        const thead = document.getElementById('data-thead');
+        const tbody = document.getElementById('data-tbody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        if (rows.length === 0) {
+          thead.innerHTML = `<tr><th class="table-header">No rows found in ${tableName}.</th></tr>`;
+          return;
+        }
+
+        const columns = Object.keys(rows[0]);
+
+        // Build header
+        let headerHtml = '<tr>';
+        headerHtml += `<th class="table-header w-10 text-center sticky top-0 bg-white z-10 p-0"><div class="w-full h-full flex justify-center items-center py-2 bg-[#FAFAFA] border-r border-[#F3F4F6]"><input type="checkbox"></div></th>`;
+        columns.forEach(col => {
+          headerHtml += `<th class="table-header sticky top-0 z-10"><div class="flex items-center gap-2"><i data-lucide="type" class="w-3.5 h-3.5 text-gray-400"></i> ${col}</div></th>`;
+        });
+        headerHtml += '</tr>';
+        thead.innerHTML = headerHtml;
+
+        // Build body
+        let bodyHtml = '';
+        rows.forEach(row => {
+          bodyHtml += `<tr class="hover:bg-gray-50/50 group">`;
+          bodyHtml += `<td class="table-cell text-center p-0"><div class="w-full h-full flex justify-center items-center"><input type="checkbox" class="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100"></div></td>`;
+          columns.forEach(col => {
+            const val = row[col] === null ? '<span class="text-gray-400 italic">null</span>' : String(row[col]).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            bodyHtml += `<td class="table-cell"><div class="text-gray-600 truncate max-w-[400px]">${val}</div></td>`;
+          });
+          bodyHtml += '</tr>';
+        });
+        tbody.innerHTML = bodyHtml;
+
+        lucide.createIcons();
+
+        // Add logic to persist visible checkbox
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.addEventListener('change', (e) => {
+            if (e.target.checked) e.target.classList.add('opacity-100');
+            else e.target.classList.remove('opacity-100');
+          });
+        });
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('data-thead').innerHTML = `<tr><th class="table-header text-red-500">Error loading table.</th></tr>`;
+        document.getElementById('data-tbody').innerHTML = '';
+      }
+    }
+
+    // Auto-load users table if it exists
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check if users exists in the list
+      const firstTableLink = document.querySelector('#sidebar nav a span.truncate');
+      if (firstTableLink) {
+          // Find "users" specifically, or just load the first one
+          let targetTable = "users";
+          let found = Array.from(document.querySelectorAll('#sidebar nav a span.truncate')).find(el => el.innerText === "users");
+          
+          if (!found) {
+              targetTable = firstTableLink.innerText;
+          }
+          loadTable(targetTable);
+      }
+    });
+
+  </script>
+</body>
+</html>
