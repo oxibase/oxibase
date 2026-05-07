@@ -40,7 +40,16 @@ impl Executor {
         _stmt: &SelectStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        match schema_table {
+        // schema_table can be just the table name if called from the "legacy" 
+        // information_schema. prefixed path or the full qualified name 
+        // from the executor logic
+        let actual_table = if let Some(dot_pos) = schema_table.find('.') {
+            &schema_table[dot_pos + 1..]
+        } else {
+            schema_table
+        };
+
+        match actual_table {
             "tables" => self.build_tables_result(),
             "columns" => self.build_columns_result(),
             "functions" => self.build_functions_result(),

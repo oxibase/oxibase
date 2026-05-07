@@ -1870,9 +1870,18 @@ impl Engine for MVCCEngine {
             return Err(Error::EngineNotOpen);
         }
 
+        let (schema_name, short_table_name) = if let Some(dot_pos) = table_name.find('.') {
+            (&table_name[..dot_pos], &table_name[dot_pos + 1..])
+        } else {
+            (DEFAULT_SCHEMA, table_name)
+        };
+
         let schemas = self.schemas.read().unwrap();
-        let default_schema = schemas.get(DEFAULT_SCHEMA);
-        Ok(default_schema.is_some_and(|s| s.contains_key(&table_name.to_lowercase())))
+        if let Some(schema) = schemas.get(&schema_name.to_lowercase()) {
+            Ok(schema.contains_key(&short_table_name.to_lowercase()))
+        } else {
+            Ok(false)
+        }
     }
 
     fn view_exists(&self, view_name: &str) -> Result<bool> {
@@ -1914,10 +1923,19 @@ impl Engine for MVCCEngine {
             return Err(Error::EngineNotOpen);
         }
 
+        let (schema_name, short_table_name) = if let Some(dot_pos) = table_name.find('.') {
+            (&table_name[..dot_pos], &table_name[dot_pos + 1..])
+        } else {
+            (DEFAULT_SCHEMA, table_name)
+        };
+
         let schemas = self.schemas.read().unwrap();
-        let default_schema = schemas.get(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
-        default_schema
-            .get(&table_name.to_lowercase())
+        let schema = schemas
+            .get(&schema_name.to_lowercase())
+            .ok_or_else(|| Error::SchemaNotFound(schema_name.to_string()))?;
+
+        schema
+            .get(&short_table_name.to_lowercase())
             .cloned()
             .ok_or(Error::TableNotFound)
     }

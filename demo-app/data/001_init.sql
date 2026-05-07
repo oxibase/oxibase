@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (id INTEGER PRIMARY KEY AUTO_INCREMENT, name TEXT);
+INSERT INTO users (name) VALUES ('Alice'), ('Bob');

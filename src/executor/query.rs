@@ -768,7 +768,11 @@ impl Executor {
                         == Some("information_schema".to_string())
                     {
                         // Handle qualified identifiers like information_schema.tables
-                        Some(table_source.name.table().to_lowercase())
+                        Some(format!(
+                            "{}.{}",
+                            table_source.name.schema().unwrap().to_lowercase(),
+                            table_source.name.table().to_lowercase()
+                        ))
                     } else {
                         None
                     };

@@ -21,11 +21,11 @@
 use serde::{Deserialize, Serialize};
 
 /// System table name for user-defined functions
-pub const SYS_FUNCTIONS: &str = "_sys_functions";
+pub const SYS_FUNCTIONS: &str = "system._sys_functions";
 
 /// SQL to create the functions system table
 pub const CREATE_FUNCTIONS_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS _sys_functions (
+CREATE TABLE IF NOT EXISTS system._sys_functions (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     schema TEXT,
     name TEXT NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS _sys_functions (
 
 /// Check if a table name is a system functions table
 pub fn is_functions_table(table_name: &str) -> bool {
-    table_name.eq_ignore_ascii_case(SYS_FUNCTIONS)
+    table_name.eq_ignore_ascii_case(SYS_FUNCTIONS) || table_name.eq_ignore_ascii_case("_sys_functions")
 }
 
 /// Simplified parameter representation for storage

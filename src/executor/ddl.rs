@@ -1065,7 +1065,7 @@ impl Executor {
     /// Insert a function into the system table
     fn insert_function(&self, function: &StoredFunction) -> Result<()> {
         let mut tx = self.engine.begin_transaction()?;
-        let mut table = tx.get_table(SYS_FUNCTIONS)?;
+        let mut table = tx.get_table("system._sys_functions")?;
 
         // Serialize parameters to JSON
         let parameters_json = serde_json::to_string(&function.parameters).map_err(|e| {

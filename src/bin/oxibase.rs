@@ -18,6 +18,7 @@
 
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, IsTerminal};
+use std::sync::Arc;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
@@ -964,6 +965,8 @@ fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
     }
 
     // Step A: Init System (DDL must be executed outside the transaction in Oxibase)
+    db.execute("CREATE SCHEMA IF NOT EXISTS system;", ()).ok();
+    db.execute("DROP TABLE IF EXISTS routes.definitions;", ()).ok();
     db.execute("CREATE SCHEMA IF NOT EXISTS routes;", ())
         .map_err(|e| format!("Failed to create routes schema: {}", e))?;
     db.execute(
@@ -977,6 +980,7 @@ fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
     )
     .map_err(|e| format!("Failed to create routes.definitions table: {}", e))?;
 
+    db.execute("DROP TABLE IF EXISTS templates.source;", ()).ok();
     db.execute("CREATE SCHEMA IF NOT EXISTS templates;", ())
         .map_err(|e| format!("Failed to create templates schema: {}", e))?;
     db.execute(
@@ -988,18 +992,13 @@ fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
     )
     .map_err(|e| format!("Failed to create templates.source table: {}", e))?;
 
-    // We assume system schemas might be named differently or `functions` is a keyword.
-    // Let's use `app_functions` instead of `functions` just to be safe if `functions` is reserved.
-    db.execute("CREATE SCHEMA IF NOT EXISTS app_functions;", ())
-        .map_err(|e| format!("Failed to create functions schema: {}", e))?;
-    db.execute(
-        "CREATE TABLE IF NOT EXISTS app_functions.source (
-            name TEXT,
-            content TEXT
-        );",
-        (),
-    )
-    .map_err(|e| format!("Failed to create functions.source table: {}", e))?;
+    // _sys_functions is managed natively, just ensure it exists
+    db.execute(oxibase::storage::CREATE_FUNCTIONS_SQL, ())
+        .map_err(|e| format!("Failed to create functions system table: {}", e))?;
+    
+    // Also init statistics tables in system schema
+    db.execute(oxibase::storage::statistics::CREATE_TABLE_STATS_SQL, ()).ok();
+    db.execute(oxibase::storage::statistics::CREATE_COLUMN_STATS_SQL, ()).ok();
 
     let mut tx = db
         .begin()
@@ -1010,8 +1009,15 @@ fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to clear old routes: {}", e))?;
     tx.execute("DELETE FROM templates.source;", ())
         .map_err(|e| format!("Failed to clear old templates: {}", e))?;
-    tx.execute("DELETE FROM app_functions.source;", ())
+    tx.execute("DELETE FROM system._sys_functions WHERE schema = 'public';", ())
         .map_err(|e| format!("Failed to clear old functions: {}", e))?;
+    
+    tx.execute("DELETE FROM system._sys_table_stats;", ())
+        .map_err(|e| format!("Failed to clear old table stats: {}", e))?;
+    tx.execute("DELETE FROM system._sys_column_stats;", ())
+        .map_err(|e| format!("Failed to clear old column stats: {}", e))?;
+
+
 
     // Step C: Load Data (SQL files)
     let data_dir = app_path.join("data");
@@ -1148,17 +1154,40 @@ fn handle_seed(db: &Database, app_dir: &str) -> Result<(), String> {
             });
 
         for file in function_files {
-            let file_name = file.file_name().to_string_lossy().to_string();
+            let file_name = file
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+            let language = file
+                .path()
+                .extension()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
             let content = std::fs::read_to_string(file.path())
                 .map_err(|e| format!("Failed to read {}: {}", file.path().display(), e))?;
 
+            // Insert into _sys_functions (schema: "public", name, params: "[]", return: "ANY", lang, code)
+            // Insert into system._sys_functions
             tx.execute(
-                "INSERT INTO app_functions.source (name, content) VALUES (?, ?);",
-                vec![Value::text(file_name), Value::text(content)],
+                "INSERT INTO system._sys_functions (id, schema, name, parameters, return_type, language, code) VALUES (?, ?, ?, ?, ?, ?, ?);",
+                vec![
+                    Value::Null(oxibase::core::DataType::Integer),
+                    Value::text("public"),
+                    Value::text(file_name),
+                    Value::Json(Arc::from(serde_json::to_string(&serde_json::json!([])).unwrap().as_str())),
+                    Value::text("ANY"),
+                    Value::text(language),
+                    Value::text(content),
+                ],
             )
             .map_err(|e| format!("Failed to insert function {}: {}", file.path().display(), e))?;
+
         }
     }
+
 
     tx.commit()
         .map_err(|e| format!("Failed to commit transaction: {}", e))?;
