@@ -42,9 +42,23 @@ pub struct GetQueryParams {
 
 /// Helper function to check if a table exists in the information schema
 fn table_exists(db: &Database, table_name: &str) -> Result<bool, String> {
-    let query = "SELECT 1 FROM information_schema.tables WHERE table_name = ?";
+    // If the table name contains a dot, we need to check schema AND table name
+    let query = if table_name.contains('.') {
+        let parts: Vec<&str> = table_name.splitn(2, '.').collect();
+        "SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?"
+    } else {
+        "SELECT 1 FROM information_schema.tables WHERE table_name = ?"
+    };
+
+    let params = if table_name.contains('.') {
+        let parts: Vec<&str> = table_name.splitn(2, '.').collect();
+        vec![Value::text(parts[0]), Value::text(parts[1])]
+    } else {
+        vec![Value::text(table_name)]
+    };
+
     let rows = db
-        .query(query, vec![Value::text(table_name)])
+        .query(query, params)
         .map_err(|e| e.to_string())?;
 
     // If we have at least one row, the table exists
