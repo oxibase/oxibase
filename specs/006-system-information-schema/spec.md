@@ -37,18 +37,18 @@ As a database administrator or developer, I want to query a new `system` schema 
 
 ---
 
-### User Story 3 - Storing Metadata as Tables (Priority: P3)
+### User Story 3 - Exposing Internal State (Priority: P3)
 
-As a system architect, I want the core database metadata (schema definitions) to be physically stored as standard tables within the storage engine, rather than in custom memory structures or separate files, so that metadata benefits from standard transaction (MVCC), recovery, and concurrency features.
+As a system architect, I want the core database metadata and active engine state to be exposed as virtual tables within a `system` schema, so that I can easily query the real-time memory structures of the database.
 
-**Why this priority**: Unifies the storage model, simplifies the codebase, and provides robust ACID guarantees for metadata operations.
+**Why this priority**: Provides deep visibility into the engine's live state without requiring custom debugging endpoints or complex memory dumps.
 
-**Independent Test**: Can be tested by creating a table, verifying its metadata is written to the underlying storage for `system.tables`, crashing the database, restarting, and confirming the metadata is recovered correctly from the system table.
+**Independent Test**: Can be tested by creating a table and immediately querying `system.tables` to see the real-time memory state reflect the new table.
 
 **Acceptance Scenarios**:
 
-1. **Given** a database startup, **When** the system initializes, **Then** it must bootstrap the necessary system tables to store the schema before accepting user connections.
-2. **Given** a schema change (e.g., `ALTER TABLE`), **When** the transaction commits, **Then** the internal `system.*` tables must be atomically updated.
+1. **Given** a running database, **When** the system initializes, **Then** queries to `system.tables` dynamically read from the active in-memory catalog.
+2. **Given** a schema change (e.g., `ALTER TABLE`), **When** the transaction commits, **Then** subsequent queries to `system.columns` immediately reflect the updated in-memory state.
 
 ### Edge Cases
 
@@ -63,9 +63,9 @@ As a system architect, I want the core database metadata (schema definitions) to
 
 - **FR-001**: The system MUST implement a read-only `information_schema` containing standard views/tables like `tables`, `columns`, and `views` conforming broadly to SQL standards.
 - **FR-002**: The system MUST implement a `system` schema exposing internal database state and metadata.
-- **FR-003**: The core storage engine MUST physically store table and schema definitions as rows within tables located in the `system` schema.
-- **FR-004**: The system MUST NOT allow users to directly modify (INSERT/UPDATE/DELETE) data in the `information_schema` or `system` schema unless specifically designated as writable configurations.
-- **FR-005**: The system MUST bootstrap internal `system` tables during initialization before handling user queries.
+- **FR-003**: The system MUST expose its internal in-memory metadata and active state as virtual tables under the `system` schema.
+- **FR-004**: The system MUST NOT allow users to directly modify (INSERT/UPDATE/DELETE) data in the `information_schema` or `system` schema.
+- **FR-005**: The query executor MUST intercept queries to the `system` and `information_schema` namespaces and route them to dynamic virtual table generators.
 - **FR-006**: Queries to `information_schema` MUST filter results based on the current user's privileges (if authorization is implemented).
 
 ### Key Entities
@@ -80,9 +80,9 @@ As a system architect, I want the core database metadata (schema definitions) to
 ### Measurable Outcomes
 
 - **SC-001**: A user can successfully connect with a standard third-party SQL client (like DBeaver or psql-equivalent if compatible) and browse the database schema using `information_schema` queries.
-- **SC-002**: 100% of the core table and column definitions are persisted as rows in `system` tables, entirely replacing any legacy non-table-based metadata storage mechanisms.
+- **SC-002**: Internal engine state (tables, columns, etc.) is successfully queryable via the `system` schema without impacting the performance of the core storage engine.
 - **SC-003**: An attempt to execute `DROP TABLE system.tables` or `INSERT INTO information_schema.tables ...` results in a clear error message and no state change.
-- **SC-004**: System startup successfully bootstraps the metadata tables without infinite recursion or initialization panics.
+- **SC-004**: System startup remains fast, with no complex bootstrapping loops required for metadata.
 
 ## Assumptions
 
