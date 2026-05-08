@@ -257,6 +257,16 @@ impl Schema {
         }
     }
 
+    /// Check if the schema name is reserved (e.g., system or information_schema)
+    /// This validates the schema part of the table name (e.g., "system.tables" -> "system")
+    pub fn is_reserved_namespace(name: &str) -> bool {
+        let name_lower = name.to_lowercase();
+        if name_lower.starts_with("system.") || name_lower.starts_with("information_schema.") {
+            return true;
+        }
+        false
+    }
+
     /// Create a new schema with explicit timestamps
     pub fn with_timestamps(
         table_name: impl Into<String>,
@@ -808,5 +818,18 @@ mod tests {
         assert_eq!(schema.get_column_type("name"), Some(DataType::Text));
         assert_eq!(schema.get_column_type("active"), Some(DataType::Boolean));
         assert_eq!(schema.get_column_type("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_schema_reserved_namespace() {
+        assert!(Schema::is_reserved_namespace("system.tables"));
+        assert!(Schema::is_reserved_namespace("information_schema.columns"));
+        assert!(Schema::is_reserved_namespace("SYSTEM.tables"));
+        assert!(Schema::is_reserved_namespace("INFORMATION_SCHEMA.columns"));
+
+        assert!(!Schema::is_reserved_namespace("public.tables"));
+        assert!(!Schema::is_reserved_namespace("tables"));
+        assert!(!Schema::is_reserved_namespace("system_tables"));
+        assert!(!Schema::is_reserved_namespace("information_schema_columns"));
     }
 }

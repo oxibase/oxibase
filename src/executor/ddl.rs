@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@
 //! - CREATE VIEW
 //! - DROP VIEW
 
-use crate::core::{DataType, Error, Result, Row, SchemaBuilder, Value};
+use crate::core::{DataType, Error, Result, Row, Schema, SchemaBuilder, Value};
 use crate::functions::{FunctionDataType, FunctionSignature};
 use crate::parser::ast::*;
 use crate::storage::expression::Expression;
@@ -49,6 +50,11 @@ impl Executor {
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let table_name = &stmt.table_name.value();
+
+        // Prevent creation of tables in reserved namespaces
+        if Schema::is_reserved_namespace(table_name) {
+            return Err(Error::ReservedNamespaceModification(table_name.clone()));
+        }
 
         // Check if schema exists for qualified table names
         if let Some(schema_name) = stmt.table_name.schema() {
@@ -405,6 +411,11 @@ impl Executor {
     ) -> Result<Box<dyn QueryResult>> {
         let table_name = &stmt.table_name.value();
 
+        // Prevent dropping tables in reserved namespaces
+        if Schema::is_reserved_namespace(table_name) {
+            return Err(Error::ReservedNamespaceModification(table_name.clone()));
+        }
+
         // Check if table exists
         if !self.engine.table_exists(table_name)? {
             if stmt.if_exists {
@@ -595,6 +606,11 @@ impl Executor {
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let table_name = &stmt.table_name.value();
+
+        // Prevent altering tables in reserved namespaces
+        if Schema::is_reserved_namespace(table_name) {
+            return Err(Error::ReservedNamespaceModification(table_name.clone()));
+        }
 
         // Check if table exists
         if !self.engine.table_exists(table_name)? {

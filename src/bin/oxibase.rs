@@ -63,12 +63,12 @@ PERSISTENCE DSN PARAMETERS:\n\
   snapshot_compression=on|off Snapshot compression only (default: on)\n\
   compression_threshold=BYTES Min size to compress (default: 64)\n\n\
 EXAMPLES:\n\
-oxibase -d memory://                                    In-memory database\n\
-oxibase -d file:///tmp/mydb                             Persistent database\n\
-oxibase -d file:///tmp/mydb?sync=full                   Maximum durability\n\
-oxibase -d file:///tmp/mydb?sync=none&compression=off   Maximum performance\n\
-oxibase -d file:///tmp/mydb --profile durable           Use durable preset\n\
-oxibase -d file:///tmp/mydb --sync full --compression off"
+oxibase repl -d memory://                                    In-memory database\n\
+oxibase repl -d file:///tmp/mydb                             Persistent database\n\
+oxibase repl -d file:///tmp/mydb?sync=full                   Maximum durability\n\
+oxibase repl -d file:///tmp/mydb?sync=none&compression=off   Maximum performance\n\
+oxibase repl -d file:///tmp/mydb --profile durable           Use durable preset\n\
+oxibase repl -d file:///tmp/mydb --sync full --compression off"
 )]
 struct Args {
     #[command(subcommand)]

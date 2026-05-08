@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@
 //! - UPDATE
 //! - DELETE
 
-use crate::core::{DataType, Error, Result, Row, Value};
+use crate::core::{DataType, Error, Result, Row, Schema, Value};
 use crate::parser::ast::*;
 use crate::storage::expression::{ComparisonExpr, Expression as StorageExpr};
 use crate::storage::traits::{Engine, QueryResult, Table};
@@ -78,6 +79,12 @@ impl Executor {
         stmt: &InsertStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
+        // Prevent DML on reserved namespaces
+        let table_name_raw = stmt.table_name.value();
+        if Schema::is_reserved_namespace(&table_name_raw) {
+            return Err(Error::ReservedNamespaceModification(table_name_raw));
+        }
+
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
         let table_name = &stmt.table_name.value_lower();
 
@@ -510,7 +517,12 @@ impl Executor {
         stmt: &UpdateStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
+        // Prevent DML on reserved namespaces
+        let table_name_raw = stmt.table_name.value();
+        if Schema::is_reserved_namespace(&table_name_raw) {
+            return Err(Error::ReservedNamespaceModification(table_name_raw));
+        }
+
         let table_name = &stmt.table_name.value_lower();
 
         // Check if there's an active explicit transaction
@@ -910,7 +922,12 @@ impl Executor {
         stmt: &DeleteStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query
+        // Prevent DML on reserved namespaces
+        let table_name_raw = stmt.table_name.value();
+        if Schema::is_reserved_namespace(&table_name_raw) {
+            return Err(Error::ReservedNamespaceModification(table_name_raw));
+        }
+
         let table_name = &stmt.table_name.value_lower();
         // Use alias if provided, otherwise use table name
         let effective_name = stmt

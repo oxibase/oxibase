@@ -106,9 +106,8 @@ cargo build --release
 ### Command Line
 
 ```bash
-./oxibase                                    # In-memory REPL
-./oxibase --db "file:///path/to/data"        # Persistent database
-./oxibase -q "SELECT 1 + 1"                  # Execute query directly
+./oxibase repl                                    # In-memory REPL
+./oxibase repl --db "file:///path/to/data"        # Persistent database
 ```
 
 
@@ -324,10 +323,10 @@ Oxibase uses write-ahead logging (WAL) with periodic snapshots:
 
 ```bash
 # In-memory (default) - data lost on exit
-./oxibase --db "memory://"
+./oxibase repl --db "memory://"
 
 # File-based - durable storage
-./oxibase --db "file:///var/lib/oxibase/data"
+./oxibase repl --db "file:///var/lib/oxibase/data"
 ```
 
 Features:

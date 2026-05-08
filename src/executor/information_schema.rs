@@ -111,7 +111,7 @@ impl Executor {
 
         // Columns: table_catalog, table_schema, table_name, column_name, ordinal_position,
         //          column_default, is_nullable, data_type, character_maximum_length,
-        //          numeric_precision, numeric_scale
+        //          character_octet_length, numeric_precision, numeric_scale, datetime_precision
         let columns = vec![
             "table_catalog".to_string(),
             "table_schema".to_string(),
@@ -122,8 +122,10 @@ impl Executor {
             "is_nullable".to_string(),
             "data_type".to_string(),
             "character_maximum_length".to_string(),
+            "character_octet_length".to_string(),
             "numeric_precision".to_string(),
             "numeric_scale".to_string(),
+            "datetime_precision".to_string(),
         ];
 
         let mut rows: Vec<Row> = Vec::new();
@@ -168,6 +170,11 @@ impl Executor {
                     _ => None,
                 };
 
+                let char_octet_len = match col.data_type {
+                    crate::core::types::DataType::Text => Some(Value::Integer(65535 * 4)), // Assuming UTF-8 max 4 bytes
+                    _ => None,
+                };
+
                 // Get numeric precision/scale (for INTEGER/FLOAT)
                 let (num_precision, num_scale) = match col.data_type {
                     crate::core::types::DataType::Integer => {
@@ -175,6 +182,11 @@ impl Executor {
                     }
                     crate::core::types::DataType::Float => (Some(Value::Integer(53)), None), // Double precision
                     _ => (None, None),
+                };
+
+                let datetime_precision = match col.data_type {
+                    crate::core::types::DataType::Timestamp => Some(Value::Integer(6)), // Microseconds default
+                    _ => None,
                 };
 
                 rows.push(Row::from_values(vec![
@@ -190,8 +202,10 @@ impl Executor {
                     Value::Text(Arc::from(is_nullable)),
                     Value::Text(Arc::from(data_type.as_str())),
                     char_max_len.unwrap_or(Value::Null(DataType::Integer)),
+                    char_octet_len.unwrap_or(Value::Null(DataType::Integer)),
                     num_precision.unwrap_or(Value::Null(DataType::Integer)),
                     num_scale.unwrap_or(Value::Null(DataType::Integer)),
+                    datetime_precision.unwrap_or(Value::Null(DataType::Integer)),
                 ]));
             }
         }

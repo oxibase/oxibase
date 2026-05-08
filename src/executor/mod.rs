@@ -67,6 +67,7 @@ mod query;
 mod set_ops;
 mod show;
 mod subquery;
+pub mod system_schema;
 pub mod utils;
 mod window;
 
