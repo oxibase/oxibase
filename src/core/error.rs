@@ -133,6 +133,10 @@ pub enum Error {
     #[error("referential integrity violation: {message}")]
     ReferentialIntegrityViolation { message: String },
 
+    /// Reserved namespace modification violation
+    #[error("cannot modify reserved namespace: {0}")]
+    ReservedNamespaceModification(String),
+
     // =========================================================================
     // Transaction errors
     // =========================================================================
@@ -417,6 +421,11 @@ impl Error {
         Error::ReferentialIntegrityViolation {
             message: message.into(),
         }
+    }
+
+    /// Create a new ReservedNamespaceModification error
+    pub fn reserved_namespace_modification(namespace: impl Into<String>) -> Self {
+        Error::ReservedNamespaceModification(namespace.into())
     }
 
     /// Create a new ColumnNotFoundByName error

@@ -53,3 +53,4 @@ docs/node_modules
 # Example databases
 ./examples/oxibase.db
 ./data/
+.env*
