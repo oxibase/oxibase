@@ -95,6 +95,8 @@ impl ScriptingBackend for RhaiBackend {
                     Ok(Value::Text(result.cast::<String>().into()))
                 } else if result.is::<bool>() {
                     Ok(Value::Boolean(result.cast::<bool>()))
+                } else if result.is::<()>() {
+                    Ok(Value::null_unknown())
                 } else {
                     Err(Error::internal("Unsupported return type from Rhai script"))
                 }

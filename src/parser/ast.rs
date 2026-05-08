@@ -1325,6 +1325,8 @@ pub enum Statement {
     UseSchema(UseSchemaStatement),
     CreateFunction(CreateFunctionStatement),
     DropFunction(DropFunctionStatement),
+    CreateProcedure(CreateProcedureStatement),
+    Call(CallStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
     Rollback(RollbackStatement),
@@ -1365,6 +1367,8 @@ impl fmt::Display for Statement {
             Statement::UseSchema(s) => write!(f, "{}", s),
             Statement::CreateFunction(s) => write!(f, "{}", s),
             Statement::DropFunction(s) => write!(f, "{}", s),
+            Statement::CreateProcedure(s) => write!(f, "{}", s),
+            Statement::Call(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
             Statement::Rollback(s) => write!(f, "{}", s),
@@ -2144,9 +2148,54 @@ pub struct CreateFunctionStatement {
     pub if_not_exists: bool,
 }
 
+/// CREATE PROCEDURE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateProcedureStatement {
+    pub token: Token,
+    pub procedure_name: FunctionName,
+    pub parameters: Vec<ProcedureParameter>,
+    pub language: String,
+    pub body: String,
+    pub or_replace: bool,
+}
+
+/// CALL statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallStatement {
+    pub token: Token,
+    pub procedure_name: FunctionName,
+    pub arguments: Vec<Expression>,
+}
+
 /// Function parameter
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionParameter {
+    pub name: Identifier,
+    pub data_type: String,
+}
+
+/// Parameter mode for stored procedures
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParameterMode {
+    In,
+    Out,
+    InOut,
+}
+
+impl fmt::Display for ParameterMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParameterMode::In => write!(f, "IN"),
+            ParameterMode::Out => write!(f, "OUT"),
+            ParameterMode::InOut => write!(f, "INOUT"),
+        }
+    }
+}
+
+/// Procedure parameter
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProcedureParameter {
+    pub mode: ParameterMode,
     pub name: Identifier,
     pub data_type: String,
 }
@@ -2700,5 +2749,42 @@ mod tests {
             }))),
         };
         assert_eq!(case_expr.to_string(), "CASE WHEN TRUE THEN 1 ELSE 0 END");
+    }
+}
+
+impl fmt::Display for CreateProcedureStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE ");
+        if self.or_replace {
+            result.push_str("OR REPLACE ");
+        }
+        result.push_str("PROCEDURE ");
+        result.push_str(&self.procedure_name.to_string());
+        result.push('(');
+        let params: Vec<String> = self
+            .parameters
+            .iter()
+            .map(|p| format!("{} {} {}", p.mode, p.name.value, p.data_type))
+            .collect();
+        result.push_str(&params.join(", "));
+        result.push_str(&format!(
+            ") LANGUAGE {} AS $$ {} $$",
+            self.language, self.body
+        ));
+        write!(f, "{}", result)
+    }
+}
+
+impl fmt::Display for CallStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = format!("CALL {}(", self.procedure_name);
+        let args: Vec<String> = self
+            .arguments
+            .iter()
+            .map(|a| a.to_string())
+            .collect();
+        result.push_str(&args.join(", "));
+        result.push(')');
+        write!(f, "{}", result)
     }
 }

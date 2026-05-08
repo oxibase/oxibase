@@ -14,31 +14,31 @@ This feature will be implemented incrementally, starting with core AST and catal
 
 ## Phase 1: Setup
 
-- [ ] T001 Initialize system.procedures catalog script in `src/storage/procedures.rs` based on existing functions implementation
+- [x] T001 Initialize system.procedures catalog script in `src/storage/procedures.rs` based on existing functions implementation
 
 ## Phase 2: Foundational Components (AST & Storage)
 
 *Goal: Extend parser and internal models to represent stored procedures.*
 
-- [ ] T002 Implement `ParameterMode` enum (In, Out, InOut) in `src/parser/ast.rs`
-- [ ] T003 Implement `ProcedureParameter` struct in `src/parser/ast.rs`
-- [ ] T004 Implement `CreateProcedureStatement` AST node in `src/parser/ast.rs`
-- [ ] T005 Implement `CallStatement` AST node in `src/parser/ast.rs`
-- [ ] T006 Implement parsing logic for `CREATE OR REPLACE PROCEDURE` in `src/parser/statements.rs`
-- [ ] T007 Implement parsing logic for `CALL` in `src/parser/statements.rs`
-- [ ] T008 [P] Implement `StoredProcedureParameter` and `StoredProcedure` structs in `src/storage/procedures.rs`
-- [ ] T009 Add system catalog table creation SQL for `system.procedures` to `src/storage/procedures.rs`
+- [x] T002 Implement `ParameterMode` enum (In, Out, InOut) in `src/parser/ast.rs`
+- [x] T003 Implement `ProcedureParameter` struct in `src/parser/ast.rs`
+- [x] T004 Implement `CreateProcedureStatement` AST node in `src/parser/ast.rs`
+- [x] T005 Implement `CallStatement` AST node in `src/parser/ast.rs`
+- [x] T006 Implement parsing logic for `CREATE OR REPLACE PROCEDURE` in `src/parser/statements.rs`
+- [x] T007 Implement parsing logic for `CALL` in `src/parser/statements.rs`
+- [x] T008 [P] Implement `StoredProcedureParameter` and `StoredProcedure` structs in `src/storage/procedures.rs`
+- [x] T009 Add system catalog table creation SQL for `system.procedures` to `src/storage/procedures.rs`
 
 ## Phase 3: Create and Execute a Stored Procedure [US1]
 
 *Goal: As a database user, I want to define a stored procedure with custom logic and execute it later.*
 *Independent Test*: Verify procedure creation and execution with no parameters using Rhai.
 
-- [ ] T010 [US1] Implement `execute_create_procedure` handler in `src/executor/ddl.rs`
-- [ ] T011 [US1] Integrate `ScriptingBackend::validate_code` into `execute_create_procedure` before persistence
-- [ ] T012 [US1] Implement procedure registry cache in `src/functions/registry.rs`
-- [ ] T013 [US1] Implement `execute_call` execution loop in `src/executor/execute.rs` to invoke parameterless procedures
-- [ ] T014 [US1] Write integration test for basic CREATE PROCEDURE and CALL execution in `tests/procedure_tests.rs`
+- [x] T010 [US1] Implement `execute_create_procedure` handler in `src/executor/ddl.rs`
+- [x] T011 [US1] Integrate `ScriptingBackend::validate_code` into `execute_create_procedure` before persistence
+- [x] T012 [US1] Implement procedure registry cache in `src/functions/registry.rs`
+- [x] T013 [US1] Implement `execute_call` execution loop in `src/executor/execute.rs` to invoke parameterless procedures
+- [x] T014 [US1] Write integration test for basic CREATE PROCEDURE and CALL execution in `tests/procedure_tests.rs`
 
 ## Phase 4: Procedure with Arguments [US2]
 
@@ -55,14 +55,14 @@ This feature will be implemented incrementally, starting with core AST and catal
 *Goal: As a database user, I want to write procedures using a native, standard PL/SQL-like language.*
 *Independent Test*: Verify PL/SQL specific syntax (IF, variables) parses and executes correctly.
 
-- [ ] T019 [US3] Create new module `src/functions/pl/sql/mod.rs`
-- [ ] T020 [P] [US3] Implement PL/SQL AST nodes (Block, If, Assignment, etc.) in `src/functions/pl/sql/ast.rs`
-- [ ] T021 [US3] Implement PL/SQL parser in `src/functions/pl/sql/parser.rs`
-- [ ] T022 [US3] Implement PL/SQL execution `Environment` (stack frames, variables) in `src/functions/pl/sql/env.rs`
-- [ ] T023 [US3] Implement PL/SQL interpreter evaluation logic in `src/functions/pl/sql/interpreter.rs`
-- [ ] T024 [US3] Implement `ScriptingBackend` trait for the PL/SQL engine in `src/functions/pl/sql/backend.rs`
+- [ ] T019 [US3] Create new module `src/functions/plsql/mod.rs`
+- [ ] T020 [P] [US3] Implement PL/SQL AST nodes (Block, If, Assignment, etc.) in `src/functions/plsql/ast.rs`
+- [ ] T021 [US3] Implement PL/SQL parser in `src/functions/plsql/parser.rs`
+- [ ] T022 [US3] Implement PL/SQL execution `Environment` (stack frames, variables) in `src/functions/plsql/env.rs`
+- [ ] T023 [US3] Implement PL/SQL interpreter evaluation logic in `src/functions/plsql/interpreter.rs`
+- [ ] T024 [US3] Implement `ScriptingBackend` trait for the PL/SQL engine in `src/functions/plsql/backend.rs`
 - [ ] T025 [US3] Register PL/SQL backend in `src/functions/backends.rs` for `LANGUAGE sql` and `LANGUAGE pl/sql`
-- [ ] T026 [US3] Write integration tests for PL/SQL execution in `tests/procedure_pl/sql_tests.rs`
+- [ ] T026 [US3] Write integration tests for PL/SQL execution in `tests/procedure_plsql_tests.rs`
 
 ## Phase 6: Additional Scripting Backends (JS & Python) [US4]
 

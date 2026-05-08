@@ -81,6 +81,8 @@ pub struct FunctionRegistry {
     user_defined_functions: RwLock<UserDefinedFunctionRegistry>,
     /// Function info cache
     function_info: RwLock<HashMap<String, FunctionInfo>>,
+    /// Stored procedures cache
+    procedures: RwLock<HashMap<String, crate::storage::procedures::StoredProcedure>>,
 }
 
 impl Clone for FunctionRegistry {
@@ -93,6 +95,7 @@ impl Clone for FunctionRegistry {
                 self.user_defined_functions.read().unwrap().clone(),
             ),
             function_info: RwLock::new(self.function_info.read().unwrap().clone()),
+            procedures: RwLock::new(self.procedures.read().unwrap().clone()),
         }
     }
 }
@@ -113,6 +116,7 @@ impl FunctionRegistry {
             window_functions: RwLock::new(HashMap::new()),
             user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new(backend_registry)),
             function_info: RwLock::new(HashMap::new()),
+            procedures: RwLock::new(HashMap::new()),
         };
 
         // Register built-in aggregate functions
@@ -453,6 +457,14 @@ impl FunctionRegistry {
             .is_language_supported(language)
     }
 
+    /// Get a scripting backend for the given language
+    pub fn get_backend(&self, language: &str) -> Option<std::sync::Arc<dyn crate::functions::backends::ScriptingBackend + Send + Sync>> {
+        self.user_defined_functions
+            .read()
+            .unwrap()
+            .get_backend(language)
+    }
+
     /// List all function names
     pub fn list_all(&self) -> Vec<String> {
         let mut names = Vec::new();
@@ -461,6 +473,24 @@ impl FunctionRegistry {
         names.extend(self.list_windows());
         names.sort();
         names
+    }
+
+    /// Register a stored procedure
+    pub fn register_procedure(&self, name: &str, procedure: crate::storage::procedures::StoredProcedure) {
+        let mut procedures = self.procedures.write().unwrap();
+        procedures.insert(name.to_uppercase(), procedure);
+    }
+
+    /// Get a stored procedure
+    pub fn get_procedure(&self, name: &str) -> Option<crate::storage::procedures::StoredProcedure> {
+        let procedures = self.procedures.read().unwrap();
+        procedures.get(&name.to_uppercase()).cloned()
+    }
+    
+    /// Unregister a stored procedure
+    pub fn unregister_procedure(&self, name: &str) {
+        let mut procedures = self.procedures.write().unwrap();
+        procedures.remove(&name.to_uppercase());
     }
 }
 

@@ -24,6 +24,7 @@
 pub mod config;
 pub mod expression;
 pub mod functions;
+pub mod procedures;
 pub mod index;
 pub mod mvcc;
 pub mod statistics;
@@ -83,3 +84,4 @@ pub use statistics::{
 
 // Re-export Functions types
 pub use functions::{is_functions_table, StoredFunction, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS};
+pub use procedures::{is_procedures_table, StoredProcedure, CREATE_PROCEDURES_SQL, SYS_PROCEDURES};

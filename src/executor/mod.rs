@@ -189,6 +189,7 @@ impl Executor {
         // Load user-defined functions from system table
         // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
+        let _ = executor.load_procedures();
 
         executor
     }
@@ -211,6 +212,7 @@ impl Executor {
         // Load user-defined functions from system table
         // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
+        let _ = executor.load_procedures();
 
         executor
     }
@@ -229,6 +231,7 @@ impl Executor {
 
         // Load user-defined functions from system table
         let _ = executor.load_functions();
+        let _ = executor.load_procedures();
 
         executor
     }
@@ -335,6 +338,58 @@ impl Executor {
                         parameters.len(),
                     ),
                 )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Load stored procedures from system table
+    fn load_procedures(&self) -> Result<()> {
+        use crate::storage::procedures::SYS_PROCEDURES;
+
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_procedures_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+
+        if !has_procedures_table {
+            return Ok(());
+        }
+
+        let table = tx.get_table(SYS_PROCEDURES)?;
+        let mut scanner = table.scan(&[], None)?;
+
+        while scanner.next() {
+            let row = scanner.row();
+            // Schema: id(0), schema(1), name(2), parameters(3), language(4), code(5)
+            if let (
+                Some(Value::Integer(id)),
+                Some(Value::Text(name)),
+                Some(Value::Text(parameters_json)),
+                Some(Value::Text(language)),
+                Some(Value::Text(code)),
+            ) = (row.get(0), row.get(2), row.get(3), row.get(4), row.get(5))
+            {
+                let schema_val = row.get(1).and_then(|v| match v {
+                    Value::Text(s) => Some(s.to_string()),
+                    _ => None,
+                });
+                
+                let stored_parameters: Vec<crate::storage::procedures::StoredProcedureParameter> = serde_json::from_str(parameters_json)
+                    .map_err(|e| {
+                        Error::internal(format!("Failed to parse procedure parameters: {}", e))
+                    })?;
+
+                let procedure = crate::storage::procedures::StoredProcedure {
+                    id: *id,
+                    schema: schema_val,
+                    name: name.to_string(),
+                    parameters: stored_parameters,
+                    language: language.to_string(),
+                    code: code.to_string(),
+                };
+
+                self.function_registry.register_procedure(&name, procedure);
             }
         }
 
@@ -627,6 +682,8 @@ impl Executor {
             Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
             Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
             Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
+            Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
+            Statement::Call(stmt) => self.execute_call(stmt, &ctx),
         }
     }
 

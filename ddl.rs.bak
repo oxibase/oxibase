@@ -30,10 +30,9 @@ use crate::parser::ast::*;
 use crate::storage::expression::Expression;
 use crate::storage::functions::{
     StoredFunction, StoredParameter, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS,
+    
 };
-use crate::storage::procedures::{
-    StoredProcedure, StoredProcedureParameter, CREATE_PROCEDURES_SQL, SYS_PROCEDURES,
-};
+use crate::storage::{StoredProcedure, procedures::StoredProcedureParameter, procedures::CREATE_PROCEDURES_SQL, procedures::SYS_PROCEDURES};
 use crate::storage::traits::{result::EmptyResult, Engine, QueryResult};
 use rustc_hash::FxHashMap;
 
@@ -934,13 +933,91 @@ impl Executor {
         ))
     }
 
+    /// Execute a CREATE FUNCTION statement
+
+
+
+
+    pub(crate) fn execute_create_procedure(
+        &self,
+        stmt: &crate::parser::ast::CreateProcedureStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        // Ensure the procedures system table exists
+        self.ensure_procedures_table_exists()?;
+
+        let procedure_name_upper = stmt.procedure_name.function().to_uppercase();
+        let exists = self.procedure_exists(&procedure_name_upper)?;
+        
+        if exists {
+            if stmt.or_replace {
+                // proceed to update
+            } else {
+                return Err(Error::FunctionAlreadyExists(procedure_name_upper.clone())); // Reuse FunctionAlreadyExists or add ProcedureAlreadyExists
+            }
+        }
+
+        // Validate syntax using the corresponding backend
+        if !self.function_registry.is_language_supported(&stmt.language) {
+            return Err(Error::internal(format!(
+                "Unsupported language: {}",
+                stmt.language
+            )));
+        }
+
+        let backend = self.function_registry.get_backend(&stmt.language)
+            .ok_or_else(|| Error::internal(format!("Backend not found for language: {}", stmt.language)))?;
+            
+        // Validate the code syntax
+        backend.validate_code(&stmt.body)?;
+
+        // Convert parameters
+        let stored_parameters: Vec<StoredProcedureParameter> = stmt
+            .parameters
+            .iter()
+            .map(|p| StoredProcedureParameter {
+                mode: p.mode.to_string(),
+                name: p.name.value.clone(),
+                data_type: p.data_type.clone(),
+            })
+            .collect();
+
+        // Create stored procedure record
+        let stored_procedure = StoredProcedure {
+            id: 0,
+            schema: stmt.procedure_name.schema().map(|s| s.to_uppercase()),
+            name: procedure_name_upper.clone(),
+            parameters: stored_parameters,
+            language: stmt.language.clone(),
+            code: stmt.body.clone(),
+        };
+
+        // If replacing, we should update, else insert.
+        if exists {
+            self.update_procedure(&stored_procedure)?;
+            // Note: In a full implementation we would also update an in-memory cache/registry
+            // if we have a ProcedureRegistry similar to FunctionRegistry.
+        } else {
+            self.insert_procedure(&stored_procedure)?;
+        }
+
+        Ok(Box::new(EmptyResult::new()))
+    }
+
     pub(crate) fn ensure_procedures_table_exists(&self) -> Result<()> {
-        let mut tx = self.engine.begin_transaction()?;
+        let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        let has_procedures_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+        let has_procedures_table = tables.iter().any(|t| t.eq_ignore_ascii_case("system.procedures"));
         drop(tx); 
 
         if !has_procedures_table {
+            let tx2 = self.engine.begin_transaction()?;
+            let has_system_schema = tables.iter().any(|t| t.starts_with("system.")); 
+            drop(tx2);
+            
+            if !has_system_schema {
+                let _ = self.execute_functions_sql("CREATE SCHEMA IF NOT EXISTS system;");
+            }
             self.execute_functions_sql(CREATE_PROCEDURES_SQL)?;
         }
 
@@ -948,8 +1025,8 @@ impl Executor {
     }
 
     fn procedure_exists(&self, procedure_name: &str) -> Result<bool> {
-        let mut tx = self.engine.begin_transaction()?;
-        let table = match tx.get_table(SYS_PROCEDURES) {
+        let tx = self.engine.begin_transaction()?;
+        let mut table = match tx.get_table("system.procedures") {
             Ok(table) => table,
             Err(_) => return Ok(false),
         };
@@ -967,9 +1044,9 @@ impl Executor {
         Ok(false)
     }
 
-    fn insert_procedure(&self, procedure: &crate::storage::procedures::StoredProcedure) -> Result<()> {
-        let mut tx = self.engine.begin_transaction()?;
-        let mut table = tx.get_table(SYS_PROCEDURES)?;
+    fn insert_procedure(&self, procedure: &crate::storage::StoredProcedure) -> Result<()> {
+        let tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table("system.procedures")?;
         
         let parameters_json = serde_json::to_string(&procedure.parameters)
             .map_err(|e| Error::internal(format!("Failed to serialize procedure parameters: {}", e)))?;
@@ -993,11 +1070,12 @@ impl Executor {
         Ok(())
     }
 
-    fn update_procedure(&self, procedure: &crate::storage::procedures::StoredProcedure) -> Result<()> {
-        let mut tx = self.engine.begin_transaction()?;
-        let mut table = tx.get_table(SYS_PROCEDURES)?;
+    fn update_procedure(&self, procedure: &crate::storage::StoredProcedure) -> Result<()> {
+        let tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table("system.procedures")?;
         
         let mut function_id: Option<crate::core::value::Value> = None;
+        let mut row_id = None;
 
         let mut scanner = table.scan(&[], None)?;
         while scanner.next() {
@@ -1005,17 +1083,14 @@ impl Executor {
             if let Some(crate::core::value::Value::Text(name)) = row.get(2) {
                 if name.eq_ignore_ascii_case(&procedure.name) {
                     function_id = row.get(0).cloned();
+                    row_id = Some(scanner.row_id());
                     break;
                 }
             }
         }
         
-        if let Some(id_value) = &function_id {
-            use crate::storage::expression::{ComparisonExpr, Expression as StorageExpr};
-            let mut id_expr = ComparisonExpr::new("id", crate::core::Operator::Eq, id_value.clone());
-            let schema = table.schema();
-            id_expr.prepare_for_schema(schema);
-            table.delete(Some(&id_expr))?;
+        if let Some(id) = row_id {
+            table.delete(id)?;
         }
         
         let parameters_json = serde_json::to_string(&procedure.parameters)
@@ -1058,8 +1133,7 @@ impl Executor {
             }
         }
 
-        let is_sql = stmt.language.eq_ignore_ascii_case("sql") || stmt.language.eq_ignore_ascii_case("plsql") || stmt.language.eq_ignore_ascii_case("pl/sql");
-        if !is_sql && !self.function_registry.is_language_supported(&stmt.language) {
+        if !self.function_registry.is_language_supported(&stmt.language) {
             return Err(Error::internal(format!(
                 "Unsupported language: {}",
                 stmt.language
@@ -1076,7 +1150,7 @@ impl Executor {
             })
             .collect();
 
-        let stored_procedure = crate::storage::procedures::StoredProcedure {
+        let stored_procedure = crate::storage::StoredProcedure {
             id: 0,
             schema: stmt.procedure_name.schema().map(|s| s.to_uppercase()),
             name: procedure_name_upper.clone(),
@@ -1091,12 +1165,9 @@ impl Executor {
             self.insert_procedure(&stored_procedure)?;
         }
 
-        self.function_registry.register_procedure(&procedure_name_upper, stored_procedure);
-
         Ok(Box::new(EmptyResult::new()))
     }
 
-    /// Execute a CREATE FUNCTION statement
     pub(crate) fn execute_create_function(
         &self,
         stmt: &CreateFunctionStatement,

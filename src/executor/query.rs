@@ -153,6 +153,29 @@ fn partition_where_for_join(
 
 impl Executor {
     /// Execute a SELECT statement
+    pub(crate) fn execute_call(
+        &self,
+        stmt: &crate::parser::ast::CallStatement,
+        ctx: &crate::executor::context::ExecutionContext,
+    ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let procedure_name_upper = stmt.procedure_name.function().to_uppercase();
+        
+        let procedure = self.function_registry
+            .get_procedure(&procedure_name_upper)
+            .ok_or_else(|| crate::core::Error::FunctionNotFound(procedure_name_upper))?;
+            
+        // For US1 (parameterless), we don't evaluate arguments yet
+        let backend = self.function_registry
+            .get_backend(&procedure.language)
+            .ok_or_else(|| crate::core::Error::internal(format!("Backend not found for language: {}", procedure.language)))?;
+            
+        // Parameterless call
+        let result = backend.execute(&procedure.code, &[], &[])?;
+        
+        // Procedures don't return values directly, just an EmptyResult. US2 will map OUT/INOUT parameters.
+        Ok(Box::new(crate::storage::traits::EmptyResult::new()))
+    }
+
     pub(crate) fn execute_select(
         &self,
         stmt: &SelectStatement,
