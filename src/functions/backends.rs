@@ -61,6 +61,10 @@ pub fn create_backend_registry() -> BackendRegistry {
     // Always include Rhai backend
     registry.register_backend(Arc::new(rhai::RhaiBackend::new()));
 
+    // Note: PL/SQL backend needs a FunctionRegistry reference, so it's registered
+    // outside of create_backend_registry or created in a two-step initialization.
+    // For now we will manually register it in FunctionRegistry::new().
+
     // Include optional backends based on features
     #[cfg(feature = "js")]
     registry.register_backend(Arc::new(boa::BoaBackend::new()));

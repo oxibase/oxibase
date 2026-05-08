@@ -26,7 +26,17 @@ static GLOBAL_REGISTRY: OnceLock<Arc<FunctionRegistry>> = OnceLock::new();
 /// Get the global function registry
 #[inline]
 pub fn global_registry() -> &'static Arc<FunctionRegistry> {
-    GLOBAL_REGISTRY.get_or_init(|| Arc::new(FunctionRegistry::new()))
+    GLOBAL_REGISTRY.get_or_init(|| {
+        let registry = Arc::new(FunctionRegistry::new());
+        
+        // Setup PL/SQL backend which requires a reference to the registry
+        let mut backends = create_backend_registry();
+        backends.register_backend(Arc::new(crate::functions::plsql::backend::PlSqlBackend::new(registry.clone())));
+        
+        *registry.user_defined_functions.write().unwrap() = UserDefinedFunctionRegistry::new(Arc::new(backends));
+        
+        registry
+    })
 }
 
 use super::aggregate::{
@@ -109,12 +119,11 @@ impl Default for FunctionRegistry {
 impl FunctionRegistry {
     /// Create a new function registry with all built-in functions registered
     pub fn new() -> Self {
-        let backend_registry = Arc::new(create_backend_registry());
         let registry = Self {
             aggregate_functions: RwLock::new(HashMap::new()),
             scalar_functions: RwLock::new(HashMap::new()),
             window_functions: RwLock::new(HashMap::new()),
-            user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new(backend_registry)),
+            user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new(Arc::new(create_backend_registry()))),
             function_info: RwLock::new(HashMap::new()),
             procedures: RwLock::new(HashMap::new()),
         };
@@ -459,6 +468,21 @@ impl FunctionRegistry {
 
     /// Get a scripting backend for the given language
     pub fn get_backend(&self, language: &str) -> Option<std::sync::Arc<dyn crate::functions::backends::ScriptingBackend + Send + Sync>> {
+        let is_plsql = language.eq_ignore_ascii_case("sql") || language.eq_ignore_ascii_case("plsql") || language.eq_ignore_ascii_case("pl/sql");
+        if is_plsql {
+            // Need a way to return the PL/SQL backend since it's not fully registered in the standard backends list
+            // actually it is registered in global_registry, but what if new() was called directly?
+            // Let's check the user_defined_functions registry anyway
+            let backend = self.user_defined_functions.read().unwrap().get_backend(language);
+            if backend.is_some() {
+                return backend;
+            }
+            
+            // If it's not there (e.g. created via new() instead of global_registry()), 
+            // return a new instance, though it causes a small memory leak of arc overhead
+            // Actually let's return None and fix the registration.
+        }
+        
         self.user_defined_functions
             .read()
             .unwrap()

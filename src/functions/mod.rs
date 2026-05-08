@@ -23,6 +23,7 @@
 
 pub mod aggregate;
 pub mod backends;
+pub mod plsql;
 pub mod registry;
 pub mod scalar;
 pub mod user_defined;

@@ -1,0 +1,41 @@
+use oxibase::api::Database;
+use oxibase::core::Value;
+
+#[test]
+fn test_plsql_procedure() {
+    let mut db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE check_val(val INT, OUT is_positive BOOLEAN) 
+        LANGUAGE plsql 
+        AS ' 
+        BEGIN 
+            IF val > 0 THEN 
+                is_positive := true; 
+            ELSE 
+                is_positive := false; 
+            END IF; 
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql_true = "CALL check_val(5, false);";
+    let res_true = db.query(call_sql_true, ());
+    assert!(res_true.is_ok(), "Failed to call procedure: {:?}", res_true.err());
+    
+    let mut results = res_true.unwrap();
+    assert_eq!(results.columns(), &["is_positive"]);
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_boolean().unwrap(), true);
+
+    let call_sql_false = "CALL check_val(-5, true);";
+    let res_false = db.query(call_sql_false, ());
+    assert!(res_false.is_ok(), "Failed to call procedure: {:?}", res_false.err());
+    
+    let mut results = res_false.unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_boolean().unwrap(), false);
+}

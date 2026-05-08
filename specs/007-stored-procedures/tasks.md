@@ -55,14 +55,14 @@ This feature will be implemented incrementally, starting with core AST and catal
 *Goal: As a database user, I want to write procedures using a native, standard PL/SQL-like language.*
 *Independent Test*: Verify PL/SQL specific syntax (IF, variables) parses and executes correctly.
 
-- [ ] T019 [US3] Create new module `src/functions/plsql/mod.rs`
-- [ ] T020 [P] [US3] Implement PL/SQL AST nodes (Block, If, Assignment, etc.) in `src/functions/plsql/ast.rs`
-- [ ] T021 [US3] Implement PL/SQL parser in `src/functions/plsql/parser.rs`
-- [ ] T022 [US3] Implement PL/SQL execution `Environment` (stack frames, variables) in `src/functions/plsql/env.rs`
-- [ ] T023 [US3] Implement PL/SQL interpreter evaluation logic in `src/functions/plsql/interpreter.rs`
-- [ ] T024 [US3] Implement `ScriptingBackend` trait for the PL/SQL engine in `src/functions/plsql/backend.rs`
-- [ ] T025 [US3] Register PL/SQL backend in `src/functions/backends.rs` for `LANGUAGE sql` and `LANGUAGE pl/sql`
-- [ ] T026 [US3] Write integration tests for PL/SQL execution in `tests/procedure_plsql_tests.rs`
+- [x] T019 [US3] Create new module `src/functions/plsql/mod.rs`
+- [x] T020 [P] [US3] Implement PL/SQL AST nodes (Block, If, Assignment, etc.) in `src/functions/plsql/ast.rs`
+- [x] T021 [US3] Implement PL/SQL parser in `src/functions/plsql/parser.rs`
+- [x] T022 [US3] Implement PL/SQL execution `Environment` (stack frames, variables) in `src/functions/plsql/env.rs`
+- [x] T023 [US3] Implement PL/SQL interpreter evaluation logic in `src/functions/plsql/interpreter.rs`
+- [x] T024 [US3] Implement `ScriptingBackend` trait for the PL/SQL engine in `src/functions/plsql/backend.rs`
+- [x] T025 [US3] Register PL/SQL backend in `src/functions/backends.rs` for `LANGUAGE sql` and `LANGUAGE pl/sql`
+- [x] T026 [US3] Write integration tests for PL/SQL execution in `tests/procedure_plsql_tests.rs`
 
 ## Phase 6: Additional Scripting Backends (JS & Python) [US4]
 

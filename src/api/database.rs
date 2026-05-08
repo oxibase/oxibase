@@ -214,8 +214,8 @@ impl Database {
         engine.open_engine()?;
         let engine = Arc::new(engine);
 
-        let function_registry = Arc::new(FunctionRegistry::new());
-        let executor = Executor::with_function_registry(Arc::clone(&engine), function_registry);
+        let function_registry = crate::functions::registry::global_registry();
+        let executor = Executor::with_function_registry(Arc::clone(&engine), Arc::clone(function_registry));
 
         let inner = Arc::new(DatabaseInner {
             engine,

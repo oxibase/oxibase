@@ -221,7 +221,7 @@ impl Executor {
     pub fn with_cache_size(engine: Arc<MVCCEngine>, cache_size: usize) -> Self {
         let executor = Self {
             engine,
-            function_registry: Arc::new(FunctionRegistry::new()),
+            function_registry: Arc::clone(crate::functions::global_registry()),
             default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
             query_cache: QueryCache::new(cache_size),
             semantic_cache: SemanticCache::default(),
