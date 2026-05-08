@@ -45,10 +45,10 @@ This feature will be implemented incrementally, starting with core AST and catal
 *Goal: As a database user, I want to pass arguments to a stored procedure.*
 *Independent Test*: Verify passing IN arguments and retrieving OUT/INOUT values via single-row return.
 
-- [ ] T015 [US2] Extend `ScriptingBackend` traits to handle parameter modes or introduce `ProcedureBackend` adapter in `src/functions/backends.rs`
-- [ ] T016 [US2] Update `execute_call` to map `OUT` and `INOUT` values to a returned `Row` in `src/executor/execute.rs`
-- [ ] T017 [US2] Update `rhai` backend adapter to handle `OUT` parameter mutations in `src/functions/backends/rhai.rs`
-- [ ] T018 [US2] Write integration tests for IN, OUT, and INOUT parameter procedures in `tests/procedure_tests.rs`
+- [x] T015 [US2] Extend `ScriptingBackend` traits to handle parameter modes or introduce `ProcedureBackend` adapter in `src/functions/backends.rs`
+- [x] T016 [US2] Update `execute_call` to map `OUT` and `INOUT` values to a returned `Row` in `src/executor/execute.rs`
+- [x] T017 [US2] Update `rhai` backend adapter to handle `OUT` parameter mutations in `src/functions/backends/rhai.rs`
+- [x] T018 [US2] Write integration tests for IN, OUT, and INOUT parameter procedures in `tests/procedure_tests.rs`
 
 ## Phase 5: PL/SQL-like Procedural Logic [US3]
 

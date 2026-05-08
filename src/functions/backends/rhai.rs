@@ -111,4 +111,55 @@ impl ScriptingBackend for RhaiBackend {
             Err(e) => Err(Error::internal(format!("Rhai syntax error: {}", e))),
         }
     }
+
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &mut [Value],
+        param_names: &[&str],
+        _modes: &[&str],
+    ) -> Result<()> {
+        let mut scope = Scope::new();
+
+        // Bind arguments to scope using parameter names
+        for (i, arg) in args.iter().enumerate() {
+            let var_name = param_names[i];
+            match arg {
+                Value::Integer(i) => scope.push(var_name, *i),
+                Value::Float(f) => scope.push(var_name, *f),
+                Value::Text(s) => scope.push(var_name, s.as_ref().to_string()),
+                Value::Boolean(b) => scope.push(var_name, *b),
+                Value::Null(_) => scope.push(var_name, ()),
+                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
+            };
+        }
+
+        // Execute the script
+        match self
+            .engine
+            .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
+        {
+            Ok(_) => {
+                // Read modified values back from scope
+                for (i, arg) in args.iter_mut().enumerate() {
+                    let var_name = param_names[i];
+                    if let Some(val) = scope.get_value::<rhai::Dynamic>(var_name) {
+                        if val.is::<i64>() {
+                            *arg = Value::Integer(val.cast::<i64>());
+                        } else if val.is::<f64>() {
+                            *arg = Value::Float(val.cast::<f64>());
+                        } else if val.is::<String>() {
+                            *arg = Value::Text(val.cast::<String>().into());
+                        } else if val.is::<bool>() {
+                            *arg = Value::Boolean(val.cast::<bool>());
+                        } else if val.is::<()>() {
+                            *arg = Value::null_unknown();
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Err(e) => Err(Error::internal(format!("Rhai execution error: {}", e))),
+        }
+    }
 }

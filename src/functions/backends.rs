@@ -37,6 +37,19 @@ pub trait ScriptingBackend {
     /// Execute script code with the given arguments and parameter names
     fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value>;
 
+    /// Execute a stored procedure and return potentially modified argument values (OUT/INOUT parameters)
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &mut [Value],
+        param_names: &[&str],
+        _modes: &[&str],
+    ) -> Result<()> {
+        // Default implementation falls back to executing normally and ignoring mutations.
+        // Backends should override this to capture mutated state.
+        self.execute(code, args, param_names).map(|_| ())
+    }
+
     /// Validate that the code is syntactically correct for this backend
     fn validate_code(&self, code: &str) -> Result<()>;
 }

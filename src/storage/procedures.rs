@@ -20,7 +20,6 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::parser::ast::ParameterMode;
 
 /// System table name for stored procedures
 pub const SYS_PROCEDURES: &str = "_sys_procedures";
@@ -39,7 +38,7 @@ CREATE TABLE IF NOT EXISTS _sys_procedures (
 "#;
 
 /// Check if a table name is the procedures system table
-pub fn is_procedures_table(schema: &str, name: &str) -> bool {
+pub fn is_procedures_table(_schema: &str, name: &str) -> bool {
     name.eq_ignore_ascii_case(SYS_PROCEDURES)
 }
 
