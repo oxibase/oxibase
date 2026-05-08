@@ -5,7 +5,7 @@
 
 ## Summary
 
-Implement `CREATE OR REPLACE PROCEDURE` and `CALL` statements in the database parser and executor. Procedures will persist in a new system catalog (`system.procedures`). Unlike scalar functions, procedures don't return values directly via SELECT but through `OUT`/`INOUT` parameters (Postgres-style) and are invoked via `CALL`. We will support `LANGUAGE rhai` (default), `python`, `js`, and introduce a dedicated native PL/pgSQL interpreter (`LANGUAGE sql`/`plpgsql`) that is debugger-friendly for future DAP integration. The procedure's syntax will be strictly validated at creation time (`CREATE PROCEDURE`) before persistence.
+Implement `CREATE OR REPLACE PROCEDURE` and `CALL` statements in the database parser and executor. Procedures will persist in a new system catalog (`system.procedures`). Unlike scalar functions, procedures don't return values directly via SELECT but through `OUT`/`INOUT` parameters (Postgres-style) and are invoked via `CALL`. We will support `LANGUAGE rhai` (default), `python`, `js`, and introduce a dedicated native PL/SQL interpreter (`LANGUAGE sql`/`pl/sql`) that is debugger-friendly for future DAP integration. The procedure's syntax will be strictly validated at creation time (`CREATE PROCEDURE`) before persistence.
 
 ## Technical Context
 
@@ -20,8 +20,8 @@ Implement `CREATE OR REPLACE PROCEDURE` and `CALL` statements in the database pa
 - **Storage**: Procedures will be stored in a new internal table `system.procedures` similar to `_sys_functions`, but reflecting `ParameterMode` (IN, OUT, INOUT) and lack of direct `return_type`.
 - **Parser**: Add `CreateProcedureStatement` and `CallStatement` to `ast.rs`.
 - **Validation**: During `execute_create_procedure`, the `ScriptingBackend::validate_code()` will be called. If it fails, the transaction aborts with a syntax error.
-- **Execution**: The `CALL` execution will retrieve the procedure, execute it using the appropriate scripting backend or PL/pgSQL interpreter, and return a single-row result containing the updated `OUT`/`INOUT` parameter values.
-- **PL/pgSQL Interpreter**: We will build a dedicated native interpreter for `LANGUAGE plpgsql`. The interpreter will maintain a `CallStack` and `Environment` to allow variable assignment, control flow (IF/WHILE), and make it easy to expose local state for a future Debug Adapter Protocol (DAP).
+- **Execution**: The `CALL` execution will retrieve the procedure, execute it using the appropriate scripting backend or PL/SQL interpreter, and return a single-row result containing the updated `OUT`/`INOUT` parameter values.
+- **PL/SQL Interpreter**: We will build a dedicated native interpreter for `LANGUAGE pl/sql`. The interpreter will maintain a `CallStack` and `Environment` to allow variable assignment, control flow (IF/WHILE), and make it easy to expose local state for a future Debug Adapter Protocol (DAP).
 
 ## Constitution Check
 
@@ -53,7 +53,7 @@ src/
 ├── executor/ddl.rs          # Add execute_create_procedure
 ├── executor/execute.rs      # Add execution for CallStatement
 ├── functions/backends.rs    # Extend ScriptingBackend to handle OUT params or add ProcedureBackend trait
-└── functions/plpgsql/       # New! Dedicated PL/pgSQL parser and interpreter
+└── functions/pl/sql/       # New! Dedicated PL/SQL parser and interpreter
 ```
 
 ## Complexity Tracking

@@ -8,9 +8,9 @@
 **Decision:** Introduce `ParameterMode` enum in the AST and storage structs.
 **Rationale:** Standard functions only use `IN` parameters and return a scalar value. Procedures return values by mutating `OUT` and `INOUT` parameters. We will map the outputs back into a single-row result set to return to the SQL client from the `CALL` statement.
 
-## 3. Dedicated PL/pgSQL Interpreter
-**Decision:** Build a custom AST and interpreter module under `src/functions/plpgsql/`.
-**Rationale:** While we could theoretically lower PL/pgSQL directly into the main SQL executor, it's far easier to build a dedicated stack-based interpreter for variables and control flow. This fulfills FR-008 and critically supports FR-009 (DAP support) by isolating the execution state in an inspectable `Environment` frame.
+## 3. Dedicated PL/SQL Interpreter
+**Decision:** Build a custom AST and interpreter module under `src/functions/pl/sql/`.
+**Rationale:** While we could theoretically lower PL/SQL directly into the main SQL executor, it's far easier to build a dedicated stack-based interpreter for variables and control flow. This fulfills FR-008 and critically supports FR-009 (DAP support) by isolating the execution state in an inspectable `Environment` frame.
 
 ## 4. System Catalog Separation
 **Decision:** Create `system.procedures` table (`src/storage/procedures.rs`).

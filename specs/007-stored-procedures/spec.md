@@ -9,7 +9,7 @@
 ## Clarifications
 ### Session 2026-05-08
 - Q: What about returning a value? What is the difference with a function? -> A: Postgres Style. **Functions** return values and run inside queries (`SELECT func()`). **Procedures** are executed via `CALL`, can manage transactions, and do *not* return values directly (they return data using `OUT` or `INOUT` parameters).
-- Q: I would like to have SQL Procedural Language too, add it. How complex? -> A: Full PL/pgSQL clone.
+- Q: I would like to have SQL Procedural Language too, add it. How complex? -> A: Full PL/SQL clone.
 - Q: Which execution strategy for debugging? -> A: Dedicated PL Interpreter. A separate interpreter makes it easier to implement a user-facing debugger (DAP server) later.
 - Q: Shouldn't the table `_sys_procedures` be `system.procedures`? -> A: Yes. The procedures catalog should be exposed in the new `system` schema as `system.procedures`.
 
@@ -46,17 +46,17 @@ As a database user, I want to pass arguments to a stored procedure, so that the 
 ---
 
 
-### User Story 3 - PL/pgSQL-like Procedural Logic (Priority: P2)
+### User Story 3 - PL/SQL-like Procedural Logic (Priority: P2)
 
-As a database user, I want to write procedures using a native, standard PL/pgSQL-like language (`LANGUAGE sql` or `LANGUAGE plpgsql`) so that I can use standard database control flows (IF, WHILE, variables) without relying on external scripting languages like Rhai or Python.
+As a database user, I want to write procedures using a native, standard PL/SQL-like language (`LANGUAGE sql` or `LANGUAGE pl/sql`) so that I can use standard database control flows (IF, WHILE, variables) without relying on external scripting languages like Rhai or Python.
 
 **Why this priority**: It provides a native, familiar, and highly requested way to write procedural logic directly in SQL.
 
-**Independent Test**: Can be tested via a SQL integration test that creates a procedure using `LANGUAGE plpgsql` with variables and an IF/ELSE block, executing it and verifying the result.
+**Independent Test**: Can be tested via a SQL integration test that creates a procedure using `LANGUAGE pl/sql` with variables and an IF/ELSE block, executing it and verifying the result.
 
 **Acceptance Scenarios**:
 
-1. **Given** a database connection, **When** I execute `CREATE PROCEDURE check_val(val INT, INOUT is_positive BOOLEAN) LANGUAGE plpgsql AS $$ BEGIN IF val > 0 THEN is_positive := true; ELSE is_positive := false; END IF; END; $$;`, **Then** the procedure is stored.
+1. **Given** a database connection, **When** I execute `CREATE PROCEDURE check_val(val INT, INOUT is_positive BOOLEAN) LANGUAGE pl/sql AS $$ BEGIN IF val > 0 THEN is_positive := true; ELSE is_positive := false; END IF; END; $$;`, **Then** the procedure is stored.
 2. **Given** the procedure exists, **When** I execute `CALL check_val(5, false);`, **Then** the `CALL` returns `is_positive = true`.
 
 ---
@@ -80,7 +80,7 @@ As a database user, I want to write procedures using a native, standard PL/pgSQL
 - **FR-006**: The execution engine MUST return the updated values of any `OUT` or `INOUT` parameters to the caller as a single-row result set. If there are no such parameters, it returns an empty success response.
 - **FR-007**: The system MUST gracefully handle errors from the scripting backend (e.g., runtime errors in Rhai).
 
-- **FR-008**: The system MUST support `LANGUAGE sql`, implementing a dedicated parser and interpreter for a PL/pgSQL-like procedural language (supporting DECLARE, BEGIN/END, IF/ELSE, loops).
+- **FR-008**: The system MUST support `LANGUAGE sql`, implementing a dedicated parser and interpreter for a PL/SQL-like procedural language (supporting DECLARE, BEGIN/END, IF/ELSE, loops).
 - **FR-010**: The execution engine MUST validate the syntax of the procedure source code using the specified language's parser during the execution of the CREATE PROCEDURE statement. If the syntax is invalid, the creation MUST be aborted and an error returned to the user.
 - **FR-009**: The PL/SQL interpreter MUST be designed to maintain execution state (call stack, local variables, line numbers) in a way that allows a future Debug Adapter Protocol (DAP) server to attach and step through the code.
 

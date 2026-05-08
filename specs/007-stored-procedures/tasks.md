@@ -10,7 +10,7 @@
 
 ## Implementation Strategy
 
-This feature will be implemented incrementally, starting with core AST and catalog components, followed by `CALL` execution with the default Rhai backend, and culminating with the native PL/pgSQL interpreter.
+This feature will be implemented incrementally, starting with core AST and catalog components, followed by `CALL` execution with the default Rhai backend, and culminating with the native PL/SQL interpreter.
 
 ## Phase 1: Setup
 
@@ -50,22 +50,31 @@ This feature will be implemented incrementally, starting with core AST and catal
 - [ ] T017 [US2] Update `rhai` backend adapter to handle `OUT` parameter mutations in `src/functions/backends/rhai.rs`
 - [ ] T018 [US2] Write integration tests for IN, OUT, and INOUT parameter procedures in `tests/procedure_tests.rs`
 
-## Phase 5: PL/pgSQL-like Procedural Logic [US3]
+## Phase 5: PL/SQL-like Procedural Logic [US3]
 
-*Goal: As a database user, I want to write procedures using a native, standard PL/pgSQL-like language.*
-*Independent Test*: Verify PL/pgSQL specific syntax (IF, variables) parses and executes correctly.
+*Goal: As a database user, I want to write procedures using a native, standard PL/SQL-like language.*
+*Independent Test*: Verify PL/SQL specific syntax (IF, variables) parses and executes correctly.
 
-- [ ] T019 [US3] Create new module `src/functions/plpgsql/mod.rs`
-- [ ] T020 [P] [US3] Implement PL/pgSQL AST nodes (Block, If, Assignment, etc.) in `src/functions/plpgsql/ast.rs`
-- [ ] T021 [US3] Implement PL/pgSQL parser in `src/functions/plpgsql/parser.rs`
-- [ ] T022 [US3] Implement PL/pgSQL execution `Environment` (stack frames, variables) in `src/functions/plpgsql/env.rs`
-- [ ] T023 [US3] Implement PL/pgSQL interpreter evaluation logic in `src/functions/plpgsql/interpreter.rs`
-- [ ] T024 [US3] Implement `ScriptingBackend` trait for the PL/pgSQL engine in `src/functions/plpgsql/backend.rs`
-- [ ] T025 [US3] Register PL/pgSQL backend in `src/functions/backends.rs` for `LANGUAGE sql` and `LANGUAGE plpgsql`
-- [ ] T026 [US3] Write integration tests for PL/pgSQL execution in `tests/procedure_plpgsql_tests.rs`
+- [ ] T019 [US3] Create new module `src/functions/pl/sql/mod.rs`
+- [ ] T020 [P] [US3] Implement PL/SQL AST nodes (Block, If, Assignment, etc.) in `src/functions/pl/sql/ast.rs`
+- [ ] T021 [US3] Implement PL/SQL parser in `src/functions/pl/sql/parser.rs`
+- [ ] T022 [US3] Implement PL/SQL execution `Environment` (stack frames, variables) in `src/functions/pl/sql/env.rs`
+- [ ] T023 [US3] Implement PL/SQL interpreter evaluation logic in `src/functions/pl/sql/interpreter.rs`
+- [ ] T024 [US3] Implement `ScriptingBackend` trait for the PL/SQL engine in `src/functions/pl/sql/backend.rs`
+- [ ] T025 [US3] Register PL/SQL backend in `src/functions/backends.rs` for `LANGUAGE sql` and `LANGUAGE pl/sql`
+- [ ] T026 [US3] Write integration tests for PL/SQL execution in `tests/procedure_pl/sql_tests.rs`
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: Additional Scripting Backends (JS & Python) [US4]
 
-- [ ] T027 Run `make lint` and fix all warnings
-- [ ] T028 Run `make license` to verify headers in new PL/pgSQL module
-- [ ] T029 Execute full test suite `make test-all`
+*Goal: As a database user, I want to write procedures using Javascript and Python backends.*
+*Independent Test*: Verify that procedures can be executed with `LANGUAGE js` and `LANGUAGE python`.
+
+- [ ] T027 [US4] Implement procedure execution logic for `LANGUAGE js` using the `boa` backend adapter in `src/functions/backends/boa.rs`
+- [ ] T028 [US4] Implement procedure execution logic for `LANGUAGE python` using the `rustpython` backend adapter in `src/functions/backends/python.rs`
+- [ ] T029 [US4] Write integration tests for JS and Python execution in `tests/procedure_multilang_tests.rs`
+
+## Phase 7: Polish & Cross-Cutting Concerns
+
+- [ ] T030 Run `make lint` and fix all warnings
+- [ ] T031 Run `make license` to verify headers in new PL/SQL module
+- [ ] T032 Execute full test suite `make test-all`
