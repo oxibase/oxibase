@@ -68,13 +68,13 @@ release:
 
 # [run] Run oxibase with in-memory database
 run: build
-	./target/release/oxibase -d memory://
+	./target/release/oxibase repl -d memory://
 
 # [run] Run oxibase with file-based database
 run-files: build
-	./target/release/oxibase -d file://./examples/oxibase.db
+	./target/release/oxibase repl -d file://./examples/oxibase.db
 
 # [run] Build and run oxibase with all backends (Rhai, Deno, Python) in memory
 run-all:
 	cargo build --release --features deno,python
-	./target/release/oxibase -d memory://
+	./target/release/oxibase repl -d memory://
