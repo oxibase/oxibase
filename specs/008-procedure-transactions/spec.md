@@ -5,6 +5,11 @@
 **Status**: Draft  
 **Input**: User description: "Transaction management within the procedure (BEGIN, COMMIT)"
 
+## Clarifications
+
+### Session 2026-05-09
+- Q: What is the preferred API for exposing `commit` and `rollback` to JS, Python, and Rhai? → A: Global functions for JS and Rhai (`commit()`, `rollback()`), and module functions for Python (`oxibase.commit()`, `oxibase.rollback()`).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Commit Transactions Inside a Procedure (Priority: P1)
@@ -54,7 +59,7 @@ As a database developer, I want to use standard SQL transaction commands (`COMMI
 
 - What happens if a `CALL` statement is executed inside an explicit transaction block (`BEGIN; CALL proc();`) and the procedure executes `COMMIT`? PostgreSQL behavior applies: The system must throw an error indicating "invalid transaction termination" (transaction control is not allowed in a nested explicit context).
 - How does transaction control inside a procedure interact with nested procedure calls (a procedure calling another procedure that commits)?
-- What happens if the scripting language (e.g., Rhai or JS) attempts to execute a transaction control statement directly? Does the `SqlRunner` bridge permit it?
+- What happens if the scripting language (e.g., Rhai or JS) attempts to execute a transaction control statement directly? Does the `SqlRunner` bridge permit it? Yes, we need to expose a function to JS, Python, and Rhai for transaction management.
 
 ## Requirements *(mandatory)*
 
@@ -65,6 +70,8 @@ As a database developer, I want to use standard SQL transaction commands (`COMMI
 - **FR-003**: When a `COMMIT` is executed within a procedure, the executor MUST persist all current changes to the MVCC storage and immediately start a new transaction context for the remainder of the procedure execution.
 - **FR-004**: When a `ROLLBACK` is executed, the executor MUST discard all uncommitted changes in the current transaction context and start a new transaction context.
 - **FR-005**: The system MUST handle the interaction between the caller's transaction and the procedure's transaction statements by matching PostgreSQL semantics: procedure commits directly operate on the current transaction. If the `CALL` statement was executed within an explicit transaction block, executing `COMMIT` or `ROLLBACK` within the procedure MUST throw an error. Autonomous transactions are not supported.
+
+- **FR-006**: The system MUST expose transaction management functions to supported scripting languages. For Javascript (Boa) and Rhai, it MUST expose global functions `commit()` and `rollback()`. For Python, it MUST expose them via the existing native module as `oxibase.commit()` and `oxibase.rollback()`.
 
 ### Key Entities
 
