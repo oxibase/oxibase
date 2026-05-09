@@ -74,7 +74,7 @@ run: build
 run-files: build
 	./target/release/oxibase repl -d file://./examples/oxibase.db
 
-# [run] Build and run oxibase with all backends (Rhai, Deno, Python) in memory
+# [run] Build and run oxibase with all backends (Rhai, JS, Python) in memory
 run-all:
-	cargo build --release --features deno,python
+	cargo build --release --features js,python
 	./target/release/oxibase repl -d memory://
