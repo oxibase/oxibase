@@ -164,7 +164,11 @@ impl UserDefinedFunctionRegistry {
     }
 
     /// Get a scripting backend for the given language
-    pub fn get_backend(&self, language: &str) -> Option<std::sync::Arc<dyn crate::functions::backends::ScriptingBackend + Send + Sync>> {
+    pub fn get_backend(
+        &self,
+        language: &str,
+    ) -> Option<std::sync::Arc<dyn crate::functions::backends::ScriptingBackend + Send + Sync>>
+    {
         self.backend_registry.get_backend(language).cloned()
     }
 

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashMap;
 use crate::core::Value;
+use std::collections::HashMap;
 
 /// The execution environment (stack frame) for PL/SQL execution
 #[derive(Debug)]
@@ -28,15 +28,23 @@ impl Environment {
             variables: HashMap::new(),
         }
     }
+}
 
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Environment {
     pub fn define(&mut self, name: &str, value: Value) {
         self.variables.insert(name.trim().to_lowercase(), value);
     }
 
     pub fn assign(&mut self, name: &str, value: Value) -> Result<(), String> {
         let key = name.trim().to_lowercase();
-        if self.variables.contains_key(&key) {
-            self.variables.insert(key, value);
+        if let std::collections::hash_map::Entry::Occupied(mut e) = self.variables.entry(key) {
+            e.insert(value);
             Ok(())
         } else {
             Err(format!("Undefined variable '{}'", name))

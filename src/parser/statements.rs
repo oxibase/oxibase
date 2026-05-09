@@ -1286,7 +1286,8 @@ impl Parser {
 
         if self.peek_token_is_keyword("PROCEDURE") {
             self.next_token();
-            return self.parse_create_procedure_statement(or_replace)
+            return self
+                .parse_create_procedure_statement(or_replace)
                 .map(Statement::CreateProcedure);
         } else if or_replace {
             self.add_error(format!(
@@ -2127,7 +2128,10 @@ impl Parser {
     }
 
     /// Parse a DROP statement
-    fn parse_create_procedure_statement(&mut self, or_replace: bool) -> Option<CreateProcedureStatement> {
+    fn parse_create_procedure_statement(
+        &mut self,
+        or_replace: bool,
+    ) -> Option<CreateProcedureStatement> {
         let token = self.cur_token.clone();
 
         // Procedure name
@@ -2144,8 +2148,8 @@ impl Parser {
             loop {
                 // Parse optional IN/OUT/INOUT mode
                 let mut mode = ParameterMode::In;
-                
-                // Need to peek since parameter name could be "IN" or "OUT" if not reserved, 
+
+                // Need to peek since parameter name could be "IN" or "OUT" if not reserved,
                 // but usually these are keywords if used as mode
                 if self.peek_token_is_keyword("INOUT") {
                     self.next_token();
@@ -2188,7 +2192,10 @@ impl Parser {
         }
 
         if !self.expect_peek(TokenType::Identifier) && !self.expect_peek(TokenType::Keyword) {
-            self.add_error(format!("expected language name at {}", self.cur_token.position));
+            self.add_error(format!(
+                "expected language name at {}",
+                self.cur_token.position
+            ));
             return None;
         }
         let language = self.cur_token.literal.clone();
@@ -2199,7 +2206,10 @@ impl Parser {
 
         // The body should be enclosed in $$ $$ or single quotes
         if !self.expect_peek(TokenType::String) {
-            self.add_error(format!("expected procedure body string at {}", self.cur_token.position));
+            self.add_error(format!(
+                "expected procedure body string at {}",
+                self.cur_token.position
+            ));
             return None;
         }
         let body = self.cur_token.literal.trim_matches('\'').to_string();

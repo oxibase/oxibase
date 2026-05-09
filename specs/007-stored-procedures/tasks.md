@@ -75,6 +75,6 @@ This feature will be implemented incrementally, starting with core AST and catal
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T030 Run `make lint` and fix all warnings
-- [ ] T031 Run `make license` to verify headers in new PL/SQL module
-- [ ] T032 Execute full test suite `make test-all`
+- [x] T030 Run `make lint` and fix all warnings
+- [x] T031 Run `make license` to verify headers in new PL/SQL module
+- [x] T032 Execute full test suite `make test-all`

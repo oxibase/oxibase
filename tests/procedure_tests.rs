@@ -42,11 +42,17 @@ fn test_procedure_with_arguments() {
     let call_sql = "CALL add_numbers(10, 5, 0);";
     let res = db.query(call_sql, ());
     assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
-    
+
     let mut results = res.unwrap();
     assert_eq!(results.columns(), &["res"]);
-    
+
     // Read the first row
     let row = results.next().unwrap().unwrap();
-    assert_eq!(row.get::<oxibase::core::Value>(0).unwrap().as_int64().unwrap(), 15);
+    assert_eq!(
+        row.get::<oxibase::core::Value>(0)
+            .unwrap()
+            .as_int64()
+            .unwrap(),
+        15
+    );
 }

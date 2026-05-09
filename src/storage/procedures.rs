@@ -20,10 +20,8 @@
 
 use serde::{Deserialize, Serialize};
 
-
 /// System table name for stored procedures
 pub const SYS_PROCEDURES: &str = "_sys_procedures";
-
 
 /// SQL to create the procedures system table
 pub const CREATE_PROCEDURES_SQL: &str = r#"

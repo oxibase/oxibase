@@ -2538,6 +2538,39 @@ impl fmt::Display for AnalyzeStatement {
     }
 }
 
+impl fmt::Display for CreateProcedureStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE ");
+        if self.or_replace {
+            result.push_str("OR REPLACE ");
+        }
+        result.push_str("PROCEDURE ");
+        result.push_str(&self.procedure_name.to_string());
+        result.push('(');
+        let params: Vec<String> = self
+            .parameters
+            .iter()
+            .map(|p| format!("{} {} {}", p.mode, p.name.value, p.data_type))
+            .collect();
+        result.push_str(&params.join(", "));
+        result.push_str(&format!(
+            ") LANGUAGE {} AS $$ {} $$",
+            self.language, self.body
+        ));
+        write!(f, "{}", result)
+    }
+}
+
+impl fmt::Display for CallStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = format!("CALL {}(", self.procedure_name);
+        let args: Vec<String> = self.arguments.iter().map(|a| a.to_string()).collect();
+        result.push_str(&args.join(", "));
+        result.push(')');
+        write!(f, "{}", result)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2749,42 +2782,5 @@ mod tests {
             }))),
         };
         assert_eq!(case_expr.to_string(), "CASE WHEN TRUE THEN 1 ELSE 0 END");
-    }
-}
-
-impl fmt::Display for CreateProcedureStatement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut result = String::from("CREATE ");
-        if self.or_replace {
-            result.push_str("OR REPLACE ");
-        }
-        result.push_str("PROCEDURE ");
-        result.push_str(&self.procedure_name.to_string());
-        result.push('(');
-        let params: Vec<String> = self
-            .parameters
-            .iter()
-            .map(|p| format!("{} {} {}", p.mode, p.name.value, p.data_type))
-            .collect();
-        result.push_str(&params.join(", "));
-        result.push_str(&format!(
-            ") LANGUAGE {} AS $$ {} $$",
-            self.language, self.body
-        ));
-        write!(f, "{}", result)
-    }
-}
-
-impl fmt::Display for CallStatement {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut result = format!("CALL {}(", self.procedure_name);
-        let args: Vec<String> = self
-            .arguments
-            .iter()
-            .map(|a| a.to_string())
-            .collect();
-        result.push_str(&args.join(", "));
-        result.push(')');
-        write!(f, "{}", result)
     }
 }

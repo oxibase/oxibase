@@ -12,28 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::core::{Error, Result, Row, Schema, Value};
-use crate::executor::context::ExecutionContext;
-use crate::executor::expression::ExpressionEval;
 use super::ast::{BlockStatement, PlSqlStatement};
 use super::env::Environment;
-use std::sync::Arc;
+use crate::core::{Error, Result, Value};
 use crate::functions::FunctionRegistry;
+use std::sync::Arc;
 
 pub struct PlSqlInterpreter {
-    function_registry: Arc<FunctionRegistry>,
+    pub(crate) _function_registry: Arc<FunctionRegistry>,
 }
 
 impl PlSqlInterpreter {
     pub fn new(function_registry: Arc<FunctionRegistry>) -> Self {
-        Self { function_registry }
+        Self {
+            _function_registry: function_registry,
+        }
     }
 
-    pub fn execute(
-        &self,
-        block: &BlockStatement,
-        env: &mut Environment,
-    ) -> Result<()> {
+    pub fn execute(&self, block: &BlockStatement, env: &mut Environment) -> Result<()> {
         for stmt in &block.statements {
             match self.execute_statement(stmt, env) {
                 Ok(true) => return Ok(()), // RETURN statement executed
@@ -48,7 +44,7 @@ impl PlSqlInterpreter {
         // For the minimal MVP to make the tests pass:
         // We will do simple matching on standard AST nodes
         use crate::parser::ast::Expression;
-        
+
         match expr {
             Expression::BooleanLiteral(b) => Ok(Value::Boolean(b.value)),
             Expression::IntegerLiteral(i) => Ok(Value::Integer(i.value)),
@@ -58,7 +54,7 @@ impl PlSqlInterpreter {
                 } else {
                     Err(Error::internal(format!("Variable not found: {}", id.value)))
                 }
-            },
+            }
             Expression::Infix(comp) => {
                 let left = self.eval_expr(&comp.left, env)?;
                 let right = self.eval_expr(&comp.right, env)?;
@@ -70,27 +66,28 @@ impl PlSqlInterpreter {
                         } else {
                             Ok(Value::Boolean(false))
                         }
-                    },
+                    }
                     "=" => {
                         if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
                             Ok(Value::Boolean(l == r))
                         } else {
                             Ok(Value::Boolean(false))
                         }
-                    },
-                    _ => Err(Error::internal("Operator not implemented in PL/SQL interpreter yet"))
+                    }
+                    _ => Err(Error::internal(
+                        "Operator not implemented in PL/SQL interpreter yet",
+                    )),
                 }
-            },
-            _ => Err(Error::internal(format!("Expression type not fully supported in simple PL/SQL interpreter: {:?}", expr)))
+            }
+            _ => Err(Error::internal(format!(
+                "Expression type not fully supported in simple PL/SQL interpreter: {:?}",
+                expr
+            ))),
         }
     }
 
     /// Returns Ok(true) if a RETURN statement was hit, Ok(false) otherwise
-    fn execute_statement(
-        &self,
-        stmt: &PlSqlStatement,
-        env: &mut Environment,
-    ) -> Result<bool> {
+    fn execute_statement(&self, stmt: &PlSqlStatement, env: &mut Environment) -> Result<bool> {
         match stmt {
             PlSqlStatement::Block(block) => {
                 self.execute(block, env)?;
@@ -101,13 +98,17 @@ impl PlSqlInterpreter {
                 println!("Assigning {} = {:?}", assign.variable, val);
                 // In PL/SQL, variables are case-insensitive. We should just insert/update them.
                 env.define(&assign.variable, val);
-                println!("Variable {} now has value {:?}", assign.variable, env.get(&assign.variable));
+                println!(
+                    "Variable {} now has value {:?}",
+                    assign.variable,
+                    env.get(&assign.variable)
+                );
                 Ok(false)
             }
             PlSqlStatement::If(if_stmt) => {
                 let condition_val = self.eval_expr(&if_stmt.condition, env)?;
                 println!("Condition evaluated to: {:?}", condition_val);
-                    
+
                 let is_true = match condition_val {
                     Value::Boolean(b) => b,
                     _ => false, // Simplification
@@ -126,7 +127,7 @@ impl PlSqlInterpreter {
                         }
                     }
                 }
-                
+
                 Ok(false)
             }
             PlSqlStatement::Return => Ok(true),

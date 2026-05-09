@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::core::{Error, Result, Value};
-use crate::functions::backends::ScriptingBackend;
-use super::parser::PlSqlParser;
 use super::env::Environment;
 use super::interpreter::PlSqlInterpreter;
-use std::sync::Arc;
+use super::parser::PlSqlParser;
+use crate::core::{Error, Result, Value};
+use crate::functions::backends::ScriptingBackend;
 use crate::functions::FunctionRegistry;
+use std::sync::Arc;
 
 pub struct PlSqlBackend {
     function_registry: Arc<FunctionRegistry>,
@@ -47,7 +47,7 @@ impl ScriptingBackend for PlSqlBackend {
         }
     }
 
-    fn execute(&self, code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
+    fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
         // Scalar functions in PL/SQL not fully implemented yet
         Err(Error::internal("PL/SQL scalar functions not implemented"))
     }
@@ -78,7 +78,10 @@ impl ScriptingBackend for PlSqlBackend {
                 println!("Writing back {} = {:?}", param_names[i], val);
                 *arg = val.clone();
             } else {
-                println!("Warning: {} not found in environment to write back", param_names[i]);
+                println!(
+                    "Warning: {} not found in environment to write back",
+                    param_names[i]
+                );
             }
         }
 

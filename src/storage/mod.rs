@@ -24,9 +24,9 @@
 pub mod config;
 pub mod expression;
 pub mod functions;
-pub mod procedures;
 pub mod index;
 pub mod mvcc;
+pub mod procedures;
 pub mod statistics;
 pub mod traits;
 

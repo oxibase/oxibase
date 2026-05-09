@@ -350,7 +350,9 @@ impl Executor {
 
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        let has_procedures_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
+        let has_procedures_table = tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(SYS_PROCEDURES));
 
         if !has_procedures_table {
             return Ok(());
@@ -374,9 +376,9 @@ impl Executor {
                     Value::Text(s) => Some(s.to_string()),
                     _ => None,
                 });
-                
-                let stored_parameters: Vec<crate::storage::procedures::StoredProcedureParameter> = serde_json::from_str(parameters_json)
-                    .map_err(|e| {
+
+                let stored_parameters: Vec<crate::storage::procedures::StoredProcedureParameter> =
+                    serde_json::from_str(parameters_json).map_err(|e| {
                         Error::internal(format!("Failed to parse procedure parameters: {}", e))
                     })?;
 
@@ -389,7 +391,7 @@ impl Executor {
                     code: code.to_string(),
                 };
 
-                self.function_registry.register_procedure(&name, procedure);
+                self.function_registry.register_procedure(name, procedure);
             }
         }
 

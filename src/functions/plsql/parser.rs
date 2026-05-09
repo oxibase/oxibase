@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::core::{Error, Result};
-use crate::parser::ast::Expression;
-use crate::parser::lexer::Lexer;
-use crate::parser::token::{Token, TokenType};
-use crate::parser::precedence::Precedence;
 use super::ast::{AssignmentStatement, BlockStatement, IfStatement, PlSqlStatement};
+use crate::core::{Error, Result};
+use crate::parser::lexer::Lexer;
+use crate::parser::precedence::Precedence;
+use crate::parser::token::{Token, TokenType};
 
 pub struct PlSqlParser {
     code: String,
@@ -32,7 +31,7 @@ impl PlSqlParser {
         let mut lexer = Lexer::new(code);
         let cur_token = lexer.next_token();
         let peek_token = lexer.next_token();
-        
+
         Self {
             code: code.to_string(),
             lexer,
@@ -47,18 +46,23 @@ impl PlSqlParser {
         self.peek_token = self.lexer.next_token();
     }
 
+    #[allow(dead_code)]
     fn expect_peek(&mut self, t: TokenType) -> bool {
         if self.peek_token.token_type == t {
             self.next_token();
             true
         } else {
-            self.errors.push(format!("Expected next token to be {:?}, got {:?} instead", t, self.peek_token.token_type));
+            self.errors.push(format!(
+                "Expected next token to be {:?}, got {:?} instead",
+                t, self.peek_token.token_type
+            ));
             false
         }
     }
-    
+
     fn peek_is_keyword(&self, keyword: &str) -> bool {
-        self.peek_token.token_type == TokenType::Keyword && self.peek_token.literal.eq_ignore_ascii_case(keyword)
+        self.peek_token.token_type == TokenType::Keyword
+            && self.peek_token.literal.eq_ignore_ascii_case(keyword)
     }
 
     fn expect_keyword(&mut self, keyword: &str) -> bool {
@@ -66,40 +70,51 @@ impl PlSqlParser {
             self.next_token();
             true
         } else {
-            self.errors.push(format!("Expected keyword {}, got {}", keyword, self.peek_token.literal));
+            self.errors.push(format!(
+                "Expected keyword {}, got {}",
+                keyword, self.peek_token.literal
+            ));
             false
         }
     }
 
     pub fn parse(&mut self) -> Result<BlockStatement> {
         let mut statements = Vec::new();
-        
+
         // Skip DECLARE for now, assume BEGIN is the start of executable section
-        if self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("DECLARE") {
+        if self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("DECLARE")
+        {
             // we would parse variable declarations here, but let's skip to BEGIN
-            while !(self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("BEGIN")) {
+            while !(self.cur_token.token_type == TokenType::Keyword
+                && self.cur_token.literal.eq_ignore_ascii_case("BEGIN"))
+            {
                 if self.cur_token.token_type == TokenType::Eof {
                     return Err(Error::parse("Unexpected EOF waiting for BEGIN"));
                 }
                 self.next_token();
             }
         }
-        
-        if self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("BEGIN") {
+
+        if self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("BEGIN")
+        {
             self.next_token();
-            
-            while !(self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("END")) {
+
+            while !(self.cur_token.token_type == TokenType::Keyword
+                && self.cur_token.literal.eq_ignore_ascii_case("END"))
+            {
                 if self.cur_token.token_type == TokenType::Eof {
                     return Err(Error::parse("Unexpected EOF waiting for END"));
                 }
-                
+
                 if let Some(stmt) = self.parse_statement() {
                     statements.push(stmt);
                 } else {
                     // We must NOT blindly consume tokens if parse_statement failed
                     // Or actually, if it returned None because it wasn't a statement, we can advance
                     // But if it consumed tokens and failed, we are in trouble.
-                    // Wait, parse_assignment_statement consumes tokens and returns Some. 
+                    // Wait, parse_assignment_statement consumes tokens and returns Some.
                     // Does it consume the semicolon? Yes.
                     self.next_token();
                 }
@@ -113,12 +128,10 @@ impl PlSqlParser {
                 self.next_token();
             }
         }
-        
+
         if !self.errors.is_empty() {
             return Err(Error::parse(self.errors.join("\n")));
         }
-        
-        
 
         Ok(BlockStatement { statements })
     }
@@ -149,7 +162,7 @@ impl PlSqlParser {
 
     fn parse_assignment_statement(&mut self) -> Option<PlSqlStatement> {
         let variable = self.cur_token.literal.clone();
-        
+
         // Expect := or = or :
         if self.peek_token.literal == "=" {
             self.next_token(); // Move to =
@@ -168,27 +181,28 @@ impl PlSqlParser {
         } else {
             return None;
         }
-        
+
         // This is a hacky way to re-use the standard SQL expression parser
         // We'll create a new parser just for the expression part
-        let mut sql_parser = crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
-        
+        let mut sql_parser =
+            crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+
         // Advance our lexer until semicolon
         let mut expr_tokens = Vec::new();
         while self.cur_token.literal != ";" && self.cur_token.token_type != TokenType::Eof {
             expr_tokens.push(self.cur_token.clone());
             self.next_token();
         }
-        
+
         // If we hit EOF before semicolon, it's an error
         if self.cur_token.token_type == TokenType::Eof && expr_tokens.is_empty() {
-            self.errors.push("Expected expression after assignment".to_string());
+            self.errors
+                .push("Expected expression after assignment".to_string());
             return None;
         }
-        
+
         println!("Tokens for assignment to {}: {:?}", variable, expr_tokens);
-        
-        
+
         // Now parse the expression using the standard parser
         // The problem is sql_parser reads the expression but our main lexer has skipped ahead to the semicolon.
         // Let's make sure sql_parser successfully parsed it.
@@ -204,34 +218,45 @@ impl PlSqlParser {
             // println!("Parsed assignment: {:?}", stmt);
             Some(stmt)
         } else {
-            self.errors.push(format!("Failed to parse expression in assignment for {}: {:?}", variable, sql_parser.errors()));
+            self.errors.push(format!(
+                "Failed to parse expression in assignment for {}: {:?}",
+                variable,
+                sql_parser.errors()
+            ));
             None
         }
     }
 
     fn parse_if_statement(&mut self) -> Option<PlSqlStatement> {
         self.next_token(); // Move past IF
-        
+
         // Collect tokens until THEN for the condition
-        let mut sql_parser = crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+        let mut sql_parser =
+            crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
         let condition = sql_parser.parse_expression(Precedence::Lowest)?;
-        
+
         // Advance our lexer to THEN
-        while !(self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("THEN")) {
+        while !(self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("THEN"))
+        {
             if self.cur_token.token_type == TokenType::Eof {
-                self.errors.push("Expected THEN after IF condition".to_string());
+                self.errors
+                    .push("Expected THEN after IF condition".to_string());
                 return None;
             }
             self.next_token();
         }
-        
+
         self.next_token(); // Move past THEN
-        
+
         let mut then_block = Vec::new();
         let mut else_block = None;
-        
+
         // Parse THEN block
-        while !(self.cur_token.token_type == TokenType::Keyword && (self.cur_token.literal.eq_ignore_ascii_case("ELSE") || self.cur_token.literal.eq_ignore_ascii_case("END"))) {
+        while !(self.cur_token.token_type == TokenType::Keyword
+            && (self.cur_token.literal.eq_ignore_ascii_case("ELSE")
+                || self.cur_token.literal.eq_ignore_ascii_case("END")))
+        {
             // Debug parsing statements
             println!("Parsing stmt inside THEN block: {:?}", self.cur_token);
             // println!("IF block token: {:?}", self.cur_token);
@@ -245,12 +270,16 @@ impl PlSqlParser {
                 self.next_token();
             }
         }
-        
+
         // Parse optional ELSE block
-        if self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("ELSE") {
+        if self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("ELSE")
+        {
             self.next_token(); // Move past ELSE
             let mut block = Vec::new();
-            while !(self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("END")) {
+            while !(self.cur_token.token_type == TokenType::Keyword
+                && self.cur_token.literal.eq_ignore_ascii_case("END"))
+            {
                 if self.cur_token.token_type == TokenType::Eof {
                     self.errors.push("Expected END IF".to_string());
                     return None;
@@ -263,21 +292,22 @@ impl PlSqlParser {
             }
             else_block = Some(block);
         }
-        
+
         // Expect END IF
-        if self.cur_token.token_type == TokenType::Keyword && self.cur_token.literal.eq_ignore_ascii_case("END") {
-            if self.expect_keyword("IF") {
-                if self.peek_token.literal == ";" {
-                    self.next_token(); // Consume semicolon
-                }
-                return Some(PlSqlStatement::If(IfStatement {
-                    condition,
-                    then_block,
-                    else_block,
-                }));
+        if self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("END")
+            && self.expect_keyword("IF")
+        {
+            if self.peek_token.literal == ";" {
+                self.next_token(); // Consume semicolon
             }
+            return Some(PlSqlStatement::If(IfStatement {
+                condition,
+                then_block,
+                else_block,
+            }));
         }
-        
+
         None
     }
 }
