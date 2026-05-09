@@ -64,7 +64,20 @@ This feature will be implemented incrementally, starting with core AST and catal
 - [x] T025 [US3] Register PL/SQL backend in `src/functions/backends.rs` for `LANGUAGE sql` and `LANGUAGE pl/sql`
 - [x] T026 [US3] Write integration tests for PL/SQL execution in `tests/procedure_plsql_tests.rs`
 
-## Phase 6: Additional Scripting Backends (JS & Python) [US4]
+## Phase 6: Execute SQL inside PL/SQL [US5]
+
+*Goal: As a database user, I want to execute standard database queries natively inside a PL/SQL block.*
+*Independent Test*: Verify that an `INSERT` statement embedded in a PL/SQL procedure successfully modifies the database.
+
+- [ ] T033 [US4] Define `SqlRunner` trait (or similar injection mechanism) to pass database execution context to `ScriptingBackend::execute_procedure`
+- [ ] T034 [US4] Update `execute_call` in `src/executor/query.rs` to pass the `Executor` instance as the `SqlRunner` to the backend
+- [ ] T035 [US4] Add `PlSqlStatement::Sql(Statement)` variant to `src/functions/plsql/ast.rs`
+- [ ] T036 [US4] Update `PlSqlParser` to fallback to the standard SQL parser for unrecognized tokens, parsing them as `Statement`
+- [ ] T037 [US4] Update `PlSqlInterpreter` to invoke the `SqlRunner` bridge when encountering `PlSqlStatement::Sql`
+- [ ] T038 [US4] Implement variable substitution (injecting PL/SQL variables into the standard SQL AST before execution)
+- [ ] T039 [US4] Write integration test demonstrating `INSERT` and `UPDATE` execution within a PL/SQL procedure
+
+## Phase 7: Additional Scripting Backends (JS & Python) [US5] (JS & Python) [US4]
 
 *Goal: As a database user, I want to write procedures using Javascript and Python backends.*
 *Independent Test*: Verify that procedures can be executed with `LANGUAGE js` and `LANGUAGE python`.
@@ -73,7 +86,7 @@ This feature will be implemented incrementally, starting with core AST and catal
 - [x] T028 [US4] Implement procedure execution logic for `LANGUAGE python` using the `rustpython` backend adapter in `src/functions/backends/python.rs`
 - [x] T029 [US4] Write integration tests for JS and Python execution in `tests/procedure_multilang_tests.rs`
 
-## Phase 7: Polish & Cross-Cutting Concerns
+## Phase 8: Polish & Cross-Cutting Concerns
 
 - [x] T030 Run `make lint` and fix all warnings
 - [x] T031 Run `make license` to verify headers in new PL/SQL module

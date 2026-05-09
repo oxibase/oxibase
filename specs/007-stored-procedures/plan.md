@@ -21,6 +21,7 @@ Implement `CREATE OR REPLACE PROCEDURE` and `CALL` statements in the database pa
 - **Parser**: Add `CreateProcedureStatement` and `CallStatement` to `ast.rs`.
 - **Validation**: During `execute_create_procedure`, the `ScriptingBackend::validate_code()` will be called. If it fails, the transaction aborts with a syntax error.
 - **Execution**: The `CALL` execution will retrieve the procedure, execute it using the appropriate scripting backend or PL/SQL interpreter, and return a single-row result containing the updated `OUT`/`INOUT` parameter values.
+- **SQL Bridge**: The `ScriptingBackend` will accept an execution context/runner to allow procedures (specifically PL/SQL) to execute native SQL queries against the database from within the procedural block.
 - **PL/SQL Interpreter**: We will build a dedicated native interpreter for `LANGUAGE pl/sql`. The interpreter will maintain a `CallStack` and `Environment` to allow variable assignment, control flow (IF/WHILE), and make it easy to expose local state for a future Debug Adapter Protocol (DAP).
 
 ## Constitution Check
