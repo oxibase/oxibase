@@ -1,3 +1,17 @@
+// Copyright 2025 Oxibase Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use oxibase::api::Database;
 use oxibase::core::Value;
 
@@ -7,8 +21,8 @@ fn test_js_procedure() {
     let db = Database::open_in_memory().unwrap();
 
     let create_sql = r#"
-        CREATE PROCEDURE multiply_js(a INT, b INT, OUT res INT) 
-        LANGUAGE js 
+        CREATE PROCEDURE multiply_js(a INT, b INT, OUT res INT)
+        LANGUAGE js
         AS '
             res = a * b;
         ';
@@ -36,8 +50,8 @@ fn test_python_procedure() {
     let db = Database::open_in_memory().unwrap();
 
     let create_sql = r#"
-        CREATE PROCEDURE concat_py(a TEXT, b TEXT, OUT res TEXT) 
-        LANGUAGE python 
+        CREATE PROCEDURE concat_py(a TEXT, b TEXT, OUT res TEXT)
+        LANGUAGE python
         AS '
 res = a + " " + b
         ';
@@ -77,8 +91,8 @@ fn test_js_sql_execution() {
     .unwrap();
 
     let create_sql = r#"
-        CREATE PROCEDURE log_js(msg TEXT) 
-        LANGUAGE js 
+        CREATE PROCEDURE log_js(msg TEXT)
+        LANGUAGE js
         AS '
             oxibase.execute("INSERT INTO js_logs(msg) VALUES (''Hello JS'')");
         ';
@@ -103,8 +117,8 @@ fn test_python_sql_execution() {
     .unwrap();
 
     let create_sql = r#"
-        CREATE PROCEDURE log_py(msg TEXT) 
-        LANGUAGE python 
+        CREATE PROCEDURE log_py(msg TEXT)
+        LANGUAGE python
         AS '
 import oxibase
 oxibase.execute("INSERT INTO py_logs(msg) VALUES (''Hello Python'')")
