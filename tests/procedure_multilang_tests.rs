@@ -65,3 +65,48 @@ res = a + " " + b
         "hello world"
     );
 }
+
+#[test]
+#[cfg(feature = "js")]
+fn test_js_sql_execution() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute("CREATE TABLE js_logs(id INTEGER PRIMARY KEY AUTO_INCREMENT, msg TEXT);", ()).unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE log_js(msg TEXT) 
+        LANGUAGE js 
+        AS '
+            oxibase.execute("INSERT INTO js_logs(msg) VALUES (\"Hello JS\")");
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL log_js('Hello JS');", ()).unwrap();
+
+    let mut results = db.query("SELECT msg FROM js_logs;", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_str().unwrap(), "Hello JS");
+}
+
+#[test]
+#[cfg(feature = "python")]
+fn test_python_sql_execution() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute("CREATE TABLE py_logs(id INTEGER PRIMARY KEY AUTO_INCREMENT, msg TEXT);", ()).unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE log_py(msg TEXT) 
+        LANGUAGE python 
+        AS '
+import oxibase
+oxibase.execute("INSERT INTO py_logs(msg) VALUES (\"Hello Python\")")
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL log_py('Hello Python');", ()).unwrap();
+
+    let mut results = db.query("SELECT msg FROM py_logs;", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_str().unwrap(), "Hello Python");
+}

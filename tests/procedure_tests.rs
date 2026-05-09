@@ -56,3 +56,24 @@ fn test_procedure_with_arguments() {
         15
     );
 }
+
+#[test]
+fn test_rhai_sql_execution() {
+    let db = oxibase::api::Database::open_in_memory().unwrap();
+    db.execute("CREATE TABLE rhai_logs(id INTEGER PRIMARY KEY AUTO_INCREMENT, msg TEXT);", ()).unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE log_rhai(msg TEXT) 
+        LANGUAGE rhai 
+        AS '
+            oxibase.execute("INSERT INTO rhai_logs(msg) VALUES (\"Hello Rhai\")");
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL log_rhai('Hello Rhai');", ()).unwrap();
+
+    let mut results = db.query("SELECT msg FROM rhai_logs;", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<oxibase::core::Value>(0).unwrap().as_str().unwrap(), "Hello Rhai");
+}

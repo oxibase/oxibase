@@ -154,15 +154,92 @@ impl ScriptingBackend for BoaBackend {
     }
 
     fn validate_code(&self, code: &str) -> Result<()> {
-        // For now, we'll do basic validation by attempting to create a context
-        // In the future, we could add proper AST parsing/validation
         let mut context = create_secure_context();
         let source = Source::from_bytes(code);
-
-        // Try to parse without executing
         match boa_engine::Script::parse(source, None, &mut context) {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::internal(format!("Boa syntax error: {:?}", e))),
+        }
+    }
+
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &mut [Value],
+        param_names: &[&str],
+        _modes: &[&str],
+        _runner: Option<&dyn crate::functions::backends::SqlRunner>,
+    ) -> Result<()> {
+        let mut context = create_secure_context();
+
+        let oxibase_obj = boa_engine::object::ObjectInitializer::new(&mut context)
+            .function(
+                boa_engine::NativeFunction::from_fn_ptr(|_this, args, _ctx| {
+                    let sql = args
+                        .get(0)
+                        .cloned()
+                        .unwrap_or_default()
+                        .to_string(_ctx)
+                        .unwrap_or_default()
+                        .to_std_string_escaped();
+                    
+                    match crate::functions::backends::execute_sql_query(&sql) {
+                        Ok(res) => Ok(JsValue::from(res.rows_affected() as i64)),
+                        Err(e) => Err(boa_engine::JsError::from_opaque(JsValue::from(JsString::from(e.to_string())))),
+                    }
+                }),
+                JsString::from("execute"),
+                1,
+            )
+            .build();
+            
+        context
+            .register_global_property(JsString::from("oxibase"), oxibase_obj, Default::default())
+            .map_err(|e| Error::internal(format!("Failed to register JS oxibase: {}", e)))?;
+
+        for (i, arg) in args.iter().enumerate() {
+            let var_name = param_names[i];
+            let js_val = match arg {
+                Value::Integer(i) => JsValue::from(*i),
+                Value::Float(f) => JsValue::from(*f),
+                Value::Text(s) => JsValue::from(JsString::from(s.as_ref())),
+                Value::Boolean(b) => JsValue::from(*b),
+                Value::Null(_) => JsValue::null(),
+                _ => return Err(Error::internal("Unsupported argument type for JS")),
+            };
+            context
+                .register_global_property(JsString::from(var_name), js_val, Default::default())
+                .map_err(|e| Error::internal(format!("Failed to register JS variable: {}", e)))?;
+        }
+
+        let source = Source::from_bytes(code);
+        match context.eval(source) {
+            Ok(_) => {
+                for (i, arg) in args.iter_mut().enumerate() {
+                    let var_name = param_names[i];
+                    if let Ok(js_val) = context.global_object().get(JsString::from(var_name), &mut context) {
+                        if js_val.is_number() {
+                            if let Some(num) = js_val.as_number() {
+                                if num.fract() == 0.0 {
+                                    *arg = Value::Integer(num as i64);
+                                } else {
+                                    *arg = Value::Float(num);
+                                }
+                            }
+                        } else if js_val.is_string() {
+                            if let Some(s) = js_val.as_string() {
+                                *arg = Value::Text(s.to_std_string_escaped().into());
+                            }
+                        } else if js_val.is_boolean() {
+                            *arg = Value::Boolean(js_val.as_boolean().unwrap());
+                        } else if js_val.is_null() || js_val.is_undefined() {
+                            *arg = crate::core::value::Value::null_unknown();
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Err(e) => Err(Error::internal(format!("JS execution error: {}", e))),
         }
     }
 }

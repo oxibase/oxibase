@@ -202,7 +202,9 @@ impl Executor {
             modes.push(param.mode.as_str());
         }
 
-        backend.execute_procedure(&procedure.code, &mut evaluated_args, &param_names, &modes, Some(self))?;
+        crate::functions::backends::with_sql_runner(Some(self as &dyn crate::functions::backends::SqlRunner), || {
+            backend.execute_procedure(&procedure.code, &mut evaluated_args, &param_names, &modes, Some(self))
+        })?;
 
         let mut out_values = Vec::new();
         let mut out_col_names = Vec::new();
