@@ -202,7 +202,23 @@ impl Executor {
             modes.push(param.mode.as_str());
         }
 
-        crate::functions::backends::with_sql_runner(
+        let started_implicit_tx = {
+            let mut active_tx = self.active_transaction.lock().unwrap();
+            if active_tx.is_none() {
+                let tx = self.engine.begin_transaction()?;
+                *active_tx = Some(super::ActiveTransaction {
+                    transaction: tx,
+                    tables: rustc_hash::FxHashMap::default(),
+                    ddl_undo_log: Vec::new(),
+                    is_explicit_tx: false,
+                });
+                true
+            } else {
+                false
+            }
+        };
+
+        let result = crate::functions::backends::with_sql_runner(
             Some(self as &dyn crate::functions::backends::SqlRunner),
             || {
                 backend.execute_procedure(
@@ -213,7 +229,20 @@ impl Executor {
                     Some(self),
                 )
             },
-        )?;
+        );
+
+        if started_implicit_tx {
+            let mut active_tx = self.active_transaction.lock().unwrap();
+            if let Some(mut tx_state) = active_tx.take() {
+                if result.is_ok() {
+                    let _ = tx_state.transaction.commit();
+                } else {
+                    let _ = tx_state.transaction.rollback();
+                }
+            }
+        }
+
+        result?;
 
         let mut out_values = Vec::new();
         let mut out_col_names = Vec::new();
@@ -4806,6 +4835,7 @@ impl Executor {
             transaction,
             tables: FxHashMap::default(),
             ddl_undo_log: Vec::new(),
+            is_explicit_tx: true, // This is execute_begin
         });
 
         Ok(Box::new(ExecResult::empty()))

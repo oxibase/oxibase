@@ -88,3 +88,74 @@ fn test_rhai_sql_execution() {
         "Hello Rhai"
     );
 }
+#[test]
+fn test_rhai_transaction_commit_rollback() {
+    let db = oxibase::api::Database::open_in_memory().unwrap();
+    db.execute(
+        "CREATE TABLE tx_test(id INTEGER PRIMARY KEY, val TEXT);",
+        (),
+    )
+    .unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE tx_proc() 
+        LANGUAGE rhai 
+        AS '
+            // Insert and commit
+            oxibase::execute("INSERT INTO tx_test(id, val) VALUES (1, ''first'')");
+            commit();
+            
+            // Insert and rollback
+            oxibase::execute("INSERT INTO tx_test(id, val) VALUES (2, ''second'')");
+            rollback();
+            
+            // Insert after rollback and commit
+            oxibase::execute("INSERT INTO tx_test(id, val) VALUES (3, ''third'')");
+            commit();
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL tx_proc();", ()).unwrap();
+
+    let mut results = db
+        .query("SELECT id, val FROM tx_test ORDER BY id;", ())
+        .unwrap();
+
+    // First row should exist
+    let row1 = results.next().unwrap().unwrap();
+    assert_eq!(
+        row1.get::<oxibase::core::Value>(0)
+            .unwrap()
+            .as_int64()
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        row1.get::<oxibase::core::Value>(1)
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "first"
+    );
+
+    // Third row should exist (second was rolled back)
+    let row3 = results.next().unwrap().unwrap();
+    assert_eq!(
+        row3.get::<oxibase::core::Value>(0)
+            .unwrap()
+            .as_int64()
+            .unwrap(),
+        3
+    );
+    assert_eq!(
+        row3.get::<oxibase::core::Value>(1)
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "third"
+    );
+
+    // No more rows
+    assert!(results.next().is_none());
+}

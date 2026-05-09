@@ -32,6 +32,12 @@ pub enum PlSqlStatement {
     Sql(Box<crate::parser::ast::Statement>),
     /// RETURN statement
     Return(Token),
+    /// COMMIT transaction
+    Commit(Token),
+    /// ROLLBACK transaction
+    Rollback(Token),
+    /// BEGIN explicit transaction (no-op at runtime)
+    BeginTransaction(Token),
 }
 
 /// A variable declaration
