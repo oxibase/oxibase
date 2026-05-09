@@ -1021,3 +1021,14 @@ mod tests {
         assert_eq!(executor.cache_stats().size, size);
     }
 }
+
+impl crate::functions::backends::SqlRunner for Executor {
+    fn execute_query(&self, sql: &str) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+        self.execute(sql)
+    }
+    
+    fn execute_ast(&self, stmt: &crate::parser::ast::Statement) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let ctx = crate::executor::context::ExecutionContext::new();
+        self.execute_statement(stmt, &ctx)
+    }
+}

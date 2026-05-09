@@ -47,3 +47,31 @@ fn test_plsql_procedure() {
     let row = results.next().unwrap().unwrap();
     assert!(!row.get::<Value>(0).unwrap().as_boolean().unwrap());
 }
+
+#[test]
+fn test_plsql_sql_execution() {
+    let db = Database::open_in_memory().unwrap();
+
+    db.execute("CREATE TABLE logs(id INTEGER PRIMARY KEY AUTO_INCREMENT, message TEXT);", ()).unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE log_event(msg TEXT) 
+        LANGUAGE plsql 
+        AS ' 
+        BEGIN 
+            INSERT INTO logs(message) VALUES (msg); 
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL log_event('Hello from PL/SQL!');";
+    let res = db.execute(call_sql, ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    let mut results = db.query("SELECT message FROM logs;", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_str().unwrap(), "Hello from PL/SQL!");
+}

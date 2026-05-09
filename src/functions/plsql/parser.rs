@@ -150,14 +150,59 @@ impl PlSqlParser {
                         Some(stmt)
                     }
                     _ => {
-                        // Might be an identifier that is parsed as a keyword (like OUT)
-                        self.parse_assignment_statement()
+                        // Try assignment first
+                        if let Some(stmt) = self.parse_assignment_statement() {
+                            return Some(stmt);
+                        }
+                        
+                        // Fallback to standard SQL parser
+                        self.parse_sql_statement()
                     }
                 }
             }
-            TokenType::Identifier => self.parse_assignment_statement(),
-            _ => None,
+            TokenType::Identifier => {
+                // Try assignment first
+                if let Some(stmt) = self.parse_assignment_statement() {
+                    return Some(stmt);
+                }
+                
+                // Fallback to standard SQL parser
+                self.parse_sql_statement()
+            },
+            _ => self.parse_sql_statement(),
         }
+    }
+
+    fn parse_sql_statement(&mut self) -> Option<PlSqlStatement> {
+        let mut sql_parser = crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+        let program = sql_parser.parse_program();
+        
+        println!("Trying to parse SQL starting with: {:?}", self.cur_token);
+        
+        if let Ok(prog) = program {
+            if !prog.statements.is_empty() {
+                let stmt = prog.statements[0].clone();
+                println!("Successfully parsed SQL: {:?}", stmt);
+                
+                // We need to advance our lexer past the consumed SQL statement
+                // A reliable way is to sync our lexer's position with the sql_parser's current token position
+                // Wait, the inner parser consumes up to a semicolon.
+                // We can just loop until semicolon or EOF.
+                while self.cur_token.literal != ";" && self.cur_token.token_type != TokenType::Eof {
+                    self.next_token();
+                }
+                if self.cur_token.literal == ";" {
+                    // Semicolons might be optional or consumed by inner parser, let's assume we land on it
+                    // Actually let's not consume it here, the caller handles it or the loop will.
+                    // Wait, standard SQL statements end with a semicolon. We should consume it.
+                    self.next_token();
+                }
+                
+                return Some(PlSqlStatement::Sql(stmt));
+            }
+        }
+        
+        None
     }
 
     fn parse_assignment_statement(&mut self) -> Option<PlSqlStatement> {

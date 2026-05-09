@@ -202,7 +202,7 @@ impl Executor {
             modes.push(param.mode.as_str());
         }
 
-        backend.execute_procedure(&procedure.code, &mut evaluated_args, &param_names, &modes)?;
+        backend.execute_procedure(&procedure.code, &mut evaluated_args, &param_names, &modes, Some(self))?;
 
         let mut out_values = Vec::new();
         let mut out_col_names = Vec::new();
@@ -214,6 +214,7 @@ impl Executor {
             }
         }
 
+        println!("Finished executing call. OUT values: {:?}", out_values);
         if out_values.is_empty() {
             Ok(Box::new(crate::storage::traits::EmptyResult::new()))
         } else {

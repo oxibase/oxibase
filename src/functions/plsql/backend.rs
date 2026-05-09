@@ -58,6 +58,7 @@ impl ScriptingBackend for PlSqlBackend {
         args: &mut [Value],
         param_names: &[&str],
         _modes: &[&str],
+        _runner: Option<&dyn crate::functions::backends::SqlRunner>,
     ) -> Result<()> {
         let mut parser = PlSqlParser::new(code);
         let block = parser.parse()?;
@@ -69,7 +70,7 @@ impl ScriptingBackend for PlSqlBackend {
             env.define(param_names[i], arg.clone());
         }
 
-        let interpreter = PlSqlInterpreter::new(self.function_registry.clone());
+        let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), _runner);
         interpreter.execute(&block, &mut env)?;
 
         // Write back OUT/INOUT values

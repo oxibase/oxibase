@@ -118,6 +118,7 @@ impl ScriptingBackend for RhaiBackend {
         args: &mut [Value],
         param_names: &[&str],
         _modes: &[&str],
+        _runner: Option<&dyn crate::functions::backends::SqlRunner>,
     ) -> Result<()> {
         let mut scope = Scope::new();
 

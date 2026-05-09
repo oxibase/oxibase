@@ -27,6 +27,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Trait for scripting backends
+
+/// A trait to allow scripting backends to execute native SQL queries
+pub trait SqlRunner: Send + Sync {
+    fn execute_query(&self, sql: &str) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
+    
+    fn execute_ast(&self, stmt: &crate::parser::ast::Statement) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
+}
+
 pub trait ScriptingBackend {
     /// Get the name of this backend
     fn name(&self) -> &'static str;
@@ -44,6 +52,7 @@ pub trait ScriptingBackend {
         args: &mut [Value],
         param_names: &[&str],
         _modes: &[&str],
+        _runner: Option<&dyn SqlRunner>,
     ) -> Result<()> {
         // Default implementation falls back to executing normally and ignoring mutations.
         // Backends should override this to capture mutated state.

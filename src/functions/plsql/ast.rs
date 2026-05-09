@@ -23,6 +23,8 @@ pub enum PlSqlStatement {
     Assignment(AssignmentStatement),
     /// IF ... THEN ... ELSE ... END IF;
     If(IfStatement),
+    /// Standard SQL Statement (INSERT, UPDATE, DELETE, etc)
+    Sql(crate::parser::ast::Statement),
     /// RETURN statement
     Return,
 }
