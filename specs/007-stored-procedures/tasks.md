@@ -69,9 +69,9 @@ This feature will be implemented incrementally, starting with core AST and catal
 *Goal: As a database user, I want to write procedures using Javascript and Python backends.*
 *Independent Test*: Verify that procedures can be executed with `LANGUAGE js` and `LANGUAGE python`.
 
-- [ ] T027 [US4] Implement procedure execution logic for `LANGUAGE js` using the `boa` backend adapter in `src/functions/backends/boa.rs`
-- [ ] T028 [US4] Implement procedure execution logic for `LANGUAGE python` using the `rustpython` backend adapter in `src/functions/backends/python.rs`
-- [ ] T029 [US4] Write integration tests for JS and Python execution in `tests/procedure_multilang_tests.rs`
+- [x] T027 [US4] Implement procedure execution logic for `LANGUAGE js` using the `boa` backend adapter in `src/functions/backends/boa.rs`
+- [x] T028 [US4] Implement procedure execution logic for `LANGUAGE python` using the `rustpython` backend adapter in `src/functions/backends/python.rs`
+- [x] T029 [US4] Write integration tests for JS and Python execution in `tests/procedure_multilang_tests.rs`
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
