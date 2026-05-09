@@ -1,6 +1,6 @@
 ---
 title: "Stored Procedures in JavaScript"
-permalink: /docs/sql-features/procedures/javascript/
+permalink: /docs/tutorials/procedures/javascript/
 excerpt: "How to write stored procedures using the JavaScript (Boa) engine."
 layout: doc
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Stored Procedures in Python"
-permalink: /docs/sql-features/procedures/python/
+permalink: /docs/tutorials/procedures/python/
 excerpt: "How to write stored procedures using the Python (RustPython) engine."
 layout: doc
 ---

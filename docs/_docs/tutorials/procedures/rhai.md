@@ -1,6 +1,6 @@
 ---
 title: "Stored Procedures in Rhai"
-permalink: /docs/sql-features/procedures/rhai/
+permalink: /docs/tutorials/procedures/rhai/
 excerpt: "How to write stored procedures using the Rhai scripting language."
 layout: doc
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Stored Procedures"
-permalink: /docs/sql-features/procedures/
+permalink: /docs/tutorials/procedures/
 excerpt: "Learn how to encapsulate and execute business logic within Oxibase using Stored Procedures."
 layout: doc
 ---
@@ -19,10 +19,10 @@ A procedure is created using the `CREATE OR REPLACE PROCEDURE` syntax and invoke
 
 You can write your procedures in any of the following supported dialects:
 
-- **[Rhai](/docs/sql-features/procedures/rhai)**: The default, ultra-fast embedded scripting language tailored for Rust applications. (Always available)
-- **[PL/SQL](/docs/sql-features/procedures/plsql)**: A native database procedural language clone of PL/pgSQL. (Always available)
-- **[JavaScript](/docs/sql-features/procedures/javascript)**: Write logic using the ubiquitous ECMAScript standard. (Requires the `js` feature flag)
-- **[Python](/docs/sql-features/procedures/python)**: Utilize Python for your business logic. (Requires the `python` feature flag)
+- **[Rhai](/docs/tutorials/procedures/rhai)**: The default, ultra-fast embedded scripting language tailored for Rust applications. (Always available)
+- **[PL/SQL](/docs/tutorials/procedures/plsql)**: A native database procedural language clone of PL/pgSQL. (Always available)
+- **[JavaScript](/docs/tutorials/procedures/javascript)**: Write logic using the ubiquitous ECMAScript standard. (Requires the `js` feature flag)
+- **[Python](/docs/tutorials/procedures/python)**: Utilize Python for your business logic. (Requires the `python` feature flag)
 
 ## General Syntax
 
@@ -52,7 +52,7 @@ When a procedure contains `OUT` or `INOUT` parameters, the `CALL` statement will
 
 Choose a language below to see specific tutorials and examples:
 
-- [Rhai Procedures](/docs/sql-features/procedures/rhai)
-- [PL/SQL Procedures](/docs/sql-features/procedures/plsql) 
-- [JavaScript Procedures](/docs/sql-features/procedures/javascript)
-- [Python Procedures](/docs/sql-features/procedures/python)
+- [Rhai Procedures](/docs/tutorials/procedures/rhai)
+- [PL/SQL Procedures](/docs/tutorials/procedures/plsql) 
+- [JavaScript Procedures](/docs/tutorials/procedures/javascript)
+- [Python Procedures](/docs/tutorials/procedures/python)
