@@ -9,6 +9,7 @@
 
 ### Session 2026-05-09
 - Q: What is the preferred API for exposing `commit` and `rollback` to JS, Python, and Rhai? → A: Global functions for JS and Rhai (`commit()`, `rollback()`), and module functions for Python (`oxibase.commit()`, `oxibase.rollback()`).
+- Q: How should the PL/SQL parser handle explicit `BEGIN` statements (as a transaction control command)? → A: Parse it but treat it as a no-op at runtime (PostgreSQL behavior).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -65,18 +66,18 @@ As a database developer, I want to use standard SQL transaction commands (`COMMI
 
 ### Functional Requirements
 
-- **FR-001**: The PL/SQL parser MUST recognize and parse `COMMIT` and `ROLLBACK` as valid procedural statements.
+- **FR-001**: The PL/SQL parser MUST recognize and parse `COMMIT`, `ROLLBACK`, and `BEGIN` as valid procedural statements. The `BEGIN` statement (when used for transaction control, distinct from `BEGIN...END` blocks) MUST be parsed but treated as a no-op during execution.
 - **FR-002**: The `ScriptingBackend` interface and `SqlRunner` trait MUST be extended to allow the backend to request the executor to commit or roll back the current transaction.
 - **FR-003**: When a `COMMIT` is executed within a procedure, the executor MUST persist all current changes to the MVCC storage and immediately start a new transaction context for the remainder of the procedure execution.
 - **FR-004**: When a `ROLLBACK` is executed, the executor MUST discard all uncommitted changes in the current transaction context and start a new transaction context.
 - **FR-005**: The system MUST handle the interaction between the caller's transaction and the procedure's transaction statements by matching PostgreSQL semantics: procedure commits directly operate on the current transaction. If the `CALL` statement was executed within an explicit transaction block, executing `COMMIT` or `ROLLBACK` within the procedure MUST throw an error. Autonomous transactions are not supported.
 
-- **FR-006**: The system MUST expose transaction management functions to supported scripting languages. For Javascript (Boa) and Rhai, it MUST expose global functions `commit()` and `rollback()`. For Python, it MUST expose them via the existing native module as `oxibase.commit()` and `oxibase.rollback()`.
+- **FR-006**: The system MUST expose transaction management functions (`commit()`, `rollback()`, and a no-op `begin()`) to supported scripting languages. For Javascript (Boa) and Rhai, it MUST expose them as global functions. For Python, it MUST expose them via the existing native module (e.g., `oxibase.commit()`).
 
 ### Key Entities
 
 - **`TransactionState` / `TxContext`**: The internal representation of the active transaction in the executor, which must be mutable or replaceable during procedure execution.
-- **`PlSqlStatement::Commit` / `PlSqlStatement::Rollback`**: New AST nodes in the PL/SQL parser.
+- **`PlSqlStatement::Commit` / `PlSqlStatement::Rollback` / `PlSqlStatement::BeginTransaction`**: New AST nodes in the PL/SQL parser.
 
 ## Success Criteria *(mandatory)*
 
@@ -88,5 +89,5 @@ As a database developer, I want to use standard SQL transaction commands (`COMMI
 
 ## Assumptions
 
-- We assume that `BEGIN` within a procedure is a no-op if a transaction is already implicitly active (as is typical in Postgres).
+- We assume that `BEGIN` within a procedure is a no-op if a transaction is already implicitly active (as is typical in Postgres). This has been explicitly codified in FR-001.
 - It is assumed the storage engine (`storage/`) already has robust MVCC `commit()` and `rollback()` methods that can be safely invoked mid-execution.
