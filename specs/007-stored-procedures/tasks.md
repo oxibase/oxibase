@@ -69,13 +69,13 @@ This feature will be implemented incrementally, starting with core AST and catal
 *Goal: As a database user, I want to execute standard database queries natively inside a PL/SQL block.*
 *Independent Test*: Verify that an `INSERT` statement embedded in a PL/SQL procedure successfully modifies the database.
 
-- [ ] T033 [US4] Define `SqlRunner` trait (or similar injection mechanism) to pass database execution context to `ScriptingBackend::execute_procedure`
-- [ ] T034 [US4] Update `execute_call` in `src/executor/query.rs` to pass the `Executor` instance as the `SqlRunner` to the backend
-- [ ] T035 [US4] Add `PlSqlStatement::Sql(Statement)` variant to `src/functions/plsql/ast.rs`
-- [ ] T036 [US4] Update `PlSqlParser` to fallback to the standard SQL parser for unrecognized tokens, parsing them as `Statement`
-- [ ] T037 [US4] Update `PlSqlInterpreter` to invoke the `SqlRunner` bridge when encountering `PlSqlStatement::Sql`
-- [ ] T038 [US4] Implement variable substitution (injecting PL/SQL variables into the standard SQL AST before execution)
-- [ ] T039 [US4] Write integration test demonstrating `INSERT` and `UPDATE` execution within a PL/SQL procedure
+- [x] T033 [US4] Define `SqlRunner` trait (or similar injection mechanism) to pass database execution context to `ScriptingBackend::execute_procedure`
+- [x] T034 [US4] Update `execute_call` in `src/executor/query.rs` to pass the `Executor` instance as the `SqlRunner` to the backend
+- [x] T035 [US4] Add `PlSqlStatement::Sql(Statement)` variant to `src/functions/plsql/ast.rs`
+- [x] T036 [US4] Update `PlSqlParser` to fallback to the standard SQL parser for unrecognized tokens, parsing them as `Statement`
+- [x] T037 [US4] Update `PlSqlInterpreter` to invoke the `SqlRunner` bridge when encountering `PlSqlStatement::Sql`
+- [x] T038 [US4] Implement variable substitution (injecting PL/SQL variables into the standard SQL AST before execution)
+- [x] T039 [US4] Write integration test demonstrating `INSERT` and `UPDATE` execution within a PL/SQL procedure
 
 ## Phase 7: Additional Scripting Backends (JS & Python) [US5] (JS & Python) [US4]
 

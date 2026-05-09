@@ -90,7 +90,7 @@ impl<'a> PlSqlInterpreter<'a> {
 
     fn substitute_variables_in_statement(&self, stmt: &mut crate::parser::ast::Statement, env: &Environment) {
         // Very basic MVP substitution for INSERT statements to satisfy US4
-        println!("Substituting variables in statement: {}", stmt);
+        
         if let crate::parser::ast::Statement::Insert(insert) = stmt {
             if let Some(_select) = &mut insert.select {
                 // If the insert uses a select, we'd need to walk it too
@@ -102,7 +102,7 @@ impl<'a> PlSqlInterpreter<'a> {
                     }
                 }
             }
-            println!("Substituted insert: {}", insert);
+            
         } else if let crate::parser::ast::Statement::Update(update) = stmt {
             for (_, expr) in &mut update.updates {
                 self.substitute_variables_in_expr(expr, env);
