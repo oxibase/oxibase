@@ -58,6 +58,36 @@ END;
 ';
 ```
 
+
+## Executing SQL Commands
+
+One of the most powerful features of native PL/SQL is the ability to run standard database queries directly inside the procedural block. The Oxibase PL/SQL interpreter natively bridges these commands to the core SQL execution engine.
+
+Any parameters or local variables defined in your PL/SQL environment can be seamlessly used within your SQL statements.
+
+```sql
+CREATE TABLE audit_logs (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    message TEXT
+);
+
+CREATE PROCEDURE log_event(msg TEXT) 
+LANGUAGE plsql 
+AS '
+BEGIN 
+    -- Execute an INSERT using the PL/SQL variable `msg`
+    INSERT INTO audit_logs (message) VALUES (msg); 
+END; 
+';
+```
+
+Call the procedure:
+```sql
+CALL log_event('User signed in successfully');
+```
+
+If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
+
 ## Supported Syntax Overview
 
 The PL/SQL native dialect currently supports:
@@ -65,5 +95,6 @@ The PL/SQL native dialect currently supports:
 - **Conditionals**: `IF condition THEN ... ELSE ... END IF;`
 - **Assignments**: `variable := expression;`
 - **Return**: `RETURN;` (to exit the block early)
+- **SQL Execution**: Standard DML statements (`INSERT`, `UPDATE`, `DELETE`, etc.) natively bridge to the database.
 
 _Note: The PL/SQL dialect is continuously evolving. Features like looping (`WHILE`, `FOR`), explicit `DECLARE` blocks, and native transaction control (`COMMIT`, `ROLLBACK`) are slated for upcoming releases._
