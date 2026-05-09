@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@ pub mod expression;
 pub mod functions;
 pub mod index;
 pub mod mvcc;
+pub mod procedures;
 pub mod statistics;
 pub mod traits;
 
@@ -83,3 +85,4 @@ pub use statistics::{
 
 // Re-export Functions types
 pub use functions::{is_functions_table, StoredFunction, CREATE_FUNCTIONS_SQL, SYS_FUNCTIONS};
+pub use procedures::{is_procedures_table, StoredProcedure, CREATE_PROCEDURES_SQL, SYS_PROCEDURES};

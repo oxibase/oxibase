@@ -45,6 +45,7 @@ impl Parser {
                 "TRUNCATE" => self.parse_truncate_statement().map(Statement::Truncate),
                 "CREATE" => self.parse_create_statement(),
                 "DROP" => self.parse_drop_statement(),
+                "CALL" => self.parse_call_statement().map(Statement::Call),
                 "ALTER" => self.parse_alter_statement().map(Statement::AlterTable),
                 "USE" => self.parse_use_statement().map(Statement::UseSchema),
                 "BEGIN" => self.parse_begin_statement().map(Statement::Begin),
@@ -1272,6 +1273,30 @@ impl Parser {
 
     /// Parse a CREATE statement
     fn parse_create_statement(&mut self) -> Option<Statement> {
+        let or_replace = if self.peek_token_is_keyword("OR") {
+            self.next_token();
+            if self.expect_keyword("REPLACE") {
+                true
+            } else {
+                return None;
+            }
+        } else {
+            false
+        };
+
+        if self.peek_token_is_keyword("PROCEDURE") {
+            self.next_token();
+            return self
+                .parse_create_procedure_statement(or_replace)
+                .map(Statement::CreateProcedure);
+        } else if or_replace {
+            self.add_error(format!(
+                "OR REPLACE is only supported for PROCEDURE at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+
         if self.peek_token_is_keyword("TABLE") {
             self.next_token();
             self.parse_create_table_statement()
@@ -1308,7 +1333,7 @@ impl Parser {
                 .map(Statement::CreateFunction)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after CREATE at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, or PROCEDURE after CREATE at {}", 
                 self.cur_token.position
             ));
             None
@@ -2103,6 +2128,143 @@ impl Parser {
     }
 
     /// Parse a DROP statement
+    fn parse_create_procedure_statement(
+        &mut self,
+        or_replace: bool,
+    ) -> Option<CreateProcedureStatement> {
+        let token = self.cur_token.clone();
+
+        // Procedure name
+        let procedure_name = self.parse_function_name()?;
+
+        // Parameters
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+            self.add_error(format!("expected '(' at {}", self.cur_token.position));
+            return None;
+        }
+
+        let mut parameters = Vec::new();
+        if !self.peek_token_is_punctuator(")") {
+            loop {
+                // Parse optional IN/OUT/INOUT mode
+                let mut mode = ParameterMode::In;
+
+                // Need to peek since parameter name could be "IN" or "OUT" if not reserved,
+                // but usually these are keywords if used as mode
+                if self.peek_token_is_keyword("INOUT") {
+                    self.next_token();
+                    mode = ParameterMode::InOut;
+                } else if self.peek_token_is_keyword("OUT") {
+                    self.next_token();
+                    mode = ParameterMode::Out;
+                } else if self.peek_token_is_keyword("IN") {
+                    self.next_token();
+                    mode = ParameterMode::In;
+                }
+
+                if !self.expect_peek(TokenType::Identifier) {
+                    return None;
+                }
+                let param_name =
+                    Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+
+                let param_type = self.parse_data_type()?;
+                parameters.push(ProcedureParameter {
+                    mode,
+                    name: param_name,
+                    data_type: param_type,
+                });
+
+                if self.peek_token_is_punctuator(",") {
+                    self.next_token();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            return None;
+        }
+
+        if !self.expect_keyword("LANGUAGE") {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::Identifier) && !self.expect_peek(TokenType::Keyword) {
+            self.add_error(format!(
+                "expected language name at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+        let language = self.cur_token.literal.clone();
+
+        if !self.expect_keyword("AS") {
+            return None;
+        }
+
+        // The body should be enclosed in $$ $$ or single quotes
+        if !self.expect_peek(TokenType::String) {
+            self.add_error(format!(
+                "expected procedure body string at {}",
+                self.cur_token.position
+            ));
+            return None;
+        }
+        let body = self.cur_token.literal.trim_matches('\'').to_string();
+
+        Some(CreateProcedureStatement {
+            token,
+            procedure_name,
+            parameters,
+            language,
+            body,
+            or_replace,
+        })
+    }
+
+    fn parse_call_statement(&mut self) -> Option<CallStatement> {
+        let token = self.cur_token.clone();
+
+        // Procedure name
+        let procedure_name = self.parse_function_name()?;
+
+        // Arguments
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
+            self.add_error(format!("expected '(' at {}", self.cur_token.position));
+            return None;
+        }
+
+        let mut arguments = Vec::new();
+        if !self.peek_token_is_punctuator(")") {
+            loop {
+                self.next_token();
+                if let Some(expr) = self.parse_expression(Precedence::Lowest) {
+                    arguments.push(expr);
+                } else {
+                    return None;
+                }
+
+                if self.peek_token_is_punctuator(",") {
+                    self.next_token();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            return None;
+        }
+
+        Some(CallStatement {
+            token,
+            procedure_name,
+            arguments,
+        })
+    }
+
     fn parse_drop_statement(&mut self) -> Option<Statement> {
         if self.peek_token_is_keyword("TABLE") {
             self.next_token();

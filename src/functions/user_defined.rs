@@ -163,6 +163,15 @@ impl UserDefinedFunctionRegistry {
         self.backend_registry.is_language_supported(language)
     }
 
+    /// Get a scripting backend for the given language
+    pub fn get_backend(
+        &self,
+        language: &str,
+    ) -> Option<std::sync::Arc<dyn crate::functions::backends::ScriptingBackend + Send + Sync>>
+    {
+        self.backend_registry.get_backend(language).cloned()
+    }
+
     /// Unregister a user-defined function
     pub fn unregister(&mut self, name: &str) -> Result<()> {
         let key = name.to_uppercase();

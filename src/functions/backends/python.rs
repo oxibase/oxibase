@@ -23,6 +23,23 @@ use rustpython_vm::{
     VirtualMachine,
 };
 
+#[cfg(feature = "python")]
+#[rustpython_vm::pymodule]
+mod oxibase_py_module {
+    use rustpython_vm::{
+        builtins::{PyIntRef, PyStrRef},
+        PyResult, VirtualMachine,
+    };
+
+    #[pyfunction]
+    fn execute(sql: PyStrRef, vm: &VirtualMachine) -> PyResult<PyIntRef> {
+        match crate::functions::backends::execute_sql_query(sql.as_str()) {
+            Ok(res) => Ok(vm.ctx.new_int(res.rows_affected())),
+            Err(e) => Err(vm.new_runtime_error(e.to_string())),
+        }
+    }
+}
+
 /// Python scripting backend
 #[cfg(feature = "python")]
 pub struct PythonBackend {
@@ -192,6 +209,80 @@ impl ScriptingBackend for PythonBackend {
                 }
             })
             .map_err(|e| Error::internal(format!("Interpreter error: {:?}", e)))
+    }
+
+    fn execute_procedure(
+        &self,
+        code: &str,
+        args: &mut [Value],
+        param_names: &[&str],
+        _modes: &[&str],
+        _runner: Option<&dyn crate::functions::backends::SqlRunner>,
+    ) -> Result<()> {
+        let interpreter = Interpreter::with_init(Settings::default(), |vm| {
+            vm.add_native_module(
+                "oxibase".to_owned(),
+                Box::new(oxibase_py_module::make_module),
+            );
+        });
+
+        interpreter
+            .enter(|vm| {
+                let scope = vm.new_scope_with_builtins();
+
+                for (i, arg) in args.iter().enumerate() {
+                    let param_name = param_names[i];
+                    let py_value = self.convert_oxibase_to_python(arg, vm)?;
+                    scope
+                        .globals
+                        .set_item(param_name, py_value, vm)
+                        .map_err(|e| {
+                            Error::internal(format!(
+                                "Failed to set parameter {}: {:?}",
+                                param_name, e
+                            ))
+                        })?;
+                }
+
+                match vm.compile(code, Mode::Exec, "<procedure>".to_string()) {
+                    Ok(code_obj) => {
+                        match vm.run_code_obj(code_obj, scope.clone()) {
+                            Ok(_) => {
+                                // Extract updated variables
+                                for (i, arg) in args.iter_mut().enumerate() {
+                                    let param_name = param_names[i];
+                                    if let Ok(Some(py_val)) =
+                                        scope.globals.get_item_opt(param_name, vm)
+                                    {
+                                        if let Ok(new_val) =
+                                            self.convert_python_to_oxibase(&py_val, vm)
+                                        {
+                                            *arg = new_val;
+                                        }
+                                    }
+                                }
+                                Ok(())
+                            }
+                            Err(py_err) => {
+                                let error_msg = self.format_python_error(py_err, vm);
+                                Err(Error::internal(format!(
+                                    "Python execution error: {}",
+                                    error_msg
+                                )))
+                            }
+                        }
+                    }
+                    Err(py_err) => {
+                        let error_msg = py_err.to_string();
+                        Err(Error::internal(format!(
+                            "Python compilation error: {}",
+                            error_msg
+                        )))
+                    }
+                }
+            })
+            .map_err(|e| Error::internal(format!("Interpreter error: {:?}", e)))?;
+        Ok(())
     }
 
     fn validate_code(&self, code: &str) -> Result<()> {

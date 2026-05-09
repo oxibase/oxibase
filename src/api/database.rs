@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +50,6 @@ use std::sync::{Arc, Mutex, RwLock};
 use crate::core::{Error, IsolationLevel, Result, Value};
 use crate::executor::context::ExecutionContextBuilder;
 use crate::executor::Executor;
-use crate::functions::FunctionRegistry;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::Engine;
 use crate::storage::{Config, SyncMode};
@@ -214,8 +214,9 @@ impl Database {
         engine.open_engine()?;
         let engine = Arc::new(engine);
 
-        let function_registry = Arc::new(FunctionRegistry::new());
-        let executor = Executor::with_function_registry(Arc::clone(&engine), function_registry);
+        let function_registry = crate::functions::registry::global_registry();
+        let executor =
+            Executor::with_function_registry(Arc::clone(&engine), Arc::clone(function_registry));
 
         let inner = Arc::new(DatabaseInner {
             engine,

@@ -153,6 +153,88 @@ fn partition_where_for_join(
 
 impl Executor {
     /// Execute a SELECT statement
+    pub(crate) fn execute_call(
+        &self,
+        stmt: &crate::parser::ast::CallStatement,
+        ctx: &crate::executor::context::ExecutionContext,
+    ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let procedure_name_upper = stmt.procedure_name.function().to_uppercase();
+
+        let procedure = self
+            .function_registry
+            .get_procedure(&procedure_name_upper)
+            .ok_or(crate::core::Error::FunctionNotFound(procedure_name_upper))?;
+
+        let backend = self
+            .function_registry
+            .get_backend(&procedure.language)
+            .ok_or_else(|| {
+                crate::core::Error::internal(format!(
+                    "Backend not found for language: {}",
+                    procedure.language
+                ))
+            })?;
+
+        // Check argument count
+        if stmt.arguments.len() != procedure.parameters.len() {
+            return Err(crate::core::Error::internal(format!(
+                "Procedure {} expects {} arguments, got {}",
+                procedure.name,
+                procedure.parameters.len(),
+                stmt.arguments.len()
+            )));
+        }
+
+        let mut evaluated_args = Vec::new();
+        let mut param_names = Vec::new();
+        let mut modes = Vec::new();
+
+        for (i, expr) in stmt.arguments.iter().enumerate() {
+            let param = &procedure.parameters[i];
+
+            use crate::executor::expression::ExpressionEval;
+            let val = ExpressionEval::compile(expr, &[])?
+                .with_context(ctx)
+                .eval_slice(&[])?;
+
+            evaluated_args.push(val);
+            param_names.push(param.name.as_str());
+            modes.push(param.mode.as_str());
+        }
+
+        crate::functions::backends::with_sql_runner(
+            Some(self as &dyn crate::functions::backends::SqlRunner),
+            || {
+                backend.execute_procedure(
+                    &procedure.code,
+                    &mut evaluated_args,
+                    &param_names,
+                    &modes,
+                    Some(self),
+                )
+            },
+        )?;
+
+        let mut out_values = Vec::new();
+        let mut out_col_names = Vec::new();
+
+        for (i, param) in procedure.parameters.iter().enumerate() {
+            if param.mode.eq_ignore_ascii_case("OUT") || param.mode.eq_ignore_ascii_case("INOUT") {
+                out_values.push(evaluated_args[i].clone());
+                out_col_names.push(param.name.clone());
+            }
+        }
+
+        println!("Finished executing call. OUT values: {:?}", out_values);
+        if out_values.is_empty() {
+            Ok(Box::new(crate::storage::traits::EmptyResult::new()))
+        } else {
+            let mut mem_result = crate::storage::traits::MemoryResult::new(out_col_names);
+            mem_result.add_row(crate::core::Row::from_values(out_values));
+            Ok(Box::new(mem_result))
+        }
+    }
+
     pub(crate) fn execute_select(
         &self,
         stmt: &SelectStatement,
