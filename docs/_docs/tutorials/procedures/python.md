@@ -1,8 +1,9 @@
 ---
 title: "Stored Procedures in Python"
-permalink: /docs/tutorials/procedures/python/
-excerpt: "How to write stored procedures using the Python (RustPython) engine."
-layout: doc
+layout: default
+parent: "Stored Procedures"
+has_children: true
+nav_order: 4
 ---
 
 # Stored Procedures in Python

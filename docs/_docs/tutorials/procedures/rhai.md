@@ -1,8 +1,9 @@
 ---
 title: "Stored Procedures in Rhai"
-permalink: /docs/tutorials/procedures/rhai/
-excerpt: "How to write stored procedures using the Rhai scripting language."
-layout: doc
+layout: default
+parent: "Stored Procedures"
+has_children: true
+nav_order: 2
 ---
 
 # Stored Procedures in Rhai

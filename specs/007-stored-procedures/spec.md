@@ -12,6 +12,8 @@
 - Q: I would like to have SQL Procedural Language too, add it. How complex? -> A: Full PL/SQL clone.
 - Q: Which execution strategy for debugging? -> A: Dedicated PL Interpreter. A separate interpreter makes it easier to implement a user-facing debugger (DAP server) later.
 - Q: Shouldn't the table `_sys_procedures` be `system.procedures`? -> A: Yes. The procedures catalog should be exposed in the new `system` schema as `system.procedures`.
+- Q: I was expecting in a procedure to be able to perform select/insert/updates. Is this the case? -> A: Yes. The PL/SQL dialect MUST support executing standard SQL statements (INSERT, UPDATE, DELETE, etc.) directly within the procedural blocks. The PL/SQL interpreter must bridge these calls back to the main database executor.
+
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -60,6 +62,20 @@ As a database user, I want to write procedures using a native, standard PL/SQL-l
 2. **Given** the procedure exists, **When** I execute `CALL check_val(5, false);`, **Then** the `CALL` returns `is_positive = true`.
 
 ---
+
+### User Story 4 - Execute SQL inside PL/SQL (Priority: P1)
+
+As a database user, I want to execute standard database queries (INSERT, UPDATE, DELETE) natively inside a PL/SQL block, so that I can modify data transactionally alongside my procedural logic.
+
+**Why this priority**: Without the ability to query or modify data, the procedural language is essentially a glorified calculator. Database access is the entire point of a stored procedure.
+
+**Independent Test**: Can be tested via a SQL integration test that creates a table, then defines a PL/SQL procedure that runs an `INSERT` into that table, and calls the procedure.
+
+**Acceptance Scenarios**:
+
+1. **Given** a table `logs` exists, **When** I execute `CREATE PROCEDURE log_event(msg TEXT) LANGUAGE pl/sql AS $$ BEGIN INSERT INTO logs(message) VALUES (msg); END; $$;`, **Then** the procedure is stored.
+2. **Given** the procedure exists, **When** I execute `CALL log_event('Hello');`, **Then** the row is inserted into the `logs` table.
+
 ### Edge Cases
 
 - What happens if the `LANGUAGE` specified is not supported or not enabled in the current build?
@@ -82,6 +98,7 @@ As a database user, I want to write procedures using a native, standard PL/SQL-l
 
 - **FR-008**: The system MUST support `LANGUAGE sql`, implementing a dedicated parser and interpreter for a PL/SQL-like procedural language (supporting DECLARE, BEGIN/END, IF/ELSE, loops).
 - **FR-010**: The execution engine MUST validate the syntax of the procedure source code using the specified language's parser during the execution of the CREATE PROCEDURE statement. If the syntax is invalid, the creation MUST be aborted and an error returned to the user.
+- **FR-011**: The PL/SQL interpreter MUST be able to delegate unrecognized statements back to the main SQL parser, and the backend MUST bridge execution of those statements back to the primary database `Executor`.
 - **FR-009**: The PL/SQL interpreter MUST be designed to maintain execution state (call stack, local variables, line numbers) in a way that allows a future Debug Adapter Protocol (DAP) server to attach and step through the code.
 
 ### Key Entities

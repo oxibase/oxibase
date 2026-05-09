@@ -1,8 +1,9 @@
 ---
 title: "Stored Procedures"
-permalink: /docs/tutorials/procedures/
-excerpt: "Learn how to encapsulate and execute business logic within Oxibase using Stored Procedures."
-layout: doc
+layout: default
+parent: Tutorials
+has_children: true
+nav_order: 3
 ---
 
 # Stored Procedures

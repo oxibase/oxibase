@@ -1,8 +1,10 @@
 ---
 title: "Stored Procedures in JavaScript"
-permalink: /docs/tutorials/procedures/javascript/
 excerpt: "How to write stored procedures using the JavaScript (Boa) engine."
-layout: doc
+layout: default
+parent: "Stored Procedures"
+has_children: true
+nav_order: 3
 ---
 
 # Stored Procedures in JavaScript

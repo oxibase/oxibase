@@ -1,8 +1,9 @@
 ---
 title: "Stored Procedures in PL/SQL"
-permalink: /docs/tutorials/procedures/plsql/
-excerpt: "How to write stored procedures using Oxibase's native PL/SQL dialect."
-layout: doc
+layout: default
+parent: "Stored Procedures"
+has_children: true
+nav_order: 1
 ---
 
 # Stored Procedures in PL/SQL
