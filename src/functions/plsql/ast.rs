@@ -13,31 +13,53 @@
 // limitations under the License.
 
 use crate::parser::ast::Expression;
+use crate::parser::token::Token;
 
 /// A PL/SQL statement
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlSqlStatement {
+    /// DECLARE block
+    Declare(DeclareStatement),
     /// BEGIN ... END block
     Block(BlockStatement),
     /// Variable assignment: var := expr;
     Assignment(AssignmentStatement),
     /// IF ... THEN ... ELSE ... END IF;
     If(IfStatement),
+    /// WHILE ... LOOP ... END LOOP;
+    While(WhileStatement),
     /// Standard SQL Statement (INSERT, UPDATE, DELETE, etc)
     Sql(Box<crate::parser::ast::Statement>),
     /// RETURN statement
-    Return,
+    Return(Token),
+}
+
+/// A variable declaration
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariableDeclaration {
+    pub name: String,
+    pub data_type: String,
+    pub default_value: Option<Expression>,
+}
+
+/// A declare statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeclareStatement {
+    pub token: Token,
+    pub declarations: Vec<VariableDeclaration>,
 }
 
 /// A block of statements
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockStatement {
+    pub token: Token,
     pub statements: Vec<PlSqlStatement>,
 }
 
 /// Variable assignment
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssignmentStatement {
+    pub token: Token,
     pub variable: String,
     pub expression: Expression,
 }
@@ -45,7 +67,16 @@ pub struct AssignmentStatement {
 /// IF statement
 #[derive(Debug, Clone, PartialEq)]
 pub struct IfStatement {
+    pub token: Token,
     pub condition: Expression,
     pub then_block: Vec<PlSqlStatement>,
     pub else_block: Option<Vec<PlSqlStatement>>,
+}
+
+/// WHILE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhileStatement {
+    pub token: Token,
+    pub condition: Expression,
+    pub block: Vec<PlSqlStatement>,
 }

@@ -53,6 +53,7 @@ impl<'a> PlSqlInterpreter<'a> {
         match expr {
             Expression::BooleanLiteral(b) => Ok(Value::Boolean(b.value)),
             Expression::IntegerLiteral(i) => Ok(Value::Integer(i.value)),
+            Expression::StringLiteral(s) => Ok(Value::Text(std::sync::Arc::from(s.value.clone()))),
             Expression::Identifier(id) => {
                 if let Some(val) = env.get(&id.value) {
                     Ok(val.clone())
@@ -63,11 +64,31 @@ impl<'a> PlSqlInterpreter<'a> {
             Expression::Infix(comp) => {
                 let left = self.eval_expr(&comp.left, env)?;
                 let right = self.eval_expr(&comp.right, env)?;
-                println!("Comparing {:?} {} {:?}", left, comp.operator, right);
                 match comp.operator.as_str() {
+                    "<" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Boolean(l < r))
+                        } else {
+                            Ok(Value::Boolean(false))
+                        }
+                    }
+                    "<=" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Boolean(l <= r))
+                        } else {
+                            Ok(Value::Boolean(false))
+                        }
+                    }
                     ">" => {
                         if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
                             Ok(Value::Boolean(l > r))
+                        } else {
+                            Ok(Value::Boolean(false))
+                        }
+                    }
+                    ">=" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Boolean(l >= r))
                         } else {
                             Ok(Value::Boolean(false))
                         }
@@ -77,6 +98,40 @@ impl<'a> PlSqlInterpreter<'a> {
                             Ok(Value::Boolean(l == r))
                         } else {
                             Ok(Value::Boolean(false))
+                        }
+                    }
+                    "!=" | "<>" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Boolean(l != r))
+                        } else {
+                            Ok(Value::Boolean(false))
+                        }
+                    }
+                    "+" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Integer(l + r))
+                        } else {
+                            Err(Error::internal(
+                                "Addition supported only for integers in MVP",
+                            ))
+                        }
+                    }
+                    "-" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Integer(l - r))
+                        } else {
+                            Err(Error::internal(
+                                "Subtraction supported only for integers in MVP",
+                            ))
+                        }
+                    }
+                    "*" => {
+                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
+                            Ok(Value::Integer(l * r))
+                        } else {
+                            Err(Error::internal(
+                                "Multiplication supported only for integers in MVP",
+                            ))
                         }
                     }
                     _ => Err(Error::internal(
@@ -96,28 +151,65 @@ impl<'a> PlSqlInterpreter<'a> {
         stmt: &mut crate::parser::ast::Statement,
         env: &Environment,
     ) {
-        // Very basic MVP substitution for INSERT statements to satisfy US4
-
-        if let crate::parser::ast::Statement::Insert(insert) = stmt {
-            if let Some(_select) = &mut insert.select {
-                // If the insert uses a select, we'd need to walk it too
-            } else {
-                // We're dealing with VALUES
-                for row in &mut insert.values {
-                    for expr in row {
-                        self.substitute_variables_in_expr(expr, env);
+        match stmt {
+            crate::parser::ast::Statement::Insert(insert) => {
+                if let Some(select) = &mut insert.select {
+                    self.substitute_variables_in_select(select, env);
+                } else {
+                    for row in &mut insert.values {
+                        for expr in row {
+                            self.substitute_variables_in_expr(expr, env);
+                        }
                     }
                 }
             }
-        } else if let crate::parser::ast::Statement::Update(update) = stmt {
-            for expr in update.updates.values_mut() {
-                self.substitute_variables_in_expr(expr, env);
+            crate::parser::ast::Statement::Update(update) => {
+                for expr in update.updates.values_mut() {
+                    self.substitute_variables_in_expr(expr, env);
+                }
+                if let Some(where_expr) = &mut update.where_clause {
+                    self.substitute_variables_in_expr(where_expr, env);
+                }
             }
-            if let Some(where_expr) = &mut update.where_clause {
-                self.substitute_variables_in_expr(where_expr, env);
+            crate::parser::ast::Statement::Delete(delete) => {
+                if let Some(where_expr) = &mut delete.where_clause {
+                    self.substitute_variables_in_expr(where_expr, env);
+                }
             }
+            crate::parser::ast::Statement::Select(select) => {
+                self.substitute_variables_in_select(select, env);
+            }
+            _ => {} // Other statements (DDL) typically don't have expressions with variables
         }
-        // Delete, Select, etc would follow similarly
+    }
+
+    fn substitute_variables_in_select(
+        &self,
+        select: &mut crate::parser::ast::SelectStatement,
+        env: &Environment,
+    ) {
+        // Substitute in SELECT expressions
+        for col in &mut select.columns {
+            self.substitute_variables_in_expr(col, env);
+        }
+
+        // Substitute in WHERE clause
+        if let Some(where_clause) = &mut select.where_clause {
+            self.substitute_variables_in_expr(where_clause, env);
+        }
+
+        // Substitute in HAVING clause
+        if let Some(having_clause) = &mut select.having {
+            self.substitute_variables_in_expr(having_clause, env);
+        }
+
+        // LIMIT and OFFSET
+        if let Some(limit) = &mut select.limit {
+            self.substitute_variables_in_expr(limit, env);
+        }
+        if let Some(offset) = &mut select.offset {
+            self.substitute_variables_in_expr(offset, env);
+        }
     }
 
     fn substitute_variables_in_expr(
@@ -126,62 +218,6 @@ impl<'a> PlSqlInterpreter<'a> {
         env: &Environment,
     ) {
         use crate::parser::ast::Expression;
-
-        let mut replace_with = None;
-        if let Expression::Identifier(id) = expr {
-            if let Some(val) = env.get(&id.value) {
-                // Found a match! We need to replace the identifier with a literal
-                match val {
-                    Value::Integer(i) => {
-                        replace_with = Some(Expression::IntegerLiteral(
-                            crate::parser::ast::IntegerLiteral {
-                                token: crate::parser::token::Token::new(
-                                    crate::parser::token::TokenType::Integer,
-                                    i.to_string(),
-                                    crate::parser::token::Position::default(),
-                                ),
-                                value: *i,
-                            },
-                        ));
-                    }
-                    Value::Text(s) => {
-                        replace_with = Some(Expression::StringLiteral(
-                            crate::parser::ast::StringLiteral {
-                                token: crate::parser::token::Token::new(
-                                    crate::parser::token::TokenType::String,
-                                    format!("'{}'", s),
-                                    crate::parser::token::Position::default(),
-                                ),
-                                value: s.to_string(),
-                                type_hint: None,
-                            },
-                        ));
-                    }
-                    Value::Boolean(b) => {
-                        replace_with = Some(Expression::BooleanLiteral(
-                            crate::parser::ast::BooleanLiteral {
-                                token: crate::parser::token::Token::new(
-                                    crate::parser::token::TokenType::Keyword,
-                                    if *b {
-                                        "TRUE".to_string()
-                                    } else {
-                                        "FALSE".to_string()
-                                    },
-                                    crate::parser::token::Position::default(),
-                                ),
-                                value: *b,
-                            },
-                        ));
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        if let Some(new_expr) = replace_with {
-            *expr = new_expr;
-            return;
-        }
 
         // Recursively substitute
         match expr {
@@ -197,33 +233,105 @@ impl<'a> PlSqlInterpreter<'a> {
                     self.substitute_variables_in_expr(arg, env);
                 }
             }
+            Expression::Identifier(id) => {
+                if let Some(val) = env.get(&id.value) {
+                    // Found a match! We need to replace the identifier with a literal
+                    match val {
+                        Value::Integer(i) => {
+                            *expr =
+                                Expression::IntegerLiteral(crate::parser::ast::IntegerLiteral {
+                                    token: crate::parser::token::Token::new(
+                                        crate::parser::token::TokenType::Integer,
+                                        i.to_string(),
+                                        crate::parser::token::Position::default(),
+                                    ),
+                                    value: *i,
+                                });
+                        }
+                        Value::Text(s) => {
+                            *expr = Expression::StringLiteral(crate::parser::ast::StringLiteral {
+                                token: crate::parser::token::Token::new(
+                                    crate::parser::token::TokenType::String,
+                                    format!("'{}'", s),
+                                    crate::parser::token::Position::default(),
+                                ),
+                                value: s.to_string(),
+                                type_hint: None,
+                            });
+                        }
+                        Value::Boolean(b) => {
+                            *expr =
+                                Expression::BooleanLiteral(crate::parser::ast::BooleanLiteral {
+                                    token: crate::parser::token::Token::new(
+                                        crate::parser::token::TokenType::Keyword,
+                                        if *b {
+                                            "TRUE".to_string()
+                                        } else {
+                                            "FALSE".to_string()
+                                        },
+                                        crate::parser::token::Position::default(),
+                                    ),
+                                    value: *b,
+                                });
+                        }
+                        _ => {}
+                    }
+                }
+            }
             // Add other nested expressions as needed
             _ => {}
         }
     }
 
-    /// Returns Ok(true) if a RETURN statement was hit, Ok(false) otherwise
     fn execute_statement(&self, stmt: &PlSqlStatement, env: &mut Environment) -> Result<bool> {
         match stmt {
+            PlSqlStatement::Declare(decl) => {
+                for v in &decl.declarations {
+                    let mut initial_val = Value::Null(crate::core::DataType::Null);
+                    if let Some(expr) = &v.default_value {
+                        initial_val = self.eval_expr(expr, env)?;
+                        println!("Declaring {} = {:?}", v.name, initial_val);
+                    } else {
+                        // Very basic default initialization based on type name
+                        let ty = v.data_type.to_uppercase();
+                        if ty.contains("INT") {
+                            initial_val = Value::Integer(0);
+                        } else if ty.contains("BOOL") {
+                            initial_val = Value::Boolean(false);
+                        } else if ty.contains("TEXT")
+                            || ty.contains("VARCHAR")
+                            || ty.contains("CHAR")
+                        {
+                            initial_val = Value::Text(std::sync::Arc::from(String::new()));
+                        }
+                    }
+                    if env.assign(&v.name, initial_val.clone()).is_err() {
+                        env.define_global(&v.name, initial_val);
+                    }
+                }
+                Ok(false)
+            }
             PlSqlStatement::Block(block) => {
-                self.execute(block, env)?;
+                // If it is an explicit inner block, push frame. If root block of procedure, we should probably not,
+                // but since assign updates outer frames, it is fine.
+                env.push_frame("block");
+                let res = self.execute(block, env);
+                env.pop_frame();
+                res?;
                 Ok(false)
             }
             PlSqlStatement::Assignment(assign) => {
                 let val = self.eval_expr(&assign.expression, env)?;
-                println!("Assigning {} = {:?}", assign.variable, val);
-                // In PL/SQL, variables are case-insensitive. We should just insert/update them.
-                env.define(&assign.variable, val);
-                println!(
-                    "Variable {} now has value {:?}",
-                    assign.variable,
-                    env.get(&assign.variable)
-                );
+                println!("Evaluating assign: {} = {:?}", assign.variable, val);
+                // Variables bound from CALL are actually defined globally in the env by backend.
+                // Assignment updates them correctly. If not found, fall back to current frame.
+                if env.assign(&assign.variable, val.clone()).is_err() {
+                    env.define(&assign.variable, val);
+                }
                 Ok(false)
             }
             PlSqlStatement::If(if_stmt) => {
                 let condition_val = self.eval_expr(&if_stmt.condition, env)?;
-                println!("Condition evaluated to: {:?}", condition_val);
 
                 let is_true = match condition_val {
                     Value::Boolean(b) => b,
@@ -231,32 +339,58 @@ impl<'a> PlSqlInterpreter<'a> {
                 };
 
                 if is_true {
+                    env.push_frame("if_then");
                     for stmt in &if_stmt.then_block {
                         if self.execute_statement(stmt, env)? {
+                            env.pop_frame();
                             return Ok(true);
                         }
                     }
+                    env.pop_frame();
                 } else if let Some(else_block) = &if_stmt.else_block {
+                    env.push_frame("if_else");
                     for stmt in else_block {
                         if self.execute_statement(stmt, env)? {
+                            env.pop_frame();
                             return Ok(true);
                         }
                     }
+                    env.pop_frame();
                 }
 
                 Ok(false)
             }
-            PlSqlStatement::Sql(box_stmt) => {
-                println!("Executing SQL statement: {}", box_stmt);
-                if let Some(runner) = self.runner {
-                    // Inject variables before execution
-                    // A real implementation would parse the AST, substitute identifiers matching variables
-                    // For this MVP we just execute it directly (which works if the query doesn't depend on vars)
+            PlSqlStatement::While(while_stmt) => {
+                env.push_frame("while");
+                loop {
+                    let condition_val = self.eval_expr(&while_stmt.condition, env)?;
+                    let is_true = match condition_val {
+                        Value::Boolean(b) => b,
+                        _ => false,
+                    };
 
-                    // Implement variable substitution (injecting PL/SQL variables into the standard SQL AST before execution)
+                    if !is_true {
+                        break;
+                    }
+
+                    for stmt in &while_stmt.block {
+                        if self.execute_statement(stmt, env)? {
+                            env.pop_frame();
+                            return Ok(true);
+                        }
+                    }
+                }
+                env.pop_frame();
+                Ok(false)
+            }
+            PlSqlStatement::Sql(box_stmt) => {
+                println!("Executing SQL statement in plsql: {:?}", box_stmt);
+                if let Some(runner) = self.runner {
                     let mut modified_stmt = *box_stmt.clone();
                     self.substitute_variables_in_statement(&mut modified_stmt, env);
 
+                    // Note: for queries that modify data, we should also track ROW_COUNT,
+                    // but for now we'll just execute it.
                     runner.execute_ast(&modified_stmt)?;
                     Ok(false)
                 } else {
@@ -265,7 +399,7 @@ impl<'a> PlSqlInterpreter<'a> {
                     ))
                 }
             }
-            PlSqlStatement::Return => Ok(true),
+            PlSqlStatement::Return(_) => Ok(true),
         }
     }
 }

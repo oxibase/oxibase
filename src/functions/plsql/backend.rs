@@ -65,9 +65,9 @@ impl ScriptingBackend for PlSqlBackend {
 
         let mut env = Environment::new();
 
-        // Bind arguments
+        // Bind arguments globally
         for (i, arg) in args.iter().enumerate() {
-            env.define(param_names[i], arg.clone());
+            env.define_global(param_names[i], arg.clone());
         }
 
         let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), _runner);
@@ -76,7 +76,6 @@ impl ScriptingBackend for PlSqlBackend {
         // Write back OUT/INOUT values
         for (i, arg) in args.iter_mut().enumerate() {
             if let Some(val) = env.get(param_names[i]) {
-                println!("Writing back {} = {:?}", param_names[i], val);
                 *arg = val.clone();
             } else {
                 println!(

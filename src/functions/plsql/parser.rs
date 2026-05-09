@@ -85,14 +85,8 @@ impl PlSqlParser {
         if self.cur_token.token_type == TokenType::Keyword
             && self.cur_token.literal.eq_ignore_ascii_case("DECLARE")
         {
-            // we would parse variable declarations here, but let's skip to BEGIN
-            while !(self.cur_token.token_type == TokenType::Keyword
-                && self.cur_token.literal.eq_ignore_ascii_case("BEGIN"))
-            {
-                if self.cur_token.token_type == TokenType::Eof {
-                    return Err(Error::parse("Unexpected EOF waiting for BEGIN"));
-                }
-                self.next_token();
+            if let Some(declare_stmt) = self.parse_declare_statement() {
+                statements.push(declare_stmt);
             }
         }
 
@@ -133,17 +127,163 @@ impl PlSqlParser {
             return Err(Error::parse(self.errors.join("\n")));
         }
 
-        Ok(BlockStatement { statements })
+        Ok(BlockStatement {
+            token: self.cur_token.clone(),
+            statements,
+        })
+    }
+
+    fn parse_declare_statement(&mut self) -> Option<PlSqlStatement> {
+        let token = self.cur_token.clone();
+        self.next_token(); // Move past DECLARE
+
+        let mut declarations = Vec::new();
+
+        while !(self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("BEGIN"))
+        {
+            if self.cur_token.token_type == TokenType::Eof {
+                self.errors
+                    .push("Unexpected EOF in DECLARE block".to_string());
+                return None;
+            }
+
+            if self.cur_token.token_type == TokenType::Identifier {
+                let name = self.cur_token.literal.clone();
+                self.next_token(); // Move to type
+
+                let data_type = self.cur_token.literal.clone();
+                self.next_token(); // Move past type
+
+                let mut default_value = None;
+                if self.cur_token.literal == ":" && self.peek_token.literal == "=" {
+                    self.next_token(); // move to =
+                    self.next_token(); // move to expression start
+
+                    let mut sql_parser =
+                        crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+                    if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                        default_value = Some(expr);
+                    }
+
+                    // Advance our lexer until semicolon
+                    while self.cur_token.literal != ";"
+                        && self.cur_token.token_type != TokenType::Eof
+                    {
+                        self.next_token();
+                    }
+                } else if self.cur_token.literal == ":="
+                    || self.cur_token.literal.eq_ignore_ascii_case("DEFAULT")
+                {
+                    self.next_token(); // Move past := or DEFAULT
+
+                    let mut sql_parser =
+                        crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+                    if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                        default_value = Some(expr);
+                    }
+
+                    // Advance our lexer until semicolon
+                    while self.cur_token.literal != ";"
+                        && self.cur_token.token_type != TokenType::Eof
+                    {
+                        self.next_token();
+                    }
+                }
+
+                if self.cur_token.literal == ";" {
+                    self.next_token(); // Move past semicolon
+                }
+
+                declarations.push(super::ast::VariableDeclaration {
+                    name,
+                    data_type,
+                    default_value,
+                });
+            } else {
+                // If it is an empty line or something else, advance. But actually, could be a comment.
+                self.next_token(); // skip unrecognized token
+            }
+        }
+
+        Some(PlSqlStatement::Declare(super::ast::DeclareStatement {
+            token,
+            declarations,
+        }))
+    }
+
+    fn parse_while_statement(&mut self) -> Option<PlSqlStatement> {
+        let token = self.cur_token.clone();
+        self.next_token(); // Move past WHILE
+
+        // Collect tokens until LOOP for the condition
+        let mut sql_parser =
+            crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+        let condition = sql_parser.parse_expression(Precedence::Lowest)?;
+
+        // Advance our lexer to LOOP
+        while !(self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("LOOP"))
+        {
+            if self.cur_token.token_type == TokenType::Eof {
+                self.errors
+                    .push("Expected LOOP after WHILE condition".to_string());
+                return None;
+            }
+            self.next_token();
+        }
+
+        self.next_token(); // Move past LOOP
+
+        let mut block = Vec::new();
+
+        // Parse LOOP block
+        while !(self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("END"))
+        {
+            if self.cur_token.token_type == TokenType::Eof {
+                self.errors.push("Expected END LOOP".to_string());
+                return None;
+            }
+            if let Some(stmt) = self.parse_statement() {
+                block.push(stmt);
+            } else {
+                self.next_token();
+            }
+        }
+
+        // Expect END LOOP
+        if self.cur_token.token_type == TokenType::Keyword
+            && self.cur_token.literal.eq_ignore_ascii_case("END")
+            && self.expect_keyword("LOOP")
+        {
+            if self.peek_token.literal == ";" {
+                self.next_token(); // Consume semicolon
+            }
+            return Some(PlSqlStatement::While(super::ast::WhileStatement {
+                token,
+                condition,
+                block,
+            }));
+        }
+
+        None
     }
 
     fn parse_statement(&mut self) -> Option<PlSqlStatement> {
+        // Skip comments
+        while self.cur_token.token_type == TokenType::Comment {
+            self.next_token();
+        }
+
         match self.cur_token.token_type {
             TokenType::Keyword => {
                 let kw = self.cur_token.literal.to_uppercase();
                 match kw.as_str() {
                     "IF" => self.parse_if_statement(),
+                    "WHILE" => self.parse_while_statement(),
                     "RETURN" => {
-                        let stmt = PlSqlStatement::Return;
+                        let stmt = PlSqlStatement::Return(self.cur_token.clone());
                         if self.peek_token.literal == ";" {
                             self.next_token();
                         }
@@ -239,6 +379,7 @@ impl PlSqlParser {
         // Let's make sure sql_parser successfully parsed it.
         if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
             let stmt = PlSqlStatement::Assignment(AssignmentStatement {
+                token: self.cur_token.clone(),
                 variable,
                 expression: expr,
             });
@@ -333,6 +474,7 @@ impl PlSqlParser {
                 self.next_token(); // Consume semicolon
             }
             return Some(PlSqlStatement::If(IfStatement {
+                token: self.cur_token.clone(),
                 condition,
                 then_block,
                 else_block,

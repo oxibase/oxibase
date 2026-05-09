@@ -15,17 +15,36 @@
 use crate::core::Value;
 use std::collections::HashMap;
 
+/// A stack frame in the PL/SQL execution environment
+#[derive(Debug, Clone)]
+pub struct StackFrame {
+    /// Variables defined in this scope
+    variables: HashMap<String, Value>,
+    /// Name of the frame (e.g., block, loop, procedure name)
+    #[allow(dead_code)]
+    name: String,
+}
+
+impl StackFrame {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            variables: HashMap::new(),
+            name: name.into(),
+        }
+    }
+}
+
 /// The execution environment (stack frame) for PL/SQL execution
 #[derive(Debug)]
 pub struct Environment {
-    /// Local variables in the current scope
-    variables: HashMap<String, Value>,
+    /// Call stack frames for variables and scoping
+    frames: Vec<StackFrame>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Self {
-            variables: HashMap::new(),
+            frames: vec![StackFrame::new("global")],
         }
     }
 }
@@ -37,21 +56,61 @@ impl Default for Environment {
 }
 
 impl Environment {
-    pub fn define(&mut self, name: &str, value: Value) {
-        self.variables.insert(name.trim().to_lowercase(), value);
+    /// Push a new frame onto the stack
+    pub fn push_frame(&mut self, name: impl Into<String>) {
+        self.frames.push(StackFrame::new(name));
     }
 
-    pub fn assign(&mut self, name: &str, value: Value) -> Result<(), String> {
-        let key = name.trim().to_lowercase();
-        if let std::collections::hash_map::Entry::Occupied(mut e) = self.variables.entry(key) {
-            e.insert(value);
-            Ok(())
-        } else {
-            Err(format!("Undefined variable '{}'", name))
+    /// Pop the current frame off the stack
+    pub fn pop_frame(&mut self) {
+        if self.frames.len() > 1 {
+            self.frames.pop();
         }
     }
 
+    /// Define a variable in the current frame
+    pub fn define(&mut self, name: &str, value: Value) {
+        if let Some(frame) = self.frames.last_mut() {
+            frame.variables.insert(name.trim().to_lowercase(), value);
+        }
+    }
+
+    /// Define a variable in the root/global frame
+    pub fn define_global(&mut self, name: &str, value: Value) {
+        if let Some(frame) = self.frames.first_mut() {
+            frame.variables.insert(name.trim().to_lowercase(), value);
+        }
+    }
+
+    /// Assign a value to an existing variable, searching from inner to outer frames
+    pub fn assign(&mut self, name: &str, value: Value) -> Result<(), String> {
+        let key = name.trim().to_lowercase();
+
+        for frame in self.frames.iter_mut().rev() {
+            if let std::collections::hash_map::Entry::Occupied(mut e) =
+                frame.variables.entry(key.clone())
+            {
+                e.insert(value);
+                return Ok(());
+            }
+        }
+
+        Err(format!("Undefined variable '{}'", name))
+    }
+
+    /// Get a variable's value, searching from inner to outer frames
     pub fn get(&self, name: &str) -> Option<&Value> {
-        self.variables.get(&name.trim().to_lowercase())
+        let key = name.trim().to_lowercase();
+        for frame in self.frames.iter().rev() {
+            if let Some(val) = frame.variables.get(&key) {
+                return Some(val);
+            }
+        }
+        None
+    }
+
+    /// Exposed for future DAP support to inspect the stack
+    pub fn frames(&self) -> &[StackFrame] {
+        &self.frames
     }
 }

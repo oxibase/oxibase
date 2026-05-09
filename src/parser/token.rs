@@ -378,6 +378,9 @@ pub static KEYWORDS: &[&str] = &[
     "FETCH",
     "NEXT",
     "ONLY",
+    "WHILE",
+    "LOOP",
+    "DECLARE",
 ];
 
 /// Compiled keyword set for O(1) lookups
@@ -425,6 +428,7 @@ pub static OPERATORS: &[&str] = &[
     "@>", "<@", // JSON contains
     "?", "?|", "?&", // JSON exists
     "&", "|", "^", "~", "<<", ">>", // Bitwise operators
+    ":=", // PL/SQL assignment operator
 ];
 
 /// Compiled operator set for O(1) lookups

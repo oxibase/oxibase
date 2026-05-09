@@ -83,3 +83,78 @@ fn test_plsql_sql_execution() {
         "Hello from PL/SQL!"
     );
 }
+
+#[test]
+fn test_plsql_declare_and_while() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE factorial(n INT, OUT res INT) 
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            counter INT := n;
+            acc INT := 1;
+        BEGIN 
+            WHILE counter > 0 LOOP
+                acc := acc * counter;
+                counter := counter - 1;
+            END LOOP;
+            res := acc;
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL factorial(5, 0);";
+    let res = db.query(call_sql, ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    let mut results = res.unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_int64().unwrap(), 120);
+}
+
+#[test]
+fn test_plsql_sql_substitution() {
+    let db = Database::open_in_memory().unwrap();
+
+    db.execute(
+        "CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, active BOOLEAN);",
+        (),
+    )
+    .unwrap();
+
+    db.execute(
+        "INSERT INTO users (id, name, active) VALUES (1, 'Alice', true), (2, 'Bob', false), (3, 'Charlie', true);",
+        (),
+    ).unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE delete_inactive(OUT deleted_count INT) 
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            target_status BOOLEAN := false;
+        BEGIN 
+            -- The parser translates this into a standard SQL statement where target_status is substituted
+            DELETE FROM users WHERE active = target_status;
+            -- Setting out param to arbitrary value for test purposes since we do not have ROW_COUNT yet
+            deleted_count := 1;
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL delete_inactive(0);";
+    let res = db.query(call_sql, ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    let mut results = db.query("SELECT count(*) FROM users;", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    assert_eq!(row.get::<Value>(0).unwrap().as_int64().unwrap(), 2);
+}
