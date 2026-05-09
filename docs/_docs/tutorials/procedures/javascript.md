@@ -25,6 +25,36 @@ AS '
 ';
 ```
 
+## Executing SQL Commands
+
+JavaScript stored procedures have access to the main database engine via the global `oxibase` object. You can execute standard SQL queries natively.
+
+The `oxibase.execute(query)` function returns the number of rows affected by the statement.
+
+```sql
+CREATE TABLE audit_logs (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    message TEXT
+);
+
+CREATE PROCEDURE log_event_js(msg TEXT) 
+LANGUAGE js 
+AS '
+    // We can use JS template literals for string interpolation
+    let query = `INSERT INTO audit_logs (message) VALUES (''${msg}'')`;
+    
+    // Execute the query
+    let rows_affected = oxibase.execute(query);
+';
+```
+
+Call the procedure:
+```sql
+CALL log_event_js('Hello from JavaScript!');
+```
+
+If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
+
 Call the procedure:
 ```sql
 CALL multiply_js(5, 4, 0);

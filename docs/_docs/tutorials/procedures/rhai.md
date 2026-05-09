@@ -28,6 +28,40 @@ AS '
 ';
 ```
 
+## Executing SQL Commands
+
+Rhai stored procedures have access to the main database engine via the global `oxibase` object. You can execute standard SQL queries (like `INSERT`, `UPDATE`, `DELETE`) natively.
+
+The `oxibase.execute(query)` function returns the number of rows affected by the statement.
+
+```sql
+CREATE TABLE audit_logs (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    message TEXT
+);
+
+CREATE PROCEDURE log_event(msg TEXT) 
+LANGUAGE rhai 
+AS '
+    // We can concatenate strings using Rhai syntax
+    let query = "INSERT INTO audit_logs (message) VALUES (''" + msg + "'')";
+    
+    // Execute the query
+    let rows_affected = oxibase.execute(query);
+    
+    if rows_affected > 0 {
+        // success
+    }
+';
+```
+
+Call the procedure:
+```sql
+CALL log_event('Hello from Rhai!');
+```
+
+If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
+
 Call the procedure, passing an initial placeholder value for the `OUT` parameter:
 ```sql
 CALL update_status(true, "");

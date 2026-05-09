@@ -26,6 +26,38 @@ res = a + " " + b
 ';
 ```
 
+## Executing SQL Commands
+
+Python stored procedures have access to the main database engine via the `oxibase` module. You can execute standard SQL queries natively.
+
+To use the module, simply `import oxibase`. The `oxibase.execute(query)` function returns the number of rows affected by the statement.
+
+```sql
+CREATE TABLE audit_logs (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    message TEXT
+);
+
+CREATE PROCEDURE log_event_py(msg TEXT) 
+LANGUAGE python 
+AS '
+import oxibase
+
+# We can use Python f-strings or format for string interpolation
+query = f"INSERT INTO audit_logs (message) VALUES (''{msg}'')"
+
+# Execute the query
+rows_affected = oxibase.execute(query)
+';
+```
+
+Call the procedure:
+```sql
+CALL log_event_py('Hello from Python!');
+```
+
+If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
+
 Call the procedure:
 ```sql
 CALL concat_py('hello', 'world', '');
