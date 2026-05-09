@@ -176,23 +176,24 @@ impl ScriptingBackend for BoaBackend {
             .function(
                 boa_engine::NativeFunction::from_fn_ptr(|_this, args, _ctx| {
                     let sql = args
-                        .get(0)
-                        .cloned()
-                        .unwrap_or_default()
+                        .first()
+                        .unwrap_or(&JsValue::undefined())
                         .to_string(_ctx)
                         .unwrap_or_default()
                         .to_std_string_escaped();
-                    
+
                     match crate::functions::backends::execute_sql_query(&sql) {
-                        Ok(res) => Ok(JsValue::from(res.rows_affected() as i64)),
-                        Err(e) => Err(boa_engine::JsError::from_opaque(JsValue::from(JsString::from(e.to_string())))),
+                        Ok(res) => Ok(JsValue::from(res.rows_affected())),
+                        Err(e) => Err(boa_engine::JsError::from_opaque(JsValue::from(
+                            JsString::from(e.to_string()),
+                        ))),
                     }
                 }),
                 JsString::from("execute"),
                 1,
             )
             .build();
-            
+
         context
             .register_global_property(JsString::from("oxibase"), oxibase_obj, Default::default())
             .map_err(|e| Error::internal(format!("Failed to register JS oxibase: {}", e)))?;
@@ -208,7 +209,11 @@ impl ScriptingBackend for BoaBackend {
                 _ => return Err(Error::internal("Unsupported argument type for JS")),
             };
             context
-                .register_global_property(JsString::from(var_name), js_val, Default::default())
+                .register_global_property(
+                    JsString::from(var_name),
+                    js_val,
+                    boa_engine::property::Attribute::all(),
+                )
                 .map_err(|e| Error::internal(format!("Failed to register JS variable: {}", e)))?;
         }
 
@@ -217,7 +222,10 @@ impl ScriptingBackend for BoaBackend {
             Ok(_) => {
                 for (i, arg) in args.iter_mut().enumerate() {
                     let var_name = param_names[i];
-                    if let Ok(js_val) = context.global_object().get(JsString::from(var_name), &mut context) {
+                    if let Ok(js_val) = context
+                        .global_object()
+                        .get(JsString::from(var_name), &mut context)
+                    {
                         if js_val.is_number() {
                             if let Some(num) = js_val.as_number() {
                                 if num.fract() == 0.0 {

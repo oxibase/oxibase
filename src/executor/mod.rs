@@ -861,6 +861,23 @@ fn count_parameters(stmt: &Statement) -> (bool, usize) {
     (has_params, param_count)
 }
 
+impl crate::functions::backends::SqlRunner for Executor {
+    fn execute_query(
+        &self,
+        sql: &str,
+    ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+        self.execute(sql)
+    }
+
+    fn execute_ast(
+        &self,
+        stmt: &crate::parser::ast::Statement,
+    ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let ctx = crate::executor::context::ExecutionContext::new();
+        self.execute_statement(stmt, &ctx)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1019,16 +1036,5 @@ mod tests {
         // Same query with different whitespace should hit cache
         executor.execute("SELECT 1").unwrap();
         assert_eq!(executor.cache_stats().size, size);
-    }
-}
-
-impl crate::functions::backends::SqlRunner for Executor {
-    fn execute_query(&self, sql: &str) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
-        self.execute(sql)
-    }
-    
-    fn execute_ast(&self, stmt: &crate::parser::ast::Statement) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
-        let ctx = crate::executor::context::ExecutionContext::new();
-        self.execute_statement(stmt, &ctx)
     }
 }

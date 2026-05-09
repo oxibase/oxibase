@@ -27,8 +27,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Trait for scripting backends
-
-
 use std::cell::RefCell;
 
 thread_local! {
@@ -51,18 +49,20 @@ where
         r_static as *const dyn SqlRunner
     });
     CURRENT_SQL_RUNNER.with(|r| *r.borrow_mut() = ptr);
-    
+
     // Execute the closure (which will run the scripting VM)
     let result = f();
-    
+
     // Cleanup to ensure no dangling pointers
     CURRENT_SQL_RUNNER.with(|r| *r.borrow_mut() = None);
-    
+
     result
 }
 
 /// Executes a native SQL query using the thread-local runner injected by the current execution context
-pub fn execute_sql_query(sql: &str) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
+pub fn execute_sql_query(
+    sql: &str,
+) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
     CURRENT_SQL_RUNNER.with(|r| {
         if let Some(ptr) = *r.borrow() {
             // SAFETY: We guarantee that CURRENT_SQL_RUNNER is only set during the execution of a procedure
@@ -70,7 +70,9 @@ pub fn execute_sql_query(sql: &str) -> crate::core::Result<Box<dyn crate::storag
             let runner = unsafe { &*ptr };
             runner.execute_query(sql)
         } else {
-            Err(crate::core::Error::internal("Cannot execute SQL: No database context available in this procedure"))
+            Err(crate::core::Error::internal(
+                "Cannot execute SQL: No database context available in this procedure",
+            ))
         }
     })
 }
@@ -78,8 +80,11 @@ pub fn execute_sql_query(sql: &str) -> crate::core::Result<Box<dyn crate::storag
 /// A trait to allow scripting backends to execute native SQL queries
 pub trait SqlRunner: Send + Sync {
     fn execute_query(&self, sql: &str) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
-    
-    fn execute_ast(&self, stmt: &crate::parser::ast::Statement) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
+
+    fn execute_ast(
+        &self,
+        stmt: &crate::parser::ast::Statement,
+    ) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
 }
 
 pub trait ScriptingBackend {

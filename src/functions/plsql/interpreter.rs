@@ -24,7 +24,10 @@ pub struct PlSqlInterpreter<'a> {
 }
 
 impl<'a> PlSqlInterpreter<'a> {
-    pub fn new(function_registry: Arc<FunctionRegistry>, runner: Option<&'a dyn crate::functions::backends::SqlRunner>) -> Self {
+    pub fn new(
+        function_registry: Arc<FunctionRegistry>,
+        runner: Option<&'a dyn crate::functions::backends::SqlRunner>,
+    ) -> Self {
         Self {
             _function_registry: function_registry,
             runner,
@@ -88,9 +91,13 @@ impl<'a> PlSqlInterpreter<'a> {
         }
     }
 
-    fn substitute_variables_in_statement(&self, stmt: &mut crate::parser::ast::Statement, env: &Environment) {
+    fn substitute_variables_in_statement(
+        &self,
+        stmt: &mut crate::parser::ast::Statement,
+        env: &Environment,
+    ) {
         // Very basic MVP substitution for INSERT statements to satisfy US4
-        
+
         if let crate::parser::ast::Statement::Insert(insert) = stmt {
             if let Some(_select) = &mut insert.select {
                 // If the insert uses a select, we'd need to walk it too
@@ -102,9 +109,8 @@ impl<'a> PlSqlInterpreter<'a> {
                     }
                 }
             }
-            
         } else if let crate::parser::ast::Statement::Update(update) = stmt {
-            for (_, expr) in &mut update.updates {
+            for expr in update.updates.values_mut() {
                 self.substitute_variables_in_expr(expr, env);
             }
             if let Some(where_expr) = &mut update.where_clause {
@@ -114,38 +120,64 @@ impl<'a> PlSqlInterpreter<'a> {
         // Delete, Select, etc would follow similarly
     }
 
-    fn substitute_variables_in_expr(&self, expr: &mut crate::parser::ast::Expression, env: &Environment) {
+    fn substitute_variables_in_expr(
+        &self,
+        expr: &mut crate::parser::ast::Expression,
+        env: &Environment,
+    ) {
         use crate::parser::ast::Expression;
-        
+
         let mut replace_with = None;
         if let Expression::Identifier(id) = expr {
             if let Some(val) = env.get(&id.value) {
                 // Found a match! We need to replace the identifier with a literal
                 match val {
                     Value::Integer(i) => {
-                        replace_with = Some(Expression::IntegerLiteral(crate::parser::ast::IntegerLiteral {
-                            token: crate::parser::token::Token::new(crate::parser::token::TokenType::Integer, i.to_string(), crate::parser::token::Position::default()),
-                            value: *i,
-                        }));
+                        replace_with = Some(Expression::IntegerLiteral(
+                            crate::parser::ast::IntegerLiteral {
+                                token: crate::parser::token::Token::new(
+                                    crate::parser::token::TokenType::Integer,
+                                    i.to_string(),
+                                    crate::parser::token::Position::default(),
+                                ),
+                                value: *i,
+                            },
+                        ));
                     }
                     Value::Text(s) => {
-                        replace_with = Some(Expression::StringLiteral(crate::parser::ast::StringLiteral {
-                            token: crate::parser::token::Token::new(crate::parser::token::TokenType::String, format!("'{}'", s), crate::parser::token::Position::default()),
-                            value: s.to_string(),
-                            type_hint: None,
-                        }));
+                        replace_with = Some(Expression::StringLiteral(
+                            crate::parser::ast::StringLiteral {
+                                token: crate::parser::token::Token::new(
+                                    crate::parser::token::TokenType::String,
+                                    format!("'{}'", s),
+                                    crate::parser::token::Position::default(),
+                                ),
+                                value: s.to_string(),
+                                type_hint: None,
+                            },
+                        ));
                     }
                     Value::Boolean(b) => {
-                        replace_with = Some(Expression::BooleanLiteral(crate::parser::ast::BooleanLiteral {
-                            token: crate::parser::token::Token::new(crate::parser::token::TokenType::Keyword, if *b { "TRUE".to_string() } else { "FALSE".to_string() }, crate::parser::token::Position::default()),
-                            value: *b,
-                        }));
+                        replace_with = Some(Expression::BooleanLiteral(
+                            crate::parser::ast::BooleanLiteral {
+                                token: crate::parser::token::Token::new(
+                                    crate::parser::token::TokenType::Keyword,
+                                    if *b {
+                                        "TRUE".to_string()
+                                    } else {
+                                        "FALSE".to_string()
+                                    },
+                                    crate::parser::token::Position::default(),
+                                ),
+                                value: *b,
+                            },
+                        ));
                     }
                     _ => {}
                 }
             }
         }
-        
+
         if let Some(new_expr) = replace_with {
             *expr = new_expr;
             return;
@@ -214,21 +246,23 @@ impl<'a> PlSqlInterpreter<'a> {
 
                 Ok(false)
             }
-            PlSqlStatement::Sql(sql_stmt) => {
-                println!("Executing SQL statement: {}", sql_stmt);
+            PlSqlStatement::Sql(box_stmt) => {
+                println!("Executing SQL statement: {}", box_stmt);
                 if let Some(runner) = self.runner {
                     // Inject variables before execution
                     // A real implementation would parse the AST, substitute identifiers matching variables
                     // For this MVP we just execute it directly (which works if the query doesn't depend on vars)
-                    
+
                     // Implement variable substitution (injecting PL/SQL variables into the standard SQL AST before execution)
-                    let mut modified_stmt = sql_stmt.clone();
+                    let mut modified_stmt = *box_stmt.clone();
                     self.substitute_variables_in_statement(&mut modified_stmt, env);
-                    
+
                     runner.execute_ast(&modified_stmt)?;
                     Ok(false)
                 } else {
-                    Err(Error::internal("Cannot execute SQL statement: No SqlRunner bridge provided"))
+                    Err(Error::internal(
+                        "Cannot execute SQL statement: No SqlRunner bridge provided",
+                    ))
                 }
             }
             PlSqlStatement::Return => Ok(true),

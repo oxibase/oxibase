@@ -1,3 +1,4 @@
+// Copyright 2025 Oxibase Contributors
 use oxibase::api::Database;
 use oxibase::core::Value;
 
@@ -52,7 +53,11 @@ fn test_plsql_procedure() {
 fn test_plsql_sql_execution() {
     let db = Database::open_in_memory().unwrap();
 
-    db.execute("CREATE TABLE logs(id INTEGER PRIMARY KEY AUTO_INCREMENT, message TEXT);", ()).unwrap();
+    db.execute(
+        "CREATE TABLE logs(id INTEGER PRIMARY KEY AUTO_INCREMENT, message TEXT);",
+        (),
+    )
+    .unwrap();
 
     let create_sql = r#"
         CREATE PROCEDURE log_event(msg TEXT) 
@@ -73,5 +78,8 @@ fn test_plsql_sql_execution() {
 
     let mut results = db.query("SELECT message FROM logs;", ()).unwrap();
     let row = results.next().unwrap().unwrap();
-    assert_eq!(row.get::<Value>(0).unwrap().as_str().unwrap(), "Hello from PL/SQL!");
+    assert_eq!(
+        row.get::<Value>(0).unwrap().as_str().unwrap(),
+        "Hello from PL/SQL!"
+    );
 }

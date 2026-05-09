@@ -1,3 +1,4 @@
+// Copyright 2025 Oxibase Contributors
 fn main() {
     let registry = oxibase::functions::registry::global_registry();
     println!("Supported languages:");

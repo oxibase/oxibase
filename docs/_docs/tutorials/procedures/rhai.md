@@ -32,7 +32,7 @@ AS '
 
 Rhai stored procedures have access to the main database engine via the global `oxibase` object. You can execute standard SQL queries (like `INSERT`, `UPDATE`, `DELETE`) natively.
 
-The `oxibase.execute(query)` function returns the number of rows affected by the statement.
+The `oxibase::execute(query)` function returns the number of rows affected by the statement.
 
 ```sql
 CREATE TABLE audit_logs (
@@ -47,7 +47,7 @@ AS '
     let query = "INSERT INTO audit_logs (message) VALUES (''" + msg + "'')";
     
     // Execute the query
-    let rows_affected = oxibase.execute(query);
+    let rows_affected = oxibase::execute(query);
     
     if rows_affected > 0 {
         // success

@@ -32,18 +32,19 @@ impl RhaiBackend {
         engine.register_fn("to_int", |v: i64| v);
         engine.register_fn("to_float", |v: f64| v);
         engine.register_fn("to_string", |v: String| v);
-        
-        // Register oxibase client proxy
-        #[derive(Clone)]
-        struct OxibaseClient;
-        
-        engine.register_type_with_name::<OxibaseClient>("OxibaseClient");
-        engine.register_fn("execute", |_: &mut OxibaseClient, sql: String| -> std::result::Result<i64, Box<rhai::EvalAltResult>> {
-            match crate::functions::backends::execute_sql_query(&sql) {
-                Ok(res) => Ok(res.rows_affected() as i64),
-                Err(e) => Err(e.to_string().into()),
-            }
-        });
+
+        // Register oxibase module
+        let mut oxibase_module = rhai::Module::new();
+        oxibase_module.set_native_fn(
+            "execute",
+            |sql: rhai::ImmutableString| -> std::result::Result<i64, Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::execute_sql_query(&sql) {
+                    Ok(res) => Ok(res.rows_affected()),
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+        engine.register_static_module("oxibase", rhai::Shared::new(oxibase_module));
 
         Self { engine }
     }
@@ -133,11 +134,6 @@ impl ScriptingBackend for RhaiBackend {
         _runner: Option<&dyn crate::functions::backends::SqlRunner>,
     ) -> Result<()> {
         let mut scope = Scope::new();
-        
-        // Push oxibase client into scope
-        #[derive(Clone)]
-        struct OxibaseClient;
-        scope.push("oxibase", OxibaseClient);
 
         // Bind arguments to scope using parameter names
         for (i, arg) in args.iter().enumerate() {

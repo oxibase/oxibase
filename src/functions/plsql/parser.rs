@@ -154,7 +154,7 @@ impl PlSqlParser {
                         if let Some(stmt) = self.parse_assignment_statement() {
                             return Some(stmt);
                         }
-                        
+
                         // Fallback to standard SQL parser
                         self.parse_sql_statement()
                     }
@@ -165,19 +165,20 @@ impl PlSqlParser {
                 if let Some(stmt) = self.parse_assignment_statement() {
                     return Some(stmt);
                 }
-                
+
                 // Fallback to standard SQL parser
                 self.parse_sql_statement()
-            },
+            }
             _ => self.parse_sql_statement(),
         }
     }
 
     fn parse_sql_statement(&mut self) -> Option<PlSqlStatement> {
-        let mut sql_parser = crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+        let mut sql_parser =
+            crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
         // parse_statement only parses one statement
         let stmt_opt = sql_parser.parse_statement();
-        
+
         if let Some(stmt) = stmt_opt {
             while self.cur_token.literal != ";" && self.cur_token.token_type != TokenType::Eof {
                 self.next_token();
@@ -185,7 +186,7 @@ impl PlSqlParser {
             if self.cur_token.literal == ";" {
                 self.next_token();
             }
-            return Some(PlSqlStatement::Sql(stmt));
+            return Some(PlSqlStatement::Sql(Box::new(stmt)));
         }
         None
     }
