@@ -172,6 +172,60 @@ impl ScriptingBackend for BoaBackend {
     ) -> Result<()> {
         let mut context = create_secure_context();
 
+        let commit_fn = boa_engine::object::FunctionObjectBuilder::new(
+            context.realm(),
+            boa_engine::NativeFunction::from_fn_ptr(|_this, _args, _ctx| {
+                match crate::functions::backends::commit_transaction() {
+                    Ok(_) => Ok(JsValue::undefined()),
+                    Err(e) => Err(boa_engine::JsError::from_opaque(JsValue::from(
+                        JsString::from(e.to_string()),
+                    ))),
+                }
+            }),
+        )
+        .name("commit")
+        .length(0)
+        .build();
+        context
+            .register_global_property(JsString::from("commit"), commit_fn, Default::default())
+            .map_err(|e| Error::internal(format!("Failed to register JS commit: {}", e)))?;
+
+        let rollback_fn = boa_engine::object::FunctionObjectBuilder::new(
+            context.realm(),
+            boa_engine::NativeFunction::from_fn_ptr(|_this, _args, _ctx| {
+                match crate::functions::backends::rollback_transaction() {
+                    Ok(_) => Ok(JsValue::undefined()),
+                    Err(e) => Err(boa_engine::JsError::from_opaque(JsValue::from(
+                        JsString::from(e.to_string()),
+                    ))),
+                }
+            }),
+        )
+        .name("rollback")
+        .length(0)
+        .build();
+        context
+            .register_global_property(JsString::from("rollback"), rollback_fn, Default::default())
+            .map_err(|e| Error::internal(format!("Failed to register JS rollback: {}", e)))?;
+
+        let begin_fn = boa_engine::object::FunctionObjectBuilder::new(
+            context.realm(),
+            boa_engine::NativeFunction::from_fn_ptr(|_this, _args, _ctx| {
+                match crate::functions::backends::begin_transaction() {
+                    Ok(_) => Ok(JsValue::undefined()),
+                    Err(e) => Err(boa_engine::JsError::from_opaque(JsValue::from(
+                        JsString::from(e.to_string()),
+                    ))),
+                }
+            }),
+        )
+        .name("begin")
+        .length(0)
+        .build();
+        context
+            .register_global_property(JsString::from("begin"), begin_fn, Default::default())
+            .map_err(|e| Error::internal(format!("Failed to register JS begin: {}", e)))?;
+
         let oxibase_obj = boa_engine::object::ObjectInitializer::new(&mut context)
             .function(
                 boa_engine::NativeFunction::from_fn_ptr(|_this, args, _ctx| {

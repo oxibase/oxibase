@@ -158,3 +158,98 @@ fn test_plsql_sql_substitution() {
     let row = results.next().unwrap().unwrap();
     assert_eq!(row.get::<Value>(0).unwrap().as_int64().unwrap(), 2);
 }
+
+#[test]
+fn test_plsql_transaction_commit_rollback() {
+    let db = Database::open_in_memory().unwrap();
+
+    db.execute(
+        "CREATE TABLE tx_test_plsql(id INTEGER PRIMARY KEY, val TEXT);",
+        (),
+    )
+    .unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE tx_proc_plsql() 
+        LANGUAGE plsql 
+        AS ' 
+        BEGIN 
+            INSERT INTO tx_test_plsql(id, val) VALUES (1, ''first'');
+            COMMIT;
+            
+            BEGIN; -- Should be a no-op
+            INSERT INTO tx_test_plsql(id, val) VALUES (2, ''second'');
+            ROLLBACK;
+            
+            INSERT INTO tx_test_plsql(id, val) VALUES (3, ''third'');
+            COMMIT;
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL tx_proc_plsql();";
+    let res = db.execute(call_sql, ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    let mut results = db
+        .query("SELECT id, val FROM tx_test_plsql ORDER BY id;", ())
+        .unwrap();
+
+    // First row should exist
+    let row1 = results.next().unwrap().unwrap();
+    assert_eq!(row1.get::<Value>(0).unwrap().as_int64().unwrap(), 1);
+    assert_eq!(row1.get::<Value>(1).unwrap().as_str().unwrap(), "first");
+
+    // Third row should exist (second was rolled back)
+    let row3 = results.next().unwrap().unwrap();
+    assert_eq!(row3.get::<Value>(0).unwrap().as_int64().unwrap(), 3);
+    assert_eq!(row3.get::<Value>(1).unwrap().as_str().unwrap(), "third");
+
+    // No more rows
+    assert!(results.next().is_none());
+}
+
+#[test]
+fn test_plsql_transaction_explicit_nested_error() {
+    let db = Database::open_in_memory().unwrap();
+
+    db.execute(
+        "CREATE TABLE tx_test_nested(id INTEGER PRIMARY KEY, val TEXT);",
+        (),
+    )
+    .unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE tx_proc_nested() 
+        LANGUAGE plsql 
+        AS ' 
+        BEGIN 
+            INSERT INTO tx_test_nested(id, val) VALUES (1, ''first'');
+            COMMIT;
+        END; 
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+
+    // Call inside explicit transaction should fail!
+    let _ = db.execute("BEGIN;", ()).unwrap();
+
+    let res = db.execute("CALL tx_proc_nested();", ());
+    assert!(
+        res.is_err(),
+        "Expected error when calling procedure with transaction control from explicit transaction"
+    );
+
+    let err_msg = res.err().unwrap().to_string();
+    assert!(
+        err_msg.contains("invalid transaction termination"),
+        "Unexpected error: {}",
+        err_msg
+    );
+
+    let _ = db.execute("ROLLBACK;", ()).unwrap();
+}

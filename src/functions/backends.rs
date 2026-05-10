@@ -77,6 +77,45 @@ pub fn execute_sql_query(
     })
 }
 
+pub fn commit_transaction() -> crate::core::Result<()> {
+    CURRENT_SQL_RUNNER.with(|r| {
+        if let Some(ptr) = *r.borrow() {
+            let runner = unsafe { &*ptr };
+            runner.commit()
+        } else {
+            Err(crate::core::Error::internal(
+                "Cannot commit: No database context available in this procedure",
+            ))
+        }
+    })
+}
+
+pub fn rollback_transaction() -> crate::core::Result<()> {
+    CURRENT_SQL_RUNNER.with(|r| {
+        if let Some(ptr) = *r.borrow() {
+            let runner = unsafe { &*ptr };
+            runner.rollback()
+        } else {
+            Err(crate::core::Error::internal(
+                "Cannot rollback: No database context available in this procedure",
+            ))
+        }
+    })
+}
+
+pub fn begin_transaction() -> crate::core::Result<()> {
+    CURRENT_SQL_RUNNER.with(|r| {
+        if let Some(ptr) = *r.borrow() {
+            let runner = unsafe { &*ptr };
+            runner.begin()
+        } else {
+            Err(crate::core::Error::internal(
+                "Cannot begin: No database context available in this procedure",
+            ))
+        }
+    })
+}
+
 /// A trait to allow scripting backends to execute native SQL queries
 pub trait SqlRunner: Send + Sync {
     fn execute_query(&self, sql: &str) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
@@ -85,6 +124,10 @@ pub trait SqlRunner: Send + Sync {
         &self,
         stmt: &crate::parser::ast::Statement,
     ) -> Result<Box<dyn crate::storage::traits::QueryResult>>;
+
+    fn commit(&self) -> Result<()>;
+    fn rollback(&self) -> Result<()>;
+    fn begin(&self) -> Result<()>;
 }
 
 pub trait ScriptingBackend {

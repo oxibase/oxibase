@@ -289,6 +289,27 @@ impl PlSqlParser {
                         }
                         Some(stmt)
                     }
+                    "COMMIT" => {
+                        let stmt = PlSqlStatement::Commit(self.cur_token.clone());
+                        if self.peek_token.literal == ";" {
+                            self.next_token();
+                        }
+                        Some(stmt)
+                    }
+                    "ROLLBACK" => {
+                        let stmt = PlSqlStatement::Rollback(self.cur_token.clone());
+                        if self.peek_token.literal == ";" {
+                            self.next_token();
+                        }
+                        Some(stmt)
+                    }
+                    "BEGIN" => {
+                        let stmt = PlSqlStatement::BeginTransaction(self.cur_token.clone());
+                        if self.peek_token.literal == ";" {
+                            self.next_token();
+                        }
+                        Some(stmt)
+                    }
                     _ => {
                         // Try assignment first
                         if let Some(stmt) = self.parse_assignment_statement() {

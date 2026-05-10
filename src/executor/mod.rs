@@ -143,13 +143,15 @@ pub use semantic_cache::{
 };
 
 /// Active transaction state for explicit transaction control (BEGIN/COMMIT/ROLLBACK)
-struct ActiveTransaction {
+pub(crate) struct ActiveTransaction {
     /// The transaction object
     transaction: Box<dyn Transaction>,
     /// Tables accessed within this transaction (cached for proper commit/rollback)
     tables: FxHashMap<String, Box<dyn Table>>,
-    /// DDL operations to undo on rollback
+    /// DDL operations to undo if rolled back
     ddl_undo_log: Vec<DeferredDdlOperation>,
+    /// Tracks if the transaction was started explicitly by the user (e.g. BEGIN;)
+    is_explicit_tx: bool,
 }
 
 /// SQL Query Executor
@@ -875,6 +877,108 @@ impl crate::functions::backends::SqlRunner for Executor {
     ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
         let ctx = crate::executor::context::ExecutionContext::new();
         self.execute_statement(stmt, &ctx)
+    }
+
+    fn commit(&self) -> crate::core::Result<()> {
+        let mut active_tx = self.active_transaction.lock().unwrap();
+
+        let is_explicit = if let Some(tx_state) = active_tx.as_ref() {
+            tx_state.is_explicit_tx
+        } else {
+            return Err(crate::core::Error::internal(
+                "No active transaction to commit",
+            ));
+        };
+
+        if is_explicit {
+            return Err(crate::core::Error::internal(
+                "invalid transaction termination",
+            ));
+        }
+
+        if let Some(mut tx_state) = active_tx.take() {
+            tx_state.transaction.commit()?;
+
+            // Immediately start a new implicit transaction for the rest of the procedure
+            let new_tx = self.engine.begin_transaction()?;
+            *active_tx = Some(ActiveTransaction {
+                transaction: new_tx,
+                tables: rustc_hash::FxHashMap::default(),
+                ddl_undo_log: Vec::new(),
+                is_explicit_tx: false,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn rollback(&self) -> crate::core::Result<()> {
+        let mut active_tx = self.active_transaction.lock().unwrap();
+
+        let is_explicit = if let Some(tx_state) = active_tx.as_ref() {
+            tx_state.is_explicit_tx
+        } else {
+            return Err(crate::core::Error::internal(
+                "No active transaction to rollback",
+            ));
+        };
+
+        if is_explicit {
+            return Err(crate::core::Error::internal(
+                "invalid transaction termination",
+            ));
+        }
+
+        if let Some(mut tx_state) = active_tx.take() {
+            // Rollback all tables first
+            for (_name, mut table) in tx_state.tables.drain() {
+                table.rollback();
+            }
+
+            tx_state.transaction.rollback()?;
+
+            // Undo DDL operations (LIFO order)
+            while let Some(op) = tx_state.ddl_undo_log.pop() {
+                match op {
+                    DeferredDdlOperation::CreateTable { name } => {
+                        let _ = self.engine.drop_table_internal(&name);
+                    }
+                    DeferredDdlOperation::DropTable { schema, .. } => {
+                        let _ = self.engine.create_table(schema);
+                    }
+                    DeferredDdlOperation::CreateSchema { name } => {
+                        let mut schemas = self.engine.schemas.write().unwrap();
+                        schemas.remove(&name);
+                    }
+                    DeferredDdlOperation::DropSchema { name, tables } => {
+                        let mut schemas = self.engine.schemas.write().unwrap();
+                        let mut table_map = rustc_hash::FxHashMap::default();
+                        for (qualified_table_name, schema) in &tables {
+                            let simple_table_name =
+                                qualified_table_name[(name.len() + 1)..].to_string();
+                            table_map.insert(simple_table_name, schema.clone());
+                        }
+                        schemas.insert(name.clone(), table_map);
+                    }
+                }
+            }
+
+            // Immediately start a new implicit transaction for the rest of the procedure
+            let new_tx = self.engine.begin_transaction()?;
+            *active_tx = Some(ActiveTransaction {
+                transaction: new_tx,
+                tables: rustc_hash::FxHashMap::default(),
+                ddl_undo_log: Vec::new(),
+                is_explicit_tx: false,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn begin(&self) -> crate::core::Result<()> {
+        // No-op for procedures
+        Ok(())
     }
 }
 

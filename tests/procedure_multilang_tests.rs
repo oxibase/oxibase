@@ -135,3 +135,102 @@ oxibase.execute("INSERT INTO py_logs(msg) VALUES (''Hello Python'')")
         "Hello Python"
     );
 }
+
+#[test]
+#[cfg(feature = "js")]
+fn test_js_transaction_commit_rollback() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute(
+        "CREATE TABLE tx_test_js(id INTEGER PRIMARY KEY, val TEXT);",
+        (),
+    )
+    .unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE tx_proc_js() 
+        LANGUAGE js 
+        AS '
+            // Insert and commit
+            oxibase.execute("INSERT INTO tx_test_js(id, val) VALUES (1, ''first'')");
+            commit();
+            
+            // Insert and rollback
+            oxibase.execute("INSERT INTO tx_test_js(id, val) VALUES (2, ''second'')");
+            rollback();
+            
+            // Insert after rollback and commit
+            oxibase.execute("INSERT INTO tx_test_js(id, val) VALUES (3, ''third'')");
+            commit();
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL tx_proc_js();", ()).unwrap();
+
+    let mut results = db
+        .query("SELECT id, val FROM tx_test_js ORDER BY id;", ())
+        .unwrap();
+
+    // First row should exist
+    let row1 = results.next().unwrap().unwrap();
+    assert_eq!(row1.get::<Value>(0).unwrap().as_int64().unwrap(), 1);
+    assert_eq!(row1.get::<Value>(1).unwrap().as_str().unwrap(), "first");
+
+    // Third row should exist (second was rolled back)
+    let row3 = results.next().unwrap().unwrap();
+    assert_eq!(row3.get::<Value>(0).unwrap().as_int64().unwrap(), 3);
+    assert_eq!(row3.get::<Value>(1).unwrap().as_str().unwrap(), "third");
+
+    // No more rows
+    assert!(results.next().is_none());
+}
+
+#[test]
+#[cfg(feature = "python")]
+fn test_python_transaction_commit_rollback() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute(
+        "CREATE TABLE tx_test_py(id INTEGER PRIMARY KEY, val TEXT);",
+        (),
+    )
+    .unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE tx_proc_py() 
+        LANGUAGE python 
+        AS '
+import oxibase
+# Insert and commit
+oxibase.execute("INSERT INTO tx_test_py(id, val) VALUES (1, ''first'')")
+oxibase.commit()
+
+# Insert and rollback
+oxibase.execute("INSERT INTO tx_test_py(id, val) VALUES (2, ''second'')")
+oxibase.rollback()
+
+# Insert after rollback and commit
+oxibase.execute("INSERT INTO tx_test_py(id, val) VALUES (3, ''third'')")
+oxibase.commit()
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL tx_proc_py();", ()).unwrap();
+
+    let mut results = db
+        .query("SELECT id, val FROM tx_test_py ORDER BY id;", ())
+        .unwrap();
+
+    // First row should exist
+    let row1 = results.next().unwrap().unwrap();
+    assert_eq!(row1.get::<Value>(0).unwrap().as_int64().unwrap(), 1);
+    assert_eq!(row1.get::<Value>(1).unwrap().as_str().unwrap(), "first");
+
+    // Third row should exist (second was rolled back)
+    let row3 = results.next().unwrap().unwrap();
+    assert_eq!(row3.get::<Value>(0).unwrap().as_int64().unwrap(), 3);
+    assert_eq!(row3.get::<Value>(1).unwrap().as_str().unwrap(), "third");
+
+    // No more rows
+    assert!(results.next().is_none());
+}

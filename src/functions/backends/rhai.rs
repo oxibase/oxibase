@@ -33,6 +33,36 @@ impl RhaiBackend {
         engine.register_fn("to_float", |v: f64| v);
         engine.register_fn("to_string", |v: String| v);
 
+        engine.register_fn(
+            "commit",
+            || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::commit_transaction() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+
+        engine.register_fn(
+            "rollback",
+            || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::rollback_transaction() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+
+        engine.register_fn(
+            "begin",
+            || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::begin_transaction() {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+
         // Register oxibase module
         let mut oxibase_module = rhai::Module::new();
         oxibase_module.set_native_fn(

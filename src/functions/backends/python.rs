@@ -38,6 +38,30 @@ mod oxibase_py_module {
             Err(e) => Err(vm.new_runtime_error(e.to_string())),
         }
     }
+
+    #[pyfunction]
+    fn commit(vm: &VirtualMachine) -> PyResult<()> {
+        match crate::functions::backends::commit_transaction() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(vm.new_runtime_error(e.to_string())),
+        }
+    }
+
+    #[pyfunction]
+    fn rollback(vm: &VirtualMachine) -> PyResult<()> {
+        match crate::functions::backends::rollback_transaction() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(vm.new_runtime_error(e.to_string())),
+        }
+    }
+
+    #[pyfunction]
+    fn begin(vm: &VirtualMachine) -> PyResult<()> {
+        match crate::functions::backends::begin_transaction() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(vm.new_runtime_error(e.to_string())),
+        }
+    }
 }
 
 /// Python scripting backend

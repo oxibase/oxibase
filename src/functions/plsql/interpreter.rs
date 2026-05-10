@@ -400,6 +400,36 @@ impl<'a> PlSqlInterpreter<'a> {
                 }
             }
             PlSqlStatement::Return(_) => Ok(true),
+            PlSqlStatement::Commit(_) => {
+                if let Some(runner) = self.runner {
+                    runner.commit()?;
+                    Ok(false)
+                } else {
+                    Err(Error::internal(
+                        "Cannot execute COMMIT: No SqlRunner bridge provided",
+                    ))
+                }
+            }
+            PlSqlStatement::Rollback(_) => {
+                if let Some(runner) = self.runner {
+                    runner.rollback()?;
+                    Ok(false)
+                } else {
+                    Err(Error::internal(
+                        "Cannot execute ROLLBACK: No SqlRunner bridge provided",
+                    ))
+                }
+            }
+            PlSqlStatement::BeginTransaction(_) => {
+                if let Some(runner) = self.runner {
+                    runner.begin()?;
+                    Ok(false)
+                } else {
+                    Err(Error::internal(
+                        "Cannot execute BEGIN: No SqlRunner bridge provided",
+                    ))
+                }
+            }
         }
     }
 }
