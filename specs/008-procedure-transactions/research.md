@@ -15,11 +15,11 @@
 
 ## 2. Scripting Language APIs
 
-**Needs Clarification:** How to expose `commit()` and `rollback()` to the scripting backends (JS, Python, Rhai)?
+**Needs Clarification:** How to expose `begin()`, `commit()` and `rollback()` to the scripting backends (JS, Python, Rhai)?
 **Decision:** 
-- **Rhai**: Register `commit()` and `rollback()` as global functions in the Rhai engine instance.
-- **Javascript (Boa)**: Register `commit()` and `rollback()` as global functions in the Boa context.
-- **Python (RustPython)**: Add `commit()` and `rollback()` functions to the existing `oxibase` native module.
+- **Rhai**: Register `begin()`, `commit()` and `rollback()` as global functions in the Rhai engine instance.
+- **Javascript (Boa)**: Register `begin()`, `commit()` and `rollback()` as global functions in the Boa context.
+- **Python (RustPython)**: Add `begin()`, `commit()` and `rollback()` functions to the existing `oxibase` native module.
 - All exposed functions will delegate to the `SqlRunner` instance that is passed via `with_sql_runner`.
 
 ## 3. PL/SQL Parser Updates
