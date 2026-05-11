@@ -1,4 +1,3 @@
-// Copyright 2025 Stoolap Contributors
 // Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
