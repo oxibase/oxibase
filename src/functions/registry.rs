@@ -243,6 +243,7 @@ impl FunctionRegistry {
         registry.register_scalar::<JsonKeysFunction>();
         registry.register_scalar::<TypeOfFunction>();
         registry.register_scalar::<SleepFunction>();
+        registry.register_scalar::<crate::functions::scalar::GetHttpHeaderFunction>();
 
         // Register built-in window functions
         registry.register_window::<RowNumberFunction>();

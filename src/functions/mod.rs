@@ -24,6 +24,7 @@
 
 pub mod aggregate;
 pub mod backends;
+pub mod context;
 pub mod plsql;
 pub mod registry;
 pub mod scalar;
@@ -281,9 +282,9 @@ pub use aggregate::{
 pub use registry::{global_registry, FunctionRegistry};
 pub use scalar::{
     AbsFunction, CastFunction, CeilingFunction, CoalesceFunction, CollateFunction, ConcatFunction,
-    DateTruncFunction, FloorFunction, IfNullFunction, LengthFunction, LowerFunction, NowFunction,
-    NullIfFunction, RoundFunction, SubstringFunction, TimeTruncFunction, UpperFunction,
-    VersionFunction,
+    DateTruncFunction, FloorFunction, GetHttpHeaderFunction, IfNullFunction, LengthFunction,
+    LowerFunction, NowFunction, NullIfFunction, RoundFunction, SubstringFunction,
+    TimeTruncFunction, UpperFunction, VersionFunction,
 };
 pub use window::{
     DenseRankFunction, LagFunction, LeadFunction, NtileFunction, RankFunction, RowNumberFunction,

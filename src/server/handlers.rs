@@ -544,3 +544,187 @@ pub async fn delete_row(
             .into_response(),
     }
 }
+
+pub async fn invoke_procedure(
+    Path(procedure_name): Path<String>,
+    State(state): State<AppState>,
+    req: Request,
+) -> impl IntoResponse {
+    let (parts, body) = req.into_parts();
+
+    // Extract headers into a HashMap
+    let mut headers = HashMap::new();
+    for (k, v) in parts.headers.iter() {
+        if let Ok(value_str) = v.to_str() {
+            headers.insert(k.as_str().to_string(), value_str.to_string());
+        }
+    }
+
+    // Parse JSON body manually
+    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(b) => b,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": format!("Failed to read body: {}", e) })),
+            )
+                .into_response();
+        }
+    };
+
+    let payload: HashMap<String, JsonValue> = if body_bytes.is_empty() {
+        HashMap::new()
+    } else {
+        match serde_json::from_slice(&body_bytes) {
+            Ok(p) => p,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": format!("Invalid JSON: {}", e) })),
+                )
+                    .into_response();
+            }
+        }
+    };
+
+    let procedure_name_upper = procedure_name.to_uppercase();
+
+    // Look up the procedure from the function registry (via DB executor)
+    let executor = crate::executor::Executor::new(std::sync::Arc::clone(state.db.engine()));
+    let registry = executor.function_registry();
+
+    let procedure = match registry.get_procedure(&procedure_name_upper) {
+        Some(proc) => proc,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({ "error": format!("Procedure '{}' not found", procedure_name) })),
+            ).into_response();
+        }
+    };
+
+    // Extract IN and INOUT parameters, and build the call arguments
+    let mut args = Vec::new();
+    let mut param_types = Vec::new();
+    let mut expected_out = Vec::new();
+
+    for param in &procedure.parameters {
+        if param.mode.eq_ignore_ascii_case("OUT") {
+            expected_out.push(param.name.clone());
+            // OUT parameters might not be passed in JSON, we can pass a dummy value like NULL
+            args.push(crate::core::Value::null_unknown());
+            param_types.push(param.data_type.clone());
+            continue;
+        }
+
+        // It's IN or INOUT. Look for it in the payload
+        match payload.get(&param.name) {
+            Some(val) => {
+                // Convert JSON value to string, or if it's already scalar, format it appropriately
+                // The easiest way to handle this securely without SQL injection via formatting
+                // is to use query parameters if we build a SQL string, or directly execute if we bypass parsing.
+                // However, building a parameter array is cleaner.
+                // Let's use `value_from_json`
+                // Wait, oxibase value conversion:
+                let converted_val = json_to_value(val);
+                args.push(converted_val);
+                param_types.push(param.data_type.clone());
+
+                if param.mode.eq_ignore_ascii_case("INOUT") {
+                    expected_out.push(param.name.clone());
+                }
+            }
+            None => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": format!("Missing parameter '{}'", param.name) })),
+                ).into_response();
+            }
+        }
+    }
+
+    // Now, we can formulate a CALL statement and execute it with parameters
+    // Format: CALL proc_name($1, $2, ...)
+    let placeholders: Vec<String> = (1..=args.len()).map(|i| format!("${}", i)).collect();
+    let sql = format!("CALL {}({})", procedure_name, placeholders.join(", "));
+
+    // Execute
+    let result =
+        crate::functions::context::with_http_headers(headers, || state.db.query(&sql, args));
+
+    let result = match result {
+        Ok(res) => res,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    // Convert result to JSON map
+    let mut result_map = serde_json::Map::new();
+    let columns = result.columns().to_vec();
+
+    // There should be one row of output containing OUT/INOUT values
+    // We collect the first row
+    let mut found_row = false;
+    if let Some(row) = result.flatten().next() {
+        found_row = true;
+        for (i, col_name) in columns.iter().enumerate() {
+            if let Some(val) = row.get_value(i) {
+                result_map.insert(col_name.clone(), value_to_json(val));
+            } else {
+                result_map.insert(col_name.clone(), JsonValue::Null);
+            }
+        }
+    }
+
+    // If there were no OUT params, the result might be empty.
+    if !found_row && expected_out.is_empty() {
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({ "status": "success" })),
+        )
+            .into_response();
+    }
+
+    // Let's just return the result map inside {"result": ...}
+    // For single OUT parameter, return {"result": <value>} as per tests
+    if result_map.len() == 1 {
+        let single_val = result_map.values().next().unwrap().clone();
+        (
+            StatusCode::OK,
+            Json(serde_json::json!({ "result": single_val })),
+        )
+            .into_response()
+    } else {
+        (
+            StatusCode::OK,
+            Json(serde_json::json!({ "result": result_map })),
+        )
+            .into_response()
+    }
+}
+
+// Convert serde_json::Value to oxibase::Value
+fn json_to_value(json: &JsonValue) -> Value {
+    match json {
+        JsonValue::Null => Value::null_unknown(),
+        JsonValue::Bool(b) => Value::Boolean(*b),
+        JsonValue::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Integer(i)
+            } else if let Some(f) = n.as_f64() {
+                Value::Float(f)
+            } else {
+                Value::null_unknown()
+            }
+        }
+        JsonValue::String(s) => Value::text(s),
+        JsonValue::Array(_) | JsonValue::Object(_) => {
+            Value::Json(std::sync::Arc::from(json.to_string()))
+        }
+    }
+}

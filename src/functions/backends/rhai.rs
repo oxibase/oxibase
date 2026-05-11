@@ -34,6 +34,29 @@ impl RhaiBackend {
         engine.register_fn("to_string", |v: String| v);
 
         engine.register_fn(
+            "get_http_header",
+            |header_name: String| -> std::result::Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
+                let mut header_value = None;
+                crate::functions::context::HTTP_HEADERS.with(|headers| {
+                    if let Some(map) = headers.borrow().as_ref() {
+                        let search_key = header_name.to_lowercase();
+                        for (k, v) in map {
+                            if k.to_lowercase() == search_key {
+                                header_value = Some(v.clone());
+                                break;
+                            }
+                        }
+                    }
+                });
+
+                match header_value {
+                    Some(v) => Ok(rhai::Dynamic::from(v)),
+                    None => Ok(rhai::Dynamic::UNIT),
+                }
+            },
+        );
+
+        engine.register_fn(
             "commit",
             || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
                 match crate::functions::backends::commit_transaction() {

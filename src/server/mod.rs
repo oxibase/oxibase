@@ -46,6 +46,10 @@ pub fn create_router(db: Database) -> Router {
     Router::new()
         // Define wildcards for the Auto-API
         .route(
+            "/api/rpc/:procedure_name",
+            axum::routing::post(handlers::invoke_procedure),
+        )
+        .route(
             "/api/:table",
             get(handlers::get_table)
                 .post(handlers::insert_row)
