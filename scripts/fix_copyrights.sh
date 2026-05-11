@@ -27,6 +27,12 @@ for file in $modified_files; do
         continue
     fi
 
+    # If the file already contains the Oxibase copyright, skip the Stoolap check entirely
+    if grep -q "Oxibase Contributors" "$file"; then
+        echo "$file already contains Oxibase copyright, skipping."
+        continue
+    fi
+
     # Check if file contains Stoolap copyright
     if grep -E -q "// Copyright [0-9]{4} Stoolap Contributors" "$file"; then
         # Get line number of Stoolap copyright
@@ -35,24 +41,15 @@ for file in $modified_files; do
         # Extract the year from the Stoolap copyright
         year=$(sed -n "${lineno}p" "$file" | grep -oE '[0-9]{4}')
 
-        # Get the next line
-        next_lineno=$((lineno + 1))
-        nextline=$(sed -n "${next_lineno}p" "$file" || true)
+        echo "Fixing copyright in $file (adding Oxibase after Stoolap on line $lineno)"
 
-        # Check if next line is Oxibase copyright
-        if [[ "$nextline" != "// Copyright $year Oxibase Contributors" ]]; then
-            echo "Fixing copyright in $file (adding Oxibase after Stoolap on line $lineno)"
-
-            # Insert Oxibase copyright after Stoolap line
-            sed -i.bak "${lineno}a\\
+        # Insert Oxibase copyright after Stoolap line
+        sed -i.bak "${lineno}a\\
 // Copyright $year Oxibase Contributors" "$file"
 
-            modified_count=$((modified_count + 1))
-        else
-            echo "$file already has correct copyright ordering"
-        fi
+        modified_count=$((modified_count + 1))
     else
-        echo "$file does not contain Stoolap copyright, skipping"
+        echo "$file does not contain Stoolap or Oxibase copyright, skipping"
     fi
 done
 
