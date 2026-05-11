@@ -28,21 +28,24 @@ for file in $modified_files; do
     fi
 
     # Check if file contains Stoolap copyright
-    if grep -q "// Copyright 2025 Stoolap Contributors" "$file"; then
+    if grep -E -q "// Copyright [0-9]{4} Stoolap Contributors" "$file"; then
         # Get line number of Stoolap copyright
-        lineno=$(grep -n "// Copyright 2025 Stoolap Contributors" "$file" | head -1 | cut -d: -f1)
+        lineno=$(grep -E -n "// Copyright [0-9]{4} Stoolap Contributors" "$file" | head -1 | cut -d: -f1)
+
+        # Extract the year from the Stoolap copyright
+        year=$(sed -n "${lineno}p" "$file" | grep -oE '[0-9]{4}')
 
         # Get the next line
         next_lineno=$((lineno + 1))
         nextline=$(sed -n "${next_lineno}p" "$file" || true)
 
         # Check if next line is Oxibase copyright
-        if [[ "$nextline" != "// Copyright 2025 Oxibase Contributors" ]]; then
+        if [[ "$nextline" != "// Copyright $year Oxibase Contributors" ]]; then
             echo "Fixing copyright in $file (adding Oxibase after Stoolap on line $lineno)"
 
             # Insert Oxibase copyright after Stoolap line
             sed -i.bak "${lineno}a\\
-// Copyright 2025 Oxibase Contributors" "$file"
+// Copyright $year Oxibase Contributors" "$file"
 
             modified_count=$((modified_count + 1))
         else
