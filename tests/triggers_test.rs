@@ -97,3 +97,88 @@ fn test_audit_trigger() {
     assert_eq!(row.get(0), Some(&Value::Float(10.0)));
     assert_eq!(row.get(1), Some(&Value::Float(15.0)));
 }
+
+#[test]
+fn test_python_trigger() {
+    let executor = setup_executor();
+    executor.execute("CREATE TABLE accounts (id INTEGER PRIMARY KEY, balance FLOAT)").unwrap();
+    
+    // Create Python trigger
+    let result = executor.execute(r#"
+        CREATE TRIGGER test_py_trigger
+        BEFORE INSERT ON accounts
+        FOR EACH ROW
+        LANGUAGE python
+        AS '
+if NEW["balance"] < 0:
+    raise RuntimeError("Negative balance not allowed")
+'
+    "#);
+    
+    assert!(result.is_ok(), "Failed to create trigger: {:?}", result.err());
+    
+    // Test validation
+    let insert_err = executor.execute("INSERT INTO accounts (id, balance) VALUES (1, -50.0)");
+    assert!(insert_err.is_err());
+    if let Err(e) = insert_err {
+        assert!(e.to_string().contains("Negative balance not allowed"));
+    }
+    
+    // Test valid insert
+    let insert_ok = executor.execute("INSERT INTO accounts (id, balance) VALUES (2, 100.0)");
+    assert!(insert_ok.is_ok());
+    
+    // Test transformation trigger
+    executor.execute(r#"
+        CREATE TRIGGER test_py_transform
+        BEFORE UPDATE ON accounts
+        FOR EACH ROW
+        LANGUAGE python
+        AS '
+NEW["balance"] = NEW["balance"] + 10.0
+'
+    "#).unwrap();
+    
+    executor.execute("UPDATE accounts SET balance = 100.0 WHERE id = 2").unwrap();
+    let mut result = executor.execute("SELECT balance FROM accounts WHERE id = 2").unwrap();
+    assert!(result.next());
+    assert_eq!(result.row().get(0), Some(&Value::Float(110.0)));
+}
+
+#[test]
+fn test_js_trigger() {
+    let executor = setup_executor();
+    executor.execute("CREATE TABLE accounts_js (id INTEGER PRIMARY KEY, balance FLOAT)").unwrap();
+    executor.execute("CREATE TABLE audit_js (id INTEGER, amount FLOAT)").unwrap();
+    
+    // Create JS trigger
+    let result = executor.execute(r#"
+        CREATE TRIGGER test_js_trigger
+        AFTER UPDATE ON accounts_js
+        FOR EACH ROW
+        LANGUAGE js
+        AS '
+if (OLD.balance !== NEW.balance) {
+    let diff = NEW.balance - OLD.balance;
+    oxibase.execute("INSERT INTO audit_js (id, amount) VALUES (" + NEW.id + ", " + diff + ")");
+}
+'
+    "#);
+    
+    assert!(result.is_ok(), "Failed to create trigger: {:?}", result.err());
+    
+    // Insert initial
+    executor.execute("INSERT INTO accounts_js (id, balance) VALUES (1, 100.0)").unwrap();
+    
+    // Update balance
+    let update_ok = executor.execute("UPDATE accounts_js SET balance = 150.0 WHERE id = 1");
+    if let Err(e) = &update_ok {
+        println!("Update failed: {:?}", e);
+    }
+    assert!(update_ok.is_ok());
+    
+    // Check audit log
+    let mut result = executor.execute("SELECT amount FROM audit_js WHERE id = 1").unwrap();
+    assert!(result.next());
+    assert_eq!(result.row().get(0), Some(&Value::Float(50.0)));
+}

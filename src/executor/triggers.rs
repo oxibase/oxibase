@@ -50,7 +50,7 @@ impl TriggerRegistry {
     pub fn add_trigger(&self, trigger: StoredTrigger) {
         let mut map = self.tables.write().unwrap();
         map.entry(trigger.table_name.clone().to_uppercase())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(trigger);
     }
 

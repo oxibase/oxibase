@@ -17,13 +17,13 @@ use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// Pointer to the NEW row (used in INSERT, UPDATE)
-    pub static CURRENT_NEW_ROW: RefCell<Option<*mut Row>> = RefCell::new(None);
+    pub static CURRENT_NEW_ROW: RefCell<Option<*mut Row>> = const { RefCell::new(None) };
     /// Pointer to the OLD row (used in UPDATE, DELETE)
-    pub static CURRENT_OLD_ROW: RefCell<Option<*const Row>> = RefCell::new(None);
+    pub static CURRENT_OLD_ROW: RefCell<Option<*const Row>> = const { RefCell::new(None) };
     /// Pointer to the table schema for looking up columns
-    pub static CURRENT_SCHEMA: RefCell<Option<*const Schema>> = RefCell::new(None);
+    pub static CURRENT_SCHEMA: RefCell<Option<*const Schema>> = const { RefCell::new(None) };
     /// Prevents infinite recursion
-    pub static TRIGGER_DEPTH_COUNTER: Cell<usize> = Cell::new(0);
+    pub static TRIGGER_DEPTH_COUNTER: Cell<usize> = const { Cell::new(0) };
 }
 
 pub const MAX_TRIGGER_DEPTH: usize = 32;

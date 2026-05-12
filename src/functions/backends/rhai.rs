@@ -310,7 +310,7 @@ impl NewRowProxy {
                         if let Some(row_ptr) = *r.borrow_mut() {
                             let row = unsafe { &mut *row_ptr };
                             if let Some(col) = schema.get_column(idx) {
-                                match crate::functions::backends::rhai::dynamic_to_value(new_val.clone(), col.data_type.clone()) {
+                                match crate::functions::backends::rhai::dynamic_to_value(new_val.clone(), col.data_type) {
                                     Ok(v) => {
                                         let _ = row.set(idx, v);
                                         success = true;

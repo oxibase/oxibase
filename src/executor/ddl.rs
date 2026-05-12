@@ -1590,7 +1590,7 @@ impl Executor {
     }
 
     fn delete_table_triggers(&self, table_name: &str) -> Result<()> {
-        let (mut tx, mut table, auto_commit) = self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
+        let (tx, mut table, auto_commit) = self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
         let mut ids_to_delete = Vec::new();
         let mut scanner = table.scan(&[], None)?;
         
