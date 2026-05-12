@@ -1,0 +1,39 @@
+// Python Proxy Strategy:
+// We need to implement a Python class via `#[pyclass]` that intercepts `__getattr__` and `__setattr__`.
+
+use rustpython_vm::prelude::*;
+
+#[pyclass(module = "oxibase", name = "NewRowProxy")]
+pub struct PyNewRowProxy;
+
+#[pyimpl]
+impl PyNewRowProxy {
+    #[pymethod(magic)]
+    fn getattr(&self, attr: PyStrRef, vm: &VirtualMachine) -> PyResult<PyObjectRef> {
+        let mut val = None;
+        let mut found = false;
+
+        crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
+            if let Some(schema_ptr) = *s.borrow() {
+                let schema = unsafe { &*schema_ptr };
+                if let Some(idx) = schema.get_column_index(attr.as_str()) {
+                    found = true;
+                    crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                        if let Some(row_ptr) = *r.borrow() {
+                            let row = unsafe { &*row_ptr };
+                            if let Some(v) = row.get(idx) {
+                                // Need value -> py_value conversion
+                                val = Some(convert_to_py(v, vm));
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        if !found {
+            return Err(vm.new_attribute_error(format!("Column not found: {}", attr)));
+        }
+        Ok(val.unwrap_or_else(|| vm.ctx.none()))
+    }
+}
