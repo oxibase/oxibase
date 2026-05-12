@@ -21,6 +21,7 @@
 pub mod boa;
 pub mod python;
 pub mod rhai;
+pub mod triggers;
 
 use crate::core::{Result, Value};
 use std::collections::HashMap;

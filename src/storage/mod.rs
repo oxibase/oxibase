@@ -30,6 +30,7 @@ pub mod mvcc;
 pub mod procedures;
 pub mod statistics;
 pub mod traits;
+pub mod triggers;
 
 // Re-export main expression types at storage level for convenience
 pub use expression::{
