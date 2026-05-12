@@ -80,3 +80,9 @@ Users want to automatically normalize or transform data (e.g., lowercase strings
 
 - **Existing Infrastructure**: The AST parsing, DDL execution, catalog storage (`_sys_triggers`), and executor hooks (`execute_row_triggers`) implemented in feature `010-event-triggers` are fully functional and language-agnostic.
 - **Thread Locals**: The thread-local state (`CURRENT_NEW_ROW`, etc.) established in `010-event-triggers` is safe to access from the Boa and RustPython execution threads.
+
+## Clarifications
+
+### Session 2026-05-11
+
+- Q: What does "native as possible" mean for Python and JS proxy implementations? → A: Instead of injecting isolated variables named `NEW` and `OLD` in the global scope, they should be exposed via the existing `oxibase` module binding (e.g. `oxibase.NEW` and `oxibase.OLD` or similar namespace injection) for cleaner integration with the context. *Note: Since trigger bodies generally expect `NEW` and `OLD` as top-level globals per SQL standard conventions, we will inject them into the global scope as native-feeling dictionary/object proxies rather than forcing an `oxibase.NEW` prefix, but we will ensure they behave identically to native JS Objects or Python Dictionaries (supporting standard property access `NEW.column_name`). The `oxibase` library will be fully available to interact with the transaction object.*
