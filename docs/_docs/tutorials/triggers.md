@@ -36,7 +36,7 @@ CREATE TRIGGER ensure_positive_balance
     FOR EACH ROW
     LANGUAGE rhai
 AS '
-    if NEW.balance < 0.0 {
+    if oxibase.ctx["new"].balance < 0.0 {
         throw "Account balance cannot be negative!";
     }
 ';
@@ -66,7 +66,7 @@ CREATE TRIGGER normalize_owner_name
     LANGUAGE js
 AS '
     // Force the owner name to be uppercase before saving
-    NEW.owner_name = NEW.owner_name.toUpperCase();
+    oxibase.ctx.new.owner_name = oxibase.ctx.new.owner_name.toUpperCase();
 ';
 ```
 
@@ -99,9 +99,9 @@ AS '
 import oxibase
 
 # Only log if the balance actually changed
-if OLD["balance"] != NEW["balance"]:
+if oxibase.ctx.old["balance"] != oxibase.ctx.new["balance"]:
     # Use oxibase.execute to run DML side-effects
-    stmt = "INSERT INTO audit_log (account_id, old_balance, new_balance) VALUES (" + str(OLD["id"]) + ", " + str(OLD["balance"]) + ", " + str(NEW["balance"]) + ")"
+    stmt = "INSERT INTO audit_log (account_id, old_balance, new_balance) VALUES (" + str(oxibase.ctx.old["id"]) + ", " + str(oxibase.ctx.old["balance"]) + ", " + str(oxibase.ctx.new["balance"]) + ")"
     oxibase.execute(stmt)
 ';
 ```

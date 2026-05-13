@@ -39,7 +39,7 @@ CREATE TRIGGER ensure_audit
     FOR EACH ROW
     LANGUAGE rhai
 AS '
-    if oxibase.ctx.old.quantity != oxibase.ctx.new.quantity {
+    if oxibase.ctx["old"].quantity != oxibase.ctx["new"].quantity {
         oxibase::execute("INSERT INTO log ...");
     }
 ';

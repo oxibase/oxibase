@@ -38,7 +38,7 @@ fn test_create_and_drop_trigger() {
         FOR EACH ROW
         LANGUAGE rhai
         AS '
-            if NEW.id < 0 {
+            if oxibase.ctx["new"].id < 0 {
                 throw "Negative ID not allowed";
             }
         ';
@@ -82,7 +82,7 @@ fn test_data_transformation_trigger() {
         FOR EACH ROW
         LANGUAGE rhai
         AS '
-            NEW.name = "PREFIX_" + NEW.name;
+            oxibase.ctx["new"].name = "PREFIX_" + oxibase.ctx["new"].name;
         ';
     "#,
         )
@@ -115,8 +115,8 @@ fn test_audit_trigger() {
         FOR EACH ROW
         LANGUAGE rhai
         AS '
-            if OLD.price != NEW.price {
-                oxibase::execute("INSERT INTO audit_log (product_id, old_price, new_price) VALUES (" + OLD.id + ", " + OLD.price + ", " + NEW.price + ")");
+            if oxibase.ctx["old"].price != oxibase.ctx["new"].price {
+                oxibase::execute("INSERT INTO audit_log (product_id, old_price, new_price) VALUES (" + oxibase.ctx["old"].id + ", " + oxibase.ctx["old"].price + ", " + oxibase.ctx["new"].price + ")");
             }
         ';
     "#).unwrap();
@@ -156,7 +156,9 @@ fn test_python_trigger() {
         FOR EACH ROW
         LANGUAGE python
         AS '
-if NEW["balance"] < 0:
+import oxibase
+
+if oxibase.ctx.new["balance"] < 0:
     raise RuntimeError("Negative balance not allowed")
 '
     "#,
@@ -172,6 +174,7 @@ if NEW["balance"] < 0:
     let insert_err = executor.execute("INSERT INTO accounts (id, balance) VALUES (1, -50.0)");
     assert!(insert_err.is_err());
     if let Err(e) = insert_err {
+        println!("Error was: {:?}", e);
         assert!(e.to_string().contains("Negative balance not allowed"));
     }
 
@@ -188,7 +191,9 @@ if NEW["balance"] < 0:
         FOR EACH ROW
         LANGUAGE python
         AS '
-NEW["balance"] = NEW["balance"] + 10.0
+import oxibase
+
+oxibase.ctx.new["balance"] = oxibase.ctx.new["balance"] + 10.0
 '
     "#,
         )
@@ -223,9 +228,9 @@ fn test_js_trigger() {
         FOR EACH ROW
         LANGUAGE js
         AS '
-if (OLD.balance !== NEW.balance) {
-    let diff = NEW.balance - OLD.balance;
-    oxibase.execute("INSERT INTO audit_js (id, amount) VALUES (" + NEW.id + ", " + diff + ")");
+if (oxibase.ctx.old.balance !== oxibase.ctx.new.balance) {
+    let diff = oxibase.ctx.new.balance - oxibase.ctx.old.balance;
+    oxibase.execute("INSERT INTO audit_js (id, amount) VALUES (" + oxibase.ctx.new.id + ", " + diff + ")");
 }
 '
     "#,

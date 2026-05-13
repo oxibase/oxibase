@@ -323,21 +323,28 @@ impl ScriptingBackend for BoaBackend {
     ) -> Result<()> {
         let mut context = create_secure_context();
 
-        if let Some(new_obj) = self.build_new_row_json(&mut context) {
-            let _ = context.register_global_property(
-                boa_engine::JsString::from("NEW"),
+        let new_obj_opt = self.build_new_row_json(&mut context);
+        let old_obj_opt = self.build_old_row_json(&mut context);
+
+        let mut ctx_initializer = boa_engine::object::ObjectInitializer::new(&mut context);
+
+        if let Some(new_obj) = new_obj_opt {
+            ctx_initializer.property(
+                boa_engine::JsString::from("new"),
                 new_obj,
-                Default::default(),
+                boa_engine::property::Attribute::all(),
             );
         }
 
-        if let Some(old_obj) = self.build_old_row_json(&mut context) {
-            let _ = context.register_global_property(
-                boa_engine::JsString::from("OLD"),
+        if let Some(old_obj) = old_obj_opt {
+            ctx_initializer.property(
+                boa_engine::JsString::from("old"),
                 old_obj,
-                Default::default(),
+                boa_engine::property::Attribute::all(),
             );
         }
+
+        let ctx_obj = ctx_initializer.build();
 
         let commit_fn = boa_engine::object::FunctionObjectBuilder::new(
             context.realm(),
@@ -394,6 +401,11 @@ impl ScriptingBackend for BoaBackend {
             .map_err(|e| Error::internal(format!("Failed to register JS begin: {}", e)))?;
 
         let oxibase_obj = boa_engine::object::ObjectInitializer::new(&mut context)
+            .property(
+                boa_engine::JsString::from("ctx"),
+                ctx_obj,
+                boa_engine::property::Attribute::all(),
+            )
             .function(
                 boa_engine::NativeFunction::from_fn_ptr(|_this, args, _ctx| {
                     let sql = args
@@ -469,10 +481,23 @@ impl ScriptingBackend for BoaBackend {
 
                 if let Ok(js_val) = context
                     .global_object()
-                    .get(boa_engine::JsString::from("NEW"), &mut context)
+                    .get(boa_engine::JsString::from("oxibase"), &mut context)
                 {
-                    if let Some(obj) = js_val.as_object() {
-                        let _ = self.extract_new_row_json(obj.clone(), &mut context);
+                    if let Some(oxibase) = js_val.as_object() {
+                        if let Ok(ctx_val) =
+                            oxibase.get(boa_engine::JsString::from("ctx"), &mut context)
+                        {
+                            if let Some(ctx) = ctx_val.as_object() {
+                                if let Ok(new_val) =
+                                    ctx.get(boa_engine::JsString::from("new"), &mut context)
+                                {
+                                    if let Some(obj) = new_val.as_object() {
+                                        let _ =
+                                            self.extract_new_row_json(obj.clone(), &mut context);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
