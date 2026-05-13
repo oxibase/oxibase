@@ -35,11 +35,11 @@ CREATE TRIGGER ensure_positive_balance
     BEFORE INSERT ON accounts
     FOR EACH ROW
     LANGUAGE rhai
-AS $$
+AS '
     if NEW.balance < 0.0 {
         throw "Account balance cannot be negative!";
     }
-$$;
+';
 ```
 
 If you try to insert invalid data, the transaction aborts:
@@ -64,10 +64,10 @@ CREATE TRIGGER normalize_owner_name
     BEFORE UPDATE ON accounts
     FOR EACH ROW
     LANGUAGE js
-AS $$
+AS '
     // Force the owner name to be uppercase before saving
     NEW.owner_name = NEW.owner_name.toUpperCase();
-$$;
+';
 ```
 
 ## 3. Audit Logging (`AFTER UPDATE` / `AFTER DELETE`)
@@ -95,13 +95,15 @@ CREATE TRIGGER log_balance_changes
     AFTER UPDATE ON accounts
     FOR EACH ROW
     LANGUAGE python
-AS $$
-    # Only log if the balance actually changed
-    if OLD.balance != NEW.balance:
-        # Use oxibase.execute to run DML side-effects
-        stmt = f"INSERT INTO audit_log (account_id, old_balance, new_balance) VALUES ({OLD.id}, {OLD.balance}, {NEW.balance})"
-        oxibase.execute(stmt)
-$$;
+AS '
+import oxibase
+
+# Only log if the balance actually changed
+if OLD["balance"] != NEW["balance"]:
+    # Use oxibase.execute to run DML side-effects
+    stmt = "INSERT INTO audit_log (account_id, old_balance, new_balance) VALUES (" + str(OLD["id"]) + ", " + str(OLD["balance"]) + ", " + str(NEW["balance"]) + ")"
+    oxibase.execute(stmt)
+';
 ```
 
 ## Dropping Triggers
