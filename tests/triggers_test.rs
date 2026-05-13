@@ -141,6 +141,7 @@ fn test_audit_trigger() {
 }
 
 #[test]
+#[cfg(feature = "python")]
 fn test_python_trigger() {
     let executor = setup_executor();
     executor
@@ -204,6 +205,7 @@ NEW["balance"] = NEW["balance"] + 10.0
 }
 
 #[test]
+#[cfg(feature = "js")]
 fn test_js_trigger() {
     let executor = setup_executor();
     executor
