@@ -1326,6 +1326,8 @@ pub enum Statement {
     CreateFunction(CreateFunctionStatement),
     DropFunction(DropFunctionStatement),
     CreateProcedure(CreateProcedureStatement),
+    CreateTrigger(CreateTriggerStatement),
+    DropTrigger(DropTriggerStatement),
     Call(CallStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
@@ -1368,6 +1370,8 @@ impl fmt::Display for Statement {
             Statement::CreateFunction(s) => write!(f, "{}", s),
             Statement::DropFunction(s) => write!(f, "{}", s),
             Statement::CreateProcedure(s) => write!(f, "{}", s),
+            Statement::CreateTrigger(s) => write!(f, "{}", s),
+            Statement::DropTrigger(s) => write!(f, "{}", s),
             Statement::Call(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
@@ -2782,5 +2786,96 @@ mod tests {
             }))),
         };
         assert_eq!(case_expr.to_string(), "CASE WHEN TRUE THEN 1 ELSE 0 END");
+    }
+}
+
+/// Timing for a trigger (BEFORE or AFTER)
+#[derive(Debug, Clone, PartialEq)]
+pub enum TriggerTiming {
+    Before,
+    After,
+}
+
+impl fmt::Display for TriggerTiming {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TriggerTiming::Before => write!(f, "BEFORE"),
+            TriggerTiming::After => write!(f, "AFTER"),
+        }
+    }
+}
+
+/// Event that fires a trigger
+#[derive(Debug, Clone, PartialEq)]
+pub enum TriggerEvent {
+    Insert,
+    Update,
+    Delete,
+}
+
+impl fmt::Display for TriggerEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TriggerEvent::Insert => write!(f, "INSERT"),
+            TriggerEvent::Update => write!(f, "UPDATE"),
+            TriggerEvent::Delete => write!(f, "DELETE"),
+        }
+    }
+}
+
+/// CREATE TRIGGER statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateTriggerStatement {
+    pub token: Token,
+    pub trigger_name: Identifier,
+    pub if_not_exists: bool,
+    pub timing: TriggerTiming,
+    pub event: TriggerEvent,
+    pub table_name: TableName,
+    pub for_each_row: bool,
+    pub language: String,
+    pub body: String,
+}
+
+impl fmt::Display for CreateTriggerStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("CREATE TRIGGER ");
+        if self.if_not_exists {
+            result.push_str("IF NOT EXISTS ");
+        }
+        result.push_str(&self.trigger_name.to_string());
+        result.push_str(&format!(
+            " {} {} ON {}",
+            self.timing, self.event, self.table_name
+        ));
+        if self.for_each_row {
+            result.push_str(" FOR EACH ROW");
+        }
+        result.push_str(&format!(
+            " LANGUAGE {} AS $$ {} $$",
+            self.language, self.body
+        ));
+        write!(f, "{}", result)
+    }
+}
+
+/// DROP TRIGGER statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropTriggerStatement {
+    pub token: Token,
+    pub trigger_name: Identifier,
+    pub table_name: TableName,
+    pub if_exists: bool,
+}
+
+impl fmt::Display for DropTriggerStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("DROP TRIGGER ");
+        if self.if_exists {
+            result.push_str("IF EXISTS ");
+        }
+        result.push_str(&self.trigger_name.to_string());
+        result.push_str(&format!(" ON {}", self.table_name));
+        write!(f, "{}", result)
     }
 }

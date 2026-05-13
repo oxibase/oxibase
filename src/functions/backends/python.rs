@@ -87,6 +87,93 @@ impl PythonBackend {
     pub fn new() -> Self {
         Self {}
     }
+    fn build_new_row_dict(
+        &self,
+        vm: &VirtualMachine,
+    ) -> Result<rustpython_vm::builtins::PyDictRef> {
+        let dict = vm.ctx.new_dict();
+
+        crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
+            if let Some(schema_ptr) = *s.borrow() {
+                let schema = unsafe { &*schema_ptr };
+                crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                    if let Some(row_ptr) = *r.borrow() {
+                        let row = unsafe { &*row_ptr };
+                        for col in &schema.columns {
+                            if let Some(val) = row.get(col.id) {
+                                if let Ok(py_val) = self.convert_oxibase_to_python(val, vm) {
+                                    let _ = dict.set_item(col.name.as_str(), py_val, vm);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        Ok(dict)
+    }
+
+    fn build_old_row_dict(
+        &self,
+        vm: &VirtualMachine,
+    ) -> Result<rustpython_vm::builtins::PyDictRef> {
+        let dict = vm.ctx.new_dict();
+
+        crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
+            if let Some(schema_ptr) = *s.borrow() {
+                let schema = unsafe { &*schema_ptr };
+                crate::functions::backends::triggers::CURRENT_OLD_ROW.with(|r| {
+                    if let Some(row_ptr) = *r.borrow() {
+                        let row = unsafe { &*row_ptr };
+                        for col in &schema.columns {
+                            if let Some(val) = row.get(col.id) {
+                                if let Ok(py_val) = self.convert_oxibase_to_python(val, vm) {
+                                    let _ = dict.set_item(col.name.as_str(), py_val, vm);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        Ok(dict)
+    }
+
+    fn extract_new_row_dict(
+        &self,
+        dict: rustpython_vm::builtins::PyDictRef,
+        vm: &VirtualMachine,
+    ) -> Result<()> {
+        let mut internal_err = None;
+        crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
+            if let Some(schema_ptr) = *s.borrow() {
+                let schema = unsafe { &*schema_ptr };
+                crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                    if let Some(row_ptr) = *r.borrow_mut() {
+                        let row = unsafe { &mut *row_ptr };
+                        for col in &schema.columns {
+                            if let Ok(py_val) = dict.get_item(col.name.as_str(), vm) {
+                                match self.convert_python_to_oxibase(&py_val, vm) {
+                                    Ok(v) => {
+                                        let _ =
+                                            row.set(col.id, v.into_coerce_to_type(col.data_type));
+                                    }
+                                    Err(e) => internal_err = Some(e),
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        if let Some(e) = internal_err {
+            return Err(e);
+        }
+        Ok(())
+    }
 
     /// Convert Oxibase Value to Python object
     #[allow(dead_code)]
@@ -254,6 +341,21 @@ impl ScriptingBackend for PythonBackend {
             .enter(|vm| {
                 let scope = vm.new_scope_with_builtins();
 
+                crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                    if r.borrow().is_some() {
+                        if let Ok(dict) = self.build_new_row_dict(vm) {
+                            let _ = scope.globals.set_item("NEW", dict.into(), vm);
+                        }
+                    }
+                });
+                crate::functions::backends::triggers::CURRENT_OLD_ROW.with(|r| {
+                    if r.borrow().is_some() {
+                        if let Ok(dict) = self.build_old_row_dict(vm) {
+                            let _ = scope.globals.set_item("OLD", dict.into(), vm);
+                        }
+                    }
+                });
+
                 for (i, arg) in args.iter().enumerate() {
                     let param_name = param_names[i];
                     let py_value = self.convert_oxibase_to_python(arg, vm)?;
@@ -285,6 +387,21 @@ impl ScriptingBackend for PythonBackend {
                                         }
                                     }
                                 }
+
+                                crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                                    if r.borrow().is_some() {
+                                        if let Ok(Some(py_val)) =
+                                            scope.globals.get_item_opt("NEW", vm)
+                                        {
+                                            if let Ok(dict) =
+                                                py_val.downcast::<rustpython_vm::builtins::PyDict>()
+                                            {
+                                                let _ = self.extract_new_row_dict(dict, vm);
+                                            }
+                                        }
+                                    }
+                                });
+
                                 Ok(())
                             }
                             Err(py_err) => {
