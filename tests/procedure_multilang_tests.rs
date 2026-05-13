@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(unused_imports)]
+use oxibase::api::Database;
+use oxibase::core::Value;
+
 #[test]
 #[cfg(feature = "js")]
 fn test_js_procedure() {
