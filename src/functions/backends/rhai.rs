@@ -130,16 +130,20 @@ impl ScriptingBackend for RhaiBackend {
     fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
         let mut scope = Scope::new();
 
+        let mut ctx_map = rhai::Map::new();
         crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
             if r.borrow().is_some() {
-                scope.push("NEW", NewRowProxy);
+                ctx_map.insert("new".into(), rhai::Dynamic::from(NewRowProxy));
             }
         });
         crate::functions::backends::triggers::CURRENT_OLD_ROW.with(|r| {
             if r.borrow().is_some() {
-                scope.push("OLD", OldRowProxy);
+                ctx_map.insert("old".into(), rhai::Dynamic::from(OldRowProxy));
             }
         });
+        let mut oxibase_map = rhai::Map::new();
+        oxibase_map.insert("ctx".into(), rhai::Dynamic::from(ctx_map));
+        scope.push("oxibase", oxibase_map);
 
         // Create arguments array for compatibility
         let mut args_array = rhai::Array::new();
@@ -208,16 +212,20 @@ impl ScriptingBackend for RhaiBackend {
     ) -> Result<()> {
         let mut scope = Scope::new();
 
+        let mut ctx_map = rhai::Map::new();
         crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
             if r.borrow().is_some() {
-                scope.push("NEW", NewRowProxy);
+                ctx_map.insert("new".into(), rhai::Dynamic::from(NewRowProxy));
             }
         });
         crate::functions::backends::triggers::CURRENT_OLD_ROW.with(|r| {
             if r.borrow().is_some() {
-                scope.push("OLD", OldRowProxy);
+                ctx_map.insert("old".into(), rhai::Dynamic::from(OldRowProxy));
             }
         });
+        let mut oxibase_map = rhai::Map::new();
+        oxibase_map.insert("ctx".into(), rhai::Dynamic::from(ctx_map));
+        scope.push("oxibase", oxibase_map);
 
         // Bind arguments to scope using parameter names
         for (i, arg) in args.iter().enumerate() {

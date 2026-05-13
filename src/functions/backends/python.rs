@@ -341,20 +341,31 @@ impl ScriptingBackend for PythonBackend {
             .enter(|vm| {
                 let scope = vm.new_scope_with_builtins();
 
-                crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
-                    if r.borrow().is_some() {
-                        if let Ok(dict) = self.build_new_row_dict(vm) {
-                            let _ = scope.globals.set_item("NEW", dict.into(), vm);
+                let mut oxibase_mod_opt = None;
+                if let Ok(m) = vm.import("oxibase", 0) {
+                    oxibase_mod_opt = Some(m);
+                }
+
+                if let Some(oxibase_mod) = oxibase_mod_opt {
+                    let ctx_ns = rustpython_vm::builtins::PyNamespace::new_ref(&vm.ctx);
+                    crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                        if r.borrow().is_some() {
+                            if let Ok(dict) = self.build_new_row_dict(vm) {
+                                use rustpython_vm::AsObject;
+                                let _ = ctx_ns.as_object().set_attr("new", vm.new_pyobj(dict), vm);
+                            }
                         }
-                    }
-                });
-                crate::functions::backends::triggers::CURRENT_OLD_ROW.with(|r| {
-                    if r.borrow().is_some() {
-                        if let Ok(dict) = self.build_old_row_dict(vm) {
-                            let _ = scope.globals.set_item("OLD", dict.into(), vm);
+                    });
+                    crate::functions::backends::triggers::CURRENT_OLD_ROW.with(|r| {
+                        if r.borrow().is_some() {
+                            if let Ok(dict) = self.build_old_row_dict(vm) {
+                                use rustpython_vm::AsObject;
+                                let _ = ctx_ns.as_object().set_attr("old", vm.new_pyobj(dict), vm);
+                            }
                         }
-                    }
-                });
+                    });
+                    let _ = oxibase_mod.set_attr("ctx", vm.new_pyobj(ctx_ns), vm);
+                }
 
                 for (i, arg) in args.iter().enumerate() {
                     let param_name = param_names[i];
@@ -390,14 +401,20 @@ impl ScriptingBackend for PythonBackend {
 
                                 crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
                                     if r.borrow().is_some() {
-                                        if let Ok(Some(py_val)) =
-                                            scope.globals.get_item_opt("NEW", vm)
-                                        {
-                                            if let Ok(dict) =
-                                                py_val.downcast::<rustpython_vm::builtins::PyDict>()
-                                            {
-                                                let _ = self.extract_new_row_dict(dict, vm);
+                                        let mut new_row_extracted = false;
+                                        if let Ok(oxibase_mod) = vm.import("oxibase", 0) {
+                                            if let Ok(ctx_obj) = oxibase_mod.get_attr("ctx", vm) {
+                                                if let Ok(new_obj) = ctx_obj.get_attr("new", vm) {
+                                                    if let Ok(dict) = new_obj.downcast::<rustpython_vm::builtins::PyDict>() {
+                                                        let _ = self.extract_new_row_dict(dict, vm);
+                                                        new_row_extracted = true;
+                                                    }
+                                                }
                                             }
+                                        }
+                                        if !new_row_extracted {
+                                            // Fallback for scope extraction if needed?
+                                            // Actually, FR-005 mandates reading from the nested path.
                                         }
                                     }
                                 });
