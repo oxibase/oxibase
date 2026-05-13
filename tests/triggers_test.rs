@@ -1,4 +1,18 @@
-use oxibase::core::{DataType, Value};
+// Copyright 2025 Oxibase Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use oxibase::core::Value;
 use oxibase::executor::Executor;
 use oxibase::storage::mvcc::engine::MVCCEngine;
 use std::sync::Arc;
@@ -12,10 +26,13 @@ fn setup_executor() -> Executor {
 #[test]
 fn test_create_and_drop_trigger() {
     let executor = setup_executor();
-    executor.execute("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)").unwrap();
-    
+    executor
+        .execute("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name TEXT)")
+        .unwrap();
+
     // Create trigger
-    let result = executor.execute(r#"
+    let result = executor.execute(
+        r#"
         CREATE TRIGGER test_trigger
         BEFORE INSERT ON test_table
         FOR EACH ROW
@@ -25,21 +42,26 @@ fn test_create_and_drop_trigger() {
                 throw "Negative ID not allowed";
             }
         ';
-    "#);
-    
-    assert!(result.is_ok(), "Failed to create trigger: {:?}", result.err());
-    
+    "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "Failed to create trigger: {:?}",
+        result.err()
+    );
+
     // Test validation
     let insert_err = executor.execute("INSERT INTO test_table (id, name) VALUES (-1, 'test')");
     assert!(insert_err.is_err());
     if let Err(e) = insert_err {
         assert!(e.to_string().contains("Negative ID not allowed"));
     }
-    
+
     // Test valid insert
     let insert_ok = executor.execute("INSERT INTO test_table (id, name) VALUES (1, 'test')");
     assert!(insert_ok.is_ok());
-    
+
     // Drop trigger
     let drop_result = executor.execute("DROP TRIGGER test_trigger ON test_table");
     assert!(drop_result.is_ok());
@@ -48,9 +70,13 @@ fn test_create_and_drop_trigger() {
 #[test]
 fn test_data_transformation_trigger() {
     let executor = setup_executor();
-    executor.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)").unwrap();
-    
-    executor.execute(r#"
+    executor
+        .execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
+        .unwrap();
+
+    executor
+        .execute(
+            r#"
         CREATE TRIGGER normalize_name
         BEFORE INSERT ON users
         FOR EACH ROW
@@ -58,11 +84,17 @@ fn test_data_transformation_trigger() {
         AS '
             NEW.name = "PREFIX_" + NEW.name;
         ';
-    "#).unwrap();
-    
-    executor.execute("INSERT INTO users (id, name) VALUES (1, 'alice')").unwrap();
-    
-    let mut result = executor.execute("SELECT name FROM users WHERE id = 1").unwrap();
+    "#,
+        )
+        .unwrap();
+
+    executor
+        .execute("INSERT INTO users (id, name) VALUES (1, 'alice')")
+        .unwrap();
+
+    let mut result = executor
+        .execute("SELECT name FROM users WHERE id = 1")
+        .unwrap();
     assert!(result.next());
     assert_eq!(result.row().get(0), Some(&Value::text("PREFIX_alice")));
 }
@@ -70,9 +102,13 @@ fn test_data_transformation_trigger() {
 #[test]
 fn test_audit_trigger() {
     let executor = setup_executor();
-    executor.execute("CREATE TABLE products (id INTEGER PRIMARY KEY, price FLOAT)").unwrap();
-    executor.execute("CREATE TABLE audit_log (product_id INTEGER, old_price FLOAT, new_price FLOAT)").unwrap();
-    
+    executor
+        .execute("CREATE TABLE products (id INTEGER PRIMARY KEY, price FLOAT)")
+        .unwrap();
+    executor
+        .execute("CREATE TABLE audit_log (product_id INTEGER, old_price FLOAT, new_price FLOAT)")
+        .unwrap();
+
     executor.execute(r#"
         CREATE TRIGGER audit_price
         AFTER UPDATE ON products
@@ -84,14 +120,20 @@ fn test_audit_trigger() {
             }
         ';
     "#).unwrap();
-    
-    executor.execute("INSERT INTO products (id, price) VALUES (1, 10.0)").unwrap();
-    
+
+    executor
+        .execute("INSERT INTO products (id, price) VALUES (1, 10.0)")
+        .unwrap();
+
     // Update price
-    executor.execute("UPDATE products SET price = 15.0 WHERE id = 1").unwrap();
-    
+    executor
+        .execute("UPDATE products SET price = 15.0 WHERE id = 1")
+        .unwrap();
+
     // Check audit log
-    let mut result = executor.execute("SELECT old_price, new_price FROM audit_log WHERE product_id = 1").unwrap();
+    let mut result = executor
+        .execute("SELECT old_price, new_price FROM audit_log WHERE product_id = 1")
+        .unwrap();
     assert!(result.next());
     let row = result.row();
     assert_eq!(row.get(0), Some(&Value::Float(10.0)));
@@ -101,10 +143,13 @@ fn test_audit_trigger() {
 #[test]
 fn test_python_trigger() {
     let executor = setup_executor();
-    executor.execute("CREATE TABLE accounts (id INTEGER PRIMARY KEY, balance FLOAT)").unwrap();
-    
+    executor
+        .execute("CREATE TABLE accounts (id INTEGER PRIMARY KEY, balance FLOAT)")
+        .unwrap();
+
     // Create Python trigger
-    let result = executor.execute(r#"
+    let result = executor.execute(
+        r#"
         CREATE TRIGGER test_py_trigger
         BEFORE INSERT ON accounts
         FOR EACH ROW
@@ -113,23 +158,30 @@ fn test_python_trigger() {
 if NEW["balance"] < 0:
     raise RuntimeError("Negative balance not allowed")
 '
-    "#);
-    
-    assert!(result.is_ok(), "Failed to create trigger: {:?}", result.err());
-    
+    "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "Failed to create trigger: {:?}",
+        result.err()
+    );
+
     // Test validation
     let insert_err = executor.execute("INSERT INTO accounts (id, balance) VALUES (1, -50.0)");
     assert!(insert_err.is_err());
     if let Err(e) = insert_err {
         assert!(e.to_string().contains("Negative balance not allowed"));
     }
-    
+
     // Test valid insert
     let insert_ok = executor.execute("INSERT INTO accounts (id, balance) VALUES (2, 100.0)");
     assert!(insert_ok.is_ok());
-    
+
     // Test transformation trigger
-    executor.execute(r#"
+    executor
+        .execute(
+            r#"
         CREATE TRIGGER test_py_transform
         BEFORE UPDATE ON accounts
         FOR EACH ROW
@@ -137,10 +189,16 @@ if NEW["balance"] < 0:
         AS '
 NEW["balance"] = NEW["balance"] + 10.0
 '
-    "#).unwrap();
-    
-    executor.execute("UPDATE accounts SET balance = 100.0 WHERE id = 2").unwrap();
-    let mut result = executor.execute("SELECT balance FROM accounts WHERE id = 2").unwrap();
+    "#,
+        )
+        .unwrap();
+
+    executor
+        .execute("UPDATE accounts SET balance = 100.0 WHERE id = 2")
+        .unwrap();
+    let mut result = executor
+        .execute("SELECT balance FROM accounts WHERE id = 2")
+        .unwrap();
     assert!(result.next());
     assert_eq!(result.row().get(0), Some(&Value::Float(110.0)));
 }
@@ -148,11 +206,16 @@ NEW["balance"] = NEW["balance"] + 10.0
 #[test]
 fn test_js_trigger() {
     let executor = setup_executor();
-    executor.execute("CREATE TABLE accounts_js (id INTEGER PRIMARY KEY, balance FLOAT)").unwrap();
-    executor.execute("CREATE TABLE audit_js (id INTEGER, amount FLOAT)").unwrap();
-    
+    executor
+        .execute("CREATE TABLE accounts_js (id INTEGER PRIMARY KEY, balance FLOAT)")
+        .unwrap();
+    executor
+        .execute("CREATE TABLE audit_js (id INTEGER, amount FLOAT)")
+        .unwrap();
+
     // Create JS trigger
-    let result = executor.execute(r#"
+    let result = executor.execute(
+        r#"
         CREATE TRIGGER test_js_trigger
         AFTER UPDATE ON accounts_js
         FOR EACH ROW
@@ -163,22 +226,31 @@ if (OLD.balance !== NEW.balance) {
     oxibase.execute("INSERT INTO audit_js (id, amount) VALUES (" + NEW.id + ", " + diff + ")");
 }
 '
-    "#);
-    
-    assert!(result.is_ok(), "Failed to create trigger: {:?}", result.err());
-    
+    "#,
+    );
+
+    assert!(
+        result.is_ok(),
+        "Failed to create trigger: {:?}",
+        result.err()
+    );
+
     // Insert initial
-    executor.execute("INSERT INTO accounts_js (id, balance) VALUES (1, 100.0)").unwrap();
-    
+    executor
+        .execute("INSERT INTO accounts_js (id, balance) VALUES (1, 100.0)")
+        .unwrap();
+
     // Update balance
     let update_ok = executor.execute("UPDATE accounts_js SET balance = 150.0 WHERE id = 1");
     if let Err(e) = &update_ok {
         println!("Update failed: {:?}", e);
     }
     assert!(update_ok.is_ok());
-    
+
     // Check audit log
-    let mut result = executor.execute("SELECT amount FROM audit_js WHERE id = 1").unwrap();
+    let mut result = executor
+        .execute("SELECT amount FROM audit_js WHERE id = 1")
+        .unwrap();
     assert!(result.next());
     assert_eq!(result.row().get(0), Some(&Value::Float(50.0)));
 }

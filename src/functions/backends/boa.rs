@@ -42,7 +42,12 @@ impl BoaBackend {
                         for col in &schema.columns {
                             if let Some(val) = row.get(col.id) {
                                 if let Ok(jv) = self.convert_oxibase_to_boa(val) {
-                                    let _ = obj.set(boa_engine::JsString::from(col.name.as_str()), jv, false, context);
+                                    let _ = obj.set(
+                                        boa_engine::JsString::from(col.name.as_str()),
+                                        jv,
+                                        false,
+                                        context,
+                                    );
                                 }
                             }
                         }
@@ -66,7 +71,12 @@ impl BoaBackend {
                         for col in &schema.columns {
                             if let Some(val) = row.get(col.id) {
                                 if let Ok(jv) = self.convert_oxibase_to_boa(val) {
-                                    let _ = obj.set(boa_engine::JsString::from(col.name.as_str()), jv, false, context);
+                                    let _ = obj.set(
+                                        boa_engine::JsString::from(col.name.as_str()),
+                                        jv,
+                                        false,
+                                        context,
+                                    );
                                 }
                             }
                         }
@@ -78,7 +88,11 @@ impl BoaBackend {
         js_val
     }
 
-    fn extract_new_row_json(&self, js_obj: boa_engine::object::JsObject, context: &mut boa_engine::Context) -> crate::core::Result<()> {
+    fn extract_new_row_json(
+        &self,
+        js_obj: boa_engine::object::JsObject,
+        context: &mut boa_engine::Context,
+    ) -> crate::core::Result<()> {
         let mut internal_err = None;
         crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
             if let Some(schema_ptr) = *s.borrow() {
@@ -87,9 +101,15 @@ impl BoaBackend {
                     if let Some(row_ptr) = *r.borrow_mut() {
                         let row = unsafe { &mut *row_ptr };
                         for col in &schema.columns {
-                            if let Ok(js_val) = js_obj.get(boa_engine::JsString::from(col.name.as_str()), context) {
-                                match self.convert_boa_to_oxibase(&js_val, &col.data_type, context) {
-                                    Ok(v) => { let _ = row.set(col.id, v.into_coerce_to_type(col.data_type)); },
+                            if let Ok(js_val) =
+                                js_obj.get(boa_engine::JsString::from(col.name.as_str()), context)
+                            {
+                                match self.convert_boa_to_oxibase(&js_val, &col.data_type, context)
+                                {
+                                    Ok(v) => {
+                                        let _ =
+                                            row.set(col.id, v.into_coerce_to_type(col.data_type));
+                                    }
                                     Err(e) => internal_err = Some(e),
                                 }
                             }
@@ -107,16 +127,27 @@ impl BoaBackend {
     fn convert_oxibase_to_boa(&self, value: &crate::core::Value) -> Result<boa_engine::JsValue> {
         match value {
             crate::core::Value::Null(_) => Ok(boa_engine::JsValue::null()),
-            crate::core::Value::Integer(i) => Ok(boa_engine::JsValue::new(*i as i32)), 
+            crate::core::Value::Integer(i) => Ok(boa_engine::JsValue::new(*i as i32)),
             crate::core::Value::Float(f) => Ok(boa_engine::JsValue::rational(*f)),
-            crate::core::Value::Text(s) => Ok(boa_engine::JsValue::new(boa_engine::JsString::from(s.as_ref()))),
+            crate::core::Value::Text(s) => Ok(boa_engine::JsValue::new(
+                boa_engine::JsString::from(s.as_ref()),
+            )),
             crate::core::Value::Boolean(b) => Ok(boa_engine::JsValue::new(*b)),
-            crate::core::Value::Timestamp(ts) => Ok(boa_engine::JsValue::new(boa_engine::JsString::from(ts.to_rfc3339()))),
-            crate::core::Value::Json(j) => Ok(boa_engine::JsValue::new(boa_engine::JsString::from(j.as_ref()))),
+            crate::core::Value::Timestamp(ts) => Ok(boa_engine::JsValue::new(
+                boa_engine::JsString::from(ts.to_rfc3339()),
+            )),
+            crate::core::Value::Json(j) => Ok(boa_engine::JsValue::new(
+                boa_engine::JsString::from(j.as_ref()),
+            )),
         }
     }
 
-    fn convert_boa_to_oxibase(&self, value: &boa_engine::JsValue, dt: &crate::core::DataType, context: &mut boa_engine::Context) -> crate::core::Result<crate::core::Value> {
+    fn convert_boa_to_oxibase(
+        &self,
+        value: &boa_engine::JsValue,
+        dt: &crate::core::DataType,
+        context: &mut boa_engine::Context,
+    ) -> crate::core::Result<crate::core::Value> {
         if value.is_null_or_undefined() {
             return Ok(crate::core::Value::Null(*dt));
         }
@@ -126,19 +157,21 @@ impl BoaBackend {
                 if let Some(n) = value.as_number() {
                     Ok(crate::core::Value::Integer(n as i64))
                 } else {
-                    Err(crate::core::Error::internal("Cannot cast JS value to integer"))
+                    Err(crate::core::Error::internal(
+                        "Cannot cast JS value to integer",
+                    ))
                 }
-            },
+            }
             crate::core::DataType::Float => {
                 if let Some(n) = value.as_number() {
                     Ok(crate::core::Value::Float(n))
                 } else {
-                    Err(crate::core::Error::internal("Cannot cast JS value to float"))
+                    Err(crate::core::Error::internal(
+                        "Cannot cast JS value to float",
+                    ))
                 }
-            },
-            crate::core::DataType::Boolean => {
-                Ok(crate::core::Value::Boolean(value.to_boolean()))
-            },
+            }
+            crate::core::DataType::Boolean => Ok(crate::core::Value::Boolean(value.to_boolean())),
             _ => {
                 if let Ok(s) = value.to_string(context) {
                     Ok(crate::core::Value::text(s.to_std_string_escaped()))
@@ -291,11 +324,19 @@ impl ScriptingBackend for BoaBackend {
         let mut context = create_secure_context();
 
         if let Some(new_obj) = self.build_new_row_json(&mut context) {
-            let _ = context.register_global_property(boa_engine::JsString::from("NEW"), new_obj, Default::default());
+            let _ = context.register_global_property(
+                boa_engine::JsString::from("NEW"),
+                new_obj,
+                Default::default(),
+            );
         }
-        
+
         if let Some(old_obj) = self.build_old_row_json(&mut context) {
-            let _ = context.register_global_property(boa_engine::JsString::from("OLD"), old_obj, Default::default());
+            let _ = context.register_global_property(
+                boa_engine::JsString::from("OLD"),
+                old_obj,
+                Default::default(),
+            );
         }
 
         let commit_fn = boa_engine::object::FunctionObjectBuilder::new(
@@ -425,8 +466,11 @@ impl ScriptingBackend for BoaBackend {
                         }
                     }
                 }
-                
-                if let Ok(js_val) = context.global_object().get(boa_engine::JsString::from("NEW"), &mut context) {
+
+                if let Ok(js_val) = context
+                    .global_object()
+                    .get(boa_engine::JsString::from("NEW"), &mut context)
+                {
                     if let Some(obj) = js_val.as_object() {
                         let _ = self.extract_new_row_json(obj.clone(), &mut context);
                     }

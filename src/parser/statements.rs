@@ -2272,7 +2272,8 @@ impl Parser {
     fn parse_drop_statement(&mut self) -> Option<Statement> {
         if self.peek_token_is_keyword("TRIGGER") {
             self.next_token();
-            self.parse_drop_trigger_statement().map(Statement::DropTrigger)
+            self.parse_drop_trigger_statement()
+                .map(Statement::DropTrigger)
         } else if self.peek_token_is_keyword("TABLE") {
             self.next_token();
             self.parse_drop_table_statement().map(Statement::DropTable)
@@ -3111,7 +3112,10 @@ impl Parser {
         } else if timing_str == "AFTER" {
             TriggerTiming::After
         } else {
-            self.add_error(format!("expected BEFORE or AFTER at {}", self.cur_token.position));
+            self.add_error(format!(
+                "expected BEFORE or AFTER at {}",
+                self.cur_token.position
+            ));
             return None;
         };
 
@@ -3124,7 +3128,10 @@ impl Parser {
         } else if event_str == "DELETE" {
             TriggerEvent::Delete
         } else {
-            self.add_error(format!("expected INSERT, UPDATE, or DELETE at {}", self.cur_token.position));
+            self.add_error(format!(
+                "expected INSERT, UPDATE, or DELETE at {}",
+                self.cur_token.position
+            ));
             return None;
         };
 
@@ -3153,7 +3160,10 @@ impl Parser {
         }
 
         if !self.expect_peek(TokenType::Identifier) && !self.expect_peek(TokenType::Keyword) {
-            self.add_error(format!("expected language name at {}", self.cur_token.position));
+            self.add_error(format!(
+                "expected language name at {}",
+                self.cur_token.position
+            ));
             return None;
         }
         let language = self.cur_token.literal.clone();
@@ -3163,7 +3173,10 @@ impl Parser {
         }
 
         if !self.expect_peek(TokenType::String) {
-            self.add_error(format!("expected procedure body string at {}", self.cur_token.position));
+            self.add_error(format!(
+                "expected procedure body string at {}",
+                self.cur_token.position
+            ));
             return None;
         }
         let body = self.cur_token.literal.trim_matches('\'').to_string();

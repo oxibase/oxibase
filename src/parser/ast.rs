@@ -2851,7 +2851,10 @@ impl fmt::Display for CreateTriggerStatement {
         if self.for_each_row {
             result.push_str(" FOR EACH ROW");
         }
-        result.push_str(&format!(" LANGUAGE {} AS $$ {} $$", self.language, self.body));
+        result.push_str(&format!(
+            " LANGUAGE {} AS $$ {} $$",
+            self.language, self.body
+        ));
         write!(f, "{}", result)
     }
 }

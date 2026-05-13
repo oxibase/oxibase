@@ -417,9 +417,7 @@ impl Executor {
 
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        let has_triggers_table = tables
-            .iter()
-            .any(|t| t.eq_ignore_ascii_case(SYS_TRIGGERS));
+        let has_triggers_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_TRIGGERS));
 
         if !has_triggers_table {
             return Ok(());

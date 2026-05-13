@@ -431,12 +431,15 @@ impl Executor {
         if let Some(ref mut _tx_state) = *active_tx {
             // Transactional DDL: Get schema before dropping, then drop immediately
             let schema = self.engine.get_table_schema(table_name)?;
-            
+
             // Drop triggers
-            if let Ok(true) = self.engine.table_exists(crate::storage::triggers::SYS_TRIGGERS) {
+            if let Ok(true) = self
+                .engine
+                .table_exists(crate::storage::triggers::SYS_TRIGGERS)
+            {
                 let _ = self.delete_table_triggers(table_name);
             }
-            
+
             self.engine.drop_table_internal(table_name)?;
 
             if let Some(ref mut tx_state) = *active_tx {
@@ -454,7 +457,10 @@ impl Executor {
             );
         } else {
             // No active transaction - use engine method directly (auto-committed with WAL)
-            if let Ok(true) = self.engine.table_exists(crate::storage::triggers::SYS_TRIGGERS) {
+            if let Ok(true) = self
+                .engine
+                .table_exists(crate::storage::triggers::SYS_TRIGGERS)
+            {
                 let _ = self.delete_table_triggers(table_name);
             }
             self.engine.drop_table_internal(table_name)?;
@@ -1545,13 +1551,16 @@ impl Executor {
     fn trigger_exists(&self, trigger_name: &str) -> Result<bool> {
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        if !tables.iter().any(|t| t.eq_ignore_ascii_case(crate::storage::triggers::SYS_TRIGGERS)) {
+        if !tables
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(crate::storage::triggers::SYS_TRIGGERS))
+        {
             return Ok(false);
         }
 
         let table = tx.get_table(crate::storage::triggers::SYS_TRIGGERS)?;
         let mut scanner = table.scan(&[], None)?;
-        
+
         while scanner.next() {
             let row = scanner.row();
             if let Some(Value::Text(name)) = row.get(2) {
@@ -1560,16 +1569,21 @@ impl Executor {
                 }
             }
         }
-        
+
         Ok(false)
     }
 
     fn insert_trigger(&self, trigger: &crate::storage::triggers::StoredTrigger) -> Result<()> {
-        let (tx, mut table, auto_commit) = self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
+        let (tx, mut table, auto_commit) =
+            self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
 
         let row_values = vec![
             Value::Null(crate::core::DataType::Integer), // id auto increment
-            trigger.schema.as_ref().map(|s| Value::text(s.clone())).unwrap_or(Value::Null(crate::core::DataType::Null)),
+            trigger
+                .schema
+                .as_ref()
+                .map(|s| Value::text(s.clone()))
+                .unwrap_or(Value::Null(crate::core::DataType::Null)),
             Value::text(trigger.name.clone()),
             Value::text(trigger.table_name.clone()),
             Value::text(trigger.timing.clone()),
@@ -1590,36 +1604,43 @@ impl Executor {
     }
 
     fn delete_table_triggers(&self, table_name: &str) -> Result<()> {
-        let (tx, mut table, auto_commit) = self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
+        let (tx, mut table, auto_commit) =
+            self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
         let mut ids_to_delete = Vec::new();
         let mut scanner = table.scan(&[], None)?;
-        
+
         while scanner.next() {
             let row = scanner.row();
-            if let (Some(Value::Integer(id)), Some(Value::Text(target))) = (row.get(0), row.get(3)) {
+            if let (Some(Value::Integer(id)), Some(Value::Text(target))) = (row.get(0), row.get(3))
+            {
                 if target.eq_ignore_ascii_case(table_name) {
                     ids_to_delete.push(*id);
                 }
             }
         }
-        
+
         for id in ids_to_delete {
-            let mut pk_expr = crate::storage::expression::ComparisonExpr::new("id", crate::core::Operator::Eq, Value::Integer(id));
+            let mut pk_expr = crate::storage::expression::ComparisonExpr::new(
+                "id",
+                crate::core::Operator::Eq,
+                Value::Integer(id),
+            );
             pk_expr.prepare_for_schema(table.schema());
             let _ = table.delete(Some(&pk_expr))?;
         }
-        
+
         if auto_commit {
             if let Some(mut tx) = tx {
                 tx.commit()?;
             }
         }
-        
+
         self.trigger_registry.remove_table_triggers(table_name);
         Ok(())
     }
     fn delete_trigger(&self, trigger_name: &str) -> Result<bool> {
-        let (tx, mut table, auto_commit) = self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
+        let (tx, mut table, auto_commit) =
+            self.start_transaction_for_dml(crate::storage::triggers::SYS_TRIGGERS)?;
 
         let mut ids_to_delete = Vec::new();
         let mut scanner = table.scan(&[], None)?;
@@ -1635,7 +1656,8 @@ impl Executor {
         let mut deleted = false;
         use crate::storage::expression::{ComparisonExpr, Expression as StorageExpr};
         for id in ids_to_delete {
-            let mut id_expr = ComparisonExpr::new("id", crate::core::Operator::Eq, Value::Integer(id));
+            let mut id_expr =
+                ComparisonExpr::new("id", crate::core::Operator::Eq, Value::Integer(id));
             let schema = table.schema();
             id_expr.prepare_for_schema(schema);
             table.delete(Some(&id_expr))?;
@@ -1661,7 +1683,10 @@ impl Executor {
         let exists = self.trigger_exists(&trigger_name_upper)?;
 
         if exists && !stmt.if_not_exists {
-            return Err(Error::internal(format!("Trigger {} already exists", trigger_name_upper)));
+            return Err(Error::internal(format!(
+                "Trigger {} already exists",
+                trigger_name_upper
+            )));
         } else if exists && stmt.if_not_exists {
             return Ok(Box::new(ExecResult::new(0, 0)));
         }
@@ -1706,7 +1731,10 @@ impl Executor {
         }
 
         if !deleted && !stmt.if_exists {
-            return Err(Error::internal(format!("Trigger {} does not exist", trigger_name_upper)));
+            return Err(Error::internal(format!(
+                "Trigger {} does not exist",
+                trigger_name_upper
+            )));
         }
 
         Ok(Box::new(ExecResult::new(if deleted { 1 } else { 0 }, 0)))

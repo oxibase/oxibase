@@ -103,11 +103,23 @@ impl Executor {
                 for trigger in triggers {
                     if let Some(backend) = self.function_registry.get_backend(&trigger.language) {
                         let mut args = vec![];
-                        if let Err(e) = backend.execute_procedure(&trigger.code, &mut args, &[], &[], Some(self)) {
-                            return Err(crate::core::Error::internal(format!("Trigger execution failed: {}", e)));
+                        if let Err(e) = backend.execute_procedure(
+                            &trigger.code,
+                            &mut args,
+                            &[],
+                            &[],
+                            Some(self),
+                        ) {
+                            return Err(crate::core::Error::internal(format!(
+                                "Trigger execution failed: {}",
+                                e
+                            )));
                         }
                     } else {
-                        return Err(crate::core::Error::internal(format!("Unsupported trigger language: {}", trigger.language)));
+                        return Err(crate::core::Error::internal(format!(
+                            "Unsupported trigger language: {}",
+                            trigger.language
+                        )));
                     }
                 }
                 Ok(())
@@ -169,8 +181,8 @@ impl Executor {
         let default_exprs: Vec<Option<String>>;
         let check_exprs: Vec<(String, Option<String>)>; // (column_name, check_expr)
         {
-        let schema_ref = table.schema().clone();
-        let schema = &schema_ref;
+            let schema_ref = table.schema().clone();
+            let schema = &schema_ref;
             schema_column_count = schema.columns.len();
 
             // Extract default and check expressions from schema
@@ -308,13 +320,27 @@ impl Executor {
                 let mut row = Row::from_values(row_values);
 
                 // FIRE BEFORE INSERT TRIGGERS
-                self.execute_row_triggers(&table_name_raw, "BEFORE", "INSERT", Some(&mut row), None, &schema)?;
+                self.execute_row_triggers(
+                    &table_name_raw,
+                    "BEFORE",
+                    "INSERT",
+                    Some(&mut row),
+                    None,
+                    &schema,
+                )?;
 
                 let mut inserted_row = table.insert(row)?;
                 rows_affected += 1;
 
                 // FIRE AFTER INSERT TRIGGERS
-                self.execute_row_triggers(&table_name_raw, "AFTER", "INSERT", Some(&mut inserted_row), None, &schema)?;
+                self.execute_row_triggers(
+                    &table_name_raw,
+                    "AFTER",
+                    "INSERT",
+                    Some(&mut inserted_row),
+                    None,
+                    &schema,
+                )?;
 
                 // Collect inserted row for RETURNING if specified
                 if has_returning {
@@ -522,12 +548,26 @@ impl Executor {
 
                 // Insert row (returns row with AUTO_INCREMENT applied)
                 let mut row = Row::from_values(row_values);
-                self.execute_row_triggers(&table_name_raw, "BEFORE", "INSERT", Some(&mut row), None, &schema)?;
-                
+                self.execute_row_triggers(
+                    &table_name_raw,
+                    "BEFORE",
+                    "INSERT",
+                    Some(&mut row),
+                    None,
+                    &schema,
+                )?;
+
                 let mut inserted_row = table.insert(row)?;
                 rows_affected += 1;
 
-                self.execute_row_triggers(&table_name_raw, "AFTER", "INSERT", Some(&mut inserted_row), None, &schema)?;
+                self.execute_row_triggers(
+                    &table_name_raw,
+                    "AFTER",
+                    "INSERT",
+                    Some(&mut inserted_row),
+                    None,
+                    &schema,
+                )?;
 
                 // Collect inserted row for RETURNING if specified
                 if has_returning {
@@ -891,15 +931,29 @@ impl Executor {
                     for (idx, new_value) in updates {
                         let _ = row.set(*idx, new_value.clone());
                     }
-                    
-                    self.execute_row_triggers(&table_name_raw, "BEFORE", "UPDATE", Some(&mut row), Some(&old_row), schema)?;
+
+                    self.execute_row_triggers(
+                        &table_name_raw,
+                        "BEFORE",
+                        "UPDATE",
+                        Some(&mut row),
+                        Some(&old_row),
+                        schema,
+                    )?;
 
                     // Collect row for RETURNING clause
                     if has_returning {
                         returning_rows.borrow_mut().push(row.clone());
                     }
-                    
-                    self.execute_row_triggers(&table_name_raw, "AFTER", "UPDATE", Some(&mut row), Some(&old_row), schema)?;
+
+                    self.execute_row_triggers(
+                        &table_name_raw,
+                        "AFTER",
+                        "UPDATE",
+                        Some(&mut row),
+                        Some(&old_row),
+                        schema,
+                    )?;
 
                     Ok((row, true))
                 } else {
@@ -941,13 +995,27 @@ impl Executor {
                         let _ = row.set(idx, new_value);
                     }
 
-                    self.execute_row_triggers(&table_name_raw, "BEFORE", "UPDATE", Some(&mut row), Some(&old_row), schema)?;
+                    self.execute_row_triggers(
+                        &table_name_raw,
+                        "BEFORE",
+                        "UPDATE",
+                        Some(&mut row),
+                        Some(&old_row),
+                        schema,
+                    )?;
 
                     if has_returning {
                         returning_rows.borrow_mut().push(row.clone());
                     }
 
-                    self.execute_row_triggers(&table_name_raw, "AFTER", "UPDATE", Some(&mut row), Some(&old_row), schema)?;
+                    self.execute_row_triggers(
+                        &table_name_raw,
+                        "AFTER",
+                        "UPDATE",
+                        Some(&mut row),
+                        Some(&old_row),
+                        schema,
+                    )?;
                 }
 
                 Ok((row, changed))
@@ -1087,12 +1155,22 @@ impl Executor {
             .collect();
 
         let has_referential_actions = !schema.referenced_by.is_empty();
-        
-        let has_triggers = !self.trigger_registry.get_before_delete(&table_name_raw).is_empty() 
-            || !self.trigger_registry.get_after_delete(&table_name_raw).is_empty();
+
+        let has_triggers = !self
+            .trigger_registry
+            .get_before_delete(&table_name_raw)
+            .is_empty()
+            || !self
+                .trigger_registry
+                .get_after_delete(&table_name_raw)
+                .is_empty();
 
         // Delete rows
-        let rows_affected = if needs_memory_filter || has_returning || has_referential_actions || has_triggers {
+        let rows_affected = if needs_memory_filter
+            || has_returning
+            || has_referential_actions
+            || has_triggers
+        {
             // Complex WHERE expression OR RETURNING - need to scan rows first
             // Scan all rows, filter with evaluator, collect for RETURNING, delete matching ones by primary key
             // Clone schema for later use to avoid borrow conflict
@@ -1239,15 +1317,29 @@ impl Executor {
                     let mut pk_expr =
                         ComparisonExpr::new(pk_name, crate::core::Operator::Eq, pk_value);
                     pk_expr.prepare_for_schema(&schema);
-                    
+
                     if let Some(row) = &row_data {
-                        self.execute_row_triggers(&table_name_raw, "BEFORE", "DELETE", None, Some(row), &schema)?;
+                        self.execute_row_triggers(
+                            &table_name_raw,
+                            "BEFORE",
+                            "DELETE",
+                            None,
+                            Some(row),
+                            &schema,
+                        )?;
                     }
 
                     let deleted = table.delete(Some(&pk_expr))?;
                     if deleted > 0 {
                         if let Some(row) = row_data {
-                            self.execute_row_triggers(&table_name_raw, "AFTER", "DELETE", None, Some(&row), &schema)?;
+                            self.execute_row_triggers(
+                                &table_name_raw,
+                                "AFTER",
+                                "DELETE",
+                                None,
+                                Some(&row),
+                                &schema,
+                            )?;
                             if has_returning {
                                 returning_rows.push(row);
                             }

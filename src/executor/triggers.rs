@@ -58,12 +58,12 @@ impl TriggerRegistry {
     pub fn remove_trigger(&self, trigger_name: &str) {
         let mut map = self.tables.write().unwrap();
         let trigger_name_upper = trigger_name.to_uppercase();
-        
+
         for triggers in map.values_mut() {
             triggers.retain(|t| !t.name.eq_ignore_ascii_case(&trigger_name_upper));
         }
     }
-    
+
     /// Remove all triggers for a specific table
     pub fn remove_table_triggers(&self, table_name: &str) {
         let mut map = self.tables.write().unwrap();
@@ -73,9 +73,11 @@ impl TriggerRegistry {
     /// Get all triggers for a specific table
     pub fn get_triggers(&self, table_name: &str) -> Vec<StoredTrigger> {
         let map = self.tables.read().unwrap();
-        map.get(&table_name.to_uppercase()).cloned().unwrap_or_default()
+        map.get(&table_name.to_uppercase())
+            .cloned()
+            .unwrap_or_default()
     }
-    
+
     /// Get BEFORE INSERT triggers
     pub fn get_before_insert(&self, table_name: &str) -> Vec<StoredTrigger> {
         self.get_filtered(table_name, "BEFORE", "INSERT")
@@ -111,7 +113,9 @@ impl TriggerRegistry {
         if let Some(triggers) = map.get(&table_name.to_uppercase()) {
             triggers
                 .iter()
-                .filter(|t| t.timing.eq_ignore_ascii_case(timing) && t.event.eq_ignore_ascii_case(event))
+                .filter(|t| {
+                    t.timing.eq_ignore_ascii_case(timing) && t.event.eq_ignore_ascii_case(event)
+                })
                 .cloned()
                 .collect()
         } else {

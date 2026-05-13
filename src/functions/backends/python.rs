@@ -87,9 +87,12 @@ impl PythonBackend {
     pub fn new() -> Self {
         Self {}
     }
-    fn build_new_row_dict(&self, vm: &VirtualMachine) -> Result<rustpython_vm::builtins::PyDictRef> {
+    fn build_new_row_dict(
+        &self,
+        vm: &VirtualMachine,
+    ) -> Result<rustpython_vm::builtins::PyDictRef> {
         let dict = vm.ctx.new_dict();
-        
+
         crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
             if let Some(schema_ptr) = *s.borrow() {
                 let schema = unsafe { &*schema_ptr };
@@ -107,13 +110,16 @@ impl PythonBackend {
                 });
             }
         });
-        
+
         Ok(dict)
     }
 
-    fn build_old_row_dict(&self, vm: &VirtualMachine) -> Result<rustpython_vm::builtins::PyDictRef> {
+    fn build_old_row_dict(
+        &self,
+        vm: &VirtualMachine,
+    ) -> Result<rustpython_vm::builtins::PyDictRef> {
         let dict = vm.ctx.new_dict();
-        
+
         crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
             if let Some(schema_ptr) = *s.borrow() {
                 let schema = unsafe { &*schema_ptr };
@@ -131,11 +137,15 @@ impl PythonBackend {
                 });
             }
         });
-        
+
         Ok(dict)
     }
 
-    fn extract_new_row_dict(&self, dict: rustpython_vm::builtins::PyDictRef, vm: &VirtualMachine) -> Result<()> {
+    fn extract_new_row_dict(
+        &self,
+        dict: rustpython_vm::builtins::PyDictRef,
+        vm: &VirtualMachine,
+    ) -> Result<()> {
         let mut internal_err = None;
         crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
             if let Some(schema_ptr) = *s.borrow() {
@@ -146,7 +156,10 @@ impl PythonBackend {
                         for col in &schema.columns {
                             if let Ok(py_val) = dict.get_item(col.name.as_str(), vm) {
                                 match self.convert_python_to_oxibase(&py_val, vm) {
-                                    Ok(v) => { let _ = row.set(col.id, v.into_coerce_to_type(col.data_type)); },
+                                    Ok(v) => {
+                                        let _ =
+                                            row.set(col.id, v.into_coerce_to_type(col.data_type));
+                                    }
                                     Err(e) => internal_err = Some(e),
                                 }
                             }
@@ -155,7 +168,7 @@ impl PythonBackend {
                 });
             }
         });
-        
+
         if let Some(e) = internal_err {
             return Err(e);
         }
@@ -377,8 +390,12 @@ impl ScriptingBackend for PythonBackend {
 
                                 crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
                                     if r.borrow().is_some() {
-                                        if let Ok(Some(py_val)) = scope.globals.get_item_opt("NEW", vm) {
-                                            if let Ok(dict) = py_val.downcast::<rustpython_vm::builtins::PyDict>() {
+                                        if let Ok(Some(py_val)) =
+                                            scope.globals.get_item_opt("NEW", vm)
+                                        {
+                                            if let Ok(dict) =
+                                                py_val.downcast::<rustpython_vm::builtins::PyDict>()
+                                            {
                                                 let _ = self.extract_new_row_dict(dict, vm);
                                             }
                                         }

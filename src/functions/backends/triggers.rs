@@ -40,7 +40,9 @@ where
 {
     let depth = TRIGGER_DEPTH_COUNTER.with(|c| c.get());
     if depth >= MAX_TRIGGER_DEPTH {
-        return Err(crate::core::Error::internal("Maximum trigger recursion depth exceeded"));
+        return Err(crate::core::Error::internal(
+            "Maximum trigger recursion depth exceeded",
+        ));
     }
 
     TRIGGER_DEPTH_COUNTER.with(|c| c.set(depth + 1));
