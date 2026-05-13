@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(any(feature = "js", feature = "python"))]
 use oxibase::core::Value;
 use oxibase::executor::Executor;
 use oxibase::storage::mvcc::engine::MVCCEngine;
@@ -24,7 +25,7 @@ fn setup_executor() -> Executor {
 }
 
 #[test]
-fn test_tutorial_triggers() {
+fn test_tutorial_triggers_rhai() {
     let executor = setup_executor();
 
     // Step 1: Validation in Rhai
@@ -64,6 +65,23 @@ fn test_tutorial_triggers() {
     assert!(res.is_err());
     let err_msg = res.err().unwrap().to_string();
     assert!(err_msg.contains("Account balance cannot be negative!"));
+}
+
+#[test]
+#[cfg(feature = "js")]
+fn test_tutorial_triggers_js() {
+    let executor = setup_executor();
+
+    let res = executor.execute(
+        "CREATE TABLE accounts (
+            id INTEGER PRIMARY KEY,
+            owner_name TEXT,
+            balance FLOAT
+        );",
+    );
+    assert!(res.is_ok());
+    let _ = executor
+        .execute("INSERT INTO accounts (id, owner_name, balance) VALUES (1, 'Alice', 100.0);");
 
     // Step 2: Transformation in JS
     let res = executor.execute(
@@ -88,6 +106,23 @@ fn test_tutorial_triggers() {
         .unwrap();
     assert!(res.next());
     assert_eq!(res.row().get(0), Some(&Value::text("ALICE LOWERCASE")));
+}
+
+#[test]
+#[cfg(feature = "python")]
+fn test_tutorial_triggers_python() {
+    let executor = setup_executor();
+
+    let res = executor.execute(
+        "CREATE TABLE accounts (
+            id INTEGER PRIMARY KEY,
+            owner_name TEXT,
+            balance FLOAT
+        );",
+    );
+    assert!(res.is_ok());
+    let _ = executor
+        .execute("INSERT INTO accounts (id, owner_name, balance) VALUES (1, 'Alice', 100.0);");
 
     // Step 3: Audit Logging in Python
     let res = executor.execute(
