@@ -24,6 +24,7 @@ oxibase serve -d file:///path/to/my_db --port 8080
 The Auto-API layer exposes your tables under the `/api/` prefix.
 
 `[HTTP METHOD] /api/:table_name`
+`POST /api/rpc/:procedure_name`
 
 ### 1. Read Data (GET)
 
@@ -103,6 +104,41 @@ curl -X DELETE "http://127.0.0.1:8080/api/users?id=eq.3"
 **Response:**
 ```json
 { "rows_affected": 1 }
+```
+
+### 5. Service Invocation / Stored Procedures (POST /api/rpc)
+
+To invoke a stored procedure over HTTP, you can use the `/api/rpc/:procedure_name` endpoint. This allows you to expose complex business logic and multi-statement transactions to the web without writing a custom backend.
+
+Send a `POST` request with a JSON object payload. The keys in the JSON object must match the input parameter names of the stored procedure.
+
+```bash
+# Assuming a procedure: CREATE PROCEDURE update_inventory(product_id INT, quantity INT, OUT success BOOLEAN)
+curl -X POST http://127.0.0.1:8080/api/rpc/update_inventory \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 123, "quantity": 10}'
+```
+
+**Response:**
+The response is a JSON object containing the values of the `OUT` or `INOUT` parameters returned by the procedure.
+```json
+{
+  "success": true
+}
+```
+
+#### Accessing HTTP Metadata from Procedures
+
+When a procedure is invoked via `/api/rpc/`, it can read the incoming HTTP request headers using the built-in `get_http_header('header_name')` SQL function. This is useful for passing authentication tokens, user agents, or custom metadata securely into your business logic.
+
+```sql
+CREATE PROCEDURE get_my_ip(OUT ip_address TEXT)
+LANGUAGE plsql AS $$
+BEGIN
+    -- Read a header injected by a reverse proxy
+    ip_address = get_http_header('x-forwarded-for');
+END;
+$$;
 ```
 
 ## Security & Architecture Notes

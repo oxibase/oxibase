@@ -53,7 +53,7 @@ INSERT INTO accounts (id, owner_name, balance) VALUES (2, 'Bob', -50.0);
 
 ## 2. Data Transformation (`BEFORE UPDATE`)
 
-You can modify the `NEW` row representation inside a `BEFORE` trigger. The mutated data is what gets saved to the disk.
+You can modify the `oxibase.ctx.new` row representation inside a `BEFORE` trigger. The mutated data is what gets saved to the disk.
 
 ### Example: Normalizing Strings with JavaScript
 
@@ -72,7 +72,7 @@ AS '
 
 ## 3. Audit Logging (`AFTER UPDATE` / `AFTER DELETE`)
 
-`AFTER` triggers execute once the data is safely persisted but before the transaction completes. They are perfect for generating audit trails by comparing the `OLD` state of the row to the `NEW` state.
+`AFTER` triggers execute once the data is safely persisted but before the transaction completes. They are perfect for generating audit trails by comparing the `oxibase.ctx.old` state of the row to the `oxibase.ctx.new` state.
 
 ### Example: Price Change Tracker in Python
 

@@ -55,7 +55,7 @@ cargo build --features js,python
 
 ## Functions vs Stored Procedures
 
-Oxibase currently supports **user-defined functions** but not **stored procedures**. Understanding the difference is important for choosing the right tool for your database logic.
+Oxibase supports both **user-defined functions** and **stored procedures**. Understanding the difference is important for choosing the right tool for your database logic.
 
 ### Comparison at a Glance
 
@@ -80,12 +80,12 @@ SELECT calculate_tax(price) FROM products;
 SELECT * FROM users WHERE is_adult(age);
 ```
 
-Procedures cannot be used directly in queries and must be called separately:
+Procedures cannot be used directly in queries and must be called separately using `CALL`:
 
 ```sql
--- Procedure usage (when implemented)
-EXECUTE update_inventory;
-CALL process_monthly_report;
+-- Procedure usage
+CALL update_inventory();
+CALL process_monthly_report();
 ```
 
 #### Side Effects and DML
@@ -101,11 +101,13 @@ LANGUAGE BOA AS 'return price * 0.08;';
 Procedures are designed for actions that modify data:
 
 ```sql
--- ❌ Invalid in functions - would be valid in procedures (when implemented)
--- CREATE PROCEDURE update_prices()
--- AS BEGIN
---     UPDATE products SET price = price * 1.1;
--- END;
+-- Valid procedure that modifies data
+CREATE PROCEDURE update_prices()
+LANGUAGE plsql AS $$
+BEGIN
+    UPDATE products SET price = price * 1.1;
+END;
+$$;
 ```
 
 #### When to Use Functions vs Procedures
@@ -122,8 +124,6 @@ Procedures are designed for actions that modify data:
 - You need transaction control
 - You need to return multiple result sets
 - Examples: Monthly payroll processing, customer registration, data cleanup
-
-> **Note:** Stored procedures are planned for future implementation in Oxibase but are not currently available.
 
 ## Creating User-Defined Functions
 
@@ -158,7 +158,7 @@ User-defined functions can return values of these scalar data types:
 
 Functions must return exactly one value and declare their return type in the `CREATE FUNCTION` statement. The JavaScript runtime automatically converts return values to the appropriate Oxibase type.
 
-> **Note:** Oxibase currently only supports scalar user-defined functions. Table-valued functions and stored procedures are planned for future releases.
+> **Note:** Oxibase currently only supports scalar user-defined functions. Table-valued functions are planned for future releases.
 
 ## Function Implementation
 

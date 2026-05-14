@@ -732,6 +732,74 @@ DROP SEQUENCE [IF EXISTS] sequence_name;
 DROP SEQUENCE IF EXISTS my_seq;
 ```
 
+## Job Scheduling
+
+### CREATE SCHEDULE
+
+Creates a new background job schedule that executes a stored procedure at specified intervals using standard Cron syntax.
+
+#### Basic Syntax
+
+```sql
+CREATE SCHEDULE [IF NOT EXISTS] schedule_name 
+    CRON 'cron_expression' 
+    CALL procedure_name();
+```
+
+#### Examples
+
+```sql
+-- Run the cleanup procedure every night at midnight
+CREATE SCHEDULE nightly_cleanup 
+    CRON '0 0 0 * * *' 
+    CALL cleanup_old_data();
+
+-- Run every 5 minutes
+CREATE SCHEDULE refresh_stats 
+    CRON '0 */5 * * * *' 
+    CALL update_statistics();
+```
+
+### ALTER SCHEDULE
+
+Modifies an existing job schedule to change its cron expression or toggle its active state.
+
+#### Basic Syntax
+
+```sql
+ALTER SCHEDULE [IF EXISTS] schedule_name 
+    { CRON 'new_cron_expression' | { ACTIVE | INACTIVE } };
+```
+
+#### Examples
+
+```sql
+-- Pause a schedule
+ALTER SCHEDULE nightly_cleanup INACTIVE;
+
+-- Resume a schedule
+ALTER SCHEDULE nightly_cleanup ACTIVE;
+
+-- Change the execution interval
+ALTER SCHEDULE refresh_stats CRON '0 0 * * * *';
+```
+
+### DROP SCHEDULE
+
+Removes a job schedule from the database.
+
+#### Basic Syntax
+
+```sql
+DROP SCHEDULE [IF EXISTS] schedule_name;
+```
+
+#### Examples
+
+```sql
+DROP SCHEDULE IF EXISTS nightly_cleanup;
+```
+
 ## Transaction Control
 
 ### BEGIN TRANSACTION
@@ -911,7 +979,9 @@ Oxibase provides standard SQL metadata access through `information_schema` virtu
 | `information_schema.functions` | Available SQL functions |
 | `information_schema.views` | View definitions |
 | `information_schema.statistics` | Index information |
-| `information_schema.sequences` | Sequence objects (empty in current version) |
+| `information_schema.sequences` | Sequence objects |
+| `system.cron` | Configured job schedules |
+| `system.cron_runs` | Execution history of job schedules |
 
 #### information_schema.tables
 
@@ -1036,12 +1106,37 @@ WHERE table_name = 'users';
 
 #### information_schema.sequences
 
-Reserved for future sequence support. Currently returns no rows.
+Lists all sequences defined in the database.
+
+**Columns:**
+- `sequence_catalog`: Always "def"
+- `sequence_schema`: NULL (single schema database)
+- `sequence_name`: Name of the sequence
+- `data_type`: The data type of the sequence (e.g. INTEGER)
+- `start_value`: Starting value
+- `minimum_value`: Minimum value
+- `maximum_value`: Maximum value
+- `increment`: Increment by value
+- `cycle_option`: "YES" if cycles, "NO" otherwise
 
 **Example:**
 ```sql
-SELECT * FROM information_schema.sequences;
--- Returns empty result set
+-- List all sequences
+SELECT sequence_name, start_value, increment
+FROM information_schema.sequences;
+```
+
+#### system.cron and system.cron_runs
+
+Oxibase stores job scheduler configurations and their execution logs in the `system` schema.
+
+**Example:**
+```sql
+-- View all active schedules
+SELECT * FROM system.cron WHERE active = true;
+
+-- View recent execution failures
+SELECT * FROM system.cron_runs WHERE status = 'failed' ORDER BY execution_time DESC LIMIT 10;
 ```
 
 #### Advanced Examples
