@@ -138,7 +138,9 @@ impl Executor {
             .map_err(|e| Error::parse(e.to_string()))?;
 
         for stmt in &program.statements {
-            let ctx = ExecutionContext::default();
+            let ctx = crate::executor::context::ExecutionContextBuilder::new()
+                .with_internal(true)
+                .build();
             self.execute_statement(stmt, &ctx)?;
         }
 

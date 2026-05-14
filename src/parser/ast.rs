@@ -1331,6 +1331,9 @@ pub enum Statement {
     CreateProcedure(CreateProcedureStatement),
     CreateTrigger(CreateTriggerStatement),
     DropTrigger(DropTriggerStatement),
+    CreateSchedule(CreateScheduleStatement),
+    AlterSchedule(AlterScheduleStatement),
+    DropSchedule(DropScheduleStatement),
     Call(CallStatement),
     Begin(BeginStatement),
     Commit(CommitStatement),
@@ -1378,6 +1381,9 @@ impl fmt::Display for Statement {
             Statement::CreateProcedure(s) => write!(f, "{}", s),
             Statement::CreateTrigger(s) => write!(f, "{}", s),
             Statement::DropTrigger(s) => write!(f, "{}", s),
+            Statement::CreateSchedule(s) => write!(f, "{}", s),
+            Statement::AlterSchedule(s) => write!(f, "{}", s),
+            Statement::DropSchedule(s) => write!(f, "{}", s),
             Statement::Call(s) => write!(f, "{}", s),
             Statement::Begin(s) => write!(f, "{}", s),
             Statement::Commit(s) => write!(f, "{}", s),
@@ -1888,6 +1894,52 @@ impl fmt::Display for TableConstraint {
                 write!(f, "{}", result)
             }
         }
+    }
+}
+
+/// CREATE SCHEDULE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateScheduleStatement {
+    pub token: Token,
+    pub name: String,
+    pub cron_expr: String,
+    pub command: String,
+}
+
+impl fmt::Display for CreateScheduleStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "CREATE SCHEDULE {} CRON '{}' AS '{}'",
+            self.name, self.cron_expr, self.command
+        )
+    }
+}
+
+/// ALTER SCHEDULE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct AlterScheduleStatement {
+    pub token: Token,
+    pub name: String,
+    pub active: bool,
+}
+
+impl fmt::Display for AlterScheduleStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ALTER SCHEDULE {} ACTIVE {}", self.name, self.active)
+    }
+}
+
+/// DROP SCHEDULE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropScheduleStatement {
+    pub token: Token,
+    pub name: String,
+}
+
+impl fmt::Display for DropScheduleStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DROP SCHEDULE {}", self.name)
     }
 }
 

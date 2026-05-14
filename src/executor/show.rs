@@ -42,7 +42,7 @@ impl Executor {
         _stmt: &ShowTablesStatement,
         ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let sql = "SELECT table_name FROM information_schema.tables ORDER BY table_name";
+        let sql = "SELECT table_name FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL ORDER BY table_name";
         let mut parser = Parser::new(sql);
         let program = parser.parse_program().map_err(|e| Error::Parse {
             message: format!("Failed to parse internal query: {}", e),
@@ -335,7 +335,7 @@ impl Executor {
             self.ensure_functions_table_exists()?;
 
             // Select all functions from system table
-            let sql = "SELECT name, parameters, return_type, language, code FROM _sys_functions ORDER BY name";
+            let sql = "SELECT name, parameters, return_type, language, code FROM system.functions ORDER BY name";
             let mut parser = Parser::new(sql);
             let program = parser.parse_program().map_err(|e| Error::Parse {
                 message: format!("Failed to parse internal query: {}", e),
@@ -346,7 +346,7 @@ impl Executor {
                     let row = result.row();
                     if let (
                         Some(Value::Text(name)),
-                        Some(Value::Json(params_json)),
+                        Some(Value::Text(params_json)),
                         Some(Value::Text(return_type)),
                         Some(Value::Text(language)),
                         Some(Value::Text(code)),

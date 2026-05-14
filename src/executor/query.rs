@@ -884,7 +884,13 @@ impl Executor {
                     None
                 };
 
-                if let Some(schema_table) = is_system_table {
+                // Only intercept virtual system tables
+                let is_virtual_system_table = match is_system_table.as_deref() {
+                    Some("tables") | Some("columns") | Some("transactions") => is_system_table,
+                    _ => None,
+                };
+
+                if let Some(schema_table) = is_virtual_system_table {
                     let mut result = self.execute_system_schema_table(&schema_table, stmt, ctx)?;
                     let columns = result.columns().to_vec();
                     let mut rows = Vec::new();

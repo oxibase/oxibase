@@ -133,7 +133,7 @@ impl Executor {
     ) -> Result<Box<dyn QueryResult>> {
         // Prevent DML on reserved namespaces
         let table_name_raw = stmt.table_name.value();
-        if Schema::is_reserved_namespace(&table_name_raw) {
+        if Schema::is_reserved_namespace(&table_name_raw) && !ctx.is_internal() {
             return Err(Error::ReservedNamespaceModification(table_name_raw));
         }
 
@@ -611,7 +611,7 @@ impl Executor {
     ) -> Result<Box<dyn QueryResult>> {
         // Prevent DML on reserved namespaces
         let table_name_raw = stmt.table_name.value();
-        if Schema::is_reserved_namespace(&table_name_raw) {
+        if Schema::is_reserved_namespace(&table_name_raw) && !ctx.is_internal() {
             return Err(Error::ReservedNamespaceModification(table_name_raw));
         }
 
@@ -1057,7 +1057,7 @@ impl Executor {
     ) -> Result<Box<dyn QueryResult>> {
         // Prevent DML on reserved namespaces
         let table_name_raw = stmt.table_name.value();
-        if Schema::is_reserved_namespace(&table_name_raw) {
+        if Schema::is_reserved_namespace(&table_name_raw) && !ctx.is_internal() {
             return Err(Error::ReservedNamespaceModification(table_name_raw));
         }
 

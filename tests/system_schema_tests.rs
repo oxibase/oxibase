@@ -37,7 +37,7 @@ fn test_system_tables() {
     }
 
     assert!(table_names.contains(&"test_table".to_string()));
-    // We also expect internal tables like _sys_functions depending on engine init
+    // We also expect internal tables like system.functions depending on engine init
 }
 
 #[test]

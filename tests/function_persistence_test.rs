@@ -119,7 +119,7 @@ fn test_multiple_functions_persistence() {
 
     // Verify both functions are persisted
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .query_one("SELECT COUNT(*) FROM system.functions", ())
         .expect("Failed to count functions");
     assert_eq!(count, 2);
 
@@ -167,7 +167,7 @@ fn test_functions_table_starts_empty() {
     let db = Database::open("memory://empty_table").expect("Failed to create database");
 
     // System table doesn't exist yet - this should fail
-    let result = db.query_one::<i64, _>("SELECT COUNT(*) FROM _sys_functions", ());
+    let result = db.query_one::<i64, _>("SELECT COUNT(*) FROM system.functions", ());
     assert!(result.is_err(), "System table should not exist initially");
 
     // Create a function to trigger table creation
@@ -179,7 +179,7 @@ fn test_functions_table_starts_empty() {
 
     // Now the table should exist and have 1 row
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .query_one("SELECT COUNT(*) FROM system.functions", ())
         .expect("Failed to count functions");
     assert_eq!(count, 1);
 }
@@ -204,7 +204,7 @@ fn test_show_functions() {
     .expect("Failed to create function");
 
     let result = db
-        .query("SELECT name FROM _sys_functions", ())
+        .query("SELECT name FROM system.functions", ())
         .expect("Failed to select functions after first");
     let rows: Vec<_> = result.map(|r| r.unwrap()).collect();
     assert_eq!(rows.len(), 1);
@@ -218,7 +218,7 @@ fn test_show_functions() {
 
     // Check that functions are persisted
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .query_one("SELECT COUNT(*) FROM system.functions", ())
         .expect("Failed to count functions");
     assert_eq!(count, 2);
 
@@ -268,7 +268,7 @@ fn test_drop_function_basic() {
     // Verify it's in system table
     let count: i64 = db
         .query_one(
-            "SELECT COUNT(*) FROM _sys_functions WHERE name = 'DROP_ME'",
+            "SELECT COUNT(*) FROM system.functions WHERE name = 'DROP_ME'",
             (),
         )
         .expect("Failed to count functions");
@@ -281,7 +281,7 @@ fn test_drop_function_basic() {
     // Verify it's removed from system table
     let count: i64 = db
         .query_one(
-            "SELECT COUNT(*) FROM _sys_functions WHERE name = 'DROP_ME'",
+            "SELECT COUNT(*) FROM system.functions WHERE name = 'DROP_ME'",
             (),
         )
         .expect("Failed to count functions after drop");
@@ -312,7 +312,7 @@ fn test_drop_function_if_exists_exists() {
     // Verify it's gone
     let count: i64 = db
         .query_one(
-            "SELECT COUNT(*) FROM _sys_functions WHERE name = 'IF_EXISTS_FUNC'",
+            "SELECT COUNT(*) FROM system.functions WHERE name = 'IF_EXISTS_FUNC'",
             (),
         )
         .expect("Failed to count functions");
@@ -330,7 +330,7 @@ fn test_drop_function_if_exists_not_exists() {
         .expect("DROP IF EXISTS should not fail for non-existent function");
 
     // Verify no functions exist (table might not exist yet)
-    let count_result: Result<i64, _> = db.query_one("SELECT COUNT(*) FROM _sys_functions", ());
+    let count_result: Result<i64, _> = db.query_one("SELECT COUNT(*) FROM system.functions", ());
     match count_result {
         Ok(count) => assert_eq!(count, 0),
         Err(_) => {
@@ -402,12 +402,12 @@ fn test_drop_function_registry_cleanup() {
 
     // Verify only one function remains in system table
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .query_one("SELECT COUNT(*) FROM system.functions", ())
         .expect("Failed to count functions");
     assert_eq!(count, 1);
 
     let name: String = db
-        .query_one("SELECT name FROM _sys_functions", ())
+        .query_one("SELECT name FROM system.functions", ())
         .expect("Failed to get remaining function name");
     assert_eq!(name, "KEEP_FUNC");
 }
@@ -459,7 +459,7 @@ fn test_drop_function_persistence_restart() {
         // System table should be empty or not have the function
         let count: i64 = db
             .query_one(
-                "SELECT COUNT(*) FROM _sys_functions WHERE name = 'TEMP_DROP_FUNC'",
+                "SELECT COUNT(*) FROM system.functions WHERE name = 'TEMP_DROP_FUNC'",
                 (),
             )
             .expect("Failed to count functions after restart");
@@ -488,7 +488,7 @@ fn test_create_function_schema_qualified() {
     // Verify it's stored with schema
     let schema: Option<String> = db
         .query_one(
-            "SELECT schema FROM _sys_functions WHERE name = 'ADD_NUMS'",
+            "SELECT schema FROM system.functions WHERE name = 'ADD_NUMS'",
             (),
         )
         .expect("Failed to query schema");
@@ -496,7 +496,7 @@ fn test_create_function_schema_qualified() {
 
     let name: String = db
         .query_one(
-            "SELECT name FROM _sys_functions WHERE name = 'ADD_NUMS'",
+            "SELECT name FROM system.functions WHERE name = 'ADD_NUMS'",
             (),
         )
         .expect("Failed to query name");
@@ -531,7 +531,7 @@ fn test_drop_function_schema_qualified() {
 
     // Verify system table is empty
     let count: i64 = db
-        .query_one("SELECT COUNT(*) FROM _sys_functions", ())
+        .query_one("SELECT COUNT(*) FROM system.functions", ())
         .expect("Failed to count functions");
     assert_eq!(count, 0);
 }

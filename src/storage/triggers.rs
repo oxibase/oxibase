@@ -21,11 +21,11 @@
 use serde::{Deserialize, Serialize};
 
 /// System table name for triggers
-pub const SYS_TRIGGERS: &str = "_sys_triggers";
+pub const SYS_TRIGGERS: &str = "system.triggers";
 
 /// SQL to create the triggers system table
 pub const CREATE_TRIGGERS_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS _sys_triggers (
+CREATE TABLE IF NOT EXISTS system.triggers (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     schema TEXT,
     name TEXT NOT NULL,
@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS _sys_triggers (
     event TEXT NOT NULL,
     for_each_row BOOLEAN NOT NULL,
     language TEXT NOT NULL,
-    code TEXT NOT NULL
+    code TEXT NOT NULL,
+    UNIQUE(schema, name)
 );
 "#;
 
