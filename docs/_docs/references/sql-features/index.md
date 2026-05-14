@@ -2,7 +2,8 @@
 layout: default
 title: "SQL Features"
 has_children: true
-nav_order: 10
+parent: References
+nav_order: 12
 ---
 
 # SQL Features

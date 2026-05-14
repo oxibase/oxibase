@@ -1,6 +1,8 @@
 ---
 layout: default
 title: "Roadmap"
+parent: Getting Started
+nav_order: 2
 ---
 
 # Oxibase Roadmap
@@ -20,6 +22,7 @@ classDiagram
     Validation ..> External_Gateway
     Validation ..> Workstation
     Validation ..> Performance
+    Validation ..> Security
 
     Workstation ..> Horizontal_Architecture
     External_Gateway ..> Horizontal_Architecture
@@ -33,7 +36,7 @@ classDiagram
         - Embedded Scripting Languages ✅
         - Stored functions  ✅
         - Triggers  ✅
-        - Queues
+        - Scheduled actions  ✅
         - Debugger support
     }
     class External_Gateway {
@@ -64,6 +67,7 @@ classDiagram
     }
 
     class Horizontal_Architecture {
+        - Queues
         - Deterministic Simulator
         - Failure simulation
         - Dedicated Clustering
@@ -210,11 +214,11 @@ We are currently at [Phase 0](#phase-0-validation).
 - [x] **Relational Database**: Add support for relational databases in the executor layer.
 - [x] **User defined Functions**: Use SQL scripting and scripting language to define functions.
 - [ ] **Server mode**: Implement a server binary to run the system standalone.
-- [ ] **Stored Procedures**: Add support for stored procedures in the executor layer.
-    - [ ] **Transaction management**: Add support for transaction management in the executor layer.
-    - [ ] **Service invocation**: Add support for service invocation with a webserver.
-    - [ ] **Scheduling**: Add support for scheduling procedures.
-    - [ ] **Triggers**: Add support for triggers in the executor layer, on insert, update or delete.
+- [x] **Stored Procedures**: Add support for stored procedures in the executor layer.
+    - [x] **Transaction management**: Add support for transaction management in the executor layer.
+    - [x] **Service invocation**: Add support for service invocation with a webserver.
+    - [x] **Scheduling**: Add support for scheduling procedures.
+    - [x] **Triggers**: Add support for triggers in the executor layer, on insert, update or delete.
 - [ ] **Debugging**: Add support for debugging in the executor layer.
     - [ ] **Debug Adapter Protocol**: Add support for the Debug Adapter Protocol for queries and procedures.
     - [ ] **Tracing**: Add activation of tracing and storage in the storage layer.
@@ -228,7 +232,7 @@ We are currently at [Phase 0](#phase-0-validation).
 |-------------|--------|-------|
 | Schemas | Available | No CREATE SCHEMA/DROP SCHEMA support |
 | User-defined Functions | Available | CREATE FUNCTION/DROP FUNCTION supported |
-| Stored Procedures | Missing | No CREATE PROCEDURE/DROP PROCEDURE |
+| Stored Procedures | Available | CREATE PROCEDURE/DROP PROCEDURE supported |
 | Materialized Views | Missing | No CREATE MATERIALIZED VIEW |
 | Custom Types/Domains | Missing | No CREATE TYPE/CREATE DOMAIN |
 | Rules | Missing | No CREATE RULE/DROP RULE |
@@ -236,7 +240,9 @@ We are currently at [Phase 0](#phase-0-validation).
 | Foreign Data Wrappers | Missing | No foreign table support |
 | Aggregates | Missing | No custom aggregate functions |
 | Operators | Missing | No custom operator definitions |
-| Event Triggers | Missing | No DDL event triggers |
+| Event Triggers | Available | CREATE TRIGGER/DROP TRIGGER supported |
+| Sequences | Available | CREATE SEQUENCE/DROP SEQUENCE supported |
+| Job Schedules | Available | CREATE SCHEDULE/DROP SCHEDULE supported |
 | Tablespaces | Missing | No CREATE TABLESPACE |
 | Roles/Users | Missing | No user/role management |
 | Publications/Subscriptions | Missing | No logical replication support |

@@ -51,7 +51,7 @@ and trace them. This should serve as a demo of the system's capabilities, to
 understand if the DevEx is viable.
 
 For detailed information about each phase, see the [full roadmap]({% link
-_docs/roadmap.md %}).
+_docs/getting-started/roadmap.md %}).
 
 ## Project Goals
 

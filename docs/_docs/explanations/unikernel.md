@@ -40,4 +40,4 @@ features that traditional layered architectures cannot achieve.
 
 These benefits align with Oxibase's unikernel compilation goals, enabling full
 hardware exploitation without OS overhead. See the [roadmap]({% link
-_docs/roadmap.md %}) for more details.
+_docs/getting-started/roadmap.md %}) for more details.

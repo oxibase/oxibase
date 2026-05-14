@@ -1,8 +1,8 @@
 ---
 layout: default
-title: EXPLAIN
-parent: SQL Features
-nav_order: 13
+title: Analyze Queries with EXPLAIN
+parent: How to Guides
+nav_order: 5
 ---
 
 # EXPLAIN

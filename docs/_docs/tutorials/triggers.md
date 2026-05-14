@@ -49,11 +49,14 @@ INSERT INTO accounts (id, owner_name, balance) VALUES (1, 'Alice', 100.0);
 
 -- This throws the error and the insert is rolled back
 INSERT INTO accounts (id, owner_name, balance) VALUES (2, 'Bob', -50.0);
+
+-- Verify that Bob was not inserted
+SELECT * FROM accounts;
 ```
 
 ## 2. Data Transformation (`BEFORE UPDATE`)
 
-You can modify the `NEW` row representation inside a `BEFORE` trigger. The mutated data is what gets saved to the disk.
+You can modify the `oxibase.ctx.new` row representation inside a `BEFORE` trigger. The mutated data is what gets saved to the disk.
 
 ### Example: Normalizing Strings with JavaScript
 
@@ -68,11 +71,17 @@ AS '
     // Force the owner name to be uppercase before saving
     oxibase.ctx.new.owner_name = oxibase.ctx.new.owner_name.toUpperCase();
 ';
+
+-- Trigger the update
+UPDATE accounts SET owner_name = 'alice smith' WHERE id = 1;
+
+-- Verify the transformation
+SELECT * FROM accounts WHERE id = 1;
 ```
 
 ## 3. Audit Logging (`AFTER UPDATE` / `AFTER DELETE`)
 
-`AFTER` triggers execute once the data is safely persisted but before the transaction completes. They are perfect for generating audit trails by comparing the `OLD` state of the row to the `NEW` state.
+`AFTER` triggers execute once the data is safely persisted but before the transaction completes. They are perfect for generating audit trails by comparing the `oxibase.ctx.old` state of the row to the `oxibase.ctx.new` state.
 
 ### Example: Price Change Tracker in Python
 
@@ -104,6 +113,12 @@ if oxibase.ctx.old["balance"] != oxibase.ctx.new["balance"]:
     stmt = "INSERT INTO audit_log (account_id, old_balance, new_balance) VALUES (" + str(oxibase.ctx.old["id"]) + ", " + str(oxibase.ctx.old["balance"]) + ", " + str(oxibase.ctx.new["balance"]) + ")"
     oxibase.execute(stmt)
 ';
+
+-- Trigger the update
+UPDATE accounts SET balance = 200.0 WHERE id = 1;
+
+-- View the audit log
+SELECT * FROM audit_log;
 ```
 
 ## Dropping Triggers

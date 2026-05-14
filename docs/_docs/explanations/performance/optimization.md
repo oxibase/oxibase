@@ -164,7 +164,7 @@ EXPLAIN SELECT * FROM orders WHERE amount > 1000;
 EXPLAIN ANALYZE SELECT * FROM products WHERE category = 'Electronics';
 ```
 
-See [EXPLAIN]({% link _docs/sql-features/explain.md %}) for detailed documentation.
+See [EXPLAIN]({% link _docs/how-to/explain.md %}) for detailed documentation.
 
 ## Implementation-Specific Optimizations
 

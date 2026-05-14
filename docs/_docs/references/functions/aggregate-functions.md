@@ -297,7 +297,7 @@ Returns:
 
 Use GROUPING() to distinguish between actual NULL values and NULLs that indicate subtotal rows.
 
-See [ROLLUP, CUBE, and GROUPING SETS]({% link _docs/sql-features/rollup-cube.md %}) for detailed documentation.
+See [ROLLUP, CUBE, and GROUPING SETS]({% link _docs/references/sql-features/rollup-cube.md %}) for detailed documentation.
 
 ## NULL Handling
 

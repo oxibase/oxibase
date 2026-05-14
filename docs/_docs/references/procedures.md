@@ -79,4 +79,28 @@ CALL update_inventory(123, -5, false);
 
 Stored Procedures run within the transactional context of the executor. If an unhandled exception or error occurs during execution, the active transaction will safely abort and roll back.
 
-While explicit `BEGIN`, `COMMIT`, and `ROLLBACK` SQL statements are supported by the Oxibase engine at a top level, calling them inside a procedural script is highly context-dependent. Generally, it is safer to let the parent session handle the overarching transaction boundaries or allow errors to bubble up naturally.
+You can explicitly control transaction boundaries inside stored procedures. This is particularly useful for long-running batch operations where you want to commit chunks of work to avoid large rollbacks.
+
+> **Note**: Transaction control inside procedures is only permitted if the `CALL` is not inside an explicit transaction block (i.e., you haven't run `BEGIN;` before the `CALL`). Otherwise, it will throw an "invalid transaction termination" error.
+
+### Language Syntax
+
+- **PL/SQL**: Use native `COMMIT;`, `ROLLBACK;`, and `BEGIN;` statements.
+- **Rhai**: Use the globally registered `commit()`, `rollback()`, and `begin()` functions.
+- **JavaScript (Boa)**: Use the globally registered `commit()`, `rollback()`, and `begin()` functions.
+- **Python**: Use `oxibase.commit()`, `oxibase.rollback()`, and `oxibase.begin()`.
+
+### Example (PL/SQL)
+
+```sql
+CREATE PROCEDURE process_batch()
+LANGUAGE plsql AS $$
+BEGIN
+    UPDATE jobs SET status = 'processing' WHERE id = 1;
+    COMMIT; -- Commits the active transaction and immediately starts a new one
+    
+    UPDATE jobs SET status = 'done' WHERE id = 1;
+    COMMIT;
+END;
+$$;
+```

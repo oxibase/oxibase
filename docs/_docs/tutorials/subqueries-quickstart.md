@@ -271,6 +271,6 @@ Oxibase fully supports:
 
 ## Next Steps
 
-- Read the full [Subqueries documentation]({% link _docs/sql-features/subqueries.md %})
-- Learn about [JOIN operations]({% link _docs/sql-features/join-operations.md %}) as an alternative
+- Read the full [Subqueries documentation]({% link _docs/references/sql-features/subqueries.md %})
+- Learn about [JOIN operations]({% link _docs/references/sql-features/join-operations.md %}) as an alternative
 - Explore [SQL Commands reference]({% link _docs/references/sql-commands.md %})

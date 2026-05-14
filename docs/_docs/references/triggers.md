@@ -43,14 +43,14 @@ Triggers can be written in any scripting backend supported by your Oxibase insta
 
 ## Execution Timing (`BEFORE` vs `AFTER`)
 
-- **`BEFORE` Triggers**: Execute *before* the row is persisted to the storage engine. They are typically used for data validation or data transformation. Modifying the `NEW` row inside a `BEFORE` trigger will alter the data that is ultimately saved.
+- **`BEFORE` Triggers**: Execute *before* the row is persisted to the storage engine. They are typically used for data validation or data transformation. Modifying the `oxibase.ctx.new` row inside a `BEFORE` trigger will alter the data that is ultimately saved.
 - **`AFTER` Triggers**: Execute *after* the row is successfully persisted but before the transaction completes. They are typically used for side-effects, such as logging to an audit table.
 
-## Row Context (`NEW` and `OLD`)
+## Row Context (`oxibase.ctx.new` and `oxibase.ctx.old`)
 
-Inside the procedural trigger body, the engine injects native proxy objects representing the row being modified. Because Oxibase uses a zero-copy proxy pattern, these objects do not clone the underlying data, making them highly efficient.
+Inside the procedural trigger body, the engine exposes proxy objects representing the row being modified under the `oxibase.ctx` namespace. Because Oxibase uses a zero-copy proxy pattern, these objects do not clone the underlying data, making them highly efficient.
 
-| Event | `OLD` object | `NEW` object |
+| Event | `oxibase.ctx.old` object | `oxibase.ctx.new` object |
 | :--- | :--- | :--- |
 | **`INSERT`** | `null` / `None` | Contains the new values being inserted. (Writable in `BEFORE` triggers) |
 | **`UPDATE`** | Contains the original values before modification. (Read-only) | Contains the new values. (Writable in `BEFORE` triggers) |
@@ -60,9 +60,9 @@ Inside the procedural trigger body, the engine injects native proxy objects repr
 
 You access row data via property/attribute access mapping exactly to your table schema.
 
-- **Rhai**: `NEW.column_name`
-- **JavaScript**: `NEW.column_name`
-- **Python**: `NEW.column_name` (or `NEW['column_name']` if implemented as a dictionary)
+- **Rhai**: `oxibase.ctx.new.column_name`
+- **JavaScript**: `oxibase.ctx.new.column_name`
+- **Python**: `oxibase.ctx.new.column_name` (or `oxibase.ctx.new['column_name']` depending on dictionary implementation)
 
 ## Error Handling and Transaction Aborts
 

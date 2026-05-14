@@ -142,8 +142,8 @@ The optimizer uses statistics collected by `ANALYZE` to make better decisions.
 ANALYZE users;
 
 -- Statistics are stored in system tables
-SELECT * FROM _sys_table_stats WHERE table_name = 'users';
-SELECT * FROM _sys_column_stats WHERE table_name = 'users';
+SELECT * FROM system.table_stats WHERE table_name = 'users';
+SELECT * FROM system.column_stats WHERE table_name = 'users';
 ```
 
 ### Statistics Collected

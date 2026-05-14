@@ -1,8 +1,8 @@
 ---
 layout: default
 title: PRAGMA Commands
-parent: SQL Commands
-nav_order: 3
+parent: References
+nav_order: 10
 ---
 
 # PRAGMA Commands

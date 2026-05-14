@@ -41,7 +41,7 @@ FROM table_name
 - **table_name**: The table to query
 - **WHERE condition**: Filter condition
 - **GROUP BY**: Groups rows by specified columns
-- **ROLLUP/CUBE**: Multi-dimensional aggregation (see [ROLLUP and CUBE]({% link _docs/sql-features/rollup-cube.md %}))
+- **ROLLUP/CUBE**: Multi-dimensional aggregation (see [ROLLUP and CUBE]({% link _docs/references/sql-features/rollup-cube.md %}))
 - **HAVING**: Filter applied to groups
 - **ORDER BY**: Sorting of results (`NULLS FIRST` or `NULLS LAST` to control NULL placement)
 - **LIMIT**: Maximum rows to return
@@ -108,7 +108,7 @@ FROM products p
 CROSS JOIN colors c;
 ```
 
-See [JOIN Operations]({% link _docs/sql-features/join-operations.md %}) for detailed documentation.
+See [JOIN Operations]({% link _docs/references/sql-features/join-operations.md %}) for detailed documentation.
 
 #### Subqueries
 
@@ -143,7 +143,7 @@ SELECT * FROM products WHERE price > ALL (SELECT price FROM products WHERE categ
 SELECT * FROM (SELECT id, name FROM products WHERE price > 100) AS expensive;
 ```
 
-See [Subqueries]({% link _docs/sql-features/subqueries.md %}) for detailed documentation.
+See [Subqueries]({% link _docs/references/sql-features/subqueries.md %}) for detailed documentation.
 
 #### Common Table Expressions (CTEs)
 
@@ -177,7 +177,7 @@ WITH RECURSIVE numbers AS (
 SELECT * FROM numbers;
 ```
 
-See [Common Table Expressions]({% link _docs/sql-features/common-table-expressions.md %}) for detailed documentation.
+See [Common Table Expressions]({% link _docs/references/sql-features/common-table-expressions.md %}) for detailed documentation.
 
 #### Set Operations
 
@@ -215,7 +215,7 @@ SELECT * FROM orders AS OF TIMESTAMP '2024-01-15 10:30:00';
 SELECT * FROM inventory AS OF TIMESTAMP NOW();
 ```
 
-See [Temporal Queries]({% link _docs/sql-features/temporal-queries.md %}) for detailed documentation.
+See [Temporal Queries]({% link _docs/references/sql-features/temporal-queries.md %}) for detailed documentation.
 
 ### INSERT
 
@@ -268,7 +268,7 @@ ON DUPLICATE KEY UPDATE
   quantity = quantity + 50;
 ```
 
-See [ON DUPLICATE KEY UPDATE]({% link _docs/sql-features/on-duplicate-key-update.md %}) for detailed documentation.
+See [ON DUPLICATE KEY UPDATE]({% link _docs/references/sql-features/on-duplicate-key-update.md %}) for detailed documentation.
 
 ### UPDATE
 
@@ -732,6 +732,74 @@ DROP SEQUENCE [IF EXISTS] sequence_name;
 DROP SEQUENCE IF EXISTS my_seq;
 ```
 
+## Job Scheduling
+
+### CREATE SCHEDULE
+
+Creates a new background job schedule that executes a stored procedure at specified intervals using standard Cron syntax.
+
+#### Basic Syntax
+
+```sql
+CREATE SCHEDULE [IF NOT EXISTS] schedule_name 
+    CRON 'cron_expression' 
+    CALL procedure_name();
+```
+
+#### Examples
+
+```sql
+-- Run the cleanup procedure every night at midnight
+CREATE SCHEDULE nightly_cleanup 
+    CRON '0 0 0 * * *' 
+    CALL cleanup_old_data();
+
+-- Run every 5 minutes
+CREATE SCHEDULE refresh_stats 
+    CRON '0 */5 * * * *' 
+    CALL update_statistics();
+```
+
+### ALTER SCHEDULE
+
+Modifies an existing job schedule to change its cron expression or toggle its active state.
+
+#### Basic Syntax
+
+```sql
+ALTER SCHEDULE [IF EXISTS] schedule_name 
+    { CRON 'new_cron_expression' | { ACTIVE | INACTIVE } };
+```
+
+#### Examples
+
+```sql
+-- Pause a schedule
+ALTER SCHEDULE nightly_cleanup INACTIVE;
+
+-- Resume a schedule
+ALTER SCHEDULE nightly_cleanup ACTIVE;
+
+-- Change the execution interval
+ALTER SCHEDULE refresh_stats CRON '0 0 * * * *';
+```
+
+### DROP SCHEDULE
+
+Removes a job schedule from the database.
+
+#### Basic Syntax
+
+```sql
+DROP SCHEDULE [IF EXISTS] schedule_name;
+```
+
+#### Examples
+
+```sql
+DROP SCHEDULE IF EXISTS nightly_cleanup;
+```
+
 ## Transaction Control
 
 ### BEGIN TRANSACTION
@@ -792,7 +860,7 @@ UPDATE accounts SET balance = 900 WHERE id = 1;
 COMMIT;
 ```
 
-See [Savepoints]({% link _docs/sql-features/savepoints.md %}) for detailed documentation.
+See [Savepoints]({% link _docs/references/sql-features/savepoints.md %}) for detailed documentation.
 
 ## Query Analysis
 
@@ -832,7 +900,7 @@ SELECT (actual time=1.2ms, rows=150)
        Filter: (price > 100)
 ```
 
-See [EXPLAIN]({% link _docs/sql-features/explain.md %}) for detailed documentation.
+See [EXPLAIN]({% link _docs/how-to/explain.md %}) for detailed documentation.
 
 ### ANALYZE
 
@@ -911,7 +979,9 @@ Oxibase provides standard SQL metadata access through `information_schema` virtu
 | `information_schema.functions` | Available SQL functions |
 | `information_schema.views` | View definitions |
 | `information_schema.statistics` | Index information |
-| `information_schema.sequences` | Sequence objects (empty in current version) |
+| `information_schema.sequences` | Sequence objects |
+| `system.cron` | Configured job schedules |
+| `system.cron_runs` | Execution history of job schedules |
 
 #### information_schema.tables
 
@@ -1036,12 +1106,37 @@ WHERE table_name = 'users';
 
 #### information_schema.sequences
 
-Reserved for future sequence support. Currently returns no rows.
+Lists all sequences defined in the database.
+
+**Columns:**
+- `sequence_catalog`: Always "def"
+- `sequence_schema`: NULL (single schema database)
+- `sequence_name`: Name of the sequence
+- `data_type`: The data type of the sequence (e.g. INTEGER)
+- `start_value`: Starting value
+- `minimum_value`: Minimum value
+- `maximum_value`: Maximum value
+- `increment`: Increment by value
+- `cycle_option`: "YES" if cycles, "NO" otherwise
 
 **Example:**
 ```sql
-SELECT * FROM information_schema.sequences;
--- Returns empty result set
+-- List all sequences
+SELECT sequence_name, start_value, increment
+FROM information_schema.sequences;
+```
+
+#### system.cron and system.cron_runs
+
+Oxibase stores job scheduler configurations and their execution logs in the `system` schema.
+
+**Example:**
+```sql
+-- View all active schedules
+SELECT * FROM system.cron WHERE active = true;
+
+-- View recent execution failures
+SELECT * FROM system.cron_runs WHERE status = 'failed' ORDER BY execution_time DESC LIMIT 10;
 ```
 
 #### Advanced Examples
@@ -1118,7 +1213,7 @@ PRAGMA name;
 | wal_flush_trigger | Operations before WAL flush | 1000 |
 | create_snapshot | Manually create a snapshot | - |
 
-See [PRAGMA Commands]({% link _docs/sql-commands/pragma-commands.md %}) for detailed documentation.
+See [PRAGMA Commands]({% link _docs/references/pragma-commands.md %}) for detailed documentation.
 
 ## Parameter Binding
 
@@ -1130,7 +1225,7 @@ INSERT INTO products (name, price) VALUES ($1, $2);
 UPDATE orders SET status = $1 WHERE id = $2;
 ```
 
-See [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %}) for detailed documentation.
+See [Parameter Binding]({% link _docs/how-to/parameter-binding.md %}) for detailed documentation.
 
 ## Notes
 
@@ -1141,15 +1236,15 @@ See [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %}) for 
 
 ## Related Documentation
 
-- [ROLLUP and CUBE]({% link _docs/sql-features/rollup-cube.md %})
-- [JOIN Operations]({% link _docs/sql-features/join-operations.md %})
-- [Subqueries]({% link _docs/sql-features/subqueries.md %})
-- [Common Table Expressions]({% link _docs/sql-features/common-table-expressions.md %})
-- [Temporal Queries]({% link _docs/sql-features/temporal-queries.md %})
-- [ON DUPLICATE KEY UPDATE]({% link _docs/sql-features/on-duplicate-key-update.md %})
+- [ROLLUP and CUBE]({% link _docs/references/sql-features/rollup-cube.md %})
+- [JOIN Operations]({% link _docs/references/sql-features/join-operations.md %})
+- [Subqueries]({% link _docs/references/sql-features/subqueries.md %})
+- [Common Table Expressions]({% link _docs/references/sql-features/common-table-expressions.md %})
+- [Temporal Queries]({% link _docs/references/sql-features/temporal-queries.md %})
+- [ON DUPLICATE KEY UPDATE]({% link _docs/references/sql-features/on-duplicate-key-update.md %})
 - [User-Defined Functions]({% link _docs/references/functions/user-defined-functions.md %})
 - [Indexing]({% link _docs/explanations/architecture/indexing.md %})
-- [Savepoints]({% link _docs/sql-features/savepoints.md %})
-- [EXPLAIN]({% link _docs/sql-features/explain.md %})
-- [PRAGMA Commands]({% link _docs/sql-commands/pragma-commands.md %})
-- [Parameter Binding]({% link _docs/sql-features/parameter-binding.md %})
+- [Savepoints]({% link _docs/references/sql-features/savepoints.md %})
+- [EXPLAIN]({% link _docs/how-to/explain.md %})
+- [PRAGMA Commands]({% link _docs/references/pragma-commands.md %})
+- [Parameter Binding]({% link _docs/how-to/parameter-binding.md %})
