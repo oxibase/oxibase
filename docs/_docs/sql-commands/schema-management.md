@@ -227,7 +227,9 @@ Oxibase supports creating custom functions using JavaScript/TypeScript:
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE BOA AS 'return arguments[0] + arguments[1];';
+LANGUAGE BOA AS $$ 
+    return a + b; 
+$$;
 ```
 
 ### Using Functions
