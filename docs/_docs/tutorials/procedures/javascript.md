@@ -55,6 +55,10 @@ CALL log_event_js('Hello from JavaScript!');
 
 If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
 
+```sql
+SELECT * FROM audit_logs;
+```
+
 Call the procedure:
 ```sql
 CALL multiply_js(5, 4, 0);

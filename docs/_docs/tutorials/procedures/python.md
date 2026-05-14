@@ -58,6 +58,10 @@ CALL log_event_py('Hello from Python!');
 
 If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
 
+```sql
+SELECT * FROM audit_logs;
+```
+
 Call the procedure:
 ```sql
 CALL concat_py('hello', 'world', '');

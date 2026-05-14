@@ -88,6 +88,10 @@ CALL log_event('User signed in successfully');
 
 If you query the `audit_logs` table, you will see the record has been inserted natively within the procedure's execution context.
 
+```sql
+SELECT * FROM audit_logs;
+```
+
 ## Supported Syntax Overview
 
 The PL/SQL native dialect currently supports:
