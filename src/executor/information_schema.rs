@@ -437,10 +437,8 @@ impl Executor {
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
     }
 
-    /// Build information_schema.sequences result (empty - no sequences supported)
+    /// Build information_schema.sequences result
     fn build_sequences_result(&self) -> Result<Box<dyn QueryResult>> {
-        // Columns: sequence_catalog, sequence_schema, sequence_name, data_type, etc.
-        // Since Oxibase doesn't support sequences, return empty result
         let columns = vec![
             "sequence_catalog".to_string(),
             "sequence_schema".to_string(),
@@ -453,9 +451,29 @@ impl Executor {
             "maximum_value".to_string(),
             "increment".to_string(),
             "cycle_option".to_string(),
+            "current_value".to_string(),
         ];
 
-        let rows: Vec<Row> = Vec::new();
+        let mut rows = Vec::new();
+
+        let sequences = self.engine.list_sequences()?;
+
+        for (name, options, current_val) in sequences {
+            rows.push(Row::from_values(vec![
+                Value::text("def"),    // catalog
+                Value::text("public"), // schema
+                Value::text(name),
+                Value::text("bigint"), // Assuming all sequences are bigint
+                Value::integer(64),    // precision
+                Value::integer(0),     // scale
+                Value::integer(options.start_with),
+                Value::integer(options.min_value),
+                Value::integer(options.max_value),
+                Value::integer(options.increment_by),
+                Value::text(if options.cycle { "YES" } else { "NO" }),
+                Value::integer(current_val),
+            ]));
+        }
 
         Ok(Box::new(ExecutorMemoryResult::new(columns, rows)))
     }

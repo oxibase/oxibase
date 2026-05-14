@@ -185,30 +185,6 @@ pub trait Engine: Send + Sync {
         let _ = (old_table_name, new_table_name);
     }
 
-    // --- Sequences ---
-
-    fn sequence_exists(&self, sequence_name: &str) -> Result<bool>;
-
-    fn create_sequence(
-        &self,
-        sequence_name: &str,
-        options: crate::core::SequenceOptions,
-    ) -> Result<()>;
-
-    fn alter_sequence(
-        &self,
-        sequence_name: &str,
-        options: crate::core::SequenceOptions,
-    ) -> Result<()>;
-
-    fn drop_sequence(&self, sequence_name: &str) -> Result<()>;
-
-    fn nextval(&self, sequence_name: &str) -> Result<i64>;
-
-    fn setval(&self, sequence_name: &str, value: i64, is_called: bool) -> Result<i64>;
-
-    fn list_sequences(&self) -> Result<Vec<(String, crate::core::SequenceOptions, i64)>>;
-
     /// Fetch rows by IDs directly from storage without creating a full transaction.
     ///
     /// This is an optimization for EXISTS subquery evaluation where we only need

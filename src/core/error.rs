@@ -50,6 +50,14 @@ pub enum Error {
     #[error("schema not found: {0}")]
     SchemaNotFound(String),
 
+    /// Sequence already exists
+    #[error("sequence already exists: {0}")]
+    SequenceAlreadyExists(String),
+
+    /// Sequence not found
+    #[error("sequence not found: {0}")]
+    SequenceNotFound(String),
+
     /// Table has been closed and cannot be used
 
     #[error("table closed")]

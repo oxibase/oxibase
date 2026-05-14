@@ -1,0 +1,14 @@
+@@ -342,6 +342,13 @@
+     "PROCEDURE",
+     "CALL",
+     "PRAGMA",
++    "SEQUENCE",
++    "START",
++    "INCREMENT",
++    "MINVALUE",
++    "MAXVALUE",
++    "CYCLE",
++    "RESTART",
+ ];
+ 
+ /// Valid operators

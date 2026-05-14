@@ -1,0 +1,22 @@
+--- src/parser/ast.rs
++++ src/parser/ast.rs
+@@ -1318,6 +1318,9 @@
+     CreateView(CreateViewStatement),
+     DropView(DropViewStatement),
+     CreateSchema(CreateSchemaStatement),
++    CreateSequence(CreateSequenceStatement),
++    AlterSequence(AlterSequenceStatement),
++    DropSequence(DropSequenceStatement),
+     DropSchema(DropSchemaStatement),
+     UseSchema(UseSchemaStatement),
+     CreateFunction(CreateFunctionStatement),
+@@ -1355,6 +1358,9 @@
+             Statement::DropIndex(s) => write!(f, "{}", s),
+             Statement::CreateColumnarIndex(s) => write!(f, "{}", s),
+             Statement::DropColumnarIndex(s) => write!(f, "{}", s),
++            Statement::CreateSequence(s) => write!(f, "{}", s),
++            Statement::AlterSequence(s) => write!(f, "{}", s),
++            Statement::DropSequence(s) => write!(f, "{}", s),
+             Statement::CreateView(s) => write!(f, "{}", s),
+             Statement::DropView(s) => write!(f, "{}", s),
+             Statement::CreateSchema(s) => write!(f, "{}", s),

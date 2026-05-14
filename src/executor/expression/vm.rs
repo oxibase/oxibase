@@ -311,6 +311,59 @@ impl ExprVM {
                     pc += 1;
                 }
 
+                Op::NextVal => {
+                    let seq_name = self.stack.pop().unwrap().as_string().unwrap_or_default();
+                    let value = if let Some(engine) = crate::executor::context::get_current_engine()
+                    {
+                        match engine.nextval(&seq_name) {
+                            Ok(val) => {
+                                crate::executor::context::cache_currval(seq_name, val);
+                                Value::Integer(val)
+                            }
+                            Err(_) => Value::null_unknown(),
+                        }
+                    } else {
+                        Value::null_unknown()
+                    };
+                    self.stack.push(value);
+                    pc += 1;
+                }
+
+                Op::CurrVal => {
+                    let seq_name = self.stack.pop().unwrap().as_string().unwrap_or_default();
+                    let value = if let Some(val) =
+                        crate::executor::context::get_cached_currval(&seq_name)
+                    {
+                        Value::Integer(val)
+                    } else {
+                        Value::null_unknown()
+                    };
+                    self.stack.push(value);
+                    pc += 1;
+                }
+
+                Op::SetVal => {
+                    let is_called = self.stack.pop().unwrap().as_boolean().unwrap_or(true);
+                    let value = self.stack.pop().unwrap().as_int64().unwrap_or_default();
+                    let seq_name = self.stack.pop().unwrap().as_string().unwrap_or_default();
+
+                    let result =
+                        if let Some(engine) = crate::executor::context::get_current_engine() {
+                            match engine.setval(&seq_name, value, is_called) {
+                                Ok(val) => {
+                                    // Also update currval for this session
+                                    crate::executor::context::cache_currval(seq_name, val);
+                                    Value::Integer(val)
+                                }
+                                Err(_) => Value::null_unknown(),
+                            }
+                        } else {
+                            Value::null_unknown()
+                        };
+                    self.stack.push(result);
+                    pc += 1;
+                }
+
                 Op::LoadTransactionId => {
                     // Load current transaction ID, or NULL if not in a transaction
                     let value = match ctx.transaction_id {

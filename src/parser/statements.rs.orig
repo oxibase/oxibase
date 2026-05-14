@@ -1307,12 +1307,10 @@ impl Parser {
                 .map(Statement::CreateTable)
         } else if self.peek_token_is_keyword("SEQUENCE") {
             self.next_token();
-            self.parse_create_sequence_statement()
-                .map(Statement::CreateSequence)
+            self.parse_create_sequence_statement().map(Statement::CreateSequence)
         } else if self.peek_token_is_keyword("SEQUENCE") {
             self.next_token();
-            self.parse_drop_sequence_statement()
-                .map(Statement::DropSequence)
+            self.parse_drop_sequence_statement().map(Statement::DropSequence)
         } else if self.peek_token_is_keyword("SCHEMA") {
             self.next_token();
             self.parse_create_schema_statement()
@@ -2287,8 +2285,7 @@ impl Parser {
             self.parse_drop_table_statement().map(Statement::DropTable)
         } else if self.peek_token_is_keyword("SEQUENCE") {
             self.next_token();
-            self.parse_drop_sequence_statement()
-                .map(Statement::DropSequence)
+            self.parse_drop_sequence_statement().map(Statement::DropSequence)
         } else if self.peek_token_is_keyword("SCHEMA") {
             self.next_token();
             self.parse_drop_schema_statement()
@@ -2600,9 +2597,7 @@ impl Parser {
 
         if self.peek_token_is_keyword("SEQUENCE") {
             self.next_token();
-            return self
-                .parse_alter_sequence_statement()
-                .map(Statement::AlterSequence);
+            return self.parse_alter_sequence_statement().map(Statement::AlterSequence);
         }
 
         // Expect TABLE
@@ -2610,14 +2605,12 @@ impl Parser {
             return None;
         }
 
-        self.parse_alter_table_statement(token)
-            .map(Statement::AlterTable)
+        self.parse_alter_table_statement(token).map(Statement::AlterTable)
     }
 
-    fn parse_alter_table_statement(
-        &mut self,
-        token: super::token::Token,
-    ) -> Option<AlterTableStatement> {
+    fn parse_alter_table_statement(&mut self, token: super::token::Token) -> Option<AlterTableStatement> {
+
+
         // Parse table name
         if !self.expect_peek(TokenType::Identifier) {
             return None;
@@ -3313,9 +3306,7 @@ impl Parser {
         let mut cycle = false;
 
         // Note: oxibase uses Punctuator for semicolon and Minus is an operator
-        while !(self.cur_token_is(TokenType::Eof)
-            || self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";")
-        {
+        while !self.cur_token_is(TokenType::Eof) && !(self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";") {
             if self.peek_token_is_keyword("START") {
                 self.next_token(); // CONSUME START
                 if self.peek_token_is_keyword("WITH") {
@@ -3330,15 +3321,14 @@ impl Parser {
                 if self.peek_token_is_keyword("BY") {
                     self.next_token(); // CONSUME BY
                 }
-
-                let is_negative =
-                    if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
-                        self.next_token();
-                        true
-                    } else {
-                        false
-                    };
-
+                
+                let is_negative = if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
+                    self.next_token();
+                    true
+                } else {
+                    false
+                };
+                
                 if !self.expect_peek(TokenType::Integer) {
                     return None;
                 }
@@ -3346,13 +3336,12 @@ impl Parser {
                 increment_by = Some(if is_negative { -val } else { val });
             } else if self.peek_token_is_keyword("MINVALUE") {
                 self.next_token(); // CONSUME MINVALUE
-                let is_negative =
-                    if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
-                        self.next_token();
-                        true
-                    } else {
-                        false
-                    };
+                let is_negative = if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
+                    self.next_token();
+                    true
+                } else {
+                    false
+                };
                 if !self.expect_peek(TokenType::Integer) {
                     return None;
                 }
@@ -3370,10 +3359,7 @@ impl Parser {
                     self.next_token();
                     cycle = false;
                 } else {
-                    self.add_error(format!(
-                        "Unexpected token after NO: {}",
-                        self.peek_token.literal
-                    ));
+                    self.add_error(format!("Unexpected token after NO: {}", self.peek_token.literal));
                     return None;
                 }
             } else if self.peek_token_is_keyword("MAXVALUE") {
@@ -3424,9 +3410,7 @@ impl Parser {
         let mut max_value = None;
         let mut cycle = None;
 
-        while !(self.cur_token_is(TokenType::Eof)
-            || self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";")
-        {
+        while !self.cur_token_is(TokenType::Eof) && !(self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";") {
             if self.peek_token_is_keyword("RESTART") {
                 self.next_token(); // CONSUME RESTART
                 if self.peek_token_is_keyword("WITH") {
@@ -3441,13 +3425,12 @@ impl Parser {
                 if self.peek_token_is_keyword("BY") {
                     self.next_token(); // CONSUME BY
                 }
-                let is_negative =
-                    if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
-                        self.next_token();
-                        true
-                    } else {
-                        false
-                    };
+                let is_negative = if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
+                    self.next_token();
+                    true
+                } else {
+                    false
+                };
                 if !self.expect_peek(TokenType::Integer) {
                     return None;
                 }
@@ -3455,13 +3438,12 @@ impl Parser {
                 increment_by = Some(if is_negative { -val } else { val });
             } else if self.peek_token_is_keyword("MINVALUE") {
                 self.next_token(); // CONSUME MINVALUE
-                let is_negative =
-                    if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
-                        self.next_token();
-                        true
-                    } else {
-                        false
-                    };
+                let is_negative = if self.peek_token_is(TokenType::Operator) && self.peek_token.literal == "-" {
+                    self.next_token();
+                    true
+                } else {
+                    false
+                };
                 if !self.expect_peek(TokenType::Integer) {
                     return None;
                 }
@@ -3469,17 +3451,15 @@ impl Parser {
                 min_value = Some(if is_negative { -val } else { val });
             } else if self.peek_token_is_keyword("NO") {
                 self.next_token(); // CONSUME NO
-                if self.peek_token_is_keyword("MINVALUE") || self.peek_token_is_keyword("MAXVALUE")
-                {
+                if self.peek_token_is_keyword("MINVALUE") {
+                    self.next_token();
+                } else if self.peek_token_is_keyword("MAXVALUE") {
                     self.next_token();
                 } else if self.peek_token_is_keyword("CYCLE") {
                     self.next_token();
                     cycle = Some(false);
                 } else {
-                    self.add_error(format!(
-                        "Unexpected token after NO: {}",
-                        self.peek_token.literal
-                    ));
+                    self.add_error(format!("Unexpected token after NO: {}", self.peek_token.literal));
                     return None;
                 }
             } else if self.peek_token_is_keyword("MAXVALUE") {
@@ -3530,6 +3510,7 @@ impl Parser {
             if_exists,
         })
     }
+
 }
 
 #[cfg(test)]
@@ -3838,7 +3819,7 @@ mod tests {
     #[test]
     fn test_parse_create_sequence() {
         let input = "CREATE SEQUENCE seq1 START WITH 100 INCREMENT BY -10 MINVALUE -1000 MAXVALUE 1000 CYCLE";
-        let stmt = parse_stmt(input).expect("Failed to parse create sequence");
+        let stmt = parse_stmt(input).unwrap();
         if let Statement::CreateSequence(s) = stmt {
             assert_eq!(s.name.to_string(), "seq1");
             assert_eq!(s.start_with, Some(100));

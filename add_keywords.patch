@@ -1,0 +1,16 @@
+--- src/parser/token.rs
++++ src/parser/token.rs
+@@ -342,6 +342,13 @@
+     "PROCEDURE",
+     "CALL",
+     "PRAGMA",
++    "SEQUENCE",
++    "START",
++    "INCREMENT",
++    "MINVALUE",
++    "MAXVALUE",
++    "CYCLE",
++    "RESTART",
+ ];
+ 
+ /// Valid operators

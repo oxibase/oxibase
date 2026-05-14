@@ -973,3 +973,45 @@ mod tests {
         assert_eq!(ctx.timeout_ms(), 5000);
     }
 }
+
+// Cache for CURRVAL tracking to avoid sequence values leaking across sessions.
+// The key is the sequence name, the value is the last generated sequence value.
+thread_local! {
+    static CURRVAL_CACHE: RefCell<FxHashMap<String, i64>> = RefCell::new(FxHashMap::default());
+}
+
+/// Clear the CURRVAL cache. Should be called when a session/connection is reset.
+pub fn clear_currval_cache() {
+    CURRVAL_CACHE.with(|cache| {
+        cache.borrow_mut().clear();
+    });
+}
+
+/// Get the last sequence value generated in the current session.
+pub fn get_cached_currval(seq_name: &str) -> Option<i64> {
+    CURRVAL_CACHE.with(|cache| cache.borrow().get(seq_name).cloned())
+}
+
+/// Set the last sequence value generated in the current session.
+pub fn cache_currval(seq_name: String, value: i64) {
+    CURRVAL_CACHE.with(|cache| {
+        cache.borrow_mut().insert(seq_name, value);
+    });
+}
+
+// Cache for Engine reference to allow sequence generation in expressions
+thread_local! {
+    static CURRENT_ENGINE: RefCell<Option<std::sync::Arc<dyn crate::storage::traits::Engine>>> = RefCell::new(None);
+}
+
+pub fn set_current_engine(engine: std::sync::Arc<dyn crate::storage::traits::Engine>) {
+    CURRENT_ENGINE.with(|e| *e.borrow_mut() = Some(engine));
+}
+
+pub fn get_current_engine() -> Option<std::sync::Arc<dyn crate::storage::traits::Engine>> {
+    CURRENT_ENGINE.with(|e| e.borrow().clone())
+}
+
+pub fn clear_current_engine() {
+    CURRENT_ENGINE.with(|e| *e.borrow_mut() = None);
+}
