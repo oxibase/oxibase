@@ -275,6 +275,8 @@ pub struct MVCCEngine {
     /// View definitions (Arc for cheap cloning on lookup)
     views: RwLock<FxHashMap<String, Arc<ViewDefinition>>>,
     /// Persistence manager for WAL and snapshot operations (Arc-wrapped for safe sharing)
+    /// Sequence definitions
+    pub(crate) sequences: Arc<RwLock<FxHashMap<String, Arc<crate::core::SequenceState>>>>,
     persistence: Arc<Option<PersistenceManager>>,
     /// Flag to indicate we're loading from disk to avoid triggering redundant WAL writes
     /// (Arc-wrapped for safe sharing with transactions)
@@ -314,6 +316,7 @@ impl MVCCEngine {
             open: AtomicBool::new(false),
             txn_version_stores: Arc::new(RwLock::new(FxHashMap::default())),
             views: RwLock::new(FxHashMap::default()),
+            sequences: Arc::new(RwLock::new(FxHashMap::default())),
             persistence: Arc::new(persistence),
             loading_from_disk: Arc::new(AtomicBool::new(false)),
             file_lock: Mutex::new(None),
@@ -2520,6 +2523,102 @@ impl Engine for MVCCEngine {
         Ok(Box::new(move |row_ids: &[i64]| {
             store.get_visible_versions_batch(row_ids, read_txn_id)
         }))
+    }
+
+    // --- Sequences ---
+
+    fn sequence_exists(&self, sequence_name: &str) -> Result<bool> {
+        let sequences = self.sequences.read().unwrap();
+        Ok(sequences.contains_key(&sequence_name.to_lowercase()))
+    }
+
+    fn create_sequence(
+        &self,
+        sequence_name: &str,
+        options: crate::core::SequenceOptions,
+    ) -> Result<()> {
+        let mut sequences = self.sequences.write().unwrap();
+        let name_lower = sequence_name.to_lowercase();
+        if sequences.contains_key(&name_lower) {
+            return Err(crate::core::Error::SequenceAlreadyExists(
+                sequence_name.to_string(),
+            ));
+        }
+        sequences.insert(
+            name_lower,
+            std::sync::Arc::new(crate::core::SequenceState::new(options)),
+        );
+        Ok(())
+    }
+
+    fn alter_sequence(
+        &self,
+        sequence_name: &str,
+        options: crate::core::SequenceOptions,
+    ) -> Result<()> {
+        let mut sequences = self.sequences.write().unwrap();
+        let name_lower = sequence_name.to_lowercase();
+        if !sequences.contains_key(&name_lower) {
+            return Err(crate::core::Error::SequenceNotFound(
+                sequence_name.to_string(),
+            ));
+        }
+        // Create new sequence state and replace existing
+        sequences.insert(
+            name_lower,
+            std::sync::Arc::new(crate::core::SequenceState::new(options)),
+        );
+        Ok(())
+    }
+
+    fn drop_sequence(&self, sequence_name: &str) -> Result<()> {
+        let mut sequences = self.sequences.write().unwrap();
+        let name_lower = sequence_name.to_lowercase();
+        if sequences.remove(&name_lower).is_none() {
+            return Err(crate::core::Error::SequenceNotFound(
+                sequence_name.to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn nextval(&self, sequence_name: &str) -> Result<i64> {
+        let sequence = {
+            let sequences = self.sequences.read().unwrap();
+            let name_lower = sequence_name.to_lowercase();
+            if let Some(seq) = sequences.get(&name_lower) {
+                std::sync::Arc::clone(seq)
+            } else {
+                return Err(crate::core::Error::SequenceNotFound(
+                    sequence_name.to_string(),
+                ));
+            }
+        };
+        sequence.nextval()
+    }
+
+    fn setval(&self, sequence_name: &str, value: i64, is_called: bool) -> Result<i64> {
+        let sequence = {
+            let sequences = self.sequences.read().unwrap();
+            let name_lower = sequence_name.to_lowercase();
+            if let Some(seq) = sequences.get(&name_lower) {
+                std::sync::Arc::clone(seq)
+            } else {
+                return Err(crate::core::Error::SequenceNotFound(
+                    sequence_name.to_string(),
+                ));
+            }
+        };
+        sequence.setval(value, is_called)
+    }
+
+    fn list_sequences(&self) -> Result<Vec<(String, crate::core::SequenceOptions, i64)>> {
+        let sequences = self.sequences.read().unwrap();
+        let mut result = Vec::with_capacity(sequences.len());
+        for (name, seq) in sequences.iter() {
+            result.push((name.clone(), seq.options.clone(), seq.current_value()));
+        }
+        Ok(result)
     }
 }
 

@@ -27,6 +27,7 @@
 pub mod error;
 pub mod row;
 pub mod schema;
+pub mod sequence;
 pub mod types;
 pub mod value;
 
@@ -34,6 +35,7 @@ pub mod value;
 pub use error::{Error, Result};
 pub use row::Row;
 pub use schema::{Schema, SchemaBuilder, SchemaColumn};
+pub use sequence::{SequenceOptions, SequenceState};
 pub use types::{DataType, IndexEntry, IndexType, IsolationLevel, Operator};
 pub use value::{parse_timestamp, Value};
 

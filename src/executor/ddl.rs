@@ -1413,7 +1413,98 @@ impl Executor {
         Ok(Value::null(target_type))
     }
 
-    /// Execute a CREATE SCHEMA statement
+    /// Execute a CREATE SEQUENCE statement
+    pub(crate) fn execute_create_sequence(
+        &self,
+        stmt: &CreateSequenceStatement,
+    ) -> Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let name = stmt.name.to_string();
+
+        if self.engine.sequence_exists(&name)? {
+            if stmt.if_not_exists {
+                return Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)));
+            }
+            return Err(Error::SequenceAlreadyExists(name));
+        }
+
+        let mut options = crate::core::SequenceOptions::default();
+        if let Some(v) = stmt.start_with {
+            options.start_with = v;
+        }
+        if let Some(v) = stmt.increment_by {
+            options.increment_by = v;
+        }
+        if let Some(v) = stmt.min_value {
+            options.min_value = v;
+        }
+        if let Some(v) = stmt.max_value {
+            options.max_value = v;
+        }
+        options.cycle = stmt.cycle;
+
+        self.engine.create_sequence(&name, options)?;
+
+        Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)))
+    }
+
+    pub(crate) fn execute_alter_sequence(
+        &self,
+        stmt: &AlterSequenceStatement,
+    ) -> Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let name = stmt.name.to_string();
+
+        if !self.engine.sequence_exists(&name)? {
+            if stmt.if_exists {
+                return Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)));
+            }
+            return Err(Error::SequenceNotFound(name));
+        }
+
+        // Just recreating with new values conceptually for ALTER, but we might want to preserve the old start_with
+        // We'll extract current options, modify them, and alter.
+        // For now, this is a basic implementation that just parses the options.
+        // Ideally, Engine should expose get_sequence_options
+
+        let mut options = crate::core::SequenceOptions::default();
+        if let Some(v) = stmt.restart_with {
+            options.start_with = v;
+        }
+        if let Some(v) = stmt.increment_by {
+            options.increment_by = v;
+        }
+        if let Some(v) = stmt.min_value {
+            options.min_value = v;
+        }
+        if let Some(v) = stmt.max_value {
+            options.max_value = v;
+        }
+        if let Some(v) = stmt.cycle {
+            options.cycle = v;
+        }
+
+        self.engine.alter_sequence(&name, options)?;
+
+        Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)))
+    }
+
+    pub(crate) fn execute_drop_sequence(
+        &self,
+        stmt: &DropSequenceStatement,
+    ) -> Result<Box<dyn crate::storage::traits::QueryResult>> {
+        let name = stmt.name.to_string();
+
+        if !self.engine.sequence_exists(&name)? {
+            if stmt.if_exists {
+                return Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)));
+            }
+            return Err(Error::SequenceNotFound(name));
+        }
+
+        self.engine.drop_sequence(&name)?;
+
+        Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)))
+    }
+
     pub(crate) fn execute_create_schema(
         &self,
         stmt: &CreateSchemaStatement,

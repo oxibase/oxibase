@@ -1,0 +1,26 @@
+--- src/storage/traits/engine.rs
++++ src/storage/traits/engine.rs
+@@ -165,6 +165,22 @@
+     fn record_alter_table_rename(&self, old_table_name: &str, new_table_name: &str) {
+         // Default implementation does nothing
+         let _ = (old_table_name, new_table_name);
+     }
++
++    // --- Sequences ---
++
++    fn sequence_exists(&self, sequence_name: &str) -> Result<bool>;
++
++    fn create_sequence(&self, sequence_name: &str, options: crate::core::SequenceOptions) -> Result<()>;
++
++    fn alter_sequence(&self, sequence_name: &str, options: crate::core::SequenceOptions) -> Result<()>;
++
++    fn drop_sequence(&self, sequence_name: &str) -> Result<()>;
++
++    fn nextval(&self, sequence_name: &str) -> Result<i64>;
++
++    fn setval(&self, sequence_name: &str, value: i64, is_called: bool) -> Result<i64>;
++
++    fn list_sequences(&self) -> Result<Vec<(String, crate::core::SequenceOptions, i64)>>;
+ }
+ 
+ #[cfg(test)]

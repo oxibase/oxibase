@@ -1322,6 +1322,30 @@ impl<'a> ExprCompiler<'a> {
 
         // Special handling for certain functions
         match func_name.as_str() {
+            "NEXTVAL" if func.arguments.len() == 1 => {
+                self.compile_expr(&func.arguments[0], builder)?;
+                builder.emit(Op::NextVal);
+                return Ok(());
+            }
+
+            "CURRVAL" if func.arguments.len() == 1 => {
+                self.compile_expr(&func.arguments[0], builder)?;
+                builder.emit(Op::CurrVal);
+                return Ok(());
+            }
+
+            "SETVAL" if func.arguments.len() == 2 || func.arguments.len() == 3 => {
+                self.compile_expr(&func.arguments[0], builder)?;
+                self.compile_expr(&func.arguments[1], builder)?;
+                if func.arguments.len() == 3 {
+                    self.compile_expr(&func.arguments[2], builder)?;
+                } else {
+                    builder.emit(Op::LoadConst(crate::core::Value::Boolean(true)));
+                }
+                builder.emit(Op::SetVal);
+                return Ok(());
+            }
+
             "CURRENT_TRANSACTION_ID" => {
                 // Context-dependent function - loads from ExecuteContext
                 builder.emit(Op::LoadTransactionId);

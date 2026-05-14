@@ -1,0 +1,17 @@
+--- src/parser/statements.rs
++++ src/parser/statements.rs
+@@ -3594,6 +3594,7 @@
+         };
+ 
+         let name = self.parse_table_name()?;
++        // println!("Parsed name: {}", name);
+ 
+         let mut start_with = None;
+         let mut increment_by = None;
+@@ -3602,6 +3603,7 @@
+         let mut cycle = false;
+ 
+         while !self.cur_token_is(TokenType::Eof) && !(self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";") {
++            // println!("Loop cur: {:?}, peek: {:?}", self.cur_token, self.peek_token);
+             if self.peek_token_is_keyword("START") {
+                 self.next_token(); // CONSUME START

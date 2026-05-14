@@ -322,6 +322,8 @@ impl Program {
                 | Op::CaseThen(_)
                 | Op::CaseElse
                 | Op::CaseEnd => 0,
+                Op::NextVal | Op::CurrVal => 0,
+                Op::SetVal => -2,
             };
 
             depth += effect;

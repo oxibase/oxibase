@@ -692,6 +692,9 @@ pub enum Op {
     /// Returns NULL if no transaction is active
     /// Stack: [] -> [value]
     LoadTransactionId,
+    NextVal,
+    CurrVal,
+    SetVal,
 
     // =========================================================================
     // SPECIAL
@@ -880,6 +883,9 @@ impl std::fmt::Debug for Op {
             Op::ExecAny(idx, op) => write!(f, "ExecAny({}, {:?})", idx, op),
             Op::LoadAggregateResult(idx) => write!(f, "LoadAggregateResult({})", idx),
             Op::LoadTransactionId => write!(f, "LoadTransactionId"),
+            Op::NextVal => write!(f, "NextVal"),
+            Op::CurrVal => write!(f, "CurrVal"),
+            Op::SetVal => write!(f, "SetVal"),
             Op::Nop => write!(f, "Nop"),
             Op::Return => write!(f, "Return"),
             Op::ReturnTrue => write!(f, "ReturnTrue"),

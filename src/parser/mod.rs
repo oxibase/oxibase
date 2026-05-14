@@ -51,6 +51,7 @@ pub use ast::{
     AliasedExpression,
     AllAnyExpression,
     AllAnyType,
+    AlterSequenceStatement,
     AlterTableOperation,
     AlterTableStatement,
     // Table sources
@@ -67,6 +68,7 @@ pub use ast::{
     CreateColumnarIndexStatement,
     CreateIndexStatement,
     CreateSchemaStatement,
+    CreateSequenceStatement,
     CreateTableStatement,
     CreateViewStatement,
     CteReference,
@@ -75,6 +77,7 @@ pub use ast::{
     DropColumnarIndexStatement,
     DropIndexStatement,
     DropSchemaStatement,
+    DropSequenceStatement,
     DropTableStatement,
     DropViewStatement,
     ExistsExpression,

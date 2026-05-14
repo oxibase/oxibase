@@ -549,6 +549,8 @@ impl Executor {
     /// It parses the query and executes each statement in order.
     /// Uses the query cache to avoid re-parsing identical queries.
     pub fn execute(&self, sql: &str) -> Result<Box<dyn QueryResult>> {
+        crate::executor::context::set_current_engine(std::sync::Arc::clone(&self.engine)
+            as std::sync::Arc<dyn crate::storage::traits::Engine>);
         let ctx = ExecutionContext::new();
         self.execute_cached(sql, &ctx)
     }
@@ -757,6 +759,9 @@ impl Executor {
             Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
             Statement::CreateTrigger(stmt) => self.execute_create_trigger(stmt, &ctx),
             Statement::DropTrigger(stmt) => self.execute_drop_trigger(stmt, &ctx),
+            Statement::CreateSequence(stmt) => self.execute_create_sequence(stmt),
+            Statement::AlterSequence(stmt) => self.execute_alter_sequence(stmt),
+            Statement::DropSequence(stmt) => self.execute_drop_sequence(stmt),
             Statement::Call(stmt) => self.execute_call(stmt, &ctx),
         }
     }
