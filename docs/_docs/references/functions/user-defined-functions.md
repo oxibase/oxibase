@@ -135,6 +135,36 @@ RETURNS return_type
 LANGUAGE BOA AS 'JavaScript code here';
 ```
 
+### Multiline Code Blocks
+
+For functions and procedures with larger bodies of code, escaping single quotes inside standard string literals can be tedious. Oxibase provides two additional ways to write multiline code blocks that apply to **both `CREATE FUNCTION` and `CREATE PROCEDURE`**:
+
+**Postgres-style Dollar Quotes:**
+You can wrap the code inside `$$` or tagged dollar quotes (like `$python$`). Single quotes inside the block do not need to be escaped.
+
+```sql
+CREATE FUNCTION format_currency(amount INTEGER) RETURNS TEXT
+LANGUAGE BOA AS $$
+    const formatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(amount / 100);
+    return formatted;
+$$;
+```
+
+**Markdown-style Triple Backticks:**
+You can also use triple backticks (` ``` `), similar to Markdown code blocks, which makes it easy to copy-paste code snippets.
+
+```sql
+CREATE FUNCTION safe_divide(a INTEGER, b INTEGER) RETURNS FLOAT
+LANGUAGE PYTHON AS ```
+    if b == 0:
+        raise Exception("Division by zero")
+    return a / b
+```;
+```
+
 ### Parameters
 
 - `function_name`: The name of the function (must be unique)

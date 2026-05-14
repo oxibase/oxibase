@@ -213,4 +213,56 @@ mod ddl_function_tests {
 
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_create_function_with_dollar_quotes() {
+        let db = Database::open("memory://dollar_quotes_test").unwrap();
+
+        // Create function using $$
+        db.execute(
+            r#"
+            CREATE FUNCTION test_func_dollar() RETURNS INTEGER
+            LANGUAGE RHAI AS $$ 
+                let a = 20;
+                let b = 22;
+                return a + b;
+            $$
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let value: i64 = db.query_one("SELECT test_func_dollar()", ()).unwrap();
+        assert_eq!(value, 42);
+
+        // Create function using triple backticks
+        db.execute(
+            r#"
+            CREATE FUNCTION test_func_backticks() RETURNS TEXT
+            LANGUAGE RHAI AS ``` 
+                return "hello " + "world";
+            ```
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let text: String = db.query_one("SELECT test_func_backticks()", ()).unwrap();
+        assert_eq!(text, "hello world");
+
+        // Create function using tagged python quotes but use RHAI to ensure execution succeeds
+        db.execute(
+            r#"
+            CREATE FUNCTION test_func_python() RETURNS TEXT
+            LANGUAGE RHAI AS $py$ 
+                return "rhai rocks"
+            $py$
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let pytext: String = db.query_one("SELECT test_func_python()", ()).unwrap();
+        assert_eq!(pytext, "rhai rocks");
+    }
 }
