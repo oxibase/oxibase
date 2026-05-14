@@ -3316,7 +3316,6 @@ impl Parser {
         while !(self.cur_token_is(TokenType::Eof)
             || self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";")
         {
-            println!("ALTER loop cur: {:?} peek: {:?}", self.cur_token, self.peek_token);
             if self.peek_token_is_keyword("START") {
                 self.next_token(); // CONSUME START
                 if self.peek_token_is_keyword("WITH") {
@@ -3428,7 +3427,6 @@ impl Parser {
         while !(self.cur_token_is(TokenType::Eof)
             || self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ";")
         {
-            println!("ALTER loop cur: {:?} peek: {:?}", self.cur_token, self.peek_token);
             if self.peek_token_is_keyword("RESTART") {
                 self.next_token(); // CONSUME RESTART
                 if self.peek_token_is_keyword("WITH") {
@@ -3858,7 +3856,6 @@ mod tests {
         let input = "ALTER SEQUENCE seq1 RESTART WITH 50 INCREMENT BY 5 NO MINVALUE CYCLE";
         let stmt = parse_stmt(input).unwrap();
         if let Statement::AlterSequence(s) = stmt {
-            println!("Parsed ALTER: {:?}", s);
             assert_eq!(s.name.to_string(), "seq1");
             assert_eq!(s.restart_with, Some(50));
             assert_eq!(s.increment_by, Some(5));
