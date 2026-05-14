@@ -667,6 +667,71 @@ DROP INDEX idx_user_email ON users;
 DROP INDEX IF EXISTS idx_old ON products;
 ```
 
+### CREATE SEQUENCE
+
+Creates a new sequence object to generate unique, monotonic numbers. Highly concurrent and avoids transaction conflicts.
+
+#### Basic Syntax
+
+```sql
+CREATE SEQUENCE [IF NOT EXISTS] sequence_name
+    [START WITH start_value]
+    [INCREMENT BY increment_value]
+    [MINVALUE min_value | NO MINVALUE]
+    [MAXVALUE max_value | NO MAXVALUE]
+    [CYCLE | NO CYCLE];
+```
+
+#### Examples
+
+```sql
+-- Simple sequence starting at 1
+CREATE SEQUENCE my_seq;
+
+-- Sequence starting at 1000 and incrementing by 5
+CREATE SEQUENCE custom_seq START WITH 1000 INCREMENT BY 5;
+
+-- A cyclical sequence
+CREATE SEQUENCE loop_seq MINVALUE 1 MAXVALUE 3 CYCLE;
+```
+
+### ALTER SEQUENCE
+
+Modifies the properties of an existing sequence.
+
+#### Basic Syntax
+
+```sql
+ALTER SEQUENCE [IF EXISTS] sequence_name
+    [RESTART WITH restart_value]
+    [INCREMENT BY increment_value]
+    [MINVALUE min_value | NO MINVALUE]
+    [MAXVALUE max_value | NO MAXVALUE]
+    [CYCLE | NO CYCLE];
+```
+
+#### Examples
+
+```sql
+ALTER SEQUENCE my_seq RESTART WITH 50 INCREMENT BY 10;
+```
+
+### DROP SEQUENCE
+
+Removes a sequence from the database.
+
+#### Basic Syntax
+
+```sql
+DROP SEQUENCE [IF EXISTS] sequence_name;
+```
+
+#### Examples
+
+```sql
+DROP SEQUENCE IF EXISTS my_seq;
+```
+
 ## Transaction Control
 
 ### BEGIN TRANSACTION
