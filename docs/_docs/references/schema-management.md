@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Schema Management in Oxibase
-parent: SQL Commands
-nav_order: 2
+parent: References
+nav_order: 11
 ---
 
 # Schema Management in Oxibase

@@ -1,6 +1,8 @@
 ---
 layout: default
 title: "Roadmap"
+parent: Getting Started
+nav_order: 2
 ---
 
 # Oxibase Roadmap

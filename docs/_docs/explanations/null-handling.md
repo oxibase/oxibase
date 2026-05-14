@@ -1,8 +1,8 @@
 ---
 layout: default
 title: NULL Handling
-parent: SQL Features
-nav_order: 9
+parent: Explanations
+nav_order: 5
 ---
 
 # NULL Handling

@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Parameter Binding
-parent: SQL Features
-nav_order: 10
+parent: How to Guides
+nav_order: 6
 ---
 
 # Parameter Binding

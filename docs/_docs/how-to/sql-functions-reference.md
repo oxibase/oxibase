@@ -1,6 +1,6 @@
 ---
 layout: default
-title: SQL Functions
+title: How to use SQL Functions
 parent: How to Guides
 nav_order: 1
 ---
