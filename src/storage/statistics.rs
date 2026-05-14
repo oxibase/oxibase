@@ -32,16 +32,16 @@
 use crate::core::Value;
 
 /// System table name for table-level statistics
-pub const SYS_TABLE_STATS: &str = "_sys_table_stats";
+pub const SYS_TABLE_STATS: &str = "system.table_stats";
 
 /// System table name for column-level statistics
-pub const SYS_COLUMN_STATS: &str = "_sys_column_stats";
+pub const SYS_COLUMN_STATS: &str = "system.column_stats";
 
 /// SQL to create the table statistics system table
 /// Note: Stoolap requires INTEGER PRIMARY KEY, so we use an auto-increment id
 /// and a unique index on table_name
 pub const CREATE_TABLE_STATS_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS _sys_table_stats (
+CREATE TABLE IF NOT EXISTS system.table_stats (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     table_name TEXT NOT NULL UNIQUE,
     row_count INTEGER NOT NULL DEFAULT 0,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS _sys_table_stats (
 /// SQL to create the column statistics system table
 /// Note: We rely on DELETE before INSERT to maintain uniqueness on (table_name, column_name)
 pub const CREATE_COLUMN_STATS_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS _sys_column_stats (
+CREATE TABLE IF NOT EXISTS system.column_stats (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     table_name TEXT NOT NULL,
     column_name TEXT NOT NULL,
@@ -851,7 +851,7 @@ impl SelectivityEstimator {
 /// Check if a table name is a system statistics table
 pub fn is_stats_table(table_name: &str) -> bool {
     let lower = table_name.to_lowercase();
-    lower == SYS_TABLE_STATS || lower == SYS_COLUMN_STATS
+    lower.starts_with("system.")
 }
 
 // =============================================================================
@@ -1201,11 +1201,10 @@ mod tests {
 
     #[test]
     fn test_is_stats_table() {
-        assert!(is_stats_table("_sys_table_stats"));
-        assert!(is_stats_table("_SYS_TABLE_STATS"));
-        assert!(is_stats_table("_sys_column_stats"));
+        assert!(is_stats_table("system.table_stats"));
+        assert!(is_stats_table("system.column_stats"));
+        assert!(is_stats_table("system.other")); // All system tables are excluded from ANALYZE
         assert!(!is_stats_table("users"));
-        assert!(!is_stats_table("_sys_other"));
     }
 
     #[test]

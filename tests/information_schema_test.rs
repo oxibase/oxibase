@@ -31,10 +31,10 @@ fn test_information_schema_tables() {
     )
     .expect("Failed to create view");
 
-    // Query information_schema.tables
+    // Query information_schema.tables using qualified name
     let result = db
         .query(
-            "SELECT * FROM \"information_schema\".\"tables\" ORDER BY table_name",
+            "SELECT * FROM \"information_schema\".\"tables\" WHERE table_schema != 'system' OR table_schema IS NULL ORDER BY table_name",
             (),
         )
         .expect("Failed to query information_schema.tables");
@@ -71,10 +71,10 @@ fn test_information_schema_unquoted_qualified_identifiers() {
     )
     .expect("Failed to create view");
 
-    // Query information_schema.tables with unquoted qualified identifiers
+    // Test SELECT * FROM information_schema.tables (unquoted)
     let result = db
         .query(
-            "SELECT * FROM information_schema.tables ORDER BY table_name",
+            "SELECT * FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL ORDER BY table_name",
             (),
         )
         .expect("Failed to query information_schema.tables with unquoted identifiers");
@@ -414,7 +414,7 @@ fn test_information_schema_basic_queries() {
 
     // Test SELECT * FROM information_schema.tables (with quotes)
     let result = db
-        .query("SELECT * FROM \"information_schema\".\"tables\"", ())
+        .query("SELECT * FROM \"information_schema\".\"tables\" WHERE table_schema != 'system' OR table_schema IS NULL", ())
         .expect("Failed to query information_schema.tables");
 
     let rows: Vec<_> = result.collect();
@@ -450,7 +450,7 @@ fn test_information_schema_table_schema_multiple_schemas() {
     // Query information_schema.tables
     let result = db
         .query(
-            "SELECT table_schema, table_name, table_type FROM information_schema.tables ORDER BY table_schema, table_name",
+            "SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL ORDER BY table_schema, table_name",
             (),
         )
         .expect("Failed to query information_schema.tables");

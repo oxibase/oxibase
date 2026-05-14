@@ -1343,9 +1343,17 @@ impl Parser {
             self.next_token();
             self.parse_create_function_statement()
                 .map(Statement::CreateFunction)
+        } else if self.peek_token_is_keyword("TRIGGER") {
+            self.next_token();
+            self.parse_create_trigger_statement()
+                .map(Statement::CreateTrigger)
+        } else if self.peek_token.literal.eq_ignore_ascii_case("SCHEDULE") {
+            self.next_token();
+            self.parse_create_schedule_statement()
+                .map(Statement::CreateSchedule)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, or PROCEDURE after CREATE at {}", 
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, PROCEDURE, TRIGGER, or SCHEDULE after CREATE at {}", 
                 self.cur_token.position
             ));
             None
@@ -2293,6 +2301,10 @@ impl Parser {
             self.next_token();
             self.parse_drop_schema_statement()
                 .map(Statement::DropSchema)
+        } else if self.peek_token.literal.eq_ignore_ascii_case("SCHEDULE") {
+            self.next_token();
+            self.parse_drop_schedule_statement()
+                .map(Statement::DropSchedule)
         } else if self.peek_token_is_keyword("INDEX") {
             self.next_token();
             self.parse_drop_index_statement().map(Statement::DropIndex)
@@ -2391,6 +2403,19 @@ impl Parser {
             token,
             function_name,
             if_exists,
+        })
+    }
+
+    fn parse_drop_schedule_statement(&mut self) -> Option<DropScheduleStatement> {
+        let token = self.cur_token.clone();
+
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+
+        Some(DropScheduleStatement {
+            token,
+            name: self.cur_token.literal.clone(),
         })
     }
 
@@ -2603,6 +2628,11 @@ impl Parser {
             return self
                 .parse_alter_sequence_statement()
                 .map(Statement::AlterSequence);
+        } else if self.peek_token.literal.eq_ignore_ascii_case("SCHEDULE") {
+            self.next_token();
+            return self
+                .parse_alter_schedule_statement()
+                .map(Statement::AlterSchedule);
         }
 
         // Expect TABLE
@@ -2612,6 +2642,43 @@ impl Parser {
 
         self.parse_alter_table_statement(token)
             .map(Statement::AlterTable)
+    }
+
+    fn parse_alter_schedule_statement(&mut self) -> Option<AlterScheduleStatement> {
+        let token = self.cur_token.clone();
+
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let name = self.cur_token.literal.clone();
+
+        self.next_token();
+        if !self.cur_token.literal.eq_ignore_ascii_case("ACTIVE") {
+            self.add_error(format!(
+                "expected ACTIVE, got {} at {}",
+                self.cur_token.literal, self.cur_token.position
+            ));
+            return None;
+        }
+
+        self.next_token();
+        let active = if self.cur_token.is_keyword("TRUE") {
+            true
+        } else if self.cur_token.is_keyword("FALSE") {
+            false
+        } else {
+            self.add_error(format!(
+                "expected TRUE or FALSE after ACTIVE at {}",
+                self.cur_token.position
+            ));
+            return None;
+        };
+
+        Some(AlterScheduleStatement {
+            token,
+            name,
+            active,
+        })
     }
 
     fn parse_alter_table_statement(
@@ -3110,6 +3177,61 @@ impl Parser {
     }
 
     /// Parse an identifier list (allows keywords as identifiers for CTE column aliases)
+    fn parse_create_schedule_statement(&mut self) -> Option<CreateScheduleStatement> {
+        let token = self.cur_token.clone();
+
+        if !self.expect_peek(TokenType::Identifier) {
+            return None;
+        }
+        let name = self.cur_token.literal.clone();
+
+        self.next_token();
+        if !self.cur_token.literal.eq_ignore_ascii_case("CRON") {
+            self.add_error(format!(
+                "expected CRON, got {} at {}",
+                self.cur_token.literal, self.cur_token.position
+            ));
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::String) {
+            return None;
+        }
+
+        // Strip surrounding quotes from the string literal
+        let raw_cron = &self.cur_token.literal;
+        let cron_expr =
+            if raw_cron.len() >= 2 && raw_cron.starts_with('\'') && raw_cron.ends_with('\'') {
+                raw_cron[1..raw_cron.len() - 1].to_string()
+            } else {
+                raw_cron.clone()
+            };
+
+        if !self.expect_keyword("AS") {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::String) {
+            return None;
+        }
+
+        // Strip surrounding quotes
+        let raw_cmd = &self.cur_token.literal;
+        let command = if raw_cmd.len() >= 2 && raw_cmd.starts_with('\'') && raw_cmd.ends_with('\'')
+        {
+            raw_cmd[1..raw_cmd.len() - 1].to_string()
+        } else {
+            raw_cmd.clone()
+        };
+
+        Some(CreateScheduleStatement {
+            token,
+            name,
+            cron_expr,
+            command,
+        })
+    }
+
     /// Parse a CREATE TRIGGER statement
     fn parse_create_trigger_statement(&mut self) -> Option<CreateTriggerStatement> {
         let token = self.cur_token.clone();

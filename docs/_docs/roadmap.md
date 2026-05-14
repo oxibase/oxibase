@@ -23,6 +23,7 @@ classDiagram
 
     Workstation ..> Horizontal_Architecture
     External_Gateway ..> Horizontal_Architecture
+    Security ..> Horizontal_Architecture
     Performance ..> Horizontal_Architecture
     Unikernel_Compiler ..> Horizontal_Architecture
 
@@ -30,26 +31,26 @@ classDiagram
 
     class Validation {
         - Embedded Scripting Languages ✅
-        - Stored functions
-        - Triggers
+        - Stored functions  ✅
+        - Triggers  ✅
         - Queues
         - Debugger support
-        - FaaS-like DevEx
     }
     class External_Gateway {
-        - DML routes
-        - REST / GraphQL endpoints
-        - HTML Render
+        - DML REST endpoints  ✅
+        - HTML Render  ✅
+    }
+    class Security {
         - Postgres Wire Protocol Server
         - Role based authorization control
         - Authentication
     }
     class Workstation {
-        - Manage any object
-        - Develop any object
+        - FaaS-like DevEx
+          - Manage any object
+          - Develop any object
         - Debug Queries step-by-step
         - Debug stored procedures
-        
     }
 
     class Performance {

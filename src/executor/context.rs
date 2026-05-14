@@ -277,6 +277,8 @@ pub struct ExecutionContext {
     timeout_ms: u64,
     /// Current view nesting depth (for detecting infinite recursion)
     view_depth: usize,
+    /// Whether this context is executing internal system queries
+    is_internal: bool,
     /// Query execution depth (0 = top-level query, >0 = subquery/nested)
     /// Used to ensure TimeoutGuard is only created once at the top level
     pub(crate) query_depth: usize,
@@ -317,6 +319,7 @@ impl ExecutionContext {
             session_vars: Arc::new(HashMap::new()),
             timeout_ms: 0,
             view_depth: 0,
+            is_internal: false,
             query_depth: 0,
             outer_row: None,
             outer_columns: None,
@@ -418,6 +421,11 @@ impl ExecutionContext {
         self.view_depth
     }
 
+    /// Returns the internal execution flag
+    pub fn is_internal(&self) -> bool {
+        self.is_internal
+    }
+
     pub fn view_exists(&self, engine: &dyn Engine, view_name: &str) -> Result<bool> {
         engine.view_exists(view_name)
     }
@@ -442,6 +450,7 @@ impl ExecutionContext {
             current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
+            is_internal: self.is_internal,
             view_depth: self.view_depth + 1,
             query_depth: self.query_depth + 1, // Views are nested queries
             outer_row: self.outer_row.clone(),
@@ -462,6 +471,7 @@ impl ExecutionContext {
             current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
+            is_internal: self.is_internal,
             view_depth: self.view_depth,
             query_depth: self.query_depth + 1,
             outer_row: self.outer_row.clone(),
@@ -497,6 +507,7 @@ impl ExecutionContext {
             current_schema: self.current_schema.clone(), // Arc clone = cheap
             session_vars: self.session_vars.clone(), // Arc clone = cheap
             timeout_ms: self.timeout_ms,
+            is_internal: self.is_internal,
             view_depth: self.view_depth,
             query_depth: self.query_depth + 1, // Increment for subquery
             outer_row: Some(outer_row),
@@ -532,6 +543,7 @@ impl ExecutionContext {
             current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
+            is_internal: self.is_internal,
             view_depth: self.view_depth,
             query_depth: self.query_depth,
             outer_row: self.outer_row.clone(),
@@ -561,6 +573,7 @@ impl ExecutionContext {
             current_schema: self.current_schema.clone(),
             session_vars: self.session_vars.clone(),
             timeout_ms: self.timeout_ms,
+            is_internal: self.is_internal,
             view_depth: self.view_depth,
             query_depth: self.query_depth,
             outer_row: self.outer_row.clone(),
@@ -873,6 +886,12 @@ impl ExecutionContextBuilder {
     /// Set the query timeout
     pub fn timeout_ms(mut self, timeout_ms: u64) -> Self {
         self.ctx.timeout_ms = timeout_ms;
+        self
+    }
+
+    /// Set internal execution flag
+    pub fn with_internal(mut self, is_internal: bool) -> Self {
+        self.ctx.is_internal = is_internal;
         self
     }
 

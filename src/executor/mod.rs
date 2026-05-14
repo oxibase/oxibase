@@ -52,6 +52,7 @@ pub mod pattern_cache;
 pub mod planner;
 pub mod query_cache;
 pub mod result;
+pub mod scheduler;
 pub mod semantic_cache;
 pub mod statistics;
 
@@ -192,8 +193,12 @@ impl Executor {
             trigger_registry: Arc::new(triggers::TriggerRegistry::new()),
         };
 
+        // Initialize system schema and tables
+        if let Err(e) = executor.ensure_system_schema_and_migrations() {
+            tracing::error!("Failed to ensure system schema: {}", e);
+        }
+
         // Load user-defined functions from system table
-        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
         let _ = executor.load_procedures();
         let _ = executor.load_triggers();
@@ -201,6 +206,7 @@ impl Executor {
         executor
     }
 
+    /// Create a new executor with a custom function registry
     /// Create a new executor with a custom function registry
     pub fn with_function_registry(
         engine: Arc<MVCCEngine>,
@@ -217,13 +223,33 @@ impl Executor {
             trigger_registry: Arc::new(triggers::TriggerRegistry::new()),
         };
 
+        if let Err(e) = executor.ensure_system_schema_and_migrations() {
+            tracing::error!("Failed to ensure system schema: {}", e);
+        }
+
         // Load user-defined functions from system table
-        // Note: We ignore errors during startup to avoid failing if the table doesn't exist yet
         let _ = executor.load_functions();
         let _ = executor.load_procedures();
         let _ = executor.load_triggers();
 
         executor
+    }
+
+    /// Create an internal executor without running migrations (used by background threads)
+    pub(crate) fn new_internal(
+        engine: Arc<MVCCEngine>,
+        function_registry: Arc<FunctionRegistry>,
+    ) -> Self {
+        Self {
+            engine,
+            function_registry,
+            default_isolation_level: crate::core::IsolationLevel::ReadCommitted,
+            query_cache: QueryCache::default(),
+            semantic_cache: SemanticCache::default(),
+            active_transaction: Mutex::new(None),
+            query_planner: std::sync::OnceLock::new(),
+            trigger_registry: Arc::new(triggers::TriggerRegistry::new()),
+        }
     }
 
     /// Create a new executor with a custom cache size
@@ -239,6 +265,10 @@ impl Executor {
             trigger_registry: Arc::new(triggers::TriggerRegistry::new()),
         };
 
+        if let Err(e) = executor.ensure_system_schema_and_migrations() {
+            tracing::error!("Failed to ensure system schema: {}", e);
+        }
+
         // Load user-defined functions from system table
         let _ = executor.load_functions();
         let _ = executor.load_procedures();
@@ -252,7 +282,93 @@ impl Executor {
         self.active_transaction.lock().unwrap().is_some()
     }
 
-    /// Get the query planner (lazily initialized)
+    /// Initialize system.cron tables if they don't exist
+    pub(crate) fn ensure_cron_tables_exist(&self) -> crate::core::Result<()> {
+        use crate::storage::jobs::{
+            CREATE_CRON_RUNS_SQL, CREATE_CRON_SQL, SYS_CRON, SYS_CRON_RUNS,
+        };
+
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_cron = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_CRON));
+        let has_cron_runs = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_CRON_RUNS));
+        drop(tx);
+
+        if !has_cron {
+            self.execute_internal_sql(CREATE_CRON_SQL).ok();
+        }
+
+        if !has_cron_runs {
+            self.execute_internal_sql(CREATE_CRON_RUNS_SQL).ok();
+        }
+
+        Ok(())
+    }
+
+    /// Execute internal SQL (e.g., system table creation)
+    pub(crate) fn execute_internal_sql(&self, sql: &str) -> crate::core::Result<()> {
+        let mut parser = crate::parser::Parser::new(sql);
+        let program = parser
+            .parse_program()
+            .map_err(|e| crate::core::Error::parse(e.to_string()))?;
+
+        for stmt in &program.statements {
+            let ctx = crate::executor::context::ExecutionContextBuilder::new()
+                .with_internal(true)
+                .build();
+            self.execute_statement(stmt, &ctx)?;
+        }
+
+        Ok(())
+    }
+
+    /// Initialize system schema, migrate old `_sys_*` tables, and ensure `system.cron` tables exist
+    fn ensure_system_schema_and_migrations(&self) -> crate::core::Result<()> {
+        // Ensure system schema exists
+        self.execute_internal_sql("CREATE SCHEMA IF NOT EXISTS system;")?;
+
+        // Run migrations for old _sys_ tables to system.*
+        self.execute_internal_sql(
+            "CREATE TABLE IF NOT EXISTS system.procedures AS SELECT * FROM _sys_procedures;",
+        )
+        .ok();
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_procedures;")
+            .ok();
+
+        self.execute_internal_sql(
+            "CREATE TABLE IF NOT EXISTS system.functions AS SELECT * FROM _sys_functions;",
+        )
+        .ok();
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_functions;")
+            .ok();
+
+        self.execute_internal_sql(
+            "CREATE TABLE IF NOT EXISTS system.triggers AS SELECT * FROM _sys_triggers;",
+        )
+        .ok();
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_triggers;")
+            .ok();
+
+        self.execute_internal_sql(
+            "CREATE TABLE IF NOT EXISTS system.table_stats AS SELECT * FROM _sys_table_stats;",
+        )
+        .ok();
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_table_stats;")
+            .ok();
+
+        self.execute_internal_sql(
+            "CREATE TABLE IF NOT EXISTS system.column_stats AS SELECT * FROM _sys_column_stats;",
+        )
+        .ok();
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_column_stats;")
+            .ok();
+
+        // Ensure cron tables exist
+        self.ensure_cron_tables_exist()?;
+
+        Ok(())
+    }
+
     fn get_query_planner(&self) -> &QueryPlanner {
         self.query_planner
             .get_or_init(|| QueryPlanner::new(Arc::clone(&self.engine)))
@@ -763,6 +879,9 @@ impl Executor {
             Statement::AlterSequence(stmt) => self.execute_alter_sequence(stmt),
             Statement::DropSequence(stmt) => self.execute_drop_sequence(stmt),
             Statement::Call(stmt) => self.execute_call(stmt, &ctx),
+            Statement::CreateSchedule(stmt) => self.execute_create_schedule(stmt, &ctx),
+            Statement::AlterSchedule(stmt) => self.execute_alter_schedule(stmt, &ctx),
+            Statement::DropSchedule(stmt) => self.execute_drop_schedule(stmt, &ctx),
         }
     }
 

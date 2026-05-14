@@ -21,20 +21,20 @@
 use serde::{Deserialize, Serialize};
 
 /// System table name for user-defined functions
-pub const SYS_FUNCTIONS: &str = "_sys_functions";
+pub const SYS_FUNCTIONS: &str = "system.functions";
 
 /// SQL to create the functions system table
 pub const CREATE_FUNCTIONS_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS _sys_functions (
+CREATE TABLE IF NOT EXISTS system.functions (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     schema TEXT,
     name TEXT NOT NULL,
-    parameters JSON NOT NULL,
+    parameters TEXT NOT NULL,
     return_type TEXT NOT NULL,
     language TEXT NOT NULL,
     code TEXT NOT NULL,
     UNIQUE(schema, name)
-)
+);
 "#;
 
 /// Check if a table name is a system functions table

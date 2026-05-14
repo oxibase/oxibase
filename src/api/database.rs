@@ -49,6 +49,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use crate::core::{Error, IsolationLevel, Result, Value};
 use crate::executor::context::ExecutionContextBuilder;
+use crate::executor::scheduler::JobScheduler;
 use crate::executor::Executor;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::Engine;
@@ -64,18 +65,24 @@ pub const MEMORY_SCHEME: &str = "memory";
 pub const FILE_SCHEME: &str = "file";
 
 /// Global database registry to ensure single instance per DSN
-static DATABASE_REGISTRY: std::sync::LazyLock<RwLock<HashMap<String, Arc<DatabaseInner>>>> =
-    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+static DATABASE_REGISTRY: std::sync::LazyLock<
+    RwLock<HashMap<String, std::sync::Weak<DatabaseInner>>>,
+> = std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
 /// Inner database state (shared between Database instances with same DSN)
 struct DatabaseInner {
     engine: Arc<MVCCEngine>,
     executor: Mutex<Executor>,
     dsn: String,
+    scheduler_shutdown: Option<Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl Drop for DatabaseInner {
     fn drop(&mut self) {
+        // Shutdown the scheduler
+        if let Some(shutdown) = &self.scheduler_shutdown {
+            shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         // Close the engine when the last reference is dropped
         let _ = self.engine.close_engine();
     }
@@ -143,10 +150,10 @@ impl Database {
             let registry = DATABASE_REGISTRY
                 .read()
                 .map_err(|_| Error::LockAcquisitionFailed("registry read".to_string()))?;
-            if let Some(inner) = registry.get(dsn) {
-                return Ok(Database {
-                    inner: Arc::clone(inner),
-                });
+            if let Some(weak_inner) = registry.get(dsn) {
+                if let Some(inner) = weak_inner.upgrade() {
+                    return Ok(Database { inner });
+                }
             }
         }
 
@@ -156,10 +163,10 @@ impl Database {
             .map_err(|_| Error::LockAcquisitionFailed("registry write".to_string()))?;
 
         // Double-check after acquiring write lock
-        if let Some(inner) = registry.get(dsn) {
-            return Ok(Database {
-                inner: Arc::clone(inner),
-            });
+        if let Some(weak_inner) = registry.get(dsn) {
+            if let Some(inner) = weak_inner.upgrade() {
+                return Ok(Database { inner });
+            }
         }
 
         // Parse the DSN
@@ -191,14 +198,25 @@ impl Database {
         // Create executor
         let executor = Executor::new(Arc::clone(&engine));
 
+        // Start job scheduler if not an in-memory database or if explicitly requested
+        let mut scheduler_shutdown = None;
+        if scheme != MEMORY_SCHEME || dsn.contains("scheduler=true") {
+            let executor_for_scheduler = Executor::new_internal(
+                Arc::clone(&engine),
+                Arc::clone(crate::functions::global_registry()),
+            );
+            scheduler_shutdown = Some(JobScheduler::start(executor_for_scheduler));
+        }
+
         let inner = Arc::new(DatabaseInner {
             engine,
             executor: Mutex::new(executor),
             dsn: dsn.to_string(),
+            scheduler_shutdown,
         });
 
         // Store in registry
-        registry.insert(dsn.to_string(), Arc::clone(&inner));
+        registry.insert(dsn.to_string(), Arc::downgrade(&inner));
 
         Ok(Database { inner })
     }
@@ -222,6 +240,7 @@ impl Database {
             engine,
             executor: Mutex::new(executor),
             dsn: "memory://".to_string(),
+            scheduler_shutdown: None,
         });
 
         Ok(Database { inner })

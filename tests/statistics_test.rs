@@ -40,22 +40,27 @@ fn test_analyze_creates_system_tables() {
     let tables_analyzed: i64 = result[0].get(0).expect("Failed to get value");
     assert_eq!(tables_analyzed, 1);
 
-    // Verify system tables were created using query
-    let tables: Vec<_> = db
-        .query("SHOW TABLES", ())
-        .expect("SHOW TABLES failed")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("Failed to collect results");
-
-    let table_names: Vec<String> = tables.iter().map(|r| r.get::<String>(0).unwrap()).collect();
-
-    assert!(
-        table_names.iter().any(|t| t == "_sys_table_stats"),
-        "System table _sys_table_stats should exist"
+    // Verify system tables were created using direct query since SHOW TABLES filters system schema
+    let result = db
+        .query("SELECT COUNT(*) FROM system.table_stats", ())
+        .expect("Query failed");
+    let count: i64 = result.collect::<Result<Vec<_>, _>>().unwrap()[0]
+        .get(0)
+        .unwrap();
+    assert_eq!(
+        count, 1,
+        "System table system.table_stats should contain 1 row"
     );
-    assert!(
-        table_names.iter().any(|t| t == "_sys_column_stats"),
-        "System table _sys_column_stats should exist"
+
+    let result = db
+        .query("SELECT COUNT(*) FROM system.column_stats", ())
+        .expect("Query failed");
+    let count: i64 = result.collect::<Result<Vec<_>, _>>().unwrap()[0]
+        .get(0)
+        .unwrap();
+    assert_eq!(
+        count, 3,
+        "System table system.column_stats should contain 3 rows"
     );
 }
 
@@ -88,7 +93,7 @@ fn test_analyze_collects_table_stats() {
     // Check table stats
     let stats: Vec<_> = db
         .query(
-            "SELECT table_name, row_count FROM _sys_table_stats WHERE table_name = 'products'",
+            "SELECT table_name, row_count FROM system.table_stats WHERE table_name = 'products'",
             (),
         )
         .expect("Query failed")
@@ -153,7 +158,7 @@ fn test_analyze_collects_column_stats() {
     let stats: Vec<_> = db
         .query(
             "SELECT column_name, distinct_count, min_value, max_value
-             FROM _sys_column_stats
+             FROM system.column_stats
              WHERE table_name = 'employees' AND column_name = 'salary'",
             (),
         )
@@ -169,7 +174,7 @@ fn test_analyze_collects_column_stats() {
     // Check stats for dept column (should have 2 distinct values)
     let dept_stats: Vec<_> = db
         .query(
-            "SELECT distinct_count FROM _sys_column_stats
+            "SELECT distinct_count FROM system.column_stats
              WHERE table_name = 'employees' AND column_name = 'dept'",
             (),
         )
@@ -211,7 +216,7 @@ fn test_analyze_null_handling() {
 
     let stats: Vec<_> = db
         .query(
-            "SELECT null_count, distinct_count FROM _sys_column_stats
+            "SELECT null_count, distinct_count FROM system.column_stats
              WHERE table_name = 'nullable_test' AND column_name = 'value'",
             (),
         )
@@ -272,7 +277,7 @@ fn test_analyze_all_tables() {
     // Verify stats exist for all tables
     let stats: Vec<_> = db
         .query(
-            "SELECT COUNT(*) FROM _sys_table_stats WHERE table_name IN ('table1', 'table2', 'table3')",
+            "SELECT COUNT(*) FROM system.table_stats WHERE table_name IN ('table1', 'table2', 'table3')",
             (),
         )
         .expect("Query failed")
@@ -306,7 +311,7 @@ fn test_analyze_updates_stats() {
 
     let first_stats: Vec<_> = db
         .query(
-            "SELECT row_count FROM _sys_table_stats WHERE table_name = 'update_test'",
+            "SELECT row_count FROM system.table_stats WHERE table_name = 'update_test'",
             (),
         )
         .expect("Query failed")
@@ -331,7 +336,7 @@ fn test_analyze_updates_stats() {
 
     let second_stats: Vec<_> = db
         .query(
-            "SELECT row_count FROM _sys_table_stats WHERE table_name = 'update_test'",
+            "SELECT row_count FROM system.table_stats WHERE table_name = 'update_test'",
             (),
         )
         .expect("Query failed")
@@ -361,7 +366,7 @@ fn test_analyze_empty_table() {
 
     let stats: Vec<_> = db
         .query(
-            "SELECT row_count, avg_row_size FROM _sys_table_stats WHERE table_name = 'empty_table'",
+            "SELECT row_count, avg_row_size FROM system.table_stats WHERE table_name = 'empty_table'",
             (),
         )
         .expect("Query failed")

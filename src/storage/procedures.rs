@@ -21,17 +21,18 @@
 use serde::{Deserialize, Serialize};
 
 /// System table name for stored procedures
-pub const SYS_PROCEDURES: &str = "_sys_procedures";
+pub const SYS_PROCEDURES: &str = "system.procedures";
 
 /// SQL to create the procedures system table
 pub const CREATE_PROCEDURES_SQL: &str = r#"
-CREATE TABLE IF NOT EXISTS _sys_procedures (
+CREATE TABLE IF NOT EXISTS system.procedures (
     id INTEGER PRIMARY KEY AUTO_INCREMENT,
     schema TEXT,
     name TEXT NOT NULL,
-    parameters JSON NOT NULL,
+    parameters TEXT NOT NULL,
     language TEXT NOT NULL,
-    code TEXT NOT NULL
+    code TEXT NOT NULL,
+    UNIQUE(schema, name)
 );
 "#;
 

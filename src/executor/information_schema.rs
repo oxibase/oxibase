@@ -300,7 +300,8 @@ impl Executor {
 
         // Add user-defined functions
         // Query _sys_functions for user functions, if the table exists
-        let sql = "SELECT schema, name, parameters, return_type FROM _sys_functions ORDER BY name";
+        let sql =
+            "SELECT schema, name, parameters, return_type FROM system.functions ORDER BY name";
         let mut parser = Parser::new(sql);
         if let Ok(program) = parser.parse_program() {
             if let Some(Statement::Select(stmt)) = program.statements.into_iter().next() {
