@@ -219,12 +219,14 @@ We are currently at [Phase 0](#phase-0-validation).
     - [x] **Service invocation**: Add support for service invocation with a webserver.
     - [x] **Scheduling**: Add support for scheduling procedures.
     - [x] **Triggers**: Add support for triggers in the executor layer, on insert, update or delete.
-- [ ] **Debugging**: Add support for debugging in the executor layer.
-    - [ ] **Debug Adapter Protocol**: Add support for the Debug Adapter Protocol for queries and procedures.
-    - [ ] **Tracing**: Add activation of tracing and storage in the storage layer.
-    - [ ] **Logging**: Add support for logging.
-- [ ] **Authorization**: Add Casbin-rs for role-based (objects) and attribute-based (row-level) authorization.
-    - [ ] **Security**: Add support for security in the executor layer.
+- [ ] **v0.6.0 (Observability & Debugging)**
+    - [ ] **Logging**: Comprehensive internal logging system (`system.logs`).
+    - [ ] **Tracing**: Distributed query and procedure tracing (`system.traces`).
+    - [ ] **Debug Adapter Protocol**: DAP server for Rhai and PL/SQL procedures.
+
+- [ ] **v0.7.0 (Security & Authorization)**
+    - [ ] **Authorization**: Add Casbin-rs for role-based (objects) and attribute-based (row-level) authorization.
+    - [ ] **Security**: Add support for security contexts in the executor layer.
 
 ### Supported objects
 
