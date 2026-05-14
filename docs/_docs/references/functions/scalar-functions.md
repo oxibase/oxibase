@@ -574,6 +574,37 @@ Creates a JSON object from key-value pairs.
 SELECT JSON_OBJECT('name', 'Alice', 'age', 30);   -- '{"age":30,"name":"Alice"}'
 ```
 
+## Sequence Functions
+
+Functions for interacting with explicitly defined sequences.
+
+### `NEXTVAL(sequence_name)`
+
+Atomically increments the sequence and returns its next value. This operation bypasses MVCC boundaries to prevent locking and is not rolled back if the transaction aborts.
+
+**Example**:
+```sql
+SELECT NEXTVAL('user_id_seq');
+```
+
+### `CURRVAL(sequence_name)`
+
+Returns the value most recently obtained by `NEXTVAL` for the specified sequence within the *current session*. It will throw an error if `NEXTVAL` has not yet been called in the current session.
+
+**Example**:
+```sql
+SELECT CURRVAL('user_id_seq');
+```
+
+### `SETVAL(sequence_name, value, [is_called])`
+
+Sets the sequence's current value. If `is_called` is true (the default), the next `NEXTVAL` advances the sequence before returning a value. If false, the next `NEXTVAL` returns the exact value given.
+
+**Example**:
+```sql
+SELECT SETVAL('user_id_seq', 1000);
+```
+
 ## Utility Functions
 
 ### VERSION
