@@ -130,10 +130,27 @@ impl Lexer {
                 Token::new(TokenType::Identifier, literal, pos)
             }
 
-            // Backtick-quoted identifier (MySQL style)
+            // Backtick-quoted identifier (MySQL style) or Triple backtick string
             '`' => {
-                let literal = self.read_quoted_identifier('`');
-                Token::new(TokenType::Identifier, literal, pos)
+                if self.peek_char() == '`' {
+                    // Peek ahead one more to check for triple backticks
+                    // We need to look at self.input since we only have peek_char()
+                    let next_next_pos = self.read_position + 1;
+                    if next_next_pos < self.input.len() && self.input[next_next_pos] == '`' {
+                        let literal = self.read_triple_backtick_string();
+                        if let Some(error_msg) = self.last_error.take() {
+                            Token::error(error_msg, literal, pos)
+                        } else {
+                            Token::new(TokenType::RawString, literal, pos)
+                        }
+                    } else {
+                        let literal = self.read_quoted_identifier('`');
+                        Token::new(TokenType::Identifier, literal, pos)
+                    }
+                } else {
+                    let literal = self.read_quoted_identifier('`');
+                    Token::new(TokenType::Identifier, literal, pos)
+                }
             }
 
             // Negative number (but not if we're looking at --digit which is double negation)
@@ -175,6 +192,16 @@ impl Lexer {
             '$' if self.peek_char().is_ascii_digit() => {
                 let literal = self.read_parameter();
                 Token::new(TokenType::Parameter, literal, pos)
+            }
+
+            // Dollar-quoted string ($$ or $tag$)
+            '$' => {
+                let literal = self.read_dollar_quoted_string();
+                if let Some(error_msg) = self.last_error.take() {
+                    Token::error(error_msg, literal, pos)
+                } else {
+                    Token::new(TokenType::RawString, literal, pos)
+                }
             }
 
             // Parameter (?)
@@ -343,6 +370,77 @@ impl Lexer {
             } else {
                 result.push(self.ch);
                 self.read_char();
+            }
+        }
+
+        result
+    }
+
+    /// Read a triple-backtick string literal (```)
+    fn read_triple_backtick_string(&mut self) -> String {
+        // Consume the three backticks
+        self.read_char();
+        self.read_char();
+        self.read_char();
+
+        let mut result = String::new();
+
+        // Read body until ```
+        loop {
+            if self.ch == '\0' {
+                self.last_error = Some("unterminated string block literal".to_string());
+                break;
+            }
+
+            result.push(self.ch);
+            self.read_char();
+
+            if result.ends_with("```") {
+                // Remove the closing tags from the result
+                result.truncate(result.len() - 3);
+                break;
+            }
+        }
+
+        result
+    }
+
+    /// Read a dollar-quoted string literal ($$ or $tag$)
+    fn read_dollar_quoted_string(&mut self) -> String {
+        let mut tag = String::new();
+        self.read_char(); // consume first '$'
+
+        // Read optional tag
+        while self.ch != '$' && self.ch != '\0' && !self.ch.is_whitespace() {
+            tag.push(self.ch);
+            self.read_char();
+        }
+
+        if self.ch != '$' {
+            self.last_error = Some("unterminated dollar quote tag".to_string());
+            return format!("${}", tag);
+        }
+
+        self.read_char(); // consume second '$'
+
+        let mut result = String::new();
+        let close_tag = format!("${}$", tag);
+        let close_tag_len = close_tag.len();
+
+        // Read body until closing tag
+        loop {
+            if self.ch == '\0' {
+                self.last_error = Some("unterminated string block literal".to_string());
+                break;
+            }
+
+            result.push(self.ch);
+            self.read_char();
+
+            if result.ends_with(&close_tag) {
+                // Remove the closing tag from the result
+                result.truncate(result.len() - close_tag_len);
+                break;
             }
         }
 

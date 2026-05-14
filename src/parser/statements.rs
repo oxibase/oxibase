@@ -2126,15 +2126,21 @@ impl Parser {
             return None;
         }
 
-        // Function body as string literal
-        if !self.expect_peek(TokenType::String) {
+        // Function body as string literal or raw string literal
+        if !self.peek_token_is(TokenType::String) && !self.peek_token_is(TokenType::RawString) {
             self.add_error(format!(
                 "expected string literal for function body at {}",
-                self.cur_token.position
+                self.peek_token.position
             ));
             return None;
         }
-        let body = self.cur_token.literal.trim_matches('\'').to_string();
+        self.next_token();
+
+        let body = if self.cur_token.token_type == TokenType::RawString {
+            self.cur_token.literal.clone()
+        } else {
+            self.cur_token.literal.trim_matches('\'').to_string()
+        };
 
         Some(CreateFunctionStatement {
             token,
@@ -2224,15 +2230,21 @@ impl Parser {
             return None;
         }
 
-        // The body should be enclosed in $$ $$ or single quotes
-        if !self.expect_peek(TokenType::String) {
+        // The body should be enclosed in $$ $$, single quotes, or triple backticks
+        if !self.peek_token_is(TokenType::String) && !self.peek_token_is(TokenType::RawString) {
             self.add_error(format!(
                 "expected procedure body string at {}",
-                self.cur_token.position
+                self.peek_token.position
             ));
             return None;
         }
-        let body = self.cur_token.literal.trim_matches('\'').to_string();
+        self.next_token();
+
+        let body = if self.cur_token.token_type == TokenType::RawString {
+            self.cur_token.literal.clone()
+        } else {
+            self.cur_token.literal.trim_matches('\'').to_string()
+        };
 
         Some(CreateProcedureStatement {
             token,

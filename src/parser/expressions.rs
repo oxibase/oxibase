@@ -76,6 +76,7 @@ impl Parser {
             TokenType::Integer => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
             TokenType::String => Some(self.parse_string_literal()),
+            TokenType::RawString => Some(self.parse_raw_string_literal()),
             TokenType::Parameter => self.parse_parameter(),
             TokenType::Keyword => self.parse_keyword_expression(),
             TokenType::Operator => self.parse_unary_expression(),
@@ -130,6 +131,24 @@ impl Parser {
                 None
             }
         }
+    }
+
+    /// Parse a raw string literal directly from the token literal without
+    /// stripping boundary quotes or applying escape sequences.
+    fn parse_raw_string_literal(&self) -> Expression {
+        let value = self.cur_token.literal.clone();
+
+        let type_hint = if value.starts_with('{') && value.ends_with('}') {
+            Some("JSON".to_string())
+        } else {
+            None
+        };
+
+        Expression::StringLiteral(StringLiteral {
+            token: self.cur_token.clone(),
+            value,
+            type_hint,
+        })
     }
 
     /// Parse a string literal
@@ -220,7 +239,8 @@ impl Parser {
             })),
             "TIMESTAMP" | "DATE" | "TIME" => {
                 // These can be either typed literals (TIMESTAMP 'value') or column names
-                if self.peek_token_is(TokenType::String) {
+                if self.peek_token_is(TokenType::String) || self.peek_token_is(TokenType::RawString)
+                {
                     self.parse_typed_literal()
                 } else {
                     // Treat as identifier (column name)
@@ -1674,7 +1694,7 @@ impl Parser {
     fn parse_typed_literal(&mut self) -> Option<Expression> {
         let type_hint = self.cur_token.literal.clone();
 
-        if !self.peek_token_is(TokenType::String) {
+        if !self.peek_token_is(TokenType::String) && !self.peek_token_is(TokenType::RawString) {
             self.add_error(format!(
                 "expected string literal after {} at {}",
                 type_hint, self.cur_token.position
@@ -1684,11 +1704,15 @@ impl Parser {
 
         self.next_token();
 
-        let literal = &self.cur_token.literal;
-        let value = if literal.len() >= 2 && literal.starts_with('\'') && literal.ends_with('\'') {
-            literal[1..literal.len() - 1].to_string()
+        let value = if self.cur_token.token_type == TokenType::RawString {
+            self.cur_token.literal.clone()
         } else {
-            literal.clone()
+            let literal = &self.cur_token.literal;
+            if literal.len() >= 2 {
+                literal[1..literal.len() - 1].to_string()
+            } else {
+                literal.clone()
+            }
         };
 
         Some(Expression::StringLiteral(StringLiteral {
@@ -2100,6 +2124,33 @@ mod tests {
         let expr = parse_expr("'hello'").unwrap();
         match expr {
             Expression::StringLiteral(lit) => assert_eq!(lit.value, "hello"),
+            _ => panic!("expected StringLiteral"),
+        }
+    }
+
+    #[test]
+    fn test_parse_raw_string_dollar_quotes() {
+        let expr = parse_expr("$$hello 'world'$$").unwrap();
+        match expr {
+            Expression::StringLiteral(lit) => assert_eq!(lit.value, "hello 'world'"),
+            _ => panic!("expected StringLiteral"),
+        }
+    }
+
+    #[test]
+    fn test_parse_raw_string_tagged_dollar_quotes() {
+        let expr = parse_expr("$tag$hello $$world$$$tag$").unwrap();
+        match expr {
+            Expression::StringLiteral(lit) => assert_eq!(lit.value, "hello $$world$$"),
+            _ => panic!("expected StringLiteral"),
+        }
+    }
+
+    #[test]
+    fn test_parse_raw_string_triple_backticks() {
+        let expr = parse_expr("```hello `world` ```").unwrap();
+        match expr {
+            Expression::StringLiteral(lit) => assert_eq!(lit.value, "hello `world` "),
             _ => panic!("expected StringLiteral"),
         }
     }

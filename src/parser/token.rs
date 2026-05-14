@@ -62,6 +62,8 @@ pub enum TokenType {
     Keyword,
     /// String literal ('hello')
     String,
+    /// Raw string literal (e.g. dollar-quoted or triple-backticks)
+    RawString,
     /// Integer number (123)
     Integer,
     /// Floating point number (123.45)
@@ -99,6 +101,7 @@ impl fmt::Display for TokenType {
             TokenType::Time => write!(f, "TIME"),
             TokenType::Timestamp => write!(f, "TIMESTAMP"),
             TokenType::Parameter => write!(f, "PARAMETER"),
+            TokenType::RawString => write!(f, "RAWSTRING"),
         }
     }
 }
