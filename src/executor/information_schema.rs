@@ -311,7 +311,7 @@ impl Executor {
                         if let (
                             Some(schema_val),
                             Some(Value::Text(name)),
-                            Some(Value::Json(_params)),
+                            Some(Value::Text(_params)),
                             Some(Value::Text(return_type_str)),
                         ) = (row.get(0), row.get(1), row.get(2), row.get(3))
                         {
