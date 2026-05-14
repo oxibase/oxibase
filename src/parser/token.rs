@@ -247,6 +247,7 @@ pub static KEYWORDS: &[&str] = &[
     "MINVALUE",
     "MAXVALUE",
     "CYCLE",
+    "NO",
     "RESTART",
     "KEY",
     "AUTO_INCREMENT",
