@@ -1729,7 +1729,10 @@ impl WALManager {
 
         Ok(TwoPhaseRecoveryInfo {
             last_lsn,
-            committed_transactions: committed_txns.iter().filter(|&&id| id != crate::storage::mvcc::persistence::DDL_TXN_ID).count(),
+            committed_transactions: committed_txns
+                .iter()
+                .filter(|&&id| id != crate::storage::mvcc::persistence::DDL_TXN_ID)
+                .count(),
             aborted_transactions: aborted_txns.len(),
             applied_entries: applied_count,
             skipped_entries: skipped_count,
