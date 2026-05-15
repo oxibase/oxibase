@@ -19,7 +19,7 @@
 
 use std::time::SystemTime;
 
-use rand::Rng;
+use rand::RngExt;
 use rustc_hash::FxHashSet;
 
 use crate::core::{Error, Result, Row, Value};

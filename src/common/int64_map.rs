@@ -21,13 +21,12 @@
 //! - `DashMap` for concurrent access (sharded, lock-free reads)
 
 use dashmap::DashMap;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::BTreeMap;
-use std::hash::BuildHasherDefault;
 use std::sync::RwLock;
 
 /// Type alias for FxHash's BuildHasher
-pub type FxBuildHasher = BuildHasherDefault<FxHasher>;
+pub use rustc_hash::FxBuildHasher;
 
 /// Fast single-threaded hash map for i64 keys
 ///
@@ -113,7 +112,7 @@ pub fn new_int64_map<V>() -> Int64Map<V> {
 
 /// Create a new Int64Map with specified capacity
 pub fn new_int64_map_with_capacity<V>(capacity: usize) -> Int64Map<V> {
-    FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new UInt64Map with default capacity
@@ -123,7 +122,7 @@ pub fn new_uint64_map<V>() -> UInt64Map<V> {
 
 /// Create a new UInt64Map with specified capacity
 pub fn new_uint64_map_with_capacity<V>(capacity: usize) -> UInt64Map<V> {
-    FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new UsizeMap with default capacity
@@ -133,37 +132,37 @@ pub fn new_usize_map<V>() -> UsizeMap<V> {
 
 /// Create a new UsizeMap with specified capacity
 pub fn new_usize_map_with_capacity<V>(capacity: usize) -> UsizeMap<V> {
-    FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new ConcurrentInt64Map with default capacity
 pub fn new_concurrent_int64_map<V>() -> ConcurrentInt64Map<V> {
-    DashMap::with_hasher(FxBuildHasher::default())
+    DashMap::with_hasher(FxBuildHasher)
 }
 
 /// Create a new ConcurrentInt64Map with specified capacity
 pub fn new_concurrent_int64_map_with_capacity<V>(capacity: usize) -> ConcurrentInt64Map<V> {
-    DashMap::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    DashMap::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new ConcurrentUInt64Map with default capacity
 pub fn new_concurrent_uint64_map<V>() -> ConcurrentUInt64Map<V> {
-    DashMap::with_hasher(FxBuildHasher::default())
+    DashMap::with_hasher(FxBuildHasher)
 }
 
 /// Create a new ConcurrentUInt64Map with specified capacity
 pub fn new_concurrent_uint64_map_with_capacity<V>(capacity: usize) -> ConcurrentUInt64Map<V> {
-    DashMap::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    DashMap::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new ConcurrentUsizeMap with default capacity
 pub fn new_concurrent_usize_map<V>() -> ConcurrentUsizeMap<V> {
-    DashMap::with_hasher(FxBuildHasher::default())
+    DashMap::with_hasher(FxBuildHasher)
 }
 
 /// Create a new ConcurrentUsizeMap with specified capacity
 pub fn new_concurrent_usize_map_with_capacity<V>(capacity: usize) -> ConcurrentUsizeMap<V> {
-    DashMap::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    DashMap::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new OrderedInt64Map
@@ -178,7 +177,7 @@ pub fn new_int64_set() -> Int64Set {
 
 /// Create a new Int64Set with specified capacity
 pub fn new_int64_set_with_capacity(capacity: usize) -> Int64Set {
-    FxHashSet::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    FxHashSet::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new UInt64Set with default capacity
@@ -188,7 +187,7 @@ pub fn new_uint64_set() -> UInt64Set {
 
 /// Create a new UInt64Set with specified capacity
 pub fn new_uint64_set_with_capacity(capacity: usize) -> UInt64Set {
-    FxHashSet::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    FxHashSet::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Create a new UsizeSet with default capacity
@@ -198,7 +197,7 @@ pub fn new_usize_set() -> UsizeSet {
 
 /// Create a new UsizeSet with specified capacity
 pub fn new_usize_set_with_capacity(capacity: usize) -> UsizeSet {
-    FxHashSet::with_capacity_and_hasher(capacity, FxBuildHasher::default())
+    FxHashSet::with_capacity_and_hasher(capacity, FxBuildHasher)
 }
 
 /// Segment for SegmentInt64Map - holds a portion of the map with its own lock
@@ -237,7 +236,7 @@ impl<V> SegmentInt64Map<V> {
             .map(|_| Segment {
                 data: std::sync::RwLock::new(FxHashMap::with_capacity_and_hasher(
                     capacity_per_segment,
-                    FxBuildHasher::default(),
+                    FxBuildHasher,
                 )),
             })
             .collect();

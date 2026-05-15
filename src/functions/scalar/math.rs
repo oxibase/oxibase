@@ -19,7 +19,7 @@ use crate::functions::{
     FunctionDataType, FunctionInfo, FunctionSignature, FunctionType, ScalarFunction,
 };
 use crate::validate_arg_count;
-use rand::Rng;
+use rand::RngExt;
 
 use super::{value_to_f64, value_to_i64};
 
