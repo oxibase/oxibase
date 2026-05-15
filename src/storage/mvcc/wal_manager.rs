@@ -1389,6 +1389,8 @@ impl WALManager {
         );
         let new_path = self.path.join(&new_filename);
 
+        tracing::info!("Rotating WAL file to: {}", new_filename);
+
         // Create new WAL file
         let new_file = OpenOptions::new()
             .create(true)
@@ -1550,6 +1552,8 @@ impl WALManager {
     where
         F: FnMut(WALEntry) -> Result<()>,
     {
+        tracing::info!("Starting two-phase WAL replay from LSN {}", from_lsn);
+
         // Flush buffer first
         self.flush()?;
 
@@ -1727,7 +1731,7 @@ impl WALManager {
             self.current_lsn.store(last_lsn, Ordering::Release);
         }
 
-        Ok(TwoPhaseRecoveryInfo {
+        let recovery_info = TwoPhaseRecoveryInfo {
             last_lsn,
             committed_transactions: committed_txns
                 .iter()
@@ -1736,7 +1740,16 @@ impl WALManager {
             aborted_transactions: aborted_txns.len(),
             applied_entries: applied_count,
             skipped_entries: skipped_count,
-        })
+        };
+
+        tracing::info!(
+            "WAL replay complete: applied {} entries ({} committed txns), skipped {} entries",
+            recovery_info.applied_entries,
+            recovery_info.committed_transactions,
+            recovery_info.skipped_entries
+        );
+
+        Ok(recovery_info)
     }
 
     /// Phase 1 helper: Scan a WAL file for transaction commit/abort status

@@ -1314,6 +1314,9 @@ impl DiskVersionStore {
             .snapshot_dir()
             .join(format!("snapshot-{}.bin", timestamp));
 
+        tracing::info!("Creating snapshot for table: {}", self.table_name);
+        let start_time = std::time::Instant::now();
+
         let mut writer = SnapshotWriter::new(&file_path)?;
 
         // Write schema
@@ -1322,6 +1325,7 @@ impl DiskVersionStore {
         // Write rows from iterator
         let mut row_iterator = row_iterator;
         let mut batch: Vec<RowVersion> = Vec::with_capacity(DEFAULT_BATCH_SIZE);
+        let mut row_count = 0;
 
         row_iterator(&mut |_row_id, version| {
             if !version.is_deleted() {
@@ -1329,6 +1333,7 @@ impl DiskVersionStore {
                 let mut snapshot_version = version.clone();
                 snapshot_version.txn_id = -1;
                 batch.push(snapshot_version);
+                row_count += 1;
 
                 if batch.len() >= DEFAULT_BATCH_SIZE {
                     if writer.append_batch(&batch).is_err() {
@@ -1347,6 +1352,13 @@ impl DiskVersionStore {
 
         // Finalize
         writer.finalize()?;
+
+        tracing::info!(
+            "Snapshot created for {} with {} rows in {:?}",
+            self.table_name,
+            row_count,
+            start_time.elapsed()
+        );
 
         Ok(file_path)
     }
