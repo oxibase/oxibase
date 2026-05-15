@@ -3438,4 +3438,30 @@ mod tests {
 
         engine.close_engine().unwrap();
     }
+
+    #[test]
+    fn test_durability_ddl_survives_restart() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().to_str().unwrap().to_string();
+
+        let config = Config::with_path(&path);
+        let engine = MVCCEngine::new(config.clone());
+        engine.open_engine().unwrap();
+
+        let schema = SchemaBuilder::new("survivor_table")
+            .column("id", DataType::Integer, false, true)
+            .build();
+        engine.create_table(schema).unwrap();
+
+        // Close the engine cleanly
+        engine.close_engine().unwrap();
+        drop(engine);
+
+        // Initialize a new engine pointing to the exact same temporary directory
+        let new_engine = MVCCEngine::new(config);
+        new_engine.open_engine().unwrap();
+
+        // Assert that the table still exists after recovery
+        assert!(new_engine.table_exists("survivor_table").unwrap());
+    }
 }

@@ -1584,6 +1584,11 @@ impl WALManager {
         // =====================================================
         let mut committed_txns: std::collections::HashSet<i64> = std::collections::HashSet::new();
         let mut aborted_txns: std::collections::HashSet<i64> = std::collections::HashSet::new();
+
+        // DDL operations are auto-committed using a special transaction ID.
+        // Ensure they are ALWAYS replayed during phase 2.
+        committed_txns.insert(crate::storage::mvcc::persistence::DDL_TXN_ID);
+
         let mut last_lsn = from_lsn;
 
         for wal_path in &wal_files {
@@ -1724,7 +1729,7 @@ impl WALManager {
 
         Ok(TwoPhaseRecoveryInfo {
             last_lsn,
-            committed_transactions: committed_txns.len(),
+            committed_transactions: committed_txns.iter().filter(|&&id| id != crate::storage::mvcc::persistence::DDL_TXN_ID).count(),
             aborted_transactions: aborted_txns.len(),
             applied_entries: applied_count,
             skipped_entries: skipped_count,
