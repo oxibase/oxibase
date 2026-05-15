@@ -49,7 +49,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Logging
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # CLI (optional)
 clap = { version = "4.5", features = ["derive"], optional = true }
@@ -81,6 +81,7 @@ rand = "0.10"  # Random number generation for RANDOM() function
 ahash = "0.8"  # Fast hash for hash indexes (~30 GB/s, DOS-resistant)
 roaring = "0.11"  # Compressed bitmap indexes (used by Lucene, Druid, Spark)
 cron = "0.16"
+crossbeam-channel = "0.5.15"
 
 # Platform-specific file locking
 [target.'cfg(unix)'.dependencies]

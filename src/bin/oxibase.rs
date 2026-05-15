@@ -19,6 +19,8 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, IsTerminal};
 use std::time::Instant;
 
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
 use clap::{Parser, Subcommand};
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, ContentArrangement, Table};
 use rustyline::error::ReadlineError;
@@ -735,6 +737,23 @@ fn print_persistence_info(args: &Args) {
 fn main() {
     let args = Args::parse();
 
+    // Setup internal logging
+    let (log_tx, log_rx) = crossbeam_channel::bounded(10000);
+    let internal_layer = oxibase::common::logging::InternalLogLayer::new(log_tx);
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_target(true)
+        .with_thread_ids(true)
+        .with_level(true)
+        .with_writer(std::io::stderr);
+    let filter_layer = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(internal_layer)
+        .init();
+
     // Determine the active command and db_path
     let (db_path, is_serve) = match &args.command {
         Some(Commands::Repl { db_path }) => (db_path.clone(), false),
@@ -753,7 +772,11 @@ fn main() {
 
     // Open the database
     let db = match Database::open(&db_path) {
-        Ok(db) => db,
+        Ok(db) => {
+            // Start the log flusher thread now that we have an engine
+            oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
+            db
+        }
         Err(e) => {
             eprintln!("Error opening database: {}", e);
             std::process::exit(1);

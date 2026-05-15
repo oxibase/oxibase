@@ -23,6 +23,7 @@
 pub mod buffer_pool;
 pub mod int64_map;
 pub mod version;
+pub mod logging;
 
 // Re-export main types for convenience
 pub use buffer_pool::{BufferPool, PoolStats};
