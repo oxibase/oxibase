@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use oxibase::Database;
+use std::hint::black_box;
 
 fn fk_insert_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("insert_performance");

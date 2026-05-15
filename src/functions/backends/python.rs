@@ -19,12 +19,12 @@ use crate::core::{Error, Result, Value};
 
 #[cfg(feature = "python")]
 use rustpython_vm::{
-    compiler::Mode, convert::ToPyObject, AsObject, Interpreter, PyObjectRef, PyRef, Settings,
-    VirtualMachine,
+    compiler::Mode, convert::ToPyObject, AsObject, Interpreter, PyObjectRef, PyPayload, PyRef,
+    Settings, VirtualMachine,
 };
 
 #[cfg(feature = "python")]
-#[rustpython_vm::pymodule]
+#[rustpython_vm::pymodule(name = "oxibase")]
 mod oxibase_py_module {
     use rustpython_vm::{
         builtins::{PyIntRef, PyStrRef},
@@ -33,7 +33,7 @@ mod oxibase_py_module {
 
     #[pyfunction]
     fn execute(sql: PyStrRef, vm: &VirtualMachine) -> PyResult<PyIntRef> {
-        match crate::functions::backends::execute_sql_query(sql.as_str()) {
+        match crate::functions::backends::execute_sql_query(sql.as_ref()) {
             Ok(res) => Ok(vm.ctx.new_int(res.rows_affected())),
             Err(e) => Err(vm.new_runtime_error(e.to_string())),
         }
@@ -299,10 +299,10 @@ impl ScriptingBackend for PythonBackend {
                 );
 
                 // Execute the wrapper
-                match vm.run_code_string(scope.clone(), &wrapper_code, "<user_function>".to_string()) {
+                match vm.run_string(scope.clone(), &wrapper_code, "<user_function>".to_string()) {
                     Ok(_) => {
                         // Check for 'result' (set by the wrapper)
-                        match scope.locals.get_item("result", vm) {
+                        match scope.globals.get_item("result", vm) {
                             Ok(result) => self.convert_python_to_oxibase(&result, vm),
                             Err(_) => Err(Error::internal(
                                 "Python function did not return a value (use 'return' or set 'result')",
@@ -330,12 +330,9 @@ impl ScriptingBackend for PythonBackend {
         _modes: &[&str],
         _runner: Option<&dyn crate::functions::backends::SqlRunner>,
     ) -> Result<()> {
-        let interpreter = Interpreter::with_init(Settings::default(), |vm| {
-            vm.add_native_module(
-                "oxibase".to_owned(),
-                Box::new(oxibase_py_module::make_module),
-            );
-        });
+        let builder = Interpreter::builder(Settings::default());
+        let def = oxibase_py_module::module_def(&builder.ctx);
+        let interpreter = builder.add_native_module(def).build();
 
         interpreter
             .enter(|vm| {
@@ -347,7 +344,7 @@ impl ScriptingBackend for PythonBackend {
                 }
 
                 if let Some(oxibase_mod) = oxibase_mod_opt {
-                    let ctx_ns = rustpython_vm::builtins::PyNamespace::new_ref(&vm.ctx);
+                    let ctx_ns = rustpython_vm::builtins::PyNamespace {}.into_ref(&vm.ctx);
                     crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
                         if r.borrow().is_some() {
                             if let Ok(dict) = self.build_new_row_dict(vm) {
