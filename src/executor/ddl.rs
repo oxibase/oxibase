@@ -247,7 +247,10 @@ impl Executor {
 
         if let Some(ref mut _tx_state) = *active_tx {
             // Transactional DDL: Create table immediately but log for undo
-            tracing::info!("Executing CREATE TABLE for '{}' (in transaction)", table_name);
+            tracing::info!(
+                "Executing CREATE TABLE for '{}' (in transaction)",
+                table_name
+            );
             self.engine.create_table(schema.clone())?;
 
             // Update referenced schemas

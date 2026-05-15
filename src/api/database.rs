@@ -146,7 +146,7 @@ impl Database {
     /// This ensures consistency and prevents data corruption.
     pub fn open(dsn: &str) -> Result<Self> {
         tracing::info!("Opening database connection to: {}", dsn);
-        
+
         // Check if we already have an engine for this DSN
         {
             let registry = DATABASE_REGISTRY
@@ -431,12 +431,12 @@ impl Database {
         } else {
             executor.execute_with_params(sql, &param_values)?
         };
-        
+
         let elapsed = start.elapsed();
         if elapsed.as_millis() > 1000 {
             tracing::warn!("Slow query detected ({}ms): {}", elapsed.as_millis(), sql);
         }
-        
+
         Ok(result.rows_affected())
     }
 
@@ -483,12 +483,12 @@ impl Database {
         } else {
             executor.execute_with_params(sql, &param_values)?
         };
-        
+
         let elapsed = start.elapsed();
         if elapsed.as_millis() > 1000 {
             tracing::warn!("Slow query detected ({}ms): {}", elapsed.as_millis(), sql);
         }
-        
+
         Ok(Rows::new(result))
     }
 
@@ -829,7 +829,7 @@ impl Database {
     /// are dropped.
     pub fn close(&self) -> Result<()> {
         tracing::info!("Closing database connection: {}", self.inner.dsn);
-        
+
         // Remove from registry
         let mut registry = DATABASE_REGISTRY
             .write()
