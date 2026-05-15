@@ -133,7 +133,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Features
 
-### MVCC Transactions
+<details>
+<summary><b>MVCC Transactions</b></summary>
 
 Full multi-version concurrency control with two isolation levels:
 
@@ -150,7 +151,10 @@ SELECT * FROM accounts;  -- Consistent view throughout transaction
 COMMIT;
 ```
 
-### Time-Travel Queries
+</details>
+
+<details>
+<summary><b>Time-Travel Queries</b></summary>
 
 Query historical data at any point in time:
 
@@ -171,7 +175,10 @@ JOIN products AS OF TIMESTAMP '2024-01-01' historical
 WHERE current.price != historical.price;
 ```
 
-### Index Types
+</details>
+
+<details>
+<summary><b>Index Types</b></summary>
 
 Oxibase automatically selects optimal index types, or you can specify explicitly:
 
@@ -193,7 +200,10 @@ CREATE INDEX idx_lookup ON events(user_id, event_type, created_at);
 SELECT * FROM events WHERE user_id = 100 AND event_type = 'click';
 ```
 
-### Window Functions
+</details>
+
+<details>
+<summary><b>Window Functions</b></summary>
 
 Full support for analytical queries:
 
@@ -209,7 +219,10 @@ SELECT
 FROM employees;
 ```
 
-### User-Defined Functions
+</details>
+
+<details>
+<summary><b>User-Defined Functions</b></summary>
 
 Oxibase supports user-defined functions (UDFs) via three scripting backends for custom logic in SQL queries:
 
@@ -226,7 +239,10 @@ LANGUAGE RHAI AS 'price * 0.08';
 
 For detailed documentation, see [User-Defined Functions](docs/_docs/functions/user-defined-functions.md).
 
-### Common Table Expressions
+</details>
+
+<details>
+<summary><b>Common Table Expressions</b></summary>
 
 Including recursive queries:
 
@@ -251,7 +267,10 @@ WITH RECURSIVE org_chart AS (
 SELECT * FROM org_chart ORDER BY level, name;
 ```
 
-### Advanced Aggregations
+</details>
+
+<details>
+<summary><b>Advanced Aggregations</b></summary>
 
 ```sql
 -- ROLLUP: Hierarchical subtotals
@@ -270,7 +289,10 @@ FROM sales_data
 GROUP BY GROUPING SETS ((region, product), (region), ());
 ```
 
-### Subqueries
+</details>
+
+<details>
+<summary><b>Subqueries</b></summary>
 
 Scalar, correlated, EXISTS, and IN subqueries:
 
@@ -288,7 +310,10 @@ SELECT * FROM products
 WHERE category_id IN (SELECT id FROM categories WHERE active = true);
 ```
 
-### Query Optimizer
+</details>
+
+<details>
+<summary><b>Query Optimizer</b></summary>
 
 Cost-based optimizer with statistics:
 
@@ -304,6 +329,8 @@ EXPLAIN ANALYZE SELECT * FROM orders o
 JOIN customers c ON o.customer_id = c.id
 WHERE c.country = 'US';
 ```
+
+</details>
 
 ## Data Types
 
