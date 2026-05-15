@@ -26,9 +26,9 @@ use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::Layer;
 
+use crate::core::Value;
 use crate::storage::mvcc::engine::MVCCEngine;
 use crate::storage::traits::Engine;
-use crate::core::Value;
 
 thread_local! {
     /// Flag to prevent the logging flusher thread from logging its own database operations,
@@ -163,7 +163,7 @@ pub fn start_log_flusher(
 
 fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::Result<()> {
     let mut tx = engine.begin_transaction()?;
-    
+
     // Get the system.logs table
     let mut table = match tx.get_table("system.logs") {
         Ok(t) => t,

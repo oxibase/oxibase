@@ -27,12 +27,12 @@ pub mod expression;
 pub mod functions;
 pub mod index;
 pub mod jobs;
+pub mod logs;
 pub mod mvcc;
 pub mod procedures;
 pub mod statistics;
 pub mod traits;
 pub mod triggers;
-pub mod logs;
 
 // Re-export main expression types at storage level for convenience
 pub use expression::{
