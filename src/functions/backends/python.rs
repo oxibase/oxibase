@@ -24,7 +24,7 @@ use rustpython_vm::{
 };
 
 #[cfg(feature = "python")]
-#[rustpython_vm::pymodule]
+#[rustpython_vm::pymodule(name = "oxibase")]
 mod oxibase_py_module {
     use rustpython_vm::{
         builtins::{PyIntRef, PyStrRef},
