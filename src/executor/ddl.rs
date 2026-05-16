@@ -751,11 +751,52 @@ impl Executor {
                         .iter()
                         .any(|c| matches!(c, ColumnConstraint::NotNull));
 
-                    table.modify_column(&col_def.name.value, data_type, nullable)?;
+                    let auto_increment = col_def
+                        .constraints
+                        .iter()
+                        .any(|c| matches!(c, ColumnConstraint::AutoIncrement));
 
-                    // Force a global schema update
-                    let schema = table.schema().clone();
-                    self.engine.update_table_schema(table_name, schema)?;
+                    if auto_increment && data_type != crate::core::DataType::Integer {
+                        return Err(Error::InvalidArgumentMessage(
+                            "AUTOINCREMENT is only allowed on INTEGER columns".to_string(),
+                        ));
+                    }
+
+                    let auto_increment_opt = if auto_increment { Some(true) } else { None };
+
+                    let check_expr = col_def.constraints.iter().find_map(|c| {
+                        if let ColumnConstraint::Check(expr) = c {
+                            Some(expr.to_string())
+                        } else {
+                            None
+                        }
+                    });
+
+                    let check_expr_opt = check_expr.map(Some);
+
+                    self.engine.modify_column(
+                        table_name,
+                        &col_def.name.value,
+                        data_type,
+                        nullable,
+                        auto_increment_opt,
+                        check_expr_opt.clone(),
+                    )?;
+
+                    let is_unique = col_def
+                        .constraints
+                        .iter()
+                        .any(|c| matches!(c, ColumnConstraint::Unique));
+
+                    if is_unique {
+                        let index_name = format!("unique_{}_{}", table_name, col_def.name.value);
+                        table.create_index_with_type(
+                            &index_name,
+                            &[&col_def.name.value],
+                            true, // unique
+                            None,
+                        )?;
+                    }
 
                     // Record ALTER TABLE MODIFY COLUMN to WAL for persistence
                     self.engine.record_alter_table_modify_column(
@@ -763,6 +804,8 @@ impl Executor {
                         &col_def.name.value,
                         data_type,
                         nullable,
+                        auto_increment_opt,
+                        check_expr_opt,
                     );
                 } else {
                     return Err(Error::InvalidArgumentMessage(
