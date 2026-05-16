@@ -78,3 +78,10 @@ run-files: build
 run-all:
 	cargo build --release --features js,python
 	./target/release/oxibase repl -d memory://
+
+# [run] Build and run oxibase with all backends (Rhai, JS, Python) file-based database
+run-all-files:
+	cargo build --release --features js,python
+	./target/release/oxibase repl -d file://./examples/oxibase.db
+
+

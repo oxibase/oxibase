@@ -1085,6 +1085,38 @@ impl Executor {
         Ok(())
     }
 
+    /// Delete a procedure from the system table
+    fn delete_procedure(&self, procedure_name: &str) -> Result<()> {
+        let mut tx = self.engine.begin_transaction()?;
+        let mut table = tx.get_table(SYS_PROCEDURES)?;
+
+        // Find the procedure ID by name
+        let mut scanner = table.scan(&[], None)?;
+        let mut procedure_id: Option<crate::core::value::Value> = None;
+
+        while scanner.next() {
+            let row = scanner.row();
+            if let Some(crate::core::value::Value::Text(name)) = row.get(2) {
+                if name.eq_ignore_ascii_case(procedure_name) {
+                    procedure_id = row.get(0).cloned(); // ID is at index 0
+                    break;
+                }
+            }
+        }
+
+        if let Some(id_value) = procedure_id {
+            // Delete by ID using WHERE expression
+            use crate::storage::expression::{ComparisonExpr, Expression as StorageExpr};
+            let mut id_expr = ComparisonExpr::new("id", crate::core::Operator::Eq, id_value);
+            let schema = table.schema();
+            id_expr.prepare_for_schema(schema);
+            table.delete(Some(&id_expr))?;
+        }
+
+        tx.commit()?;
+        Ok(())
+    }
+
     pub(crate) fn execute_create_procedure(
         &self,
         stmt: &crate::parser::ast::CreateProcedureStatement,
@@ -1141,6 +1173,33 @@ impl Executor {
 
         self.function_registry
             .register_procedure(&procedure_name_upper, stored_procedure);
+
+        Ok(Box::new(EmptyResult::new()))
+    }
+
+    /// Execute a DROP PROCEDURE statement
+    pub(crate) fn execute_drop_procedure(
+        &self,
+        stmt: &crate::parser::ast::DropProcedureStatement,
+        _ctx: &ExecutionContext,
+    ) -> Result<Box<dyn QueryResult>> {
+        let procedure_name = stmt.procedure_name.function();
+        let procedure_name_upper = procedure_name.to_uppercase();
+
+        // Check if procedure exists
+        if !self.procedure_exists(&procedure_name_upper)? {
+            if stmt.if_exists {
+                return Ok(Box::new(EmptyResult::new()));
+            }
+            return Err(Error::FunctionNotFound(procedure_name.clone()));
+        }
+
+        // Delete procedure from system table
+        self.delete_procedure(&procedure_name_upper)?;
+
+        // Unregister the procedure from the registry
+        self.function_registry
+            .unregister_procedure(&procedure_name_upper);
 
         Ok(Box::new(EmptyResult::new()))
     }
