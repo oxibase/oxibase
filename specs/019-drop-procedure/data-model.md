@@ -1,25 +1,9 @@
 # Data Model: Drop Procedure
 
-## AST Additions (`src/parser/ast.rs`)
+No new data entities are being created. We are utilizing the existing `pg_proc` system catalog.
 
-### `DropProcedureStatement`
-```rust
-#[derive(Debug, Clone, PartialEq)]
-pub struct DropProcedureStatement {
-    pub token: Token,
-    pub procedure_name: FunctionName,
-    pub if_exists: bool,
-}
-```
+## Entities Involved
+*   **System Catalog (`pg_proc`)**: Contains procedure definitions. `DROP PROCEDURE` will delete a row from this table.
 
-## Statement Enum (`src/parser/ast.rs`)
-Add the variant to `Statement`:
-```rust
-pub enum Statement {
-    // ...
-    DropProcedure(DropProcedureStatement),
-}
-```
-
-## AST Evaluation (`src/executor/ddl.rs`)
-The `DropProcedureStatement` needs to be processed by the `execute_drop_procedure` function, modifying the catalog similar to other DROP commands.
+## Changes
+*   None to the data schema.
