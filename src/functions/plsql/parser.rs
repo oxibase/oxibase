@@ -283,8 +283,27 @@ impl PlSqlParser {
                     "IF" => self.parse_if_statement(),
                     "WHILE" => self.parse_while_statement(),
                     "RETURN" => {
-                        let stmt = PlSqlStatement::Return(self.cur_token.clone());
-                        if self.peek_token.literal == ";" {
+                        let token = self.cur_token.clone();
+                        self.next_token();
+
+                        let expr = if self.cur_token.literal != ";" {
+                            let mut sql_parser = crate::parser::Parser::new(
+                                &self.code[self.cur_token.position.offset..],
+                            );
+                            let e = sql_parser.parse_expression(Precedence::Lowest);
+                            // Advance our lexer until semicolon
+                            while self.cur_token.literal != ";"
+                                && self.cur_token.token_type != TokenType::Eof
+                            {
+                                self.next_token();
+                            }
+                            e
+                        } else {
+                            None
+                        };
+
+                        let stmt = PlSqlStatement::Return(token, expr);
+                        if self.cur_token.literal != ";" && self.peek_token.literal == ";" {
                             self.next_token();
                         }
                         Some(stmt)
@@ -322,6 +341,34 @@ impl PlSqlParser {
                 }
             }
             TokenType::Identifier => {
+                let kw = self.cur_token.literal.to_uppercase();
+                if kw == "RETURN" {
+                    let token = self.cur_token.clone();
+                    self.next_token();
+
+                    let expr = if self.cur_token.literal != ";" {
+                        let mut sql_parser = crate::parser::Parser::new(
+                            &self.code[self.cur_token.position.offset..],
+                        );
+                        let e = sql_parser.parse_expression(Precedence::Lowest);
+                        // Advance our lexer until semicolon
+                        while self.cur_token.literal != ";"
+                            && self.cur_token.token_type != TokenType::Eof
+                        {
+                            self.next_token();
+                        }
+                        e
+                    } else {
+                        None
+                    };
+
+                    let stmt = PlSqlStatement::Return(token, expr);
+                    if self.cur_token.literal != ";" && self.peek_token.literal == ";" {
+                        self.next_token();
+                    }
+                    return Some(stmt);
+                }
+
                 // Try assignment first
                 if let Some(stmt) = self.parse_assignment_statement() {
                     return Some(stmt);
