@@ -31,7 +31,7 @@ pub enum PlSqlStatement {
     /// Standard SQL Statement (INSERT, UPDATE, DELETE, etc)
     Sql(Box<crate::parser::ast::Statement>),
     /// RETURN statement
-    Return(Token),
+    Return(Token, Option<Expression>),
     /// COMMIT transaction
     Commit(Token),
     /// ROLLBACK transaction
