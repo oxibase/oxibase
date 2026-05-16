@@ -1329,6 +1329,7 @@ pub enum Statement {
     CreateFunction(CreateFunctionStatement),
     DropFunction(DropFunctionStatement),
     CreateProcedure(CreateProcedureStatement),
+    DropProcedure(DropProcedureStatement),
     CreateTrigger(CreateTriggerStatement),
     DropTrigger(DropTriggerStatement),
     CreateSchedule(CreateScheduleStatement),
@@ -1379,6 +1380,7 @@ impl fmt::Display for Statement {
             Statement::CreateFunction(s) => write!(f, "{}", s),
             Statement::DropFunction(s) => write!(f, "{}", s),
             Statement::CreateProcedure(s) => write!(f, "{}", s),
+            Statement::DropProcedure(s) => write!(f, "{}", s),
             Statement::CreateTrigger(s) => write!(f, "{}", s),
             Statement::DropTrigger(s) => write!(f, "{}", s),
             Statement::CreateSchedule(s) => write!(f, "{}", s),
@@ -2302,6 +2304,25 @@ impl fmt::Display for DropFunctionStatement {
             result.push_str("IF EXISTS ");
         }
         result.push_str(&self.function_name.to_string());
+        write!(f, "{}", result)
+    }
+}
+
+/// DROP PROCEDURE statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct DropProcedureStatement {
+    pub token: Token,
+    pub procedure_name: FunctionName,
+    pub if_exists: bool,
+}
+
+impl fmt::Display for DropProcedureStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = String::from("DROP PROCEDURE ");
+        if self.if_exists {
+            result.push_str("IF EXISTS ");
+        }
+        result.push_str(&self.procedure_name.to_string());
         write!(f, "{}", result)
     }
 }

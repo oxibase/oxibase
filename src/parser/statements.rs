@@ -2334,9 +2334,13 @@ impl Parser {
             self.next_token();
             self.parse_drop_function_statement()
                 .map(Statement::DropFunction)
+        } else if self.peek_token_is_keyword("PROCEDURE") {
+            self.next_token();
+            self.parse_drop_procedure_statement()
+                .map(Statement::DropProcedure)
         } else {
             self.add_error(format!(
-                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, or FUNCTION after DROP at {}",
+                "expected TABLE, SCHEMA, INDEX, COLUMNAR INDEX, VIEW, FUNCTION, or PROCEDURE after DROP at {}",
                 self.cur_token.position
             ));
             None
@@ -2414,6 +2418,31 @@ impl Parser {
         Some(DropFunctionStatement {
             token,
             function_name,
+            if_exists,
+        })
+    }
+
+    /// Parse a DROP PROCEDURE statement
+    fn parse_drop_procedure_statement(&mut self) -> Option<DropProcedureStatement> {
+        let token = self.cur_token.clone();
+
+        // Check for IF EXISTS
+        let if_exists = if self.peek_token_is_keyword("IF") {
+            self.next_token();
+            if !self.expect_keyword("EXISTS") {
+                return None;
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse procedure name (simple or qualified)
+        let procedure_name = self.parse_function_name()?;
+
+        Some(DropProcedureStatement {
+            token,
+            procedure_name,
             if_exists,
         })
     }

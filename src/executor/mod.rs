@@ -892,6 +892,7 @@ impl Executor {
             Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
             Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
             Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
+            Statement::DropProcedure(stmt) => self.execute_drop_procedure(stmt, &ctx),
             Statement::CreateTrigger(stmt) => self.execute_create_trigger(stmt, &ctx),
             Statement::DropTrigger(stmt) => self.execute_drop_trigger(stmt, &ctx),
             Statement::CreateSequence(stmt) => self.execute_create_sequence(stmt, &ctx),

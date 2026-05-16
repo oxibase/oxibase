@@ -2,6 +2,42 @@
 use oxibase::api::Database;
 
 #[test]
+fn test_drop_procedure() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE my_proc_to_drop() 
+        LANGUAGE rhai 
+        AS '
+            let a = 10; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    // Call it to make sure it exists
+    let res = db.execute("CALL my_proc_to_drop();", ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    // Drop it
+    let res = db.execute("DROP PROCEDURE my_proc_to_drop;", ());
+    assert!(res.is_ok(), "Failed to drop procedure: {:?}", res.err());
+
+    // Call it again - should fail
+    let res = db.execute("CALL my_proc_to_drop();", ());
+    assert!(res.is_err(), "Procedure should not exist after drop");
+
+    // Drop it again - should fail
+    let res = db.execute("DROP PROCEDURE my_proc_to_drop;", ());
+    assert!(res.is_err(), "Procedure should not exist after drop");
+
+    // Drop it with IF EXISTS - should succeed
+    let res = db.execute("DROP PROCEDURE IF EXISTS my_proc_to_drop;", ());
+    assert!(res.is_ok(), "IF EXISTS should prevent error on drop");
+}
+
+#[test]
 fn test_create_and_call_procedure() {
     let db = Database::open_in_memory().unwrap();
 
