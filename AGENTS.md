@@ -32,6 +32,6 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-/Users/gabriel.maeztu/repos/oxibase/specs/019-drop-procedure/plan.md
+specs/020-context-autocomplete/plan.md
 <!-- SPECKIT END -->
 
