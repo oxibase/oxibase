@@ -610,6 +610,7 @@ impl Transaction {
         if let Some(mut tx) = self.tx.take() {
             tx.commit()?;
             self.committed = true;
+            tracing::info!("Transaction committed");
         }
 
         Ok(())
@@ -630,6 +631,7 @@ impl Transaction {
         if let Some(mut tx) = self.tx.take() {
             tx.rollback()?;
             self.rolled_back = true;
+            tracing::info!("Transaction rolled back");
         }
 
         Ok(())
@@ -640,6 +642,7 @@ impl Drop for Transaction {
     fn drop(&mut self) {
         // Auto-rollback if not committed
         if !self.committed && !self.rolled_back {
+            tracing::warn!("Transaction dropped without commit/rollback - auto-rolling back");
             let _ = self.rollback();
         }
     }

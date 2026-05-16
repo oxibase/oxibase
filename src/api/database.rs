@@ -145,6 +145,8 @@ impl Database {
     /// Opening the same DSN multiple times returns the same engine instance.
     /// This ensures consistency and prevents data corruption.
     pub fn open(dsn: &str) -> Result<Self> {
+        tracing::info!("Opening database connection to: {}", dsn);
+
         // Check if we already have an engine for this DSN
         {
             let registry = DATABASE_REGISTRY
@@ -416,6 +418,7 @@ impl Database {
     /// )?;
     /// ```
     pub fn execute<P: Params>(&self, sql: &str, params: P) -> Result<i64> {
+        let start = std::time::Instant::now();
         let executor = self
             .inner
             .executor
@@ -428,6 +431,12 @@ impl Database {
         } else {
             executor.execute_with_params(sql, &param_values)?
         };
+
+        let elapsed = start.elapsed();
+        if elapsed.as_millis() > 1000 {
+            tracing::warn!("Slow query detected ({}ms): {}", elapsed.as_millis(), sql);
+        }
+
         Ok(result.rows_affected())
     }
 
@@ -461,6 +470,7 @@ impl Database {
     ///     .collect::<Result<Vec<_>, _>>()?;
     /// ```
     pub fn query<P: Params>(&self, sql: &str, params: P) -> Result<Rows> {
+        let start = std::time::Instant::now();
         let executor = self
             .inner
             .executor
@@ -473,6 +483,12 @@ impl Database {
         } else {
             executor.execute_with_params(sql, &param_values)?
         };
+
+        let elapsed = start.elapsed();
+        if elapsed.as_millis() > 1000 {
+            tracing::warn!("Slow query detected ({}ms): {}", elapsed.as_millis(), sql);
+        }
+
         Ok(Rows::new(result))
     }
 
@@ -812,6 +828,8 @@ impl Database {
     /// Note: The engine is also closed automatically when all Database instances
     /// are dropped.
     pub fn close(&self) -> Result<()> {
+        tracing::info!("Closing database connection: {}", self.inner.dsn);
+
         // Remove from registry
         let mut registry = DATABASE_REGISTRY
             .write()

@@ -22,6 +22,7 @@
 
 pub mod buffer_pool;
 pub mod int64_map;
+pub mod logging;
 pub mod version;
 
 // Re-export main types for convenience

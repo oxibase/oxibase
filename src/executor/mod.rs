@@ -282,6 +282,22 @@ impl Executor {
         self.active_transaction.lock().unwrap().is_some()
     }
 
+    pub(crate) fn ensure_logs_table_exists(&self) -> crate::core::Result<()> {
+        use crate::storage::logs::{CREATE_LOGS_SQL, SYS_LOGS};
+
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_logs = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_LOGS));
+        drop(tx);
+
+        if !has_logs {
+            self.execute_internal_sql(CREATE_LOGS_SQL)?;
+            tracing::info!("Created {} system table", SYS_LOGS);
+        }
+
+        Ok(())
+    }
+
     /// Initialize system.cron tables if they don't exist
     pub(crate) fn ensure_cron_tables_exist(&self) -> crate::core::Result<()> {
         use crate::storage::jobs::{
@@ -365,6 +381,9 @@ impl Executor {
 
         // Ensure cron tables exist
         self.ensure_cron_tables_exist()?;
+
+        // Ensure logs table exists
+        self.ensure_logs_table_exists()?;
 
         Ok(())
     }

@@ -247,6 +247,10 @@ impl Executor {
 
         if let Some(ref mut _tx_state) = *active_tx {
             // Transactional DDL: Create table immediately but log for undo
+            tracing::info!(
+                "Executing CREATE TABLE for '{}' (in transaction)",
+                table_name
+            );
             self.engine.create_table(schema.clone())?;
 
             // Update referenced schemas
@@ -269,6 +273,7 @@ impl Executor {
             // But we need to make sure indexes are also undone if we rollback.
         } else {
             // No active transaction - use direct engine call (auto-committed)
+            tracing::info!("Executing CREATE TABLE for '{}'", table_name);
             self.engine.create_table(schema)?;
 
             // Update referenced schemas
@@ -429,6 +434,7 @@ impl Executor {
         let mut active_tx = self.active_transaction.lock().unwrap();
 
         if let Some(ref mut _tx_state) = *active_tx {
+            tracing::info!("Executing DROP TABLE for '{}' (in transaction)", table_name);
             // Transactional DDL: Get schema before dropping, then drop immediately
             let schema = self.engine.get_table_schema(table_name)?;
 
@@ -456,6 +462,7 @@ impl Executor {
                 table_name
             );
         } else {
+            tracing::info!("Executing DROP TABLE for '{}'", table_name);
             // No active transaction - use engine method directly (auto-committed with WAL)
             if let Ok(true) = self
                 .engine
