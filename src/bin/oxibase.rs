@@ -23,9 +23,13 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 
 use clap::{Parser, Subcommand};
 use comfy_table::{presets::UTF8_FULL_CONDENSED, Cell, ContentArrangement, Table};
+use rustyline::completion::{Completer, Pair};
 use rustyline::error::ReadlineError;
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
 use rustyline::history::DefaultHistory;
-use rustyline::{Config, DefaultEditor, EditMode, Editor};
+use rustyline::validate::Validator;
+use rustyline::{Config, Context, EditMode, Editor, Helper};
 
 use oxibase::api::{Database, Transaction as ApiTransaction};
 use oxibase::common::version::version;
@@ -157,6 +161,119 @@ enum Commands {
     },
 }
 
+const SQL_KEYWORDS: &[&str] = &[
+    "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER", "TABLE", "INDEX", "VIEW",
+    "FROM", "WHERE", "JOIN", "INNER", "LEFT", "RIGHT", "ON", "GROUP BY", "ORDER BY", "HAVING",
+    "LIMIT", "OFFSET", "INTO", "VALUES", "SET", "BEGIN", "COMMIT", "ROLLBACK", "SHOW", "DESCRIBE",
+    "EXPLAIN",
+];
+
+const CLI_COMMANDS: &[&str] = &["help", "exit", "quit", "\\q", "\\h", "\\?"];
+
+struct SqlHelper {
+    db: Database,
+}
+
+impl SqlHelper {
+    fn new(db: Database) -> Self {
+        Self { db }
+    }
+}
+
+impl Helper for SqlHelper {}
+
+impl Hinter for SqlHelper {
+    type Hint = String;
+}
+
+impl Highlighter for SqlHelper {}
+
+impl Validator for SqlHelper {}
+
+impl Completer for SqlHelper {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Pair>)> {
+        let mut candidates = Vec::new();
+
+        // Find the start of the current word being typed
+        let word_start = line[..pos]
+            .rfind(|c: char| c.is_whitespace())
+            .map_or(0, |i| i + 1);
+        let word = &line[word_start..pos];
+
+        let word_upper = word.to_uppercase();
+
+        // Check for table context
+        let prev_line = line[..word_start].trim_end();
+        let is_table_context =
+            if let Some(last_space) = prev_line.rfind(|c: char| c.is_whitespace()) {
+                let prev_word = &prev_line[last_space + 1..];
+                let prev_word_upper = prev_word.to_uppercase();
+                matches!(
+                    prev_word_upper.as_str(),
+                    "FROM" | "INTO" | "UPDATE" | "JOIN" | "TABLE"
+                )
+            } else {
+                let prev_word_upper = prev_line.to_uppercase();
+                matches!(
+                    prev_word_upper.as_str(),
+                    "FROM" | "INTO" | "UPDATE" | "JOIN" | "TABLE"
+                )
+            };
+
+        if is_table_context {
+            // Query tables
+            let sql = "SELECT table_name FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL";
+            if let Ok(rows) = self.db.query(sql, ()) {
+                for row in rows.flatten() {
+                    if let Some(Value::Text(table_name)) = row.get_value(0) {
+                        if table_name.to_lowercase().starts_with(&word.to_lowercase()) {
+                            candidates.push(Pair {
+                                display: table_name.to_string(),
+                                replacement: format!("{} ", table_name),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if word.is_empty() && !is_table_context {
+            return Ok((pos, candidates));
+        }
+
+        // Check for SQL keywords
+        if !is_table_context {
+            for keyword in SQL_KEYWORDS {
+                if keyword.starts_with(&word_upper) {
+                    candidates.push(Pair {
+                        display: keyword.to_string(),
+                        replacement: format!("{} ", keyword),
+                    });
+                }
+            }
+
+            // Check for CLI commands
+            for cmd in CLI_COMMANDS {
+                if cmd.starts_with(word) {
+                    candidates.push(Pair {
+                        display: cmd.to_string(),
+                        replacement: cmd.to_string(),
+                    });
+                }
+            }
+        }
+
+        Ok((word_start, candidates))
+    }
+}
+
 /// CLI state for interactive mode
 struct Cli {
     db: Database,
@@ -167,7 +284,7 @@ struct Cli {
     #[allow(dead_code)]
     quiet: bool,
     timeout_ms: u64,
-    editor: Editor<(), DefaultHistory>,
+    editor: Editor<SqlHelper, DefaultHistory>,
     current_query: String,
     in_multi_line: bool,
 }
@@ -186,7 +303,8 @@ impl Cli {
             .build();
 
         let mut editor =
-            DefaultEditor::with_config(config).map_err(|e| io::Error::other(e.to_string()))?;
+            Editor::with_config(config).map_err(|e| io::Error::other(e.to_string()))?;
+        editor.set_helper(Some(SqlHelper::new(db.clone())));
 
         // Load history from file
         if let Some(home) = dirs::home_dir() {
@@ -1457,4 +1575,84 @@ fn print_help_main() {
     println!("  Special Commands:");
     println!("    help, \\h, \\?          Show this help message");
     println!();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sql_helper_keyword_completion() {
+        let db = Database::open_in_memory().unwrap();
+        let helper = SqlHelper::new(db);
+        let history = DefaultHistory::new();
+        let ctx = Context::new(&history);
+
+        // Empty line
+        let (pos, candidates) = helper.complete("", 0, &ctx).unwrap();
+        assert_eq!(pos, 0);
+        assert!(candidates.is_empty());
+
+        // Partial match for SELECT
+        let (pos, candidates) = helper.complete("SEL", 3, &ctx).unwrap();
+        assert_eq!(pos, 0);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].display, "SELECT");
+
+        // Lowercase input
+        let (pos, candidates) = helper.complete("crea", 4, &ctx).unwrap();
+        assert_eq!(pos, 0);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].display, "CREATE");
+
+        // Multiple matches
+        let (pos, candidates) = helper.complete("C", 1, &ctx).unwrap();
+        assert_eq!(pos, 0);
+        assert!(candidates.iter().any(|c| c.display == "CREATE"));
+        assert!(candidates.iter().any(|c| c.display == "COMMIT"));
+
+        // Mid-line word extraction
+        let (pos, candidates) = helper.complete("CREATE tab", 10, &ctx).unwrap();
+        assert_eq!(pos, 7); // Index of "tab"
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].display, "TABLE");
+
+        // CLI commands
+        let (pos, candidates) = helper.complete("he", 2, &ctx).unwrap();
+        assert_eq!(pos, 0);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].display, "help");
+    }
+
+    #[test]
+    fn test_sql_helper_context_aware_completion() {
+        let db = Database::open_in_memory().unwrap();
+        // Create a test table
+        db.execute("CREATE TABLE my_awesome_table (id INTEGER)", ())
+            .unwrap();
+
+        let helper = SqlHelper::new(db);
+        let history = DefaultHistory::new();
+        let ctx = Context::new(&history);
+
+        // Test FROM context
+        let (pos, candidates) = helper.complete("SELECT * FROM my_a", 18, &ctx).unwrap();
+        assert_eq!(pos, 14); // Index of "my_a"
+        assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+
+        // Test UPDATE context
+        let (pos, candidates) = helper.complete("UPDATE my", 9, &ctx).unwrap();
+        assert_eq!(pos, 7); // Index of "my"
+        assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+
+        // Test INTO context
+        let (pos, candidates) = helper.complete("INSERT INTO my", 14, &ctx).unwrap();
+        assert_eq!(pos, 12); // Index of "my"
+        assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+
+        // Test empty table prefix
+        let (pos, candidates) = helper.complete("SELECT * FROM ", 14, &ctx).unwrap();
+        assert_eq!(pos, 14); // Index of ""
+        assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+    }
 }
