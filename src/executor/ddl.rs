@@ -74,11 +74,13 @@ impl Executor {
         }
 
         // Check if a view with the same name exists
-        if self.engine.view_exists(table_name)? {
-            return Err(Error::internal(format!(
-                "cannot create table '{}': a view with the same name exists",
-                table_name
-            )));
+        let schema_name = stmt
+            .table_name
+            .schema()
+            .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+            .to_lowercase();
+        if self.engine.view_exists(&schema_name, table_name)? {
+            return Err(Error::ViewAlreadyExists(table_name.clone()));
         }
 
         // Handle CREATE TABLE ... AS SELECT ...
@@ -894,17 +896,23 @@ impl Executor {
     pub(crate) fn execute_create_view(
         &self,
         stmt: &CreateViewStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        // Check if schema exists for qualified view names
-        if let Some(schema) = stmt.view_name.schema() {
-            let schemas = self.engine.schemas.read().unwrap();
-            if !schemas.contains_key(&schema.to_lowercase()) {
-                return Err(Error::SchemaNotFound(schema));
-            }
-        }
+        // Resolve schema name
+        let schema_name = stmt
+            .view_name
+            .schema()
+            .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+            .to_lowercase();
 
-        let view_name = &stmt.view_name.value();
+        // Check if schema exists for qualified view names
+        let schemas = self.engine.schemas.read().unwrap();
+        if !schemas.contains_key(&schema_name) {
+            return Err(Error::SchemaNotFound(schema_name));
+        }
+        drop(schemas);
+
+        let view_name = &stmt.view_name.table();
 
         // Check if a table with the same name exists
         if self.engine.table_exists(view_name)? {
@@ -916,7 +924,7 @@ impl Executor {
 
         // Create the view (engine handles if_not_exists logic)
         self.engine
-            .create_view(view_name, query_sql, stmt.if_not_exists)?;
+            .create_view(&schema_name, view_name, query_sql, stmt.if_not_exists)?;
 
         Ok(Box::new(ExecResult::empty()))
     }
@@ -925,12 +933,14 @@ impl Executor {
     pub(crate) fn execute_drop_view(
         &self,
         stmt: &DropViewStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
+        let schema_name = ctx.current_schema().unwrap_or("public").to_lowercase();
         let view_name = &stmt.view_name.value;
 
         // Drop the view (engine handles if_exists logic)
-        self.engine.drop_view(view_name, stmt.if_exists)?;
+        self.engine
+            .drop_view(&schema_name, view_name, stmt.if_exists)?;
 
         Ok(Box::new(ExecResult::empty()))
     }
@@ -1078,7 +1088,7 @@ impl Executor {
     pub(crate) fn execute_create_procedure(
         &self,
         stmt: &crate::parser::ast::CreateProcedureStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         self.ensure_procedures_table_exists()?;
 
@@ -1111,7 +1121,12 @@ impl Executor {
 
         let stored_procedure = crate::storage::procedures::StoredProcedure {
             id: 0,
-            schema: stmt.procedure_name.schema().map(|s| s.to_uppercase()),
+            schema: Some(
+                stmt.procedure_name
+                    .schema()
+                    .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+                    .to_uppercase(),
+            ),
             name: procedure_name_upper.clone(),
             parameters: stored_parameters,
             language: stmt.language.clone(),
@@ -1134,7 +1149,7 @@ impl Executor {
     pub(crate) fn execute_create_function(
         &self,
         stmt: &CreateFunctionStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         // Ensure the functions system table exists
         self.ensure_functions_table_exists()?;
@@ -1161,7 +1176,12 @@ impl Executor {
         // Create stored function record
         let stored_function = StoredFunction {
             id: 0, // Will be set by database
-            schema: stmt.function_name.schema().map(|s| s.to_uppercase()),
+            schema: Some(
+                stmt.function_name
+                    .schema()
+                    .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+                    .to_uppercase(),
+            ),
             name: function_name_upper.clone(),
             parameters: stored_parameters,
             return_type: stmt.return_type.clone(),
@@ -1426,10 +1446,16 @@ impl Executor {
     pub(crate) fn execute_create_sequence(
         &self,
         stmt: &CreateSequenceStatement,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn crate::storage::traits::QueryResult>> {
-        let name = stmt.name.to_string();
+        let schema_name = stmt
+            .name
+            .schema()
+            .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+            .to_lowercase();
+        let name = stmt.name.table().to_string();
 
-        if self.engine.sequence_exists(&name)? {
+        if self.engine.sequence_exists(&schema_name, &name)? {
             if stmt.if_not_exists {
                 return Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)));
             }
@@ -1451,7 +1477,7 @@ impl Executor {
         }
         options.cycle = stmt.cycle;
 
-        self.engine.create_sequence(&name, options)?;
+        self.engine.create_sequence(&schema_name, &name, options)?;
 
         Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)))
     }
@@ -1459,10 +1485,16 @@ impl Executor {
     pub(crate) fn execute_alter_sequence(
         &self,
         stmt: &AlterSequenceStatement,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn crate::storage::traits::QueryResult>> {
-        let name = stmt.name.to_string();
+        let schema_name = stmt
+            .name
+            .schema()
+            .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+            .to_lowercase();
+        let name = stmt.name.table().to_string();
 
-        if !self.engine.sequence_exists(&name)? {
+        if !self.engine.sequence_exists(&schema_name, &name)? {
             if stmt.if_exists {
                 return Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)));
             }
@@ -1491,7 +1523,7 @@ impl Executor {
             options.cycle = v;
         }
 
-        self.engine.alter_sequence(&name, options)?;
+        self.engine.alter_sequence(&schema_name, &name, options)?;
 
         Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)))
     }
@@ -1499,17 +1531,23 @@ impl Executor {
     pub(crate) fn execute_drop_sequence(
         &self,
         stmt: &DropSequenceStatement,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn crate::storage::traits::QueryResult>> {
-        let name = stmt.name.to_string();
+        let schema_name = stmt
+            .name
+            .schema()
+            .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+            .to_lowercase();
+        let name = stmt.name.table().to_string();
 
-        if !self.engine.sequence_exists(&name)? {
+        if !self.engine.sequence_exists(&schema_name, &name)? {
             if stmt.if_exists {
                 return Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)));
             }
             return Err(Error::SequenceNotFound(name));
         }
 
-        self.engine.drop_sequence(&name)?;
+        self.engine.drop_sequence(&schema_name, &name)?;
 
         Ok(Box::new(crate::executor::result::ExecResult::new(0, 0)))
     }
@@ -1977,7 +2015,7 @@ impl Executor {
     pub(crate) fn execute_create_trigger(
         &self,
         stmt: &crate::parser::ast::CreateTriggerStatement,
-        _ctx: &ExecutionContext,
+        ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         self.ensure_triggers_table_exists()?;
 
@@ -2002,7 +2040,7 @@ impl Executor {
 
         let stored_trigger = crate::storage::triggers::StoredTrigger {
             id: 0,
-            schema: None,
+            schema: Some(ctx.current_schema().unwrap_or("public").to_uppercase()),
             name: trigger_name_upper.clone(),
             table_name: stmt.table_name.value().to_uppercase(),
             timing: stmt.timing.to_string(),

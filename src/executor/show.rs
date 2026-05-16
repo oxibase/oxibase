@@ -182,11 +182,12 @@ impl Executor {
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         let view_name = &stmt.view_name.value;
+        let schema_name = _ctx.current_schema().unwrap_or("public");
 
         // Get the view definition
         let view_def = self
             .engine
-            .get_view(view_name)?
+            .get_view(schema_name, view_name)?
             .ok_or_else(|| Error::ViewNotFound(view_name.to_string()))?;
 
         // Build CREATE VIEW statement

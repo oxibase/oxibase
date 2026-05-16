@@ -296,7 +296,7 @@ fn test_information_schema_functions_user_defined() {
         .unwrap();
     assert_eq!(create_person.1, "SCALAR");
     assert_eq!(create_person.2, "JSON");
-    assert_eq!(create_person.3, Some("public".to_string()));
+    assert_eq!(create_person.3, Some("PUBLIC".to_string()));
 
     let greet = functions
         .iter()
@@ -304,7 +304,7 @@ fn test_information_schema_functions_user_defined() {
         .unwrap();
     assert_eq!(greet.1, "SCALAR");
     assert_eq!(greet.2, "TEXT");
-    assert_eq!(greet.3, Some("public".to_string()));
+    assert_eq!(greet.3, Some("PUBLIC".to_string()));
 
     let is_even = functions
         .iter()
@@ -312,7 +312,7 @@ fn test_information_schema_functions_user_defined() {
         .unwrap();
     assert_eq!(is_even.1, "SCALAR");
     assert_eq!(is_even.2, "BOOLEAN");
-    assert_eq!(is_even.3, Some("public".to_string()));
+    assert_eq!(is_even.3, Some("PUBLIC".to_string()));
 
     let square = functions
         .iter()
@@ -320,7 +320,7 @@ fn test_information_schema_functions_user_defined() {
         .unwrap();
     assert_eq!(square.1, "SCALAR");
     assert_eq!(square.2, "INTEGER");
-    assert_eq!(square.3, Some("public".to_string()));
+    assert_eq!(square.3, Some("PUBLIC".to_string()));
 }
 
 #[test]

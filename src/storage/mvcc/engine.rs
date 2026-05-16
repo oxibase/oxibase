@@ -273,10 +273,12 @@ pub struct MVCCEngine {
     /// (Arc-wrapped for safe sharing with transactions)
     txn_version_stores: Arc<RwLock<TxnVersionStoreMap>>,
     /// View definitions (Arc for cheap cloning on lookup)
-    views: RwLock<FxHashMap<String, Arc<ViewDefinition>>>,
+    views: RwLock<FxHashMap<String, FxHashMap<String, Arc<ViewDefinition>>>>,
     /// Persistence manager for WAL and snapshot operations (Arc-wrapped for safe sharing)
     /// Sequence definitions
-    pub(crate) sequences: Arc<RwLock<FxHashMap<String, Arc<crate::core::SequenceState>>>>,
+    #[allow(clippy::type_complexity)]
+    pub(crate) sequences:
+        Arc<RwLock<FxHashMap<String, FxHashMap<String, Arc<crate::core::SequenceState>>>>>,
     persistence: Arc<Option<PersistenceManager>>,
     /// Flag to indicate we're loading from disk to avoid triggering redundant WAL writes
     /// (Arc-wrapped for safe sharing with transactions)
@@ -638,17 +640,34 @@ impl MVCCEngine {
             WALOperationType::CreateView => {
                 // Deserialize view definition and recreate the view
                 if let Ok(view_def) = ViewDefinition::deserialize(&entry.data) {
-                    let name_lower = view_def.name.clone();
+                    let parts: Vec<&str> = entry.table_name.split('.').collect();
+                    let (schema_name, view_name) = if parts.len() > 1 {
+                        (parts[0], parts[1])
+                    } else {
+                        (DEFAULT_SCHEMA, parts[0])
+                    };
+                    let schema_lower = schema_name.to_lowercase();
+                    let name_lower = view_name.to_lowercase();
                     let mut views = self.views.write().unwrap();
-                    views.insert(name_lower, Arc::new(view_def));
+                    let schema_views = views.entry(schema_lower).or_default();
+                    schema_views.insert(name_lower, Arc::new(view_def));
                 }
             }
             WALOperationType::DropView => {
                 // Remove the view
-                if let Ok(view_name) = String::from_utf8(entry.data.clone()) {
-                    let name_lower = view_name.to_lowercase();
+                if let Ok(_view_name) = String::from_utf8(entry.data.clone()) {
+                    let parts: Vec<&str> = entry.table_name.split('.').collect();
+                    let (schema_name, name) = if parts.len() > 1 {
+                        (parts[0], parts[1])
+                    } else {
+                        (DEFAULT_SCHEMA, parts[0])
+                    };
+                    let schema_lower = schema_name.to_lowercase();
+                    let name_lower = name.to_lowercase();
                     let mut views = self.views.write().unwrap();
-                    views.remove(&name_lower);
+                    if let Some(schema_views) = views.get_mut(&schema_lower) {
+                        schema_views.remove(&name_lower);
+                    }
                 }
             }
         }
@@ -1702,18 +1721,28 @@ impl MVCCEngine {
     // --- View Management Methods ---
 
     /// Create a new view
-    pub fn create_view(&self, name: &str, query: String, if_not_exists: bool) -> Result<()> {
+    pub fn create_view(
+        &self,
+        schema_name: &str,
+        name: &str,
+        query: String,
+        if_not_exists: bool,
+    ) -> Result<()> {
         use crate::storage::mvcc::wal_manager::WALOperationType;
 
         if !self.is_open() {
             return Err(Error::EngineNotOpen);
         }
 
+        let schema_lower = schema_name.to_lowercase();
         let name_lower = name.to_lowercase();
         let mut views = self.views.write().unwrap();
 
+        // Check if schema bucket exists, create if not
+        let schema_views = views.entry(schema_lower.clone()).or_default();
+
         // Check if view already exists
-        if views.contains_key(&name_lower) {
+        if schema_views.contains_key(&name_lower) {
             if if_not_exists {
                 return Ok(());
             }
@@ -1723,41 +1752,53 @@ impl MVCCEngine {
         // Check if a table with the same name exists
         let schemas = self.schemas.read().unwrap();
         let empty_map = FxHashMap::default();
-        let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+        let default_schema = schemas.get(&schema_lower).unwrap_or(&empty_map);
         if default_schema.contains_key(&name_lower) {
             return Err(Error::internal(format!(
-                "cannot create view '{}': a table with the same name exists",
-                name
+                "cannot create view '{}': a table with the same name exists in schema '{}'",
+                name, schema_name
             )));
         }
         drop(schemas);
 
         // Create the view definition wrapped in Arc for cheap cloning
         let view_def = Arc::new(ViewDefinition::new(name, query));
-        views.insert(name_lower.clone(), Arc::clone(&view_def));
+        schema_views.insert(name_lower.clone(), Arc::clone(&view_def));
 
         // Release the lock before recording to WAL
         drop(views);
 
-        // Record to WAL for persistence
+        // For WAL, we might need a qualified name. Let's record the schema.
+        let full_name = if schema_lower == DEFAULT_SCHEMA {
+            name_lower.clone()
+        } else {
+            format!("{}.{}", schema_lower, name_lower)
+        };
         let data = view_def.serialize();
-        self.record_ddl(&name_lower, WALOperationType::CreateView, &data);
+        self.record_ddl(&full_name, WALOperationType::CreateView, &data);
 
         Ok(())
     }
 
     /// Drop a view
-    pub fn drop_view(&self, name: &str, if_exists: bool) -> Result<()> {
+    pub fn drop_view(&self, schema_name: &str, name: &str, if_exists: bool) -> Result<()> {
         use crate::storage::mvcc::wal_manager::WALOperationType;
 
         if !self.is_open() {
             return Err(Error::EngineNotOpen);
         }
 
+        let schema_lower = schema_name.to_lowercase();
         let name_lower = name.to_lowercase();
         let mut views = self.views.write().unwrap();
 
-        if views.remove(&name_lower).is_none() {
+        let removed = if let Some(schema_views) = views.get_mut(&schema_lower) {
+            schema_views.remove(&name_lower)
+        } else {
+            None
+        };
+
+        if removed.is_none() {
             if if_exists {
                 return Ok(());
             }
@@ -1767,55 +1808,75 @@ impl MVCCEngine {
         // Release the lock before recording to WAL
         drop(views);
 
-        // Record to WAL for persistence (just the view name)
-        self.record_ddl(&name_lower, WALOperationType::DropView, name.as_bytes());
+        // Record to WAL for persistence
+        let full_name = if schema_lower == DEFAULT_SCHEMA {
+            name_lower.clone()
+        } else {
+            format!("{}.{}", schema_lower, name_lower)
+        };
+        self.record_ddl(&full_name, WALOperationType::DropView, name.as_bytes());
 
         Ok(())
     }
 
     /// Check if a view exists
-    pub fn view_exists(&self, name: &str) -> Result<bool> {
-        self.view_exists_lowercase(&name.to_lowercase())
+    pub fn view_exists(&self, schema_name: &str, name: &str) -> Result<bool> {
+        self.view_exists_lowercase(&schema_name.to_lowercase(), &name.to_lowercase())
     }
 
     /// Check if a view exists (assumes name is already lowercase)
     /// Use this when you already have a lowercase name to avoid allocation
     #[inline]
-    pub fn view_exists_lowercase(&self, name_lower: &str) -> Result<bool> {
+    pub fn view_exists_lowercase(&self, schema_lower: &str, name_lower: &str) -> Result<bool> {
         if !self.is_open() {
             return Err(Error::EngineNotOpen);
         }
 
         let views = self.views.read().unwrap();
-        Ok(views.contains_key(name_lower))
+        Ok(views
+            .get(schema_lower)
+            .is_some_and(|s| s.contains_key(name_lower)))
     }
 
     /// Get a view definition
-    pub fn get_view(&self, name: &str) -> Result<Option<Arc<ViewDefinition>>> {
-        self.get_view_lowercase(&name.to_lowercase())
+    pub fn get_view(&self, schema_name: &str, name: &str) -> Result<Option<Arc<ViewDefinition>>> {
+        self.get_view_lowercase(&schema_name.to_lowercase(), &name.to_lowercase())
     }
 
     /// Get a view definition (assumes name is already lowercase)
     /// Use this when you already have a lowercase name to avoid allocation.
     /// Returns Arc clone (cheap pointer copy, no data clone).
     #[inline]
-    pub fn get_view_lowercase(&self, name_lower: &str) -> Result<Option<Arc<ViewDefinition>>> {
+    pub fn get_view_lowercase(
+        &self,
+        schema_lower: &str,
+        name_lower: &str,
+    ) -> Result<Option<Arc<ViewDefinition>>> {
         if !self.is_open() {
             return Err(Error::EngineNotOpen);
         }
 
         let views = self.views.read().unwrap();
-        Ok(views.get(name_lower).cloned()) // Arc::clone is cheap
+        Ok(views
+            .get(schema_lower)
+            .and_then(|s| s.get(name_lower))
+            .cloned()) // Arc::clone is cheap
     }
 
-    /// List all view names
-    pub fn list_views(&self) -> Result<Vec<String>> {
+    /// List all view names along with their schema
+    pub fn list_views(&self) -> Result<Vec<(String, String)>> {
         if !self.is_open() {
             return Err(Error::EngineNotOpen);
         }
 
         let views = self.views.read().unwrap();
-        Ok(views.values().map(|v| v.original_name.clone()).collect())
+        let mut result = Vec::new();
+        for (schema_name, schema_views) in views.iter() {
+            for v in schema_views.values() {
+                result.push((schema_name.clone(), v.original_name.clone()));
+            }
+        }
+        Ok(result)
     }
 }
 
@@ -1879,7 +1940,15 @@ impl Engine for MVCCEngine {
     }
 
     fn view_exists(&self, view_name: &str) -> Result<bool> {
-        MVCCEngine::view_exists(self, view_name)
+        // Assume default schema if called from the trait which doesn't provide a schema.
+        // Wait, did I update the trait? Let's assume the string might be qualified.
+        let parts: Vec<&str> = view_name.split('.').collect();
+        let (schema_name, name) = if parts.len() > 1 {
+            (parts[0], parts[1])
+        } else {
+            (DEFAULT_SCHEMA, parts[0])
+        };
+        MVCCEngine::view_exists(self, schema_name, name)
     }
 
     fn index_exists(&self, index_name: &str, table_name: &str) -> Result<bool> {
@@ -2527,24 +2596,33 @@ impl Engine for MVCCEngine {
 
     // --- Sequences ---
 
-    fn sequence_exists(&self, sequence_name: &str) -> Result<bool> {
+    fn sequence_exists(&self, schema_name: &str, sequence_name: &str) -> Result<bool> {
         let sequences = self.sequences.read().unwrap();
-        Ok(sequences.contains_key(&sequence_name.to_lowercase()))
+        let schema_lower = schema_name.to_lowercase();
+        let name_lower = sequence_name.to_lowercase();
+        Ok(sequences
+            .get(&schema_lower)
+            .is_some_and(|s| s.contains_key(&name_lower)))
     }
 
     fn create_sequence(
         &self,
+        schema_name: &str,
         sequence_name: &str,
         options: crate::core::SequenceOptions,
     ) -> Result<()> {
         let mut sequences = self.sequences.write().unwrap();
+        let schema_lower = schema_name.to_lowercase();
         let name_lower = sequence_name.to_lowercase();
-        if sequences.contains_key(&name_lower) {
+
+        let schema_seqs = sequences.entry(schema_lower.clone()).or_default();
+
+        if schema_seqs.contains_key(&name_lower) {
             return Err(crate::core::Error::SequenceAlreadyExists(
                 sequence_name.to_string(),
             ));
         }
-        sequences.insert(
+        schema_seqs.insert(
             name_lower,
             std::sync::Arc::new(crate::core::SequenceState::new(options)),
         );
@@ -2553,28 +2631,40 @@ impl Engine for MVCCEngine {
 
     fn alter_sequence(
         &self,
+        schema_name: &str,
         sequence_name: &str,
         options: crate::core::SequenceOptions,
     ) -> Result<()> {
         let mut sequences = self.sequences.write().unwrap();
+        let schema_lower = schema_name.to_lowercase();
         let name_lower = sequence_name.to_lowercase();
-        if !sequences.contains_key(&name_lower) {
+
+        let schema_seqs = sequences.entry(schema_lower.clone()).or_default();
+        if !schema_seqs.contains_key(&name_lower) {
             return Err(crate::core::Error::SequenceNotFound(
                 sequence_name.to_string(),
             ));
         }
         // Create new sequence state and replace existing
-        sequences.insert(
+        schema_seqs.insert(
             name_lower,
             std::sync::Arc::new(crate::core::SequenceState::new(options)),
         );
         Ok(())
     }
 
-    fn drop_sequence(&self, sequence_name: &str) -> Result<()> {
+    fn drop_sequence(&self, schema_name: &str, sequence_name: &str) -> Result<()> {
         let mut sequences = self.sequences.write().unwrap();
+        let schema_lower = schema_name.to_lowercase();
         let name_lower = sequence_name.to_lowercase();
-        if sequences.remove(&name_lower).is_none() {
+
+        let removed = if let Some(schema_seqs) = sequences.get_mut(&schema_lower) {
+            schema_seqs.remove(&name_lower)
+        } else {
+            None
+        };
+
+        if removed.is_none() {
             return Err(crate::core::Error::SequenceNotFound(
                 sequence_name.to_string(),
             ));
@@ -2582,11 +2672,15 @@ impl Engine for MVCCEngine {
         Ok(())
     }
 
-    fn nextval(&self, sequence_name: &str) -> Result<i64> {
+    fn nextval(&self, schema_name: &str, sequence_name: &str) -> Result<i64> {
         let sequence = {
             let sequences = self.sequences.read().unwrap();
+            let schema_lower = schema_name.to_lowercase();
             let name_lower = sequence_name.to_lowercase();
-            if let Some(seq) = sequences.get(&name_lower) {
+            if let Some(seq) = sequences
+                .get(&schema_lower)
+                .and_then(|s| s.get(&name_lower))
+            {
                 std::sync::Arc::clone(seq)
             } else {
                 return Err(crate::core::Error::SequenceNotFound(
@@ -2597,11 +2691,21 @@ impl Engine for MVCCEngine {
         sequence.nextval()
     }
 
-    fn setval(&self, sequence_name: &str, value: i64, is_called: bool) -> Result<i64> {
+    fn setval(
+        &self,
+        schema_name: &str,
+        sequence_name: &str,
+        value: i64,
+        is_called: bool,
+    ) -> Result<i64> {
         let sequence = {
             let sequences = self.sequences.read().unwrap();
+            let schema_lower = schema_name.to_lowercase();
             let name_lower = sequence_name.to_lowercase();
-            if let Some(seq) = sequences.get(&name_lower) {
+            if let Some(seq) = sequences
+                .get(&schema_lower)
+                .and_then(|s| s.get(&name_lower))
+            {
                 std::sync::Arc::clone(seq)
             } else {
                 return Err(crate::core::Error::SequenceNotFound(
@@ -2612,11 +2716,18 @@ impl Engine for MVCCEngine {
         sequence.setval(value, is_called)
     }
 
-    fn list_sequences(&self) -> Result<Vec<(String, crate::core::SequenceOptions, i64)>> {
+    fn list_sequences(&self) -> Result<Vec<(String, String, crate::core::SequenceOptions, i64)>> {
         let sequences = self.sequences.read().unwrap();
-        let mut result = Vec::with_capacity(sequences.len());
-        for (name, seq) in sequences.iter() {
-            result.push((name.clone(), seq.options.clone(), seq.current_value()));
+        let mut result = Vec::new();
+        for (schema_name, schema_seqs) in sequences.iter() {
+            for (name, seq) in schema_seqs.iter() {
+                result.push((
+                    schema_name.clone(),
+                    name.clone(),
+                    seq.options.clone(),
+                    seq.current_value(),
+                ));
+            }
         }
         Ok(result)
     }

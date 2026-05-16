@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -187,27 +188,35 @@ pub trait Engine: Send + Sync {
 
     // --- Sequences ---
 
-    fn sequence_exists(&self, sequence_name: &str) -> Result<bool>;
+    fn sequence_exists(&self, schema_name: &str, sequence_name: &str) -> Result<bool>;
 
     fn create_sequence(
         &self,
+        schema_name: &str,
         sequence_name: &str,
         options: crate::core::SequenceOptions,
     ) -> Result<()>;
 
     fn alter_sequence(
         &self,
+        schema_name: &str,
         sequence_name: &str,
         options: crate::core::SequenceOptions,
     ) -> Result<()>;
 
-    fn drop_sequence(&self, sequence_name: &str) -> Result<()>;
+    fn drop_sequence(&self, schema_name: &str, sequence_name: &str) -> Result<()>;
 
-    fn nextval(&self, sequence_name: &str) -> Result<i64>;
+    fn nextval(&self, schema_name: &str, sequence_name: &str) -> Result<i64>;
 
-    fn setval(&self, sequence_name: &str, value: i64, is_called: bool) -> Result<i64>;
+    fn setval(
+        &self,
+        schema_name: &str,
+        sequence_name: &str,
+        value: i64,
+        is_called: bool,
+    ) -> Result<i64>;
 
-    fn list_sequences(&self) -> Result<Vec<(String, crate::core::SequenceOptions, i64)>>;
+    fn list_sequences(&self) -> Result<Vec<(String, String, crate::core::SequenceOptions, i64)>>;
 
     /// Fetch rows by IDs directly from storage without creating a full transaction.
     ///
