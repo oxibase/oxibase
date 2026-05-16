@@ -460,6 +460,8 @@ impl Schema {
         name: &str,
         data_type: Option<DataType>,
         nullable: Option<bool>,
+        auto_increment: Option<bool>,
+        check_expr: Option<Option<String>>,
     ) -> Result<()> {
         let idx = self.get_column_index(name).ok_or(Error::ColumnNotFound)?;
 
@@ -468,6 +470,12 @@ impl Schema {
         }
         if let Some(n) = nullable {
             self.columns[idx].nullable = n;
+        }
+        if let Some(ai) = auto_increment {
+            self.columns[idx].auto_increment = ai;
+        }
+        if let Some(ce) = check_expr {
+            self.columns[idx].check_expr = ce;
         }
 
         self.mark_updated();
@@ -749,7 +757,7 @@ mod tests {
         let mut schema = create_test_schema();
 
         schema
-            .modify_column("name", Some(DataType::Json), Some(true))
+            .modify_column("name", Some(DataType::Json), Some(true), None, None)
             .unwrap();
 
         let col = schema.get_column_by_name("name").unwrap();
@@ -758,7 +766,7 @@ mod tests {
 
         // Modifying non-existent column should fail
         assert!(schema
-            .modify_column("nonexistent", None, Some(true))
+            .modify_column("nonexistent", None, Some(true), None, None)
             .is_err());
     }
 

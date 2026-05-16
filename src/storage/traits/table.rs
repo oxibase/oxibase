@@ -679,7 +679,16 @@ pub trait Table: Send + Sync {
     /// * `name` - The column name
     /// * `column_type` - The new data type
     /// * `nullable` - Whether the column can contain NULL values
-    fn modify_column(&self, name: &str, column_type: DataType, nullable: bool) -> Result<()>;
+    /// * `auto_increment` - Optional new auto_increment setting
+    /// * `check_expr` - Optional new check_expr setting
+    fn modify_column(
+        &self,
+        name: &str,
+        column_type: DataType,
+        nullable: bool,
+        auto_increment: Option<bool>,
+        check_expr: Option<Option<String>>,
+    ) -> Result<()>;
 
     // ---- Query Operations ----
 

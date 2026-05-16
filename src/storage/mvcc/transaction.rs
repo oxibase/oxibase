@@ -642,7 +642,13 @@ impl Transaction for MvccTransaction {
         self.check_active()?;
 
         let table = self.get_table(table_name)?;
-        table.modify_column(&column.name, column.data_type, column.nullable)
+        table.modify_column(
+            &column.name,
+            column.data_type,
+            column.nullable,
+            Some(column.auto_increment),
+            Some(column.check_expr.clone()),
+        )
     }
 
     fn select(
