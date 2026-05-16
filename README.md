@@ -1,7 +1,7 @@
 <div align="center">
    <picture>
-     <source media="(prefers-color-scheme: dark)" srcset="logo_white.svg">
-     <img src="logo.svg" alt="Oxibase Logo" width="360">
+     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/img/logo_white.svg">
+     <img src="docs/assets/img/logo-alt.svg" alt="Oxibase Logo" width="360">
    </picture>
 
    <p>Moving computation to data.</p>
