@@ -18,6 +18,11 @@ use crate::core::{Error, Result, Value};
 use crate::functions::FunctionRegistry;
 use std::sync::Arc;
 
+pub enum ExecutionStatus {
+    Continue,
+    Return(Option<Value>),
+}
+
 pub struct PlSqlInterpreter<'a> {
     pub(crate) _function_registry: Arc<FunctionRegistry>,
     runner: Option<&'a dyn crate::functions::backends::SqlRunner>,
@@ -34,15 +39,25 @@ impl<'a> PlSqlInterpreter<'a> {
         }
     }
 
-    pub fn execute(&self, block: &BlockStatement, env: &mut Environment) -> Result<()> {
+    pub fn execute(&self, block: &BlockStatement, env: &mut Environment) -> Result<Option<Value>> {
+        match self.execute_block(block, env)? {
+            ExecutionStatus::Return(val) => Ok(val),
+            ExecutionStatus::Continue => Ok(None),
+        }
+    }
+
+    fn execute_block(
+        &self,
+        block: &BlockStatement,
+        env: &mut Environment,
+    ) -> Result<ExecutionStatus> {
         for stmt in &block.statements {
-            match self.execute_statement(stmt, env) {
-                Ok(true) => return Ok(()), // RETURN statement executed
-                Ok(false) => continue,
-                Err(e) => return Err(e),
+            match self.execute_statement(stmt, env)? {
+                ExecutionStatus::Return(val) => return Ok(ExecutionStatus::Return(val)),
+                ExecutionStatus::Continue => continue,
             }
         }
-        Ok(())
+        Ok(ExecutionStatus::Continue)
     }
 
     fn eval_expr(&self, expr: &crate::parser::ast::Expression, env: &Environment) -> Result<Value> {
@@ -283,7 +298,11 @@ impl<'a> PlSqlInterpreter<'a> {
         }
     }
 
-    fn execute_statement(&self, stmt: &PlSqlStatement, env: &mut Environment) -> Result<bool> {
+    fn execute_statement(
+        &self,
+        stmt: &PlSqlStatement,
+        env: &mut Environment,
+    ) -> Result<ExecutionStatus> {
         match stmt {
             PlSqlStatement::Declare(decl) => {
                 for v in &decl.declarations {
@@ -309,16 +328,15 @@ impl<'a> PlSqlInterpreter<'a> {
                         env.define_global(&v.name, initial_val);
                     }
                 }
-                Ok(false)
+                Ok(ExecutionStatus::Continue)
             }
             PlSqlStatement::Block(block) => {
                 // If it is an explicit inner block, push frame. If root block of procedure, we should probably not,
                 // but since assign updates outer frames, it is fine.
                 env.push_frame("block");
-                let res = self.execute(block, env);
+                let res = self.execute_block(block, env);
                 env.pop_frame();
-                res?;
-                Ok(false)
+                res
             }
             PlSqlStatement::Assignment(assign) => {
                 let val = self.eval_expr(&assign.expression, env)?;
@@ -328,7 +346,7 @@ impl<'a> PlSqlInterpreter<'a> {
                 if env.assign(&assign.variable, val.clone()).is_err() {
                     env.define(&assign.variable, val);
                 }
-                Ok(false)
+                Ok(ExecutionStatus::Continue)
             }
             PlSqlStatement::If(if_stmt) => {
                 let condition_val = self.eval_expr(&if_stmt.condition, env)?;
@@ -341,24 +359,24 @@ impl<'a> PlSqlInterpreter<'a> {
                 if is_true {
                     env.push_frame("if_then");
                     for stmt in &if_stmt.then_block {
-                        if self.execute_statement(stmt, env)? {
+                        if let ExecutionStatus::Return(val) = self.execute_statement(stmt, env)? {
                             env.pop_frame();
-                            return Ok(true);
+                            return Ok(ExecutionStatus::Return(val));
                         }
                     }
                     env.pop_frame();
                 } else if let Some(else_block) = &if_stmt.else_block {
                     env.push_frame("if_else");
                     for stmt in else_block {
-                        if self.execute_statement(stmt, env)? {
+                        if let ExecutionStatus::Return(val) = self.execute_statement(stmt, env)? {
                             env.pop_frame();
-                            return Ok(true);
+                            return Ok(ExecutionStatus::Return(val));
                         }
                     }
                     env.pop_frame();
                 }
 
-                Ok(false)
+                Ok(ExecutionStatus::Continue)
             }
             PlSqlStatement::While(while_stmt) => {
                 env.push_frame("while");
@@ -374,14 +392,14 @@ impl<'a> PlSqlInterpreter<'a> {
                     }
 
                     for stmt in &while_stmt.block {
-                        if self.execute_statement(stmt, env)? {
+                        if let ExecutionStatus::Return(val) = self.execute_statement(stmt, env)? {
                             env.pop_frame();
-                            return Ok(true);
+                            return Ok(ExecutionStatus::Return(val));
                         }
                     }
                 }
                 env.pop_frame();
-                Ok(false)
+                Ok(ExecutionStatus::Continue)
             }
             PlSqlStatement::Sql(box_stmt) => {
                 println!("Executing SQL statement in plsql: {:?}", box_stmt);
@@ -392,18 +410,22 @@ impl<'a> PlSqlInterpreter<'a> {
                     // Note: for queries that modify data, we should also track ROW_COUNT,
                     // but for now we'll just execute it.
                     runner.execute_ast(&modified_stmt)?;
-                    Ok(false)
+                    Ok(ExecutionStatus::Continue)
                 } else {
                     Err(Error::internal(
                         "Cannot execute SQL statement: No SqlRunner bridge provided",
                     ))
                 }
             }
-            PlSqlStatement::Return(_) => Ok(true),
+            PlSqlStatement::Return(_, Some(expr)) => {
+                let val = self.eval_expr(expr, env)?;
+                Ok(ExecutionStatus::Return(Some(val)))
+            }
+            PlSqlStatement::Return(_, None) => Ok(ExecutionStatus::Return(None)),
             PlSqlStatement::Commit(_) => {
                 if let Some(runner) = self.runner {
                     runner.commit()?;
-                    Ok(false)
+                    Ok(ExecutionStatus::Continue)
                 } else {
                     Err(Error::internal(
                         "Cannot execute COMMIT: No SqlRunner bridge provided",
@@ -413,7 +435,7 @@ impl<'a> PlSqlInterpreter<'a> {
             PlSqlStatement::Rollback(_) => {
                 if let Some(runner) = self.runner {
                     runner.rollback()?;
-                    Ok(false)
+                    Ok(ExecutionStatus::Continue)
                 } else {
                     Err(Error::internal(
                         "Cannot execute ROLLBACK: No SqlRunner bridge provided",
@@ -423,7 +445,7 @@ impl<'a> PlSqlInterpreter<'a> {
             PlSqlStatement::BeginTransaction(_) => {
                 if let Some(runner) = self.runner {
                     runner.begin()?;
-                    Ok(false)
+                    Ok(ExecutionStatus::Continue)
                 } else {
                     Err(Error::internal(
                         "Cannot execute BEGIN: No SqlRunner bridge provided",

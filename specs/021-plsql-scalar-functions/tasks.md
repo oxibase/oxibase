@@ -21,8 +21,8 @@ description: "Task list for PL/SQL Scalar Functions feature implementation"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Verify project compiles (`cargo build`) before starting
-- [ ] T002 Run existing tests (`make test`) to ensure a clean baseline
+- [x] T001 Verify project compiles (`cargo build`) before starting
+- [x] T002 Run existing tests (`make test`) to ensure a clean baseline
 
 ---
 
@@ -30,8 +30,8 @@ description: "Task list for PL/SQL Scalar Functions feature implementation"
 
 **Purpose**: Foundational AST changes required by all features.
 
-- [ ] T010 Update `PlSqlStatement::Return` in `src/functions/plsql/ast.rs` to accept `Option<Expression>` alongside the `Token`.
-- [ ] T011 Update `ExecutionStatus` in `src/functions/plsql/interpreter.rs` to include `Return(Option<Value>)`.
+- [x] T010 Update `PlSqlStatement::Return` in `src/functions/plsql/ast.rs` to accept `Option<Expression>` alongside the `Token`.
+- [x] T011 Update `ExecutionStatus` in `src/functions/plsql/interpreter.rs` to include `Return(Option<Value>)`.
 
 ---
 
@@ -45,15 +45,15 @@ description: "Task list for PL/SQL Scalar Functions feature implementation"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T020 [US1] Create failing integration test in `tests/plsql_functions.rs` evaluating a basic PL/SQL scalar function using `RETURN <expr>;`.
-- [ ] T021 [US1] Create failing integration test in `tests/plsql_functions.rs` verifying a PL/SQL function with control flow (e.g. IF/ELSE) and multiple `RETURN` paths.
+- [x] T020 [US1] Create failing integration test in `tests/plsql_functions.rs` evaluating a basic PL/SQL scalar function using `RETURN <expr>;`.
+- [x] T021 [US1] Create failing integration test in `tests/plsql_functions.rs` verifying a PL/SQL function with control flow (e.g. IF/ELSE) and multiple `RETURN` paths.
 
 ### Implementation for User Story 1
 
-- [ ] T022 [US1] Modify parser in `src/functions/plsql/parser.rs` to parse an optional expression after `RETURN` keyword and before the `;` token.
-- [ ] T023 [US1] Modify interpreter `execute()` logic in `src/functions/plsql/interpreter.rs` to evaluate the return expression and bubble up `ExecutionStatus::Return(Some(val))`.
-- [ ] T024 [US1] Implement `execute` method in `src/functions/plsql/backend.rs` to: parse the code, setup environment with arguments, run the interpreter, and extract the returned `Value`.
-- [ ] T025 [US1] Verify that `tests/plsql_functions.rs` integration tests pass successfully with `make test`.
+- [x] T022 [US1] Modify parser in `src/functions/plsql/parser.rs` to parse an optional expression after `RETURN` keyword and before the `;` token.
+- [x] T023 [US1] Modify interpreter `execute()` logic in `src/functions/plsql/interpreter.rs` to evaluate the return expression and bubble up `ExecutionStatus::Return(Some(val))`.
+- [x] T024 [US1] Implement `execute` method in `src/functions/plsql/backend.rs` to: parse the code, setup environment with arguments, run the interpreter, and extract the returned `Value`.
+- [x] T025 [US1] Verify that `tests/plsql_functions.rs` integration tests pass successfully with `make test`.
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -63,6 +63,6 @@ description: "Task list for PL/SQL Scalar Functions feature implementation"
 
 **Purpose**: Improvements that affect multiple user stories and code quality.
 
-- [ ] T030 [P] Run `make lint` and fix any formatting/clippy warnings introduced in the PL/SQL module.
-- [ ] T031 [P] Verify `make license` passes to ensure all `.rs` files have the correct Apache-2.0 copyright header.
-- [ ] T032 Verify `unwrap()` and `expect()` are not used inappropriately in the new parsing and interpretation logic.
+- [x] T030 [P] Run `make lint` and fix any formatting/clippy warnings introduced in the PL/SQL module.
+- [x] T031 [P] Verify `make license` passes to ensure all `.rs` files have the correct Apache-2.0 copyright header.
+- [x] T032 Verify `unwrap()` and `expect()` are not used inappropriately in the new parsing and interpretation logic.

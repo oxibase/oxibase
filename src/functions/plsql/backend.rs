@@ -15,7 +15,7 @@
 use super::env::Environment;
 use super::interpreter::PlSqlInterpreter;
 use super::parser::PlSqlParser;
-use crate::core::{Error, Result, Value};
+use crate::core::{Result, Value};
 use crate::functions::backends::ScriptingBackend;
 use crate::functions::FunctionRegistry;
 use std::sync::Arc;
@@ -47,9 +47,24 @@ impl ScriptingBackend for PlSqlBackend {
         }
     }
 
-    fn execute(&self, _code: &str, _args: &[Value], _param_names: &[&str]) -> Result<Value> {
-        // Scalar functions in PL/SQL not fully implemented yet
-        Err(Error::internal("PL/SQL scalar functions not implemented"))
+    fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
+        let mut parser = PlSqlParser::new(code);
+        let block = parser.parse()?;
+
+        let mut env = Environment::new();
+
+        // Bind arguments globally
+        for (i, arg) in args.iter().enumerate() {
+            env.define_global(param_names[i], arg.clone());
+        }
+
+        let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), None);
+
+        if let Some(val) = interpreter.execute(&block, &mut env)? {
+            Ok(val)
+        } else {
+            Ok(Value::Null(crate::core::DataType::Null))
+        }
     }
 
     fn execute_procedure(
