@@ -36,3 +36,16 @@ CREATE TABLE IF NOT EXISTS system.logs (
 pub fn is_logs_table(schema: &str, name: &str) -> bool {
     schema.eq_ignore_ascii_case("system") && name.eq_ignore_ascii_case("logs")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_logs_table() {
+        assert!(is_logs_table("system", "logs"));
+        assert!(is_logs_table("SYSTEM", "LOGS"));
+        assert!(!is_logs_table("public", "logs"));
+        assert!(!is_logs_table("system", "tables"));
+    }
+}
