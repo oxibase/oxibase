@@ -746,11 +746,11 @@ fn main() {
         .with_thread_ids(true)
         .with_level(true)
         .with_writer(std::io::stderr);
-    let filter_layer = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    use tracing_subscriber::Layer;
+    let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
 
     tracing_subscriber::registry()
-        .with(filter_layer)
-        .with(fmt_layer)
+        .with(fmt_layer.with_filter(console_filter))
         .with(internal_layer)
         .init();
 
