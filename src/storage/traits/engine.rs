@@ -175,9 +175,18 @@ pub trait Engine: Send + Sync {
         column_name: &str,
         data_type: crate::core::DataType,
         nullable: bool,
+        auto_increment: Option<bool>,
+        check_expr: Option<Option<String>>,
     ) {
         // Default implementation does nothing
-        let _ = (table_name, column_name, data_type, nullable);
+        let _ = (
+            table_name,
+            column_name,
+            data_type,
+            nullable,
+            auto_increment,
+            check_expr,
+        );
     }
 
     /// Record ALTER TABLE RENAME TO operation to WAL for persistence

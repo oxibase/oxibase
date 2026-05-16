@@ -1153,9 +1153,62 @@ impl MVCCEngine {
                     ));
                 }
                 let nullable = data[pos] != 0;
+                pos += 1;
+
+                // Read auto_increment_present
+                let mut auto_increment_opt = None;
+                if pos < data.len() {
+                    let ai_present = data[pos] != 0;
+                    pos += 1;
+                    if ai_present && pos < data.len() {
+                        auto_increment_opt = Some(data[pos] != 0);
+                        pos += 1;
+                    }
+                }
+
+                // Read check_expr_present
+                let mut check_expr_opt = None;
+                if pos < data.len() {
+                    let ce_present = data[pos] != 0;
+                    pos += 1;
+                    if ce_present && pos < data.len() {
+                        let ce_is_some = data[pos] != 0;
+                        pos += 1;
+                        if ce_is_some {
+                            if pos + 2 > data.len() {
+                                return Err(Error::internal(
+                                    "invalid ModifyColumn data: missing check_expr length",
+                                ));
+                            }
+                            let ce_len =
+                                u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+                            pos += 2;
+                            if pos + ce_len > data.len() {
+                                return Err(Error::internal(
+                                    "invalid ModifyColumn data: missing check_expr string",
+                                ));
+                            }
+                            let expr = String::from_utf8(data[pos..pos + ce_len].to_vec())
+                                .map_err(|e| {
+                                    Error::internal(format!("invalid check_expr string: {}", e))
+                                })?;
+                            check_expr_opt = Some(Some(expr));
+                            let _ = ce_len; // pos increment would be unused
+                        } else {
+                            check_expr_opt = Some(None);
+                        }
+                    }
+                }
 
                 // Apply the MODIFY COLUMN using engine method
-                self.modify_column(&table_name, &column_name, data_type, nullable)?;
+                self.modify_column(
+                    &table_name,
+                    &column_name,
+                    data_type,
+                    nullable,
+                    auto_increment_opt,
+                    check_expr_opt,
+                )?;
             }
             5 => {
                 // RenameTable - special handling since table name changes
@@ -1602,6 +1655,8 @@ impl MVCCEngine {
         column_name: &str,
         data_type: DataType,
         nullable: bool,
+        auto_increment: Option<bool>,
+        check_expr: Option<Option<String>>,
     ) -> Result<()> {
         if !self.is_open() {
             return Err(Error::EngineNotOpen);
@@ -1624,13 +1679,25 @@ impl MVCCEngine {
         }
 
         // Modify column in schema
-        schema.modify_column(column_name, Some(data_type), Some(nullable))?;
+        schema.modify_column(
+            column_name,
+            Some(data_type),
+            Some(nullable),
+            auto_increment,
+            check_expr.clone(),
+        )?;
 
         // Also update version store schema
         let stores = self.version_stores.read().unwrap();
         if let Some(store) = stores.get(&table_name_lower) {
             let mut vs_schema = store.schema_mut();
-            vs_schema.modify_column(column_name, Some(data_type), Some(nullable))?;
+            vs_schema.modify_column(
+                column_name,
+                Some(data_type),
+                Some(nullable),
+                auto_increment,
+                check_expr,
+            )?;
         }
 
         Ok(())
@@ -2508,6 +2575,8 @@ impl Engine for MVCCEngine {
         column_name: &str,
         data_type: crate::core::DataType,
         nullable: bool,
+        auto_increment: Option<bool>,
+        check_expr: Option<Option<String>>,
     ) {
         if self.should_skip_wal() {
             return;
@@ -2515,6 +2584,8 @@ impl Engine for MVCCEngine {
 
         // Serialize: operation_type(1) + table_name_len(2) + table_name
         //          + column_name_len(2) + column_name + data_type(1) + nullable(1)
+        //          + auto_increment_present(1) + [auto_increment(1)]
+        //          + check_expr_present(1) + [check_expr_is_some(1) + [check_expr_len(2) + check_expr]]
         let mut data = Vec::new();
         data.push(4u8); // Operation type: ModifyColumn = 4
 
@@ -2531,6 +2602,28 @@ impl Engine for MVCCEngine {
 
         // Nullable
         data.push(if nullable { 1 } else { 0 });
+
+        // Auto increment
+        if let Some(ai) = auto_increment {
+            data.push(1); // present
+            data.push(if ai { 1 } else { 0 });
+        } else {
+            data.push(0); // not present
+        }
+
+        // Check expression
+        if let Some(ce_opt) = check_expr {
+            data.push(1); // present
+            if let Some(ce) = ce_opt {
+                data.push(1); // is_some
+                data.extend_from_slice(&(ce.len() as u16).to_le_bytes());
+                data.extend_from_slice(ce.as_bytes());
+            } else {
+                data.push(0); // is_none
+            }
+        } else {
+            data.push(0); // not present
+        }
 
         self.record_ddl(table_name, WALOperationType::AlterTable, &data);
     }
