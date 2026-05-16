@@ -228,14 +228,52 @@ impl Completer for SqlHelper {
             };
 
         if is_table_context {
-            // Query tables
-            let sql = "SELECT table_name FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL";
+            // Query tables and schemas
+            let sql = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL";
             if let Ok(rows) = self.db.query(sql, ()) {
+                let mut schemas = std::collections::HashSet::new();
+                let word_lower = word.to_lowercase();
+
+                let (has_dot, schema_prefix, table_prefix) =
+                    if let Some(dot_idx) = word_lower.find('.') {
+                        (true, &word_lower[..dot_idx], &word_lower[dot_idx + 1..])
+                    } else {
+                        (false, "", word_lower.as_str())
+                    };
+
                 for row in rows.flatten() {
-                    if let Some(Value::Text(table_name)) = row.get_value(0) {
-                        if table_name.to_lowercase().starts_with(&word.to_lowercase()) {
+                    let schema_name = match row.get_value(0) {
+                        Some(Value::Text(s)) => s.to_string(),
+                        _ => "public".to_string(),
+                    };
+                    let table_name = match row.get_value(1) {
+                        Some(Value::Text(t)) => t.to_string(),
+                        _ => continue,
+                    };
+
+                    if has_dot {
+                        if schema_name.to_lowercase() == schema_prefix
+                            && table_name.to_lowercase().starts_with(table_prefix)
+                        {
                             candidates.push(Pair {
-                                display: table_name.to_string(),
+                                display: table_name.clone(),
+                                replacement: format!("{}.{} ", schema_name, table_name),
+                            });
+                        }
+                    } else {
+                        // Suggest schemas
+                        if schema_name.to_lowercase().starts_with(&word_lower)
+                            && schemas.insert(schema_name.clone())
+                        {
+                            candidates.push(Pair {
+                                display: format!("{}.", schema_name),
+                                replacement: format!("{}.", schema_name),
+                            });
+                        }
+                        // Suggest tables directly
+                        if table_name.to_lowercase().starts_with(&word_lower) {
+                            candidates.push(Pair {
+                                display: table_name.clone(),
                                 replacement: format!("{} ", table_name),
                             });
                         }
@@ -1654,5 +1692,20 @@ mod tests {
         let (pos, candidates) = helper.complete("SELECT * FROM ", 14, &ctx).unwrap();
         assert_eq!(pos, 14); // Index of ""
         assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+
+        // Test schema suggestion (public)
+        let (pos, candidates) = helper.complete("SELECT * FROM pub", 17, &ctx).unwrap();
+        assert_eq!(pos, 14); // Index of "pub"
+        assert!(candidates.iter().any(|c| c.display == "public."));
+
+        // Test fully qualified table suggestion
+        let (pos, candidates) = helper
+            .complete("SELECT * FROM public.my_", 24, &ctx)
+            .unwrap();
+        assert_eq!(pos, 14); // Index of "public.my_"
+        assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+        assert!(candidates
+            .iter()
+            .any(|c| c.replacement == "public.my_awesome_table "));
     }
 }
