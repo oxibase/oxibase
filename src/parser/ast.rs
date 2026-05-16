@@ -272,7 +272,14 @@ impl TableName {
     pub fn value(&self) -> String {
         match self {
             TableName::Simple(id) => id.value.clone(),
-            TableName::Qualified(qi) => format!("{}.{}", qi.qualifier.value, qi.name.value),
+            TableName::Qualified(qi) => {
+                let schema_lower = qi.qualifier.value.to_lowercase();
+                if schema_lower == "public" {
+                    qi.name.value.clone()
+                } else {
+                    format!("{}.{}", qi.qualifier.value, qi.name.value)
+                }
+            }
         }
     }
 

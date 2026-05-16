@@ -228,15 +228,57 @@ impl Completer for SqlHelper {
             };
 
         if is_table_context {
-            // Query tables
-            let sql = "SELECT table_name FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL";
+            // Query tables and schemas
+            let sql = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema != 'system' OR table_schema IS NULL";
             if let Ok(rows) = self.db.query(sql, ()) {
+                let mut schemas = std::collections::HashSet::new();
+                let word_lower = word.to_lowercase();
+
+                let (has_dot, schema_prefix, table_prefix) =
+                    if let Some(dot_idx) = word_lower.find('.') {
+                        (true, &word_lower[..dot_idx], &word_lower[dot_idx + 1..])
+                    } else {
+                        (false, "", word_lower.as_str())
+                    };
+
                 for row in rows.flatten() {
-                    if let Some(Value::Text(table_name)) = row.get_value(0) {
-                        if table_name.to_lowercase().starts_with(&word.to_lowercase()) {
+                    let schema_name = match row.get_value(0) {
+                        Some(Value::Text(s)) => s.to_string(),
+                        _ => "public".to_string(),
+                    };
+                    let table_name = match row.get_value(1) {
+                        Some(Value::Text(t)) => t.to_string(),
+                        _ => continue,
+                    };
+
+                    if has_dot {
+                        if schema_name.to_lowercase() == schema_prefix
+                            && table_name.to_lowercase().starts_with(table_prefix)
+                        {
                             candidates.push(Pair {
-                                display: table_name.to_string(),
-                                replacement: format!("{} ", table_name),
+                                display: table_name.to_lowercase(),
+                                replacement: format!(
+                                    "{}.{} ",
+                                    schema_name.to_lowercase(),
+                                    table_name.to_lowercase()
+                                ),
+                            });
+                        }
+                    } else {
+                        // Suggest schemas
+                        if schema_name.to_lowercase().starts_with(&word_lower)
+                            && schemas.insert(schema_name.clone())
+                        {
+                            candidates.push(Pair {
+                                display: format!("{}.", schema_name.to_lowercase()),
+                                replacement: format!("{}.", schema_name.to_lowercase()),
+                            });
+                        }
+                        // Suggest tables directly
+                        if table_name.to_lowercase().starts_with(&word_lower) {
+                            candidates.push(Pair {
+                                display: table_name.to_lowercase(),
+                                replacement: format!("{} ", table_name.to_lowercase()),
                             });
                         }
                     }
@@ -252,9 +294,10 @@ impl Completer for SqlHelper {
         if !is_table_context {
             for keyword in SQL_KEYWORDS {
                 if keyword.starts_with(&word_upper) {
+                    let kw_lower = keyword.to_lowercase();
                     candidates.push(Pair {
-                        display: keyword.to_string(),
-                        replacement: format!("{} ", keyword),
+                        display: kw_lower.clone(),
+                        replacement: format!("{} ", kw_lower),
                     });
                 }
             }
@@ -262,9 +305,10 @@ impl Completer for SqlHelper {
             // Check for CLI commands
             for cmd in CLI_COMMANDS {
                 if cmd.starts_with(word) {
+                    let cmd_lower = cmd.to_lowercase();
                     candidates.push(Pair {
-                        display: cmd.to_string(),
-                        replacement: cmd.to_string(),
+                        display: cmd_lower.clone(),
+                        replacement: cmd_lower,
                     });
                 }
             }
@@ -1597,25 +1641,25 @@ mod tests {
         let (pos, candidates) = helper.complete("SEL", 3, &ctx).unwrap();
         assert_eq!(pos, 0);
         assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].display, "SELECT");
+        assert_eq!(candidates[0].display, "select");
 
         // Lowercase input
         let (pos, candidates) = helper.complete("crea", 4, &ctx).unwrap();
         assert_eq!(pos, 0);
         assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].display, "CREATE");
+        assert_eq!(candidates[0].display, "create");
 
         // Multiple matches
         let (pos, candidates) = helper.complete("C", 1, &ctx).unwrap();
         assert_eq!(pos, 0);
-        assert!(candidates.iter().any(|c| c.display == "CREATE"));
-        assert!(candidates.iter().any(|c| c.display == "COMMIT"));
+        assert!(candidates.iter().any(|c| c.display == "create"));
+        assert!(candidates.iter().any(|c| c.display == "commit"));
 
         // Mid-line word extraction
         let (pos, candidates) = helper.complete("CREATE tab", 10, &ctx).unwrap();
         assert_eq!(pos, 7); // Index of "tab"
         assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].display, "TABLE");
+        assert_eq!(candidates[0].display, "table");
 
         // CLI commands
         let (pos, candidates) = helper.complete("he", 2, &ctx).unwrap();
@@ -1654,5 +1698,20 @@ mod tests {
         let (pos, candidates) = helper.complete("SELECT * FROM ", 14, &ctx).unwrap();
         assert_eq!(pos, 14); // Index of ""
         assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+
+        // Test schema suggestion (public)
+        let (pos, candidates) = helper.complete("SELECT * FROM pub", 17, &ctx).unwrap();
+        assert_eq!(pos, 14); // Index of "pub"
+        assert!(candidates.iter().any(|c| c.display == "public."));
+
+        // Test fully qualified table suggestion
+        let (pos, candidates) = helper
+            .complete("SELECT * FROM public.my_", 24, &ctx)
+            .unwrap();
+        assert_eq!(pos, 14); // Index of "public.my_"
+        assert!(candidates.iter().any(|c| c.display == "my_awesome_table"));
+        assert!(candidates
+            .iter()
+            .any(|c| c.replacement == "public.my_awesome_table "));
     }
 }
