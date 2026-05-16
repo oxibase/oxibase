@@ -313,9 +313,17 @@ impl ExprVM {
 
                 Op::NextVal => {
                     let seq_name = self.stack.pop().unwrap().as_string().unwrap_or_default();
+                    let parts: Vec<&str> = seq_name.split('.').collect();
+                    let (schema_name, name) = if parts.len() > 1 {
+                        (parts[0], parts[1])
+                    } else {
+                        // TODO: Use actual current schema from context
+                        ("public", parts[0])
+                    };
+
                     let value = if let Some(engine) = crate::executor::context::get_current_engine()
                     {
-                        match engine.nextval(&seq_name) {
+                        match engine.nextval(schema_name, name) {
                             Ok(val) => {
                                 crate::executor::context::cache_currval(seq_name, val);
                                 Value::Integer(val)
@@ -347,9 +355,17 @@ impl ExprVM {
                     let value = self.stack.pop().unwrap().as_int64().unwrap_or_default();
                     let seq_name = self.stack.pop().unwrap().as_string().unwrap_or_default();
 
+                    let parts: Vec<&str> = seq_name.split('.').collect();
+                    let (schema_name, name) = if parts.len() > 1 {
+                        (parts[0], parts[1])
+                    } else {
+                        // TODO: Use actual current schema from context
+                        ("public", parts[0])
+                    };
+
                     let result =
                         if let Some(engine) = crate::executor::context::get_current_engine() {
-                            match engine.setval(&seq_name, value, is_called) {
+                            match engine.setval(schema_name, name, value, is_called) {
                                 Ok(val) => {
                                     // Also update currval for this session
                                     crate::executor::context::cache_currval(seq_name, val);

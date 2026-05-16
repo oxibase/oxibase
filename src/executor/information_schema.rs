@@ -91,11 +91,11 @@ impl Executor {
             ]));
         }
 
-        // Add views (views are global, no schema)
-        for view_name in view_names {
+        // Add views
+        for (schema_name, view_name) in view_names {
             rows.push(Row::from_values(vec![
-                Value::Text(Arc::from("def")),            // catalog
-                Value::Null(crate::core::DataType::Text), // schema (NULL for views)
+                Value::Text(Arc::from("def")),                // catalog
+                Value::Text(Arc::from(schema_name.as_str())), // schema
                 Value::Text(Arc::from(view_name.as_str())),
                 Value::Text(Arc::from("VIEW")),
             ]));
@@ -363,11 +363,11 @@ impl Executor {
 
         let mut rows: Vec<Row> = Vec::new();
 
-        for view_name in view_names {
-            if let Ok(Some(view_def)) = self.engine.get_view(&view_name) {
+        for (schema_name, view_name) in view_names {
+            if let Ok(Some(view_def)) = self.engine.get_view(&schema_name, &view_name) {
                 rows.push(Row::from_values(vec![
                     Value::Text(Arc::from("def")),
-                    Value::Null(DataType::Text),
+                    Value::Text(Arc::from(schema_name.as_str())),
                     Value::Text(Arc::from(view_def.original_name.as_str())),
                     Value::Text(Arc::from(view_def.query.as_str())),
                 ]));
@@ -459,10 +459,10 @@ impl Executor {
 
         let sequences = self.engine.list_sequences()?;
 
-        for (name, options, current_val) in sequences {
+        for (schema_name, name, options, current_val) in sequences {
             rows.push(Row::from_values(vec![
-                Value::text("def"),    // catalog
-                Value::text("public"), // schema
+                Value::text("def"),       // catalog
+                Value::text(schema_name), // schema
                 Value::text(name),
                 Value::text("bigint"), // Assuming all sequences are bigint
                 Value::integer(64),    // precision

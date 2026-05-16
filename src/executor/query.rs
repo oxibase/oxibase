@@ -926,7 +926,13 @@ impl Executor {
                 }
 
                 // Check if this is actually a view (single lookup, no double RwLock acquisition)
-                if let Some(view_def) = self.engine.get_view_lowercase(table_name)? {
+                let schema_name = table_source
+                    .name
+                    .schema()
+                    .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+                    .to_lowercase();
+                let view_name = table_source.name.table().to_lowercase();
+                if let Some(view_def) = self.engine.get_view_lowercase(&schema_name, &view_name)? {
                     return self.execute_view_query(&view_def, stmt, ctx);
                 }
                 self.execute_simple_table_scan(table_source, stmt, ctx)
@@ -3925,7 +3931,13 @@ impl Executor {
                 }
 
                 // Check if this is actually a view (for JOINs that reference views)
-                if let Some(view_def) = self.engine.get_view_lowercase(table_name)? {
+                let schema_name = ts
+                    .name
+                    .schema()
+                    .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string())
+                    .to_lowercase();
+                let view_name = ts.name.table().to_lowercase();
+                if let Some(view_def) = self.engine.get_view_lowercase(&schema_name, &view_name)? {
                     // Check view depth to prevent stack overflow
                     let depth = ctx.view_depth();
                     if depth >= MAX_VIEW_DEPTH {
