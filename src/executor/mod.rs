@@ -413,14 +413,14 @@ impl Executor {
         // Load each function from the system table
         while scanner.next() {
             let row = scanner.row();
-            // Schema: id(0), name(1), parameters(2), return_type(3), language(4), code(5)
+            // Schema: id(0), schema(1), name(2), parameters(3), return_type(4), language(5), code(6)
             if let (
                 Some(Value::Text(name)),
                 Some(Value::Text(parameters_json)),
                 Some(Value::Text(_return_type)),
                 Some(Value::Text(_language)),
                 Some(Value::Text(code)),
-            ) = (row.get(1), row.get(2), row.get(3), row.get(4), row.get(5))
+            ) = (row.get(2), row.get(3), row.get(4), row.get(5), row.get(6))
             {
                 // Parse parameters from JSON
                 let stored_parameters: Vec<StoredParameter> = serde_json::from_str(parameters_json)
