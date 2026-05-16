@@ -747,7 +747,8 @@ fn main() {
         .with_level(true)
         .with_writer(std::io::stderr);
     use tracing_subscriber::Layer;
-    let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
+    let console_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
 
     tracing_subscriber::registry()
         .with(fmt_layer.with_filter(console_filter))
