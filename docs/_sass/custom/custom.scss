@@ -41,7 +41,7 @@
 
 // Sidebar
 .side-bar {
-    background-color: $sidebar-color;
+    background-color: if($color-scheme == 'dark', darken($sidebar-color, 3%), $sidebar-color);
 }
 
 .site-logo, .home-logo {
