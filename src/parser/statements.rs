@@ -3715,8 +3715,8 @@ impl Parser {
         let mut columns = Vec::new();
         if self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == "(" {
             self.next_token(); // consume '('
-            while !self.cur_token_is(TokenType::Eof)
-                && !(self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ")")
+            while !(self.cur_token_is(TokenType::Eof)
+                || (self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ")"))
             {
                 if !self.cur_token_is(TokenType::Identifier)
                     && !self.cur_token_is(TokenType::Keyword)
@@ -3788,8 +3788,8 @@ impl Parser {
                 return None;
             }
 
-            while !self.cur_token_is(TokenType::Eof)
-                && !(self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ")")
+            while !(self.cur_token_is(TokenType::Eof)
+                || (self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == ")"))
             {
                 if !self.cur_token_is(TokenType::Keyword) {
                     self.add_error(format!(
