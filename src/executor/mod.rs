@@ -46,6 +46,7 @@
 //! - Various result wrappers for query pipeline
 
 pub mod context;
+pub mod copy;
 pub mod expression;
 pub mod parallel;
 pub mod pattern_cache;
@@ -902,6 +903,7 @@ impl Executor {
             Statement::CreateSchedule(stmt) => self.execute_create_schedule(stmt, &ctx),
             Statement::AlterSchedule(stmt) => self.execute_alter_schedule(stmt, &ctx),
             Statement::DropSchedule(stmt) => self.execute_drop_schedule(stmt, &ctx),
+            Statement::Copy(stmt) => self.execute_copy(stmt, &ctx),
         }
     }
 

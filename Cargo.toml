@@ -82,6 +82,7 @@ ahash = "0.8"  # Fast hash for hash indexes (~30 GB/s, DOS-resistant)
 roaring = "0.11"  # Compressed bitmap indexes (used by Lucene, Druid, Spark)
 cron = "0.16"
 crossbeam-channel = "0.5.15"
+csv = "1.4.0"
 
 # Platform-specific file locking
 [target.'cfg(unix)'.dependencies]
