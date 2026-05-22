@@ -4,7 +4,7 @@ layout: default
 nav_exclude: true
 ---
 
-<div style="text-align: center;"><img src="assets/img/logo.svg" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
+<div style="text-align: center;"><img src="assets/img/logo.svg" class="home-logo" alt="Oxibase Logo" style="max-width: 200px; height: auto;"></div>
 
 Oxibase is an autonomous database management operating system (DBMOS) that
 embodies a _"Modern Mainframe"_ philosophy: bringing computation directly to

@@ -44,7 +44,7 @@
     background-color: $sidebar-color;
 }
 
-.site-logo {
+.site-logo, .home-logo {
     filter: if($color-scheme == 'dark', invert(1) brightness(2), none);
 }
 
