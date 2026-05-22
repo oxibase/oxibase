@@ -49,6 +49,18 @@
 }
 
 // Footer
+.site-footer {
+    color: if($color-scheme == 'dark', $grey-lt-300, $grey-dk-000);
+}
+
+footer {
+    p.text-grey-dk-100,
+    p.text-grey-dk-000,
+    a {
+        color: if($color-scheme == 'dark', $grey-lt-300, null) !important;
+    }
+}
+
 .nav-footer-custom {
     width: 100%;
     display: flex;
