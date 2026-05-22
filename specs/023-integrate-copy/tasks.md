@@ -28,8 +28,8 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Update `Cargo.toml` to include the `csv` crate dependency (and verify `serde_json` is present).
-- [ ] T002 Verify project compiles (`cargo build`).
+- [x] T001 Update `Cargo.toml` to include the `csv` crate dependency (and verify `serde_json` is present).
+- [x] T002 Verify project compiles (`cargo build`).
 
 ---
 
@@ -39,11 +39,11 @@ description: "Task list template for feature implementation"
 
 **Independent Test**: Can be tested via unit tests inside the parser module (or simply compilation).
 
-- [ ] T003 [P] Add `CopyFormat` enum and `CopyStatement` struct to `src/parser/ast.rs` (as per `contracts/ast.md`).
-- [ ] T004 [P] Add `Copy` variant to the `Statement` enum in `src/parser/ast.rs`.
-- [ ] T005 Update lexer (`src/parser/lexer.rs` / `src/parser/token.rs`) to ensure keywords `COPY`, `FORMAT`, `HEADER`, `DELIMITER`, and `CSV` / `JSON` are recognized correctly if not already present.
-- [ ] T006 Implement parsing logic for `COPY FROM` in `src/parser/statements.rs`.
-- [ ] T007 Add AST parsing unit tests in `src/parser/statements.rs` or relevant test file.
+- [x] T003 [P] Add `CopyFormat` enum and `CopyStatement` struct to `src/parser/ast.rs` (as per `contracts/ast.md`).
+- [x] T004 [P] Add `Copy` variant to the `Statement` enum in `src/parser/ast.rs`.
+- [x] T005 Update lexer (`src/parser/lexer.rs` / `src/parser/token.rs`) to ensure keywords `COPY`, `FORMAT`, `HEADER`, `DELIMITER`, and `CSV` / `JSON` are recognized correctly if not already present.
+- [x] T006 Implement parsing logic for `COPY FROM` in `src/parser/statements.rs`.
+- [x] T007 Add AST parsing unit tests in `src/parser/statements.rs` or relevant test file.
 
 ---
 
@@ -57,17 +57,17 @@ description: "Task list template for feature implementation"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Create a basic CSV integration test in `tests/copy_from_test.rs`. Include tests for malformed data and constraint checks.
+- [x] T010 [P] [US1] Create a basic CSV integration test in `tests/copy_from_test.rs`. Include tests for malformed data and constraint checks.
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Create `src/executor/copy.rs` and implement the base `execute_copy` dispatch method.
-- [ ] T012 [US1] Implement `copy_from_csv` in `src/executor/copy.rs` utilizing the `csv` crate.
-- [ ] T013 [US1] Implement the `parse_field` helper in `src/executor/copy.rs` to convert strings directly to Oxibase `Value`s without allocations where possible.
-- [ ] T014 [US1] Wire up `Statement::Copy` inside `src/executor/query.rs` to call `execute_copy`.
-- [ ] T015 [US1] Add file to the module tree in `src/executor/mod.rs` (`pub mod copy;`).
-- [ ] T016 [US1] Ensure the `COPY` transaction commits successfully and rolls back on errors or constraint checks (`validate_check_constraint` & `check_parent_exists`).
-- [ ] T017 [US1] Run `make test` to verify passing the CSV integration tests.
+- [x] T011 [US1] Create `src/executor/copy.rs` and implement the base `execute_copy` dispatch method.
+- [x] T012 [US1] Implement `copy_from_csv` in `src/executor/copy.rs` utilizing the `csv` crate.
+- [x] T013 [US1] Implement the `parse_field` helper in `src/executor/copy.rs` to convert strings directly to Oxibase `Value`s without allocations where possible.
+- [x] T014 [US1] Wire up `Statement::Copy` inside `src/executor/query.rs` to call `execute_copy`.
+- [x] T015 [US1] Add file to the module tree in `src/executor/mod.rs` (`pub mod copy;`).
+- [x] T016 [US1] Ensure the `COPY` transaction commits successfully and rolls back on errors or constraint checks (`validate_check_constraint` & `check_parent_exists`).
+- [x] T017 [US1] Run `make test` to verify passing the CSV integration tests.
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently.
 
@@ -81,15 +81,15 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T020 [P] [US2] Add JSON test cases to `tests/copy_from_test.rs` covering both JSON Arrays and JSON Lines formats. Include vector dimensionality tests.
+- [x] T020 [P] [US2] Add JSON test cases to `tests/copy_from_test.rs` covering both JSON Arrays and JSON Lines formats. Include vector dimensionality tests.
 
 ### Implementation for User Story 2
 
-- [ ] T021 [P] [US2] Implement the `JsonArrayStripper` stream reader adapter in `src/executor/copy.rs`.
-- [ ] T022 [P] [US2] Implement the `json_value_to_stoolap` coercion helper in `src/executor/copy.rs`.
-- [ ] T023 [US2] Implement `copy_from_json` and `insert_json_row` in `src/executor/copy.rs`.
-- [ ] T024 [US2] Ensure vector dimension bounds are enforced (`validate_vector_dims`) within JSON ingestion.
-- [ ] T025 [US2] Run `make test` to verify the JSON integration tests pass.
+- [x] T021 [P] [US2] Implement the `JsonArrayStripper` stream reader adapter in `src/executor/copy.rs`.
+- [x] T022 [P] [US2] Implement the `json_value_to_stoolap` coercion helper in `src/executor/copy.rs`.
+- [x] T023 [US2] Implement `copy_from_json` and `insert_json_row` in `src/executor/copy.rs`.
+- [x] T024 [US2] Ensure vector dimension bounds are enforced (`validate_vector_dims`) within JSON ingestion.
+- [x] T025 [US2] Run `make test` to verify the JSON integration tests pass.
 
 ---
 
@@ -101,14 +101,14 @@ description: "Task list template for feature implementation"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T030 [P] [US3] Add tests for selective columns (CSV) and extra JSON keys to `tests/copy_from_test.rs`. Verify default values are correctly assigned to missing columns.
+- [x] T030 [P] [US3] Add tests for selective columns (CSV) and extra JSON keys to `tests/copy_from_test.rs`. Verify default values are correctly assigned to missing columns.
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Implement `build_default_row` helper in `src/executor/copy.rs` to properly evaluate schema defaults for missing columns.
-- [ ] T032 [US3] Update CSV logic to map headers to selective columns if specified.
-- [ ] T033 [US3] Update JSON logic to map specific JSON keys case-insensitively and ignore extra keys when column lists are provided.
-- [ ] T034 [US3] Run `make test` to verify all selective column ingestion scenarios.
+- [x] T031 [US3] Implement `build_default_row` helper in `src/executor/copy.rs` to properly evaluate schema defaults for missing columns.
+- [x] T032 [US3] Update CSV logic to map headers to selective columns if specified.
+- [x] T033 [US3] Update JSON logic to map specific JSON keys case-insensitively and ignore extra keys when column lists are provided.
+- [x] T034 [US3] Run `make test` to verify all selective column ingestion scenarios.
 
 ---
 
@@ -116,9 +116,9 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Improvements that affect multiple user stories, ensuring constitution compliance.
 
-- [ ] T040 Verify semantic and subquery caches are correctly invalidated inside `execute_copy` upon a successful commit.
-- [ ] T041 Verify transaction isolation (ensuring `COPY` throws an error if called within an active transaction).
-- [ ] T042 Verify `unwrap()` and `expect()` are not used inappropriately in the new code.
-- [ ] T043 Add missing Apache-2.0 headers (can run `./scripts/fix_copyrights.sh`).
-- [ ] T044 Run `make lint` and fix any warnings (`cargo fmt` and `cargo clippy`).
-- [ ] T045 Run `make license` to ensure compliance.
+- [x] T040 Verify semantic and subquery caches are correctly invalidated inside `execute_copy` upon a successful commit.
+- [x] T041 Verify transaction isolation (ensuring `COPY` throws an error if called within an active transaction).
+- [x] T042 Verify `unwrap()` and `expect()` are not used inappropriately in the new code.
+- [x] T043 Add missing Apache-2.0 headers (can run `./scripts/fix_copyrights.sh`).
+- [x] T044 Run `make lint` and fix any warnings (`cargo fmt` and `cargo clippy`).
+- [x] T045 Run `make license` to ensure compliance.

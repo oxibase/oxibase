@@ -392,6 +392,11 @@ pub static KEYWORDS: &[&str] = &[
     "WHILE",
     "LOOP",
     "DECLARE",
+    "COPY",
+    "FORMAT",
+    "HEADER",
+    "DELIMITER",
+    "CSV",
 ];
 
 /// Compiled keyword set for O(1) lookups

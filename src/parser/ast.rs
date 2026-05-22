@@ -1359,6 +1359,7 @@ pub enum Statement {
     Expression(ExpressionStatement),
     Explain(ExplainStatement),
     Analyze(AnalyzeStatement),
+    Copy(CopyStatement),
 }
 
 impl fmt::Display for Statement {
@@ -1410,6 +1411,7 @@ impl fmt::Display for Statement {
             Statement::Expression(s) => write!(f, "{}", s),
             Statement::Explain(s) => write!(f, "{}", s),
             Statement::Analyze(s) => write!(f, "{}", s),
+            Statement::Copy(s) => write!(f, "{}", s),
         }
     }
 }
@@ -3086,5 +3088,71 @@ impl fmt::Display for DropTriggerStatement {
         result.push_str(&self.trigger_name.to_string());
         result.push_str(&format!(" ON {}", self.table_name));
         write!(f, "{}", result)
+    }
+}
+
+// ============================================================================
+// COPY FROM
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CopyFormat {
+    Csv,
+    Json,
+}
+
+impl fmt::Display for CopyFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CopyFormat::Csv => write!(f, "CSV"),
+            CopyFormat::Json => write!(f, "JSON"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CopyStatement {
+    pub token: Token,
+    pub table_name: Identifier,
+    pub columns: Vec<Identifier>,
+    pub file_path: String,
+    pub format: CopyFormat,
+    pub header: bool,
+    pub delimiter: u8,
+    pub null_string: Option<String>,
+}
+
+impl fmt::Display for CopyStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "COPY {}", self.table_name)?;
+        if !self.columns.is_empty() {
+            write!(f, " (")?;
+            for (i, col) in self.columns.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", col)?;
+            }
+            write!(f, ")")?;
+        }
+        write!(f, " FROM '{}'", self.file_path)?;
+
+        let mut options = Vec::new();
+        options.push(format!("FORMAT {}", self.format));
+        if self.header {
+            options.push("HEADER true".to_string());
+        }
+        if self.delimiter != b',' {
+            options.push(format!("DELIMITER '{}'", self.delimiter as char));
+        }
+        if let Some(null_str) = &self.null_string {
+            options.push(format!("NULL '{}'", null_str));
+        }
+
+        if !options.is_empty() {
+            write!(f, " WITH ({})", options.join(", "))?;
+        }
+
+        Ok(())
     }
 }
