@@ -5,7 +5,7 @@
 
 ## Summary
 
-Implement the `generate_series` table-valued function by porting it from the `stoolap` repository. This entails adding AST support for `FunctionTableSource`, parsing logic for functions in the `FROM` clause, and iterator-based execution logic to return sequences of values.
+Implement the `generate_series` table-valued function (and corresponding scalar function) by porting it from the `stoolap` repository. This entails adding AST support for `FunctionTableSource`, parsing logic for functions in the `FROM` clause, and iterator-based execution logic to return sequences of values. It supports Integers, Floats, Dates, and Timestamps.
 
 ## Technical Context
 
@@ -13,7 +13,7 @@ Implement the `generate_series` table-valued function by porting it from the `st
 **Primary Dependencies**: thiserror, anyhow
 **Testing**: cargo nextest (via `make test` / `make test-all`)
 **Target Platform**: Embedded Monolithic DB (Linux, macOS, Windows)
-**Performance Goals**: Zero-Copy Unikernel memory efficiency (iterator-based execution, no `Vec` pre-allocation for outputs).
+**Performance Goals**: Zero-Copy Unikernel memory efficiency (iterator-based execution, no `Vec` pre-allocation for TVF outputs).
 **Constraints**: No `unwrap()`, strict ACID compliance, MVCC logic required, must pass `make lint` and `make license`.
 
 ## Constitution Check
@@ -47,7 +47,7 @@ src/
 ├── api/           # Public Database API
 ├── core/          # Core types (Value, Row, Schema, Error)
 ├── executor/      # Query execution engine (execute_tvf_source)
-├── functions/     # Built-in functions (tvf.rs)
+├── functions/     # Built-in functions (tvf.rs, registry.rs)
 ├── optimizer/     # Cost-based query optimizer
 ├── parser/        # SQL parser (ast.rs, statements.rs)
 ├── storage/       # Storage engine and MVCC
@@ -55,7 +55,7 @@ src/
 tests/             # Integration tests (generate_series_test.rs)
 ```
 
-**Structure Decision**: The feature primarily impacts `src/parser/` for parsing `FunctionTableSource`, `src/executor/` for executing it, `src/functions/` for the actual iteration logic, and `tests/` for validation.
+**Structure Decision**: The feature primarily impacts `src/parser/` for parsing `FunctionTableSource`, `src/executor/` for executing it, `src/functions/` for the actual iteration logic and `GenerateSeriesScalarFunction`, and `tests/` for validation.
 
 ## Complexity Tracking
 

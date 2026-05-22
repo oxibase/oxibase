@@ -42,7 +42,7 @@
 
 ## Phase 3: User Story 1 - Generate Series with Start and Stop (Priority: P1) 🎯 MVP
 
-**Goal**: Users want to query a sequence of numbers starting from a given value up to a stop value with a default step of 1.
+**Goal**: Users want to query a sequence of numbers starting from a given value up to a stop value with a default step of 1. Support for integers, floats, and date/timestamps. Support for scalar array return.
 
 **Independent Test**: Port the basic `generate_series(start, stop)` tests from `stoolap` to `tests/generate_series_test.rs`
 
@@ -50,15 +50,16 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T005 [US1] Create failing tests for `test_generate_series_basic` and `test_generate_series_single_value` in `tests/generate_series_test.rs`
+- [ ] T005 [P] [US1] Create failing tests for `test_generate_series_basic`, `test_generate_series_single_value`, `test_generate_series_float`, `test_generate_series_date_days`, `test_generate_series_timestamp_hours`, and `test_generate_series_scalar_returns_array` in `tests/generate_series_test.rs`
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Implement TVF iteration logic for `generate_series` in a new module like `src/functions/tvf.rs` (supporting start, stop, default step 1).
-- [ ] T007 [US1] Implement `execute_tvf_source` in `src/executor/query.rs` (or similar execution file) to route execution to the iteration logic without pre-allocating a large `Vec`.
-- [ ] T008 [US1] Update function registry in `src/functions/registry.rs` to recognize `generate_series`.
-- [ ] T009 [US1] Run `make lint` and fix any warnings
-- [ ] T010 [US1] Run `make test` to verify passing integration tests for basic start/stop.
+- [ ] T006 [P] [US1] Implement TVF iteration logic for `generate_series` in a new module like `src/functions/tvf.rs` supporting start, stop (with default step 1), including type routing for Integers, Floats, Dates, and Timestamps (including `parse_interval`).
+- [ ] T007 [US1] Implement `execute_tvf_source` in `src/executor/query.rs` to route execution to the iteration logic.
+- [ ] T008 [US1] Implement `GenerateSeriesScalarFunction` in `src/functions/tvf.rs` (or similar) to return JSON arrays for scalar queries.
+- [ ] T009 [US1] Update function registry in `src/functions/registry.rs` to register `GenerateSeriesScalarFunction`.
+- [ ] T010 [US1] Run `make lint` and fix any warnings
+- [ ] T011 [US1] Run `make test` to verify passing integration tests for basic start/stop (across all types and scalar mode).
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -74,14 +75,14 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T011 [US2] Create failing tests `test_generate_series_with_step`, `test_generate_series_descending`, `test_generate_series_auto_descending`, and `test_generate_series_zero_step_error` in `tests/generate_series_test.rs`
+- [ ] T012 [US2] Create failing tests `test_generate_series_with_step`, `test_generate_series_descending`, `test_generate_series_auto_descending`, and `test_generate_series_zero_step_error` in `tests/generate_series_test.rs`
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Extend the TVF iteration logic in `src/functions/tvf.rs` to correctly handle custom steps, descending directions, and validation for 0 step.
-- [ ] T013 [US2] Extend logical and physical plan components to correctly propagate the third argument to the iterator state.
-- [ ] T014 [US2] Run `make lint` and fix any warnings
-- [ ] T015 [US2] Run `make test` to verify all integration tests for complex steps and descending sequences pass.
+- [ ] T013 [US2] Extend the TVF iteration logic in `src/functions/tvf.rs` to correctly handle custom steps, descending directions, and validation for 0 step across all data types.
+- [ ] T014 [US2] Extend logical and physical plan components to correctly propagate the third argument to the iterator state.
+- [ ] T015 [US2] Run `make lint` and fix any warnings
+- [ ] T016 [US2] Run `make test` to verify all integration tests for complex steps and descending sequences pass.
 
 **Checkpoint**: At this point, User Story 2 should be fully functional and testable independently
 
@@ -91,9 +92,9 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T016 Verify `make license` passes and all new `.rs` files have proper headers.
-- [ ] T017 Verify `unwrap()` and `expect()` are not used inappropriately in the new parsing and execution paths.
-- [ ] T018 Code cleanup, refactoring, and verifying zero-allocation (avoiding `.clone()` for large sequences).
+- [ ] T017 Verify `make license` passes and all new `.rs` files have proper headers.
+- [ ] T018 Verify `unwrap()` and `expect()` are not used inappropriately in the new parsing and execution paths.
+- [ ] T019 Code cleanup, refactoring, and verifying zero-allocation (avoiding `.clone()` for large sequences).
 
 ## Implementation Strategy & Dependencies
 
@@ -104,3 +105,4 @@
 **Parallel Opportunities:**
 - Writing AST structures (T003) and test scaffolding (T001) can happen in parallel.
 - Basic test authoring (T005) can be done while foundational AST work is being implemented.
+- TVF iterator logic (T006) and Scalar logic (T008) can be developed independently of the executor integration.
