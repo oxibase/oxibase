@@ -38,6 +38,11 @@ Window functions perform calculations across related rows without grouping them 
 
 **[View Window Functions Guide →]({% link _docs/references/functions/window-functions.md %})**
 
+### Table-Valued Functions
+Table-valued functions return a set of rows rather than a single value. They can be used directly in the `FROM` clause to generate data on the fly.
+
+**[View Table-Valued Functions Guide →]({% link _docs/references/functions/table-valued-functions.md %})**
+
 ## Usage Examples
 
 ### Basic Function Usage
