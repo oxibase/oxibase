@@ -5,6 +5,11 @@
 **Status**: Draft  
 **Input**: User description: "Please implement the `generate_series` table-valued function by porting it from the `stoolap` repository into `oxibase`..."
 
+## Clarifications
+
+### Session 2026-05-23
+- Q: Which data types should `generate_series` support? The user noted dates/timestamps are missing from the plan, and `stoolap` tests indicate float/date coverage. → A: i want you to cherrypick the existing stoolap implementation
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Generate Series with Start and Stop (Priority: P1)
@@ -51,6 +56,8 @@ Users want to specify a custom step value when generating a series, allowing the
 - **FR-003**: System MUST handle error conditions gracefully (e.g. `step = 0`) and return standard execution errors instead of crashing.
 - **FR-004**: System MUST support `generate_series(start, stop)` returning values from start to stop inclusive with step 1.
 - **FR-005**: System MUST support `generate_series(start, stop, step)` returning values from start to stop inclusive with the defined step.
+- **FR-006**: System MUST support multiple data types (Integers, Floats, Dates, and Timestamps) precisely matching the `stoolap` implementation by porting the `stoolap` logic.
+- **FR-007**: Engine MUST support `generate_series` as both a Table-Valued Function (in the `FROM` clause) and a scalar function (returning an array, e.g. `SELECT generate_series(1,5)`) matching `stoolap`.
 
 ### Key Entities
 
@@ -69,5 +76,5 @@ Users want to specify a custom step value when generating a series, allowing the
 
 ## Assumptions
 
-- We assume `generate_series` produces values of a standard integer type.
+- We assume `generate_series` produces values of types matching the `stoolap` implementation (Integer, Float, Date, Timestamp), as requested to cherrypick the existing implementation.
 - We assume integration tests exist in `stoolap` and can be cleanly integrated into the existing oxibase test framework.
