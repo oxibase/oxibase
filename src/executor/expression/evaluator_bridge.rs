@@ -1347,6 +1347,15 @@ impl<'a> CompiledEvaluator<'a> {
                 }
                 vs.rows.len().hash(hasher);
             }
+            Expression::FunctionTableSource(fts) => {
+                if let Some(ref alias) = fts.alias {
+                    true.hash(hasher);
+                    alias.value_lower.hash(hasher);
+                } else {
+                    false.hash(hasher);
+                }
+                fts.function.value_lower.hash(hasher);
+            }
             Expression::CteReference(cte) => {
                 cte.name.value_lower.hash(hasher);
             }
