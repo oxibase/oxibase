@@ -397,6 +397,20 @@ document.addEventListener("DOMContentLoaded", function () {
           document.body.classList.remove(CONFIG.classes.wideView);
           document.body.classList.remove(CONFIG.classes.hasTransition);
         }
+      } else {
+        // Content link: Check if a pane with this URL is already open
+        const panes = Array.from(this.paneSystem.panesContainer.children);
+        const existingPane = panes.find((pane) => pane.dataset.url === link.href);
+        
+        if (existingPane) {
+          // Scroll to the existing pane using the same logic as header clicks
+          this.paneSystem.layoutManager.handlePaneHeaderClick(existingPane);
+          
+          // Update URL and nav state
+          history.pushState(null, "", link.href);
+          Utils.updateActiveNav(link.href);
+          return;
+        }
       }
 
       // Fetch and append new pane
