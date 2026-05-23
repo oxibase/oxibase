@@ -122,13 +122,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 oxibase
 
 # Persistent database
-oxibase --db "file:///data/mydb"
+oxibase repl --db "file:///data/mydb"
 
 # With configuration
-oxibase --db "file:///data/mydb?sync_mode=full"
+oxibase repl --db "file:///data/mydb?sync_mode=full"
 
 # Execute a query directly
-oxibase --db "file:///data/mydb" -q "SELECT * FROM users"
+oxibase -e "SELECT * FROM users" repl --db "file:///data/mydb"
 ```
 
 ## PRAGMA Configuration
