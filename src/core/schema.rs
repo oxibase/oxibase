@@ -175,6 +175,12 @@ impl fmt::Display for SchemaColumn {
 
 #[derive(Debug)]
 pub struct Schema {
+    /// Name of the schema (defaults to "public")
+    pub schema_name: String,
+
+    /// Pre-computed lowercase schema name for case-insensitive lookups
+    pub schema_name_lower: String,
+
     /// Name of the table
     pub table_name: String,
 
@@ -210,6 +216,8 @@ pub struct Schema {
 impl Clone for Schema {
     fn clone(&self) -> Self {
         Self {
+            schema_name: self.schema_name.clone(),
+            schema_name_lower: self.schema_name_lower.clone(),
             table_name: self.table_name.clone(),
             table_name_lower: self.table_name_lower.clone(),
             columns: self.columns.clone(),
@@ -226,7 +234,8 @@ impl Clone for Schema {
 
 impl PartialEq for Schema {
     fn eq(&self, other: &Self) -> bool {
-        self.table_name == other.table_name
+        self.schema_name == other.schema_name
+            && self.table_name == other.table_name
             && self.columns == other.columns
             && self.foreign_keys == other.foreign_keys
             && self.referenced_by == other.referenced_by
@@ -239,12 +248,27 @@ impl Eq for Schema {}
 
 impl Schema {
     /// Create a new schema with the given table name and columns
+    /// The table name can be fully qualified (e.g., "schema.table")
     pub fn new(table_name: impl Into<String>, columns: Vec<SchemaColumn>) -> Self {
         let now = Utc::now();
-        let name = table_name.into();
-        let name_lower = name.to_lowercase();
+        let full_name = table_name.into();
+
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name)
+        };
+
+        let schema_name_lower = schema_name.to_lowercase();
+        let name_lower = table_name.to_lowercase();
+
         Self {
-            table_name: name,
+            schema_name,
+            schema_name_lower,
+            table_name,
             table_name_lower: name_lower,
             columns,
             foreign_keys: Vec::new(),
@@ -268,16 +292,31 @@ impl Schema {
     }
 
     /// Create a new schema with explicit timestamps
+    /// The table name can be fully qualified (e.g., "schema.table")
     pub fn with_timestamps(
         table_name: impl Into<String>,
         columns: Vec<SchemaColumn>,
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
     ) -> Self {
-        let name = table_name.into();
-        let name_lower = name.to_lowercase();
+        let full_name = table_name.into();
+
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name)
+        };
+
+        let schema_name_lower = schema_name.to_lowercase();
+        let name_lower = table_name.to_lowercase();
+
         Self {
-            table_name: name,
+            schema_name,
+            schema_name_lower,
+            table_name,
             table_name_lower: name_lower,
             columns,
             foreign_keys: Vec::new(),
@@ -504,6 +543,7 @@ impl fmt::Display for Schema {
 
 /// Builder for creating schemas more ergonomically
 pub struct SchemaBuilder {
+    schema_name: String,
     table_name: String,
     columns: Vec<SchemaColumn>,
 }
@@ -511,8 +551,20 @@ pub struct SchemaBuilder {
 impl SchemaBuilder {
     /// Create a new schema builder
     pub fn new(table_name: impl Into<String>) -> Self {
+        let full_name = table_name.into();
+
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name)
+        };
+
         Self {
-            table_name: table_name.into(),
+            schema_name,
+            table_name,
             columns: Vec::new(),
         }
     }
@@ -579,7 +631,10 @@ impl SchemaBuilder {
 
     /// Build the schema
     pub fn build(self) -> Schema {
-        Schema::new(self.table_name, self.columns)
+        let mut schema = Schema::new(self.table_name, self.columns);
+        schema.schema_name = self.schema_name.clone();
+        schema.schema_name_lower = self.schema_name.to_lowercase();
+        schema
     }
 }
 

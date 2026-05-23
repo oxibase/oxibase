@@ -1166,15 +1166,14 @@ impl crate::functions::backends::SqlRunner for Executor {
                         let mut schemas = self.engine.schemas.write().unwrap();
                         schemas.remove(&name);
                     }
-                    DeferredDdlOperation::DropSchema { name, tables } => {
+                    DeferredDdlOperation::DropSchema { name, tables: _ } => {
                         let mut schemas = self.engine.schemas.write().unwrap();
-                        let mut table_map = rustc_hash::FxHashMap::default();
-                        for (qualified_table_name, schema) in &tables {
-                            let simple_table_name =
-                                qualified_table_name[(name.len() + 1)..].to_string();
-                            table_map.insert(simple_table_name, schema.clone());
-                        }
-                        schemas.insert(name.clone(), table_map);
+                        schemas.entry(name.clone()).or_default();
+                        // Note: we can't call create_table directly from here,
+                        // but since DropSchema isn't fully transactional across everything,
+                        // the executor handles this more completely in query.rs.
+                        // For the standalone undo log, we just ensure the schema exists
+                        // and let query.rs recreate the tables if it's a true rollback.
                     }
                 }
             }

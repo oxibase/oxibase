@@ -556,10 +556,11 @@ impl MVCCEngine {
                     ));
 
                     let table_name = schema.table_name_lower.clone();
+                    let schema_name = schema.schema_name_lower.clone();
 
                     {
                         let mut schemas = self.schemas.write().unwrap();
-                        let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
+                        let default_schema = schemas.entry(schema_name.clone()).or_default();
                         default_schema.insert(table_name.clone(), schema);
                     }
                     {
@@ -698,6 +699,25 @@ impl MVCCEngine {
         let table_name = String::from_utf8(data[pos..pos + name_len].to_vec())
             .map_err(|e| Error::internal(format!("invalid table name: {}", e)))?;
         pos += name_len;
+
+        // Optionally read schema name if present
+        let mut schema_name = "public".to_string();
+        if pos + 2 <= data.len() {
+            // we have schema name length
+            let schema_name_len =
+                u16::from_le_bytes(data[pos..pos + 2].try_into().unwrap()) as usize;
+            if schema_name_len > 0 && pos + 2 + schema_name_len <= data.len() {
+                // Only advance pos and read schema name if it's there
+                pos += 2;
+                schema_name = String::from_utf8(data[pos..pos + schema_name_len].to_vec())
+                    .map_err(|e| Error::internal(format!("invalid schema name: {}", e)))?;
+                pos += schema_name_len;
+            } else if schema_name_len == 0 {
+                pos += 2;
+            }
+        }
+
+        // Read column count
 
         // Read column count
         if pos + 2 > data.len() {
@@ -884,6 +904,8 @@ impl MVCCEngine {
         }
 
         let mut schema = Schema::new(&table_name, columns);
+        schema.schema_name = schema_name;
+        schema.schema_name_lower = schema.schema_name.to_lowercase();
         schema.foreign_keys = foreign_keys;
         schema.referenced_by = referenced_by;
         Ok(schema)
@@ -1274,6 +1296,10 @@ impl MVCCEngine {
         buf.extend_from_slice(&(schema.table_name.len() as u16).to_le_bytes());
         buf.extend_from_slice(schema.table_name.as_bytes());
 
+        // Schema name
+        buf.extend_from_slice(&(schema.schema_name.len() as u16).to_le_bytes());
+        buf.extend_from_slice(schema.schema_name.as_bytes());
+
         // Column count
         buf.extend_from_slice(&(schema.columns.len() as u16).to_le_bytes());
 
@@ -1362,11 +1388,17 @@ impl MVCCEngine {
         }
 
         let table_name = schema.table_name_lower.clone();
+        let schema_name = schema.schema_name_lower.clone();
+
+        println!(
+            "DEBUG: create_table called for schema: {}, table: {}",
+            schema_name, table_name
+        );
 
         {
             let schemas = self.schemas.read().unwrap();
             let empty_map = FxHashMap::default();
-            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
+            let default_schema = schemas.get(&schema_name).unwrap_or(&empty_map);
             if default_schema.contains_key(&table_name) {
                 return Err(Error::TableAlreadyExists);
             }
@@ -1385,7 +1417,7 @@ impl MVCCEngine {
         // Store schema and version store
         {
             let mut schemas = self.schemas.write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
+            let default_schema = schemas.entry(schema_name.clone()).or_default();
             default_schema.insert(table_name.clone(), schema.clone());
         }
         {
@@ -1410,14 +1442,25 @@ impl MVCCEngine {
             return Err(Error::EngineNotOpen);
         }
 
-        let table_name = name.to_lowercase();
+        let full_name = name;
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
+
+        let schema_name_lower = schema_name.to_lowercase();
+        let table_name_lower = table_name.to_lowercase();
 
         // Check if table exists
         {
             let schemas = self.schemas.read().unwrap();
             let empty_map = FxHashMap::default();
-            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
-            if !default_schema.contains_key(&table_name) {
+            let default_schema = schemas.get(&schema_name_lower).unwrap_or(&empty_map);
+            if !default_schema.contains_key(&table_name_lower) {
                 return Err(Error::TableNotFound);
             }
         }
@@ -1428,7 +1471,7 @@ impl MVCCEngine {
         // Close and remove version store
         {
             let mut stores = self.version_stores.write().unwrap();
-            if let Some(store) = stores.remove(&table_name) {
+            if let Some(store) = stores.remove(&table_name_lower) {
                 store.close();
             }
         }
@@ -1436,8 +1479,8 @@ impl MVCCEngine {
         // Remove schema
         {
             let mut schemas = self.schemas.write().unwrap();
-            if let Some(default_schema) = schemas.get_mut(DEFAULT_SCHEMA) {
-                default_schema.remove(&table_name);
+            if let Some(default_schema) = schemas.get_mut(&schema_name_lower) {
+                default_schema.remove(&table_name_lower);
             }
         }
 
@@ -2001,9 +2044,19 @@ impl Engine for MVCCEngine {
             return Err(Error::EngineNotOpen);
         }
 
+        let full_name = table_name;
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
+
         let schemas = self.schemas.read().unwrap();
-        let default_schema = schemas.get(DEFAULT_SCHEMA);
-        Ok(default_schema.is_some_and(|s| s.contains_key(&table_name.to_lowercase())))
+        let schema = schemas.get(&schema_name.to_lowercase());
+        Ok(schema.is_some_and(|s| s.contains_key(&table_name.to_lowercase())))
     }
 
     fn view_exists(&self, view_name: &str) -> Result<bool> {
@@ -2053,9 +2106,21 @@ impl Engine for MVCCEngine {
             return Err(Error::EngineNotOpen);
         }
 
+        let full_name = table_name;
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
+
         let schemas = self.schemas.read().unwrap();
-        let default_schema = schemas.get(DEFAULT_SCHEMA).ok_or(Error::TableNotFound)?;
-        default_schema
+        let schema = schemas
+            .get(&schema_name.to_lowercase())
+            .ok_or(Error::TableNotFound)?;
+        schema
             .get(&table_name.to_lowercase())
             .cloned()
             .ok_or(Error::TableNotFound)
@@ -2066,13 +2131,24 @@ impl Engine for MVCCEngine {
             return Err(Error::EngineNotOpen);
         }
 
-        let table_name_lower = table_name.to_lowercase();
+        let full_name = table_name;
+        let (schema_name, table_name_str) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
+
+        let schema_name_lower = schema_name.to_lowercase();
+        let table_name_lower = table_name_str.to_lowercase();
 
         // Update engine schemas
         {
             let mut schemas = self.schemas.write().unwrap();
             let default_schema = schemas
-                .get_mut(DEFAULT_SCHEMA)
+                .get_mut(&schema_name_lower)
                 .ok_or(Error::TableNotFound)?;
             if !default_schema.contains_key(&table_name_lower) {
                 return Err(Error::TableNotFound);
@@ -3000,14 +3076,46 @@ impl EngineOperations {
 
 impl TransactionEngineOperations for EngineOperations {
     fn get_table_for_transaction(&self, txn_id: i64, table_name: &str) -> Result<Box<dyn Table>> {
-        let table_name_lower = table_name.to_lowercase();
+        let full_name = table_name;
+        let (schema_name, table_name_str) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
 
-        // Get version store
+        let schema_name_lower = schema_name.to_lowercase();
+        let table_name_lower = table_name_str.to_lowercase();
+
+        // Ensure table exists in schemas map
+        {
+            let schemas = self.schemas().read().unwrap();
+            let default_schema = schemas.get(&schema_name_lower).ok_or_else(|| {
+                println!(
+                    "DEBUG: TableNotFound because schema {} missing. Schemas available: {:?}",
+                    schema_name_lower,
+                    schemas.keys()
+                );
+                Error::TableNotFound
+            })?;
+            if !default_schema.contains_key(&table_name_lower) {
+                println!("DEBUG: TableNotFound because table {} missing in schema {}. Tables in schema: {:?}", table_name_lower, schema_name_lower, default_schema.keys());
+                return Err(Error::TableNotFound);
+            }
+        }
+
+        // Get version store (version_stores is currently flat with table_name_lower as key)
         let stores = self.version_stores().read().unwrap();
-        let version_store = stores
-            .get(&table_name_lower)
-            .cloned()
-            .ok_or(Error::TableNotFound)?;
+        let version_store = stores.get(&table_name_lower).cloned().ok_or_else(|| {
+            println!(
+                "DEBUG: TableNotFound because version_store missing for {}. Stores available: {:?}",
+                table_name_lower,
+                stores.keys()
+            );
+            Error::TableNotFound
+        })?;
         drop(stores);
 
         // Check if we have a cached transaction version store for this (txn_id, table_name)
@@ -3036,12 +3144,24 @@ impl TransactionEngineOperations for EngineOperations {
     }
 
     fn create_table(&self, name: &str, schema: Schema) -> Result<Box<dyn Table>> {
-        let table_name = name.to_lowercase();
+        let full_name = name;
+        let (schema_name, table_name_str) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
+
+        let schema_name_lower = schema_name.to_lowercase();
+        let table_name_lower = table_name_str.to_lowercase();
 
         // Check if table already exists
         {
             let schemas = self.schemas().read().unwrap();
-            if schemas.contains_key(&table_name) {
+            let default_schema = schemas.get(&schema_name_lower);
+            if default_schema.is_some_and(|s| s.contains_key(&table_name_lower)) {
                 return Err(Error::TableAlreadyExists);
             }
         }
@@ -3056,12 +3176,12 @@ impl TransactionEngineOperations for EngineOperations {
         // Store schema and version store
         {
             let mut schemas = (*self.schemas()).write().unwrap();
-            let default_schema = schemas.entry(DEFAULT_SCHEMA.to_string()).or_default();
-            default_schema.insert(table_name.clone(), schema);
+            let default_schema = schemas.entry(schema_name_lower.clone()).or_default();
+            default_schema.insert(table_name_lower.clone(), schema);
         }
         {
             let mut stores = self.version_stores().write().unwrap();
-            stores.insert(table_name, Arc::clone(&version_store));
+            stores.insert(table_name_lower, Arc::clone(&version_store));
         }
 
         // Create transaction version store with txn_id 0 (will be set by caller)
@@ -3074,12 +3194,26 @@ impl TransactionEngineOperations for EngineOperations {
     }
 
     fn drop_table(&self, name: &str) -> Result<()> {
-        let table_name_lower = name.to_lowercase();
+        let full_name = name;
+        let (schema_name, table_name) = if let Some(pos) = full_name.find('.') {
+            (
+                full_name[..pos].to_string(),
+                full_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_name.to_string())
+        };
+
+        let schema_name_lower = schema_name.to_lowercase();
+        let table_name_lower = table_name.to_lowercase();
 
         // Remove schema and version store
         {
             let mut schemas = self.schemas().write().unwrap();
-            if schemas.remove(&table_name_lower).is_none() {
+            let default_schema = schemas
+                .get_mut(&schema_name_lower)
+                .ok_or(Error::TableNotFound)?;
+            if default_schema.remove(&table_name_lower).is_none() {
                 return Err(Error::TableNotFound);
             }
         }
@@ -3094,23 +3228,60 @@ impl TransactionEngineOperations for EngineOperations {
     }
 
     fn list_tables(&self) -> Result<Vec<String>> {
-        let version_stores = self.version_stores.read().unwrap();
-        Ok(version_stores.keys().cloned().collect())
+        let schemas = self.schemas().read().unwrap();
+        let mut result = Vec::new();
+        for (schema_name, tables) in schemas.iter() {
+            for table_name in tables.keys() {
+                if schema_name == "public" {
+                    result.push(table_name.clone());
+                } else {
+                    result.push(format!("{}.{}", schema_name, table_name));
+                }
+            }
+        }
+        Ok(result)
     }
 
     fn rename_table(&self, old_name: &str, new_name: &str) -> Result<()> {
-        let old_name_lower = old_name.to_lowercase();
-        let new_name_lower = new_name.to_lowercase();
+        let full_old_name = old_name;
+        let (old_schema_name, old_table_name_str) = if let Some(pos) = full_old_name.find('.') {
+            (
+                full_old_name[..pos].to_string(),
+                full_old_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_old_name.to_string())
+        };
+
+        let old_schema_name_lower = old_schema_name.to_lowercase();
+        let old_table_name_lower = old_table_name_str.to_lowercase();
+
+        let full_new_name = new_name;
+        let (new_schema_name, new_table_name_str) = if let Some(pos) = full_new_name.find('.') {
+            (
+                full_new_name[..pos].to_string(),
+                full_new_name[pos + 1..].to_string(),
+            )
+        } else {
+            ("public".to_string(), full_new_name.to_string())
+        };
+
+        let new_schema_name_lower = new_schema_name.to_lowercase();
+        let new_table_name_lower = new_table_name_str.to_lowercase();
 
         // Check if old table exists and new name doesn't exist
         {
             let schemas = (*self.schemas()).read().unwrap();
-            let empty_map = FxHashMap::default();
-            let default_schema = schemas.get(DEFAULT_SCHEMA).unwrap_or(&empty_map);
-            if !default_schema.contains_key(&old_name_lower) {
+            let old_schema = schemas
+                .get(&old_schema_name_lower)
+                .ok_or(Error::TableNotFound)?;
+            if !old_schema.contains_key(&old_table_name_lower) {
                 return Err(Error::TableNotFound);
             }
-            if default_schema.contains_key(&new_name_lower) {
+
+            let empty_map = FxHashMap::default();
+            let new_schema = schemas.get(&new_schema_name_lower).unwrap_or(&empty_map);
+            if new_schema.contains_key(&new_table_name_lower) {
                 return Err(Error::TableAlreadyExists);
             }
         }
@@ -3118,19 +3289,37 @@ impl TransactionEngineOperations for EngineOperations {
         // Rename in schemas
         {
             let mut schemas = (*self.schemas()).write().unwrap();
-            if let Some(default_schema) = schemas.get_mut(DEFAULT_SCHEMA) {
-                if let Some(mut schema) = default_schema.remove(&old_name_lower) {
-                    schema.table_name = new_name.to_string();
-                    default_schema.insert(new_name_lower.clone(), schema);
+            let mut schema_to_move = None;
+
+            if let Some(old_schema) = schemas.get_mut(&old_schema_name_lower) {
+                if let Some(mut schema) = old_schema.remove(&old_table_name_lower) {
+                    schema.table_name = new_table_name_str.clone();
+                    schema.schema_name = new_schema_name.clone();
+                    schema.table_name_lower = new_table_name_lower.clone();
+                    schema.schema_name_lower = new_schema_name_lower.clone();
+                    schema_to_move = Some(schema);
                 }
+            }
+
+            if let Some(schema) = schema_to_move {
+                let new_schema_map = schemas.entry(new_schema_name_lower.clone()).or_default();
+                new_schema_map.insert(new_table_name_lower.clone(), schema);
             }
         }
 
         // Rename in version stores
         {
             let mut stores = self.version_stores().write().unwrap();
-            if let Some(store) = stores.remove(&old_name_lower) {
-                stores.insert(new_name_lower, store);
+            if let Some(store) = stores.remove(&old_table_name_lower) {
+                // Update the schema's table name within the store
+                {
+                    let mut vs_schema = store.schema_mut();
+                    vs_schema.table_name = new_table_name_str;
+                    vs_schema.schema_name = new_schema_name;
+                    vs_schema.table_name_lower = new_table_name_lower.clone();
+                    vs_schema.schema_name_lower = new_schema_name_lower;
+                }
+                stores.insert(new_table_name_lower, store);
             }
         }
 

@@ -5133,13 +5133,8 @@ impl Executor {
                             // Undo DropSchema by recreating schema and tables
                             {
                                 let mut schemas = self.engine.schemas.write().unwrap();
-                                let mut table_map = FxHashMap::default();
-                                for (qualified_table_name, schema) in &tables {
-                                    let simple_table_name =
-                                        qualified_table_name[(name.len() + 1)..].to_string();
-                                    table_map.insert(simple_table_name, schema.clone());
-                                }
-                                schemas.insert(name.clone(), table_map);
+                                // Just ensure the schema bucket exists so create_table works nicely
+                                schemas.entry(name.clone()).or_default();
                             }
                             for (_qualified, schema) in tables {
                                 let _ = self.engine.create_table(schema);
