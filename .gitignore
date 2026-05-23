@@ -51,6 +51,6 @@ docs/out
 docs/node_modules
 
 # Example databases
-./examples/oxibase.db
-./data/
+examples/oxibase.db
+/data/
 .env*
