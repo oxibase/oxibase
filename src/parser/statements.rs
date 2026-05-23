@@ -3795,15 +3795,7 @@ impl Parser {
         let token = self.cur_token.clone();
 
         // table_name
-        self.next_token();
-        if !self.cur_token_is(TokenType::Identifier) && !self.cur_token_is(TokenType::Keyword) {
-            self.add_error(format!(
-                "Expected table name, got {}",
-                self.cur_token.token_type
-            ));
-            return None;
-        }
-        let table_name = Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+        let table_name = self.parse_table_name()?;
         self.next_token();
 
         // optional column list
@@ -4351,7 +4343,8 @@ mod tests {
         let input = "COPY my_table (id, name) FROM 'data.csv' WITH (FORMAT CSV, HEADER TRUE, DELIMITER '|', NULL 'N/A')";
         let stmt = parse_stmt(input).unwrap();
         if let Statement::Copy(s) = stmt {
-            assert_eq!(s.table_name.to_string(), "my_table");
+            assert_eq!(s.table_name.table(), "my_table");
+            assert!(s.table_name.schema().is_none());
             assert_eq!(s.columns.len(), 2);
             assert_eq!(s.columns[0].to_string(), "id");
             assert_eq!(s.columns[1].to_string(), "name");
@@ -4367,13 +4360,27 @@ mod tests {
         let input_json = "COPY events FROM 'data.json' WITH (FORMAT JSON)";
         let stmt_json = parse_stmt(input_json).unwrap();
         if let Statement::Copy(s) = stmt_json {
-            assert_eq!(s.table_name.to_string(), "events");
+            assert_eq!(s.table_name.table(), "events");
+            assert!(s.table_name.schema().is_none());
             assert!(s.columns.is_empty());
             assert_eq!(s.file_path, "data.json");
             assert_eq!(s.format, CopyFormat::Json);
             assert!(s.header); // default true
             assert_eq!(s.delimiter, b',');
             assert_eq!(s.null_string, None);
+        } else {
+            panic!("Expected CopyStatement");
+        }
+
+        let input_schema = "COPY cdm.concept FROM 'data.csv'";
+        let stmt_schema = parse_stmt(input_schema).unwrap();
+        if let Statement::Copy(s) = stmt_schema {
+            assert_eq!(s.table_name.table(), "concept");
+            assert_eq!(s.table_name.schema().unwrap(), "cdm");
+            assert!(s.columns.is_empty());
+            assert_eq!(s.file_path, "data.csv");
+            assert_eq!(s.format, CopyFormat::Csv);
+            assert!(s.header);
         } else {
             panic!("Expected CopyStatement");
         }

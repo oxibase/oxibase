@@ -99,7 +99,7 @@ impl Executor {
         stmt: &CopyStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
-        let table_name = &stmt.table_name.value_lower;
+        let table_name = &stmt.table_name.table().to_lowercase();
 
         {
             let active_tx = self.active_transaction.lock().unwrap();
@@ -111,6 +111,15 @@ impl Executor {
         }
 
         let mut tx = self.engine.begin_transaction()?;
+
+        if let Some(schema_name) = stmt.table_name.schema() {
+            let _s = tx.create_schema(&schema_name.to_lowercase());
+            // TODO: In the future, tx.get_table() should support schema-qualified names directly
+            // or there should be a `tx.get_schema().get_table()` pattern.
+            // For now, since table lookup might not be fully schema-aware in `Transaction` trait,
+            // we'll pass the base table name to tx.get_table().
+        }
+
         let mut table = tx.get_table(table_name)?;
         let schema = table.schema();
         let schema_column_count = schema.columns.len();

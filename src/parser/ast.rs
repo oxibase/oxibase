@@ -3117,7 +3117,7 @@ impl fmt::Display for CopyFormat {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CopyStatement {
     pub token: Token,
-    pub table_name: Identifier,
+    pub table_name: TableName,
     pub columns: Vec<Identifier>,
     pub file_path: String,
     pub format: CopyFormat,
