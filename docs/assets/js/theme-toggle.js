@@ -33,6 +33,10 @@
         const newTheme = jtd.getTheme() === 'dark' ? 'blue' : 'dark';
         applyTheme(newTheme);
         localStorage.setItem('theme', newTheme);
+        
+        if (document.querySelector('.language-mermaid') || document.querySelector('.mermaid') || document.querySelector('svg[id^="mermaid-"]')) {
+          window.location.reload();
+        }
       });
     }
   });
