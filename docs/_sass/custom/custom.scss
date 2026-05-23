@@ -186,6 +186,7 @@ a {
     background-color: $body-background-color;
 
     --index0: calc(var(--index) - 1);
+    --reverse-index: calc(var(--numcards) - var(--index));
 
     position: sticky;
     left: calc((var(--index0) * var(--spine-width)));
@@ -195,16 +196,17 @@ a {
         flex: 0 0 var(--card-width);
         width: var(--card-width);
         max-width: 80vw;
+        --actual-width: min(var(--card-width), 80vw);
+        right: calc(-1 * (var(--actual-width) - (var(--reverse-index) + 1) * var(--spine-width)));
     }
 
     &:last-child {
-        position: relative;
-        left: auto;
         z-index: calc(var(--numcards));
 
         @include mq(md) {
             width: var(--last-card-width);
             flex: 0 0 var(--last-card-width);
+            --actual-width: var(--last-card-width);
         }
     }
 
