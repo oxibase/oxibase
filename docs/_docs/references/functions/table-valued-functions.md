@@ -1,8 +1,8 @@
 ---
-layout: doc
+layout: default
 title: Table-Valued Functions
-category: Functions
-order: 5
+parent: Functions
+nav_order: 4
 ---
 
 # Table-Valued Functions
