@@ -2790,9 +2790,9 @@ mod tests {
             row_count += 1;
         }
 
-        eprintln!("DEBUG: pct_ranks = {:?}", pct_ranks);
-        eprintln!("DEBUG: row_count = {}", row_count);
-        eprintln!("DEBUG: columns = {:?}", result.columns());
+        tracing::debug!("pct_ranks = {:?}", pct_ranks);
+        tracing::debug!("row_count = {}", row_count);
+        tracing::debug!("columns = {:?}", result.columns());
 
         // First row should have pct_rank = 0.0
         assert!(
