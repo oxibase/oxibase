@@ -4231,6 +4231,24 @@ impl Executor {
                 let (result, columns, _) = self.execute_values_source(vs, &select_all, ctx)?;
                 Ok((result, columns))
             }
+            Expression::FunctionTableSource(tvf_source) => {
+                let (rows, cols) = Self::evaluate_tvf_with_range(tvf_source, ctx, None, None)?;
+
+                let table_alias = tvf_source
+                    .alias
+                    .as_ref()
+                    .map(|a| a.value.clone())
+                    .unwrap_or_else(|| tvf_source.function.value.clone());
+
+                let qualified_columns: Vec<String> = cols
+                    .iter()
+                    .map(|col| format!("{}.{}", table_alias, col))
+                    .collect();
+
+                let result: Box<dyn QueryResult> =
+                    Box::new(super::result::ExecutorMemoryResult::new(cols.clone(), rows));
+                Ok((result, qualified_columns))
+            }
             _ => Err(Error::NotSupportedMessage(
                 "Unsupported table expression type".to_string(),
             )),

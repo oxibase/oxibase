@@ -153,3 +153,36 @@ fn test_generate_series_zero_step_error() {
     let result = db.query("SELECT * FROM generate_series(1, 10, 0)", ());
     assert!(result.is_err());
 }
+
+// ============================================================================
+// JOIN Tests
+// ============================================================================
+
+#[test]
+fn test_generate_series_cross_join() {
+    let db = create_test_db("gs_cross");
+
+    let result = db
+        .query(
+            "SELECT a.value, b.value FROM generate_series(1, 3) AS a(value) \
+             CROSS JOIN generate_series(1, 2) AS b(value) ORDER BY a.value, b.value",
+            (),
+        )
+        .unwrap();
+
+    let mut rows: Vec<(i64, i64)> = Vec::new();
+    for row in result {
+        let row = row.unwrap();
+        let a: i64 = row.get(0).unwrap();
+        let b: i64 = row.get(1).unwrap();
+        rows.push((a, b));
+    }
+
+    assert_eq!(rows.len(), 6);
+    assert_eq!(rows[0], (1, 1));
+    assert_eq!(rows[1], (1, 2));
+    assert_eq!(rows[2], (2, 1));
+    assert_eq!(rows[3], (2, 2));
+    assert_eq!(rows[4], (3, 1));
+    assert_eq!(rows[5], (3, 2));
+}
