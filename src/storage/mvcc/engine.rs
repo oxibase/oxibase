@@ -1392,7 +1392,8 @@ impl MVCCEngine {
 
         tracing::debug!(
             "create_table called for schema: {}, table: {}",
-            schema_name, table_name
+            schema_name,
+            table_name
         );
 
         {
@@ -3101,7 +3102,12 @@ impl TransactionEngineOperations for EngineOperations {
                 Error::TableNotFound
             })?;
             if !default_schema.contains_key(&table_name_lower) {
-                tracing::debug!("TableNotFound because table {} missing in schema {}. Tables in schema: {:?}", table_name_lower, schema_name_lower, default_schema.keys());
+                tracing::debug!(
+                    "TableNotFound because table {} missing in schema {}. Tables in schema: {:?}",
+                    table_name_lower,
+                    schema_name_lower,
+                    default_schema.keys()
+                );
                 return Err(Error::TableNotFound);
             }
         }
