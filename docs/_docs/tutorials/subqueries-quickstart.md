@@ -130,7 +130,7 @@ INSERT INTO user_sessions VALUES
 -- Delete inactive user data
 DELETE FROM user_sessions
 WHERE user_id IN (
-    SELECT id FROM users WHERE last_login < DATE('now', '-90 days')
+    SELECT id FROM users WHERE last_login < DATE_SUB(CURRENT_DATE(), 90, 'days')
 );
 ```
 

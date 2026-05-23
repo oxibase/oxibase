@@ -108,7 +108,7 @@ WHERE id NOT IN (
 DELETE FROM users 
 WHERE id NOT IN (
     SELECT user_id FROM login_history 
-    WHERE login_date > DATE('now', '-30 days')
+    WHERE login_date > DATE_SUB(CURRENT_DATE(), 30, 'days')
 );
 ```
 
@@ -563,7 +563,7 @@ UPDATE customers
 SET status = 'active'
 WHERE EXISTS (
     SELECT 1 FROM orders
-    WHERE order_date > DATE('now', '-30 days')
+    WHERE order_date > DATE_SUB(CURRENT_DATE(), 30, 'days')
 );
 ```
 
