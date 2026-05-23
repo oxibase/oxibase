@@ -106,6 +106,8 @@ pub enum Expression {
     SubquerySource(SubqueryTableSource),
     /// VALUES table source (e.g., VALUES (1, 'a'), (2, 'b'))
     ValuesSource(ValuesTableSource),
+    /// Function table source (table-valued function in FROM clause)
+    FunctionTableSource(FunctionTableSource),
     /// CTE reference
     CteReference(CteReference),
     /// Star (*) for SELECT *
@@ -149,6 +151,7 @@ impl fmt::Display for Expression {
             Expression::JoinSource(e) => write!(f, "{}", e),
             Expression::SubquerySource(e) => write!(f, "{}", e),
             Expression::ValuesSource(e) => write!(f, "{}", e),
+            Expression::FunctionTableSource(e) => write!(f, "{}", e),
             Expression::CteReference(e) => write!(f, "{}", e),
             Expression::Star(e) => write!(f, "{}", e),
             Expression::QualifiedStar(e) => write!(f, "{}", e),
@@ -191,6 +194,7 @@ impl Expression {
             Expression::JoinSource(e) => e.token.position,
             Expression::SubquerySource(e) => e.token.position,
             Expression::ValuesSource(e) => e.token.position,
+            Expression::FunctionTableSource(e) => e.token.position,
             Expression::CteReference(e) => e.token.position,
             Expression::Star(e) => e.token.position,
             Expression::QualifiedStar(e) => e.token.position,
@@ -3154,5 +3158,39 @@ impl fmt::Display for CopyStatement {
         }
 
         Ok(())
+    }
+}
+
+/// Function table source (table-valued function in FROM clause)
+/// e.g., SELECT * FROM generate_series(1, 10) AS gs(value)
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionTableSource {
+    pub token: Token,
+    /// Function name
+    pub function: Identifier,
+    /// Function arguments
+    pub arguments: Vec<Expression>,
+    /// Optional alias for the derived table
+    pub alias: Option<Identifier>,
+    /// Optional column aliases (e.g., gs(value))
+    pub column_aliases: Vec<Identifier>,
+}
+
+impl fmt::Display for FunctionTableSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut result = format!("{}(", self.function);
+        let args: Vec<String> = self.arguments.iter().map(|a| a.to_string()).collect();
+        result.push_str(&args.join(", "));
+        result.push(')');
+
+        if let Some(ref alias) = self.alias {
+            result.push_str(&format!(" AS {}", alias));
+            if !self.column_aliases.is_empty() {
+                let cols: Vec<String> = self.column_aliases.iter().map(|c| c.to_string()).collect();
+                result.push_str(&format!("({})", cols.join(", ")));
+            }
+        }
+
+        write!(f, "{}", result)
     }
 }

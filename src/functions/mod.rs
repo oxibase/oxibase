@@ -28,6 +28,7 @@ pub mod context;
 pub mod plsql;
 pub mod registry;
 pub mod scalar;
+pub mod tvf;
 pub mod user_defined;
 pub mod window;
 

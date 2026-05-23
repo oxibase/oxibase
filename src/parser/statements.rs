@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use super::ast::*;
 use super::parser::Parser;
 use super::precedence::Precedence;
-use super::token::TokenType;
+use super::token::{Token, TokenType};
 
 impl Parser {
     /// Parse a statement
@@ -482,6 +482,13 @@ impl Parser {
                 // Parse VALUES clause as table source
                 return self.parse_values_table_source();
             }
+        }
+
+        // Check if it is a function call like generate_series(1, 10)
+        if self.cur_token_is(TokenType::Identifier) && self.peek_token_is_punctuator("(") {
+            let token = self.cur_token.clone();
+            let function_name = Identifier::new(token.clone(), self.cur_token.literal.clone());
+            return self.parse_function_table_source(token, function_name);
         }
 
         // Parse table name - accept both identifiers and keywords (for CTE references like 'first')
@@ -1058,6 +1065,94 @@ impl Parser {
     }
 
     /// Parse VALUES clause as a table source (e.g., (VALUES (1, 'a'), (2, 'b')) AS t(col1, col2))
+    /// Parse a function table source (table-valued function in FROM clause)
+    /// e.g., generate_series(1, 10) AS gs(value)
+    fn parse_function_table_source(
+        &mut self,
+        token: Token,
+        name: Identifier,
+    ) -> Option<Expression> {
+        // Currently on function name identifier. We know peek is '('
+        self.next_token(); // consume function name, now on '('
+
+        let mut arguments = Vec::new();
+
+        if !self.peek_token_is_punctuator(")") {
+            arguments = self.parse_expression_list(); // this expects to be on '(' and parses up to last element
+        } else {
+            // Empty arguments case
+            self.next_token(); // move to '('
+        }
+
+        if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            self.add_error(format!(
+                "expected ')' after function arguments, got {:?} at {}",
+                self.cur_token.token_type, self.cur_token.position
+            ));
+            return None;
+        }
+
+        if !self.cur_token_is(TokenType::Punctuator) || self.cur_token.literal != ")" {
+            self.add_error(format!(
+                "expected ')' after function arguments, got {:?} at {}",
+                self.cur_token.token_type, self.cur_token.position
+            ));
+            return None;
+        }
+
+        let mut alias = None;
+        let mut column_aliases = Vec::new();
+
+        if self.peek_token_is_keyword("AS") {
+            self.next_token(); // consume AS
+            if !self.expect_peek(TokenType::Identifier) {
+                return None;
+            }
+            alias = Some(Identifier::new(
+                self.cur_token.clone(),
+                self.cur_token.literal.clone(),
+            ));
+        } else if self.peek_token_is(TokenType::Identifier) {
+            self.next_token(); // consume identifier
+            alias = Some(Identifier::new(
+                self.cur_token.clone(),
+                self.cur_token.literal.clone(),
+            ));
+        }
+
+        if alias.is_some() && self.peek_token_is_punctuator("(") {
+            self.next_token(); // consume '('
+            self.next_token(); // move to first column alias
+
+            while !self.cur_token_is(TokenType::Punctuator) || self.cur_token.literal != ")" {
+                if !self.cur_token_is(TokenType::Identifier) {
+                    self.add_error(format!(
+                        "expected identifier for column alias, got {:?} at {}",
+                        self.cur_token.token_type, self.cur_token.position
+                    ));
+                    return None;
+                }
+                column_aliases.push(Identifier::new(
+                    self.cur_token.clone(),
+                    self.cur_token.literal.clone(),
+                ));
+
+                self.next_token();
+                if self.cur_token_is(TokenType::Punctuator) && self.cur_token.literal == "," {
+                    self.next_token();
+                }
+            }
+        }
+
+        Some(Expression::FunctionTableSource(FunctionTableSource {
+            token,
+            function: name,
+            arguments,
+            alias,
+            column_aliases,
+        }))
+    }
+
     fn parse_values_table_source(&mut self) -> Option<Expression> {
         let token = self.cur_token.clone(); // VALUES token
 

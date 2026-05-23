@@ -67,7 +67,9 @@ use super::scalar::{
     SubstringFunction, TanFunction, TimeTruncFunction, ToCharFunction, TrimFunction, TruncFunction,
     TruncateFunction, TypeOfFunction, UpperFunction, VersionFunction, YearFunction,
 };
+use super::tvf::{GenerateSeriesFunction, GenerateSeriesScalarFunction, TableValuedFunction};
 use super::user_defined::UserDefinedFunctionRegistry;
+
 use super::window::{
     CumeDistFunction, DenseRankFunction, FirstValueFunction, LagFunction, LastValueFunction,
     LeadFunction, NthValueFunction, NtileFunction, PercentRankFunction, RankFunction,
@@ -82,6 +84,8 @@ type AggregateFnFactory = Arc<dyn Fn() -> Box<dyn AggregateFunction> + Send + Sy
 type ScalarFnFactory = Arc<dyn Fn() -> Box<dyn ScalarFunction> + Send + Sync>;
 /// Type alias for window function factory
 type WindowFnFactory = Arc<dyn Fn() -> Box<dyn WindowFunction> + Send + Sync>;
+/// Type alias for table-valued function factory
+type TvfFactory = Arc<dyn Fn() -> Box<dyn TableValuedFunction> + Send + Sync>;
 
 /// Function registry for SQL functions
 pub struct FunctionRegistry {
@@ -91,6 +95,8 @@ pub struct FunctionRegistry {
     scalar_functions: RwLock<HashMap<String, ScalarFnFactory>>,
     /// Window functions
     window_functions: RwLock<HashMap<String, WindowFnFactory>>,
+    /// Table-valued functions
+    tvf_functions: RwLock<HashMap<String, TvfFactory>>,
     /// User-defined functions
     user_defined_functions: RwLock<UserDefinedFunctionRegistry>,
     /// Function info cache
@@ -105,6 +111,7 @@ impl Clone for FunctionRegistry {
             aggregate_functions: RwLock::new(self.aggregate_functions.read().unwrap().clone()),
             scalar_functions: RwLock::new(self.scalar_functions.read().unwrap().clone()),
             window_functions: RwLock::new(self.window_functions.read().unwrap().clone()),
+            tvf_functions: RwLock::new(self.tvf_functions.read().unwrap().clone()),
             user_defined_functions: RwLock::new(
                 self.user_defined_functions.read().unwrap().clone(),
             ),
@@ -127,6 +134,7 @@ impl FunctionRegistry {
             aggregate_functions: RwLock::new(HashMap::new()),
             scalar_functions: RwLock::new(HashMap::new()),
             window_functions: RwLock::new(HashMap::new()),
+            tvf_functions: RwLock::new(HashMap::new()),
             user_defined_functions: RwLock::new(UserDefinedFunctionRegistry::new(Arc::new(
                 create_backend_registry(),
             ))),
@@ -246,6 +254,9 @@ impl FunctionRegistry {
         registry.register_scalar::<crate::functions::scalar::GetHttpHeaderFunction>();
 
         // Register built-in window functions
+        // Register generate_series as scalar (returns JSON array for SELECT usage)
+        registry.register_scalar::<GenerateSeriesScalarFunction>();
+
         registry.register_window::<RowNumberFunction>();
         registry.register_window::<RankFunction>();
         registry.register_window::<DenseRankFunction>();
@@ -257,6 +268,12 @@ impl FunctionRegistry {
         registry.register_window::<NthValueFunction>();
         registry.register_window::<PercentRankFunction>();
         registry.register_window::<CumeDistFunction>();
+
+        // Register built-in table-valued functions
+        registry.register_tvf(
+            "GENERATE_SERIES",
+            Arc::new(|| Box::new(GenerateSeriesFunction)),
+        );
 
         registry
     }
@@ -426,9 +443,35 @@ impl FunctionRegistry {
         funcs.contains_key(&upper)
     }
 
+    /// Register a table-valued function
+    pub fn register_tvf(&self, name: &str, factory: TvfFactory) {
+        let mut funcs = self.tvf_functions.write().unwrap();
+        funcs.insert(name.to_string(), factory);
+    }
+
+    /// Get a new instance of a table-valued function by name
+    pub fn get_tvf(&self, name: &str) -> Option<Box<dyn TableValuedFunction>> {
+        let funcs = self.tvf_functions.read().unwrap();
+        if let Some(f) = funcs.get(name) {
+            return Some(f());
+        }
+        let upper = name.to_uppercase();
+        funcs.get(&upper).map(|f| f())
+    }
+
+    /// Check if a function name is a table-valued function
+    pub fn is_tvf(&self, name: &str) -> bool {
+        let funcs = self.tvf_functions.read().unwrap();
+        if funcs.contains_key(name) {
+            return true;
+        }
+        let upper = name.to_uppercase();
+        funcs.contains_key(&upper)
+    }
+
     /// Check if a function exists
     pub fn exists(&self, name: &str) -> bool {
-        self.is_aggregate(name) || self.is_scalar(name) || self.is_window(name)
+        self.is_aggregate(name) || self.is_scalar(name) || self.is_window(name) || self.is_tvf(name)
     }
 
     /// Get function info by name
