@@ -339,6 +339,14 @@ a {
     transition: margin 0.3s ease;
 }
 
+// Table adjustments
+// ---------------------------------------
+table {
+    th {
+        background-color: if($color-scheme == 'dark', darken($table-background-color, 6%), null);
+    }
+}
+
 // SVG Zoom Modal Styles
 // ---------------------------------------
 .svg-pan-expand-btn, .svg-pan-reset-btn {
