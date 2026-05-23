@@ -1,0 +1,82 @@
+$color-scheme: dark;
+
+// Base terminal palette
+$term-bg: #1e202d;
+$term-fg: #d9dee8;
+$term-selection-bg: #3a3d56;
+$term-selection-fg: #d9dee8;
+
+$term-black: #1e202d;
+$term-red: #ca4621;
+$term-green: #55ba8c;
+$term-yellow: #f6c844;
+$term-blue: #4489cf;
+$term-magenta: #d05691;
+$term-cyan: #48a0c8;
+$term-white: #f1edec;
+
+$term-br-black: #666666;
+$term-br-red: #eb5829;
+$term-br-green: #6fefb9;
+$term-br-yellow: #f7cc45;
+$term-br-blue: #59a6f3;
+$term-br-magenta: #ed6cae;
+$term-br-cyan: #59c3f3;
+$term-br-white: #fffdfd;
+
+// General Theme Variables
+$body-background-color: $term-bg;
+$body-heading-color: $term-br-white;
+$body-text-color: $term-fg;
+$link-color: $term-br-blue;
+$nav-child-link-color: $term-br-white;
+$sidebar-color: $term-bg;
+$base-button-color: $term-selection-bg;
+$btn-primary-color: $term-blue;
+$code-background-color: darken($term-bg, 3%);
+$code-linenumber-color: $term-br-black;
+$feedback-color: $term-selection-bg;
+$table-background-color: $term-selection-bg;
+$search-background-color: $term-selection-bg;
+$search-result-preview-color: $term-fg;
+$border-color: $term-selection-bg;
+
+// Grey scale mapping for internal usage
+$grey-dk-000: $term-br-black;
+$grey-dk-100: $term-br-black;
+$grey-dk-200: $term-selection-bg;
+$grey-dk-250: $term-selection-bg;
+$grey-dk-300: $term-bg;
+
+$grey-lt-000: $term-br-white;
+$grey-lt-100: $term-white;
+$grey-lt-200: $term-fg;
+$grey-lt-300: $term-fg;
+
+// Colorful palette mapping (for callouts, buttons, etc.)
+$red-000: $term-red;
+$red-100: $term-br-red;
+$red-200: lighten($term-br-red, 10%);
+$red-300: lighten($term-br-red, 20%);
+
+$green-000: $term-green;
+$green-100: $term-br-green;
+$green-200: lighten($term-br-green, 10%);
+$green-300: lighten($term-br-green, 20%);
+
+$yellow-000: $term-yellow;
+$yellow-100: $term-br-yellow;
+$yellow-200: lighten($term-br-yellow, 10%);
+$yellow-300: lighten($term-br-yellow, 20%);
+
+$blue-000: $term-blue;
+$blue-100: $term-br-blue;
+$blue-200: lighten($term-br-blue, 10%);
+$blue-300: lighten($term-br-blue, 20%);
+
+$purple-000: $term-magenta;
+$purple-100: $term-br-magenta;
+$purple-200: lighten($term-br-magenta, 10%);
+$purple-300: lighten($term-br-magenta, 20%);
+
+@import "./vendor/OneDarkJekyll/syntax";
