@@ -58,125 +58,8 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   // =========================================================
-  // SECTION 1: UI Injection (Styles, Button, Modal)
+  // SECTION 1: UI Injection (Button, Modal)
   // =========================================================
-
-  const injectStyles = () => {
-    const style = document.createElement("style");
-    style.textContent = `
-            .svg-pan-expand-btn {
-                position: absolute;
-                z-index: 9999;
-                cursor: pointer;
-                background: rgba(255, 255, 255, 0.9);
-                border-radius: 4px;
-                padding: 6px;
-                display: none;
-                color: #333;
-                transition: background 0.1s; /* Only animate background, not position */
-                height: 32px;
-                width: 32px;
-            }
-            .svg-pan-expand-btn:hover {
-                background: white;
-                color: black;
-            }
-            .svg-pan-reset-btn {
-                position: absolute;
-                z-index: 9999;
-                cursor: pointer;
-                background: rgba(255, 255, 255, 0.9);
-                border-radius: 4px;
-                padding: 6px;
-                display: none;
-                color: #333;
-                transition: background 0.1s; /* Only animate background, not position */
-                height: 32px;
-                width: 32px;
-            }
-            .svg-pan-reset-btn:hover {
-                background: white;
-                color: black;
-            }
-            .svg-pan-modal-overlay {
-                position: fixed;
-                top: 0; left: 0; width: 100vw; height: 100vh;
-                background: rgba(0, 0, 0, 0.6);
-                backdrop-filter: blur(5px);
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.3s ease;
-            }
-            .svg-pan-modal-overlay.active {
-                opacity: 1;
-                pointer-events: all;
-            }
-            .svg-pan-modal-content {
-                width: 80vw;
-                height: 80vh;
-                background: white;
-                box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-                border-radius: 8px;
-                position: relative;
-                overflow: hidden;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 0;
-            }
-            /* Make SVG fill modal */
-            .svg-pan-modal-content svg {
-                width: 100%;
-                height: 100%;
-                display: block;
-            }
-            .svg-pan-modal-close {
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                background: rgba(255,255,255,0.8);
-                border: none;
-                border-radius: 50%;
-                width: 36px;
-                height: 36px;
-                cursor: pointer;
-                font-weight: bold;
-                font-size: 18px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10;
-                transition: background 0.2s;
-            }
-            .svg-pan-modal-close:hover {
-                background: white;
-            }
-            .svg-pan-modal-reset {
-                position: absolute;
-                top: 15px;
-                right: 60px; /* Position left of the close button */
-                background: rgba(255,255,255,0.8);
-                border: none;
-                border-radius: 50%;
-                width: 36px;
-                height: 36px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10;
-                transition: background 0.2s;
-            }
-            .svg-pan-modal-reset:hover {
-                background: white;
-            }
-        `;
-    document.head.appendChild(style);
-  };
 
   const createUI = () => {
     // 1. Expand Button
@@ -324,7 +207,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // =========================================================
 
   // Initialize UI
-  injectStyles();
   createUI();
 
   // Hover Logic: Show Expand Button
