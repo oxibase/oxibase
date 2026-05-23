@@ -1390,8 +1390,8 @@ impl MVCCEngine {
         let table_name = schema.table_name_lower.clone();
         let schema_name = schema.schema_name_lower.clone();
 
-        println!(
-            "DEBUG: create_table called for schema: {}, table: {}",
+        tracing::debug!(
+            "create_table called for schema: {}, table: {}",
             schema_name, table_name
         );
 
@@ -3093,15 +3093,15 @@ impl TransactionEngineOperations for EngineOperations {
         {
             let schemas = self.schemas().read().unwrap();
             let default_schema = schemas.get(&schema_name_lower).ok_or_else(|| {
-                println!(
-                    "DEBUG: TableNotFound because schema {} missing. Schemas available: {:?}",
+                tracing::debug!(
+                    "TableNotFound because schema {} missing. Schemas available: {:?}",
                     schema_name_lower,
                     schemas.keys()
                 );
                 Error::TableNotFound
             })?;
             if !default_schema.contains_key(&table_name_lower) {
-                println!("DEBUG: TableNotFound because table {} missing in schema {}. Tables in schema: {:?}", table_name_lower, schema_name_lower, default_schema.keys());
+                tracing::debug!("TableNotFound because table {} missing in schema {}. Tables in schema: {:?}", table_name_lower, schema_name_lower, default_schema.keys());
                 return Err(Error::TableNotFound);
             }
         }
@@ -3109,8 +3109,8 @@ impl TransactionEngineOperations for EngineOperations {
         // Get version store (version_stores is currently flat with table_name_lower as key)
         let stores = self.version_stores().read().unwrap();
         let version_store = stores.get(&table_name_lower).cloned().ok_or_else(|| {
-            println!(
-                "DEBUG: TableNotFound because version_store missing for {}. Stores available: {:?}",
+            tracing::debug!(
+                "TableNotFound because version_store missing for {}. Stores available: {:?}",
                 table_name_lower,
                 stores.keys()
             );
