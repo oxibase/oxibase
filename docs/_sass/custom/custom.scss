@@ -343,7 +343,7 @@ a {
 // ---------------------------------------
 table {
     th {
-        background-color: if($color-scheme == 'dark', darken($table-background-color, 6%), null);
+        background-color: darken($table-background-color, 6%);
     }
 }
 
