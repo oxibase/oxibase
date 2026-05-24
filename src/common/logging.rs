@@ -184,9 +184,19 @@ fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::R
         let target_value = Value::Text(entry.target.clone().into());
         let msg_value = Value::Text(entry.message.clone().into());
         let json_value = Value::null_unknown(); // Placeholder for future use
-        
-        let trace_id_value = entry.trace_id.clone().map_or(Value::Null(crate::core::DataType::Text), |id| Value::Text(id.into()));
-        let span_id_value = entry.span_id.clone().map_or(Value::Null(crate::core::DataType::Text), |id| Value::Text(id.into()));
+
+        let trace_id_value = entry
+            .trace_id
+            .clone()
+            .map_or(Value::Null(crate::core::DataType::Text), |id| {
+                Value::Text(id.into())
+            });
+        let span_id_value = entry
+            .span_id
+            .clone()
+            .map_or(Value::Null(crate::core::DataType::Text), |id| {
+                Value::Text(id.into())
+            });
 
         // id is AUTO_INCREMENT, so we pass Value::null_unknown() for it
         let row = vec![
