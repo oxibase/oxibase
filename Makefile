@@ -27,6 +27,10 @@ test-all:
 
 # [dev] Build in release mode
 build:
+	cargo build
+
+# [dev] Build in release mode
+build-release:
 	cargo build --release
 
 # [dev] Build in release mode with all features
@@ -68,25 +72,21 @@ release:
 
 # [run] Run oxibase with in-memory database
 run: build
-	./target/release/oxibase repl -d memory://
+	cargo run -- repl -d memory://
 
 # [run] Run oxibase with file-based database
 run-files: build
-	./target/release/oxibase repl -d file://./examples/oxibase.db
+	cargo run -- repl -d file://./examples/oxibase.db
 
 # [run] Build and run oxibase with all backends (Rhai, JS, Python) in memory
 run-all:
-	cargo build --release --features js,python
-	./target/release/oxibase repl -d memory://
+	cargo run --features js,python -- repl -d memory://
 
 # [run] Build and run oxibase with all backends (Rhai, JS, Python) file-based database
 run-all-files:
-	cargo build --release --features js,python
-	./target/release/oxibase repl -d file://./examples/oxibase.db
+	cargo run --features js,python -- repl -d file://./examples/oxibase.db
 
 # [run] Install workspace and run HTTP server on file-based database
 run-workspace: build
-	./target/release/oxibase install-workspace -d file://./examples/oxibase.db
-	./target/release/oxibase serve -d file://./examples/oxibase.db
-
-
+	cargo run -- install-workspace -d file://./examples/oxibase.db
+	cargo run -- serve -d file://./examples/oxibase.db
