@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -140,6 +141,7 @@ impl Parser {
     }
 
     /// Parse the input and return a Program
+    #[tracing::instrument(skip(self), name = "parse_program")]
     pub fn parse_program(&mut self) -> Result<Program, ParseErrors> {
         let mut statements = Vec::new();
 

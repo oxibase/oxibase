@@ -923,10 +923,34 @@ fn main() {
     let console_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
 
-    tracing_subscriber::registry()
+    let (trace_tx, trace_rx) = crossbeam_channel::bounded(10000);
+    let trace_layer = oxibase::common::tracing::SystemTraceLayer::new(trace_tx);
+
+    let registry = tracing_subscriber::registry()
         .with(fmt_layer.with_filter(console_filter))
         .with(internal_layer)
-        .init();
+        .with(trace_layer);
+
+    if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+        use opentelemetry_otlp::WithExportConfig;
+        let exporter = opentelemetry_otlp::SpanExporter::builder()
+            .with_tonic()
+            .with_endpoint(endpoint)
+            .build()
+            .expect("Failed to initialize OTLP exporter");
+
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_batch_exporter(exporter)
+            .build();
+
+        use opentelemetry::trace::TracerProvider;
+        let tracer = provider.tracer("oxibase");
+
+        let telemetry_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+        registry.with(telemetry_layer).init();
+    } else {
+        registry.init();
+    }
 
     // Determine the active command and db_path
     let (db_path, is_serve) = match &args.command {
@@ -951,6 +975,8 @@ fn main() {
         Ok(db) => {
             // Start the log flusher thread now that we have an engine
             oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
+            // Start the trace flusher thread
+            oxibase::common::tracing::start_trace_flusher(db.engine().clone(), trace_rx);
             db
         }
         Err(e) => {

@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -422,6 +423,7 @@ impl QueryPlanner {
     /// - Available indexes
     /// - Zone maps for segment pruning
     /// - Predicate columns and operators
+    #[tracing::instrument(skip(self, table), name = "choose_access_method")]
     pub fn choose_access_method(
         &self,
         table: &dyn Table,
@@ -589,6 +591,7 @@ impl QueryPlanner {
     }
 
     /// Choose the best join algorithm
+    #[tracing::instrument(skip(self, left_table, right_table), name = "choose_join_algorithm")]
     pub fn choose_join_algorithm(
         &self,
         left_table: &dyn Table,
