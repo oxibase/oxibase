@@ -283,17 +283,62 @@ impl Executor {
         self.active_transaction.lock().unwrap().is_some()
     }
 
+    pub(crate) fn ensure_traces_table_exists(&self) -> crate::core::Result<()> {
+        use crate::storage::traces::{CREATE_TRACES_SQL, SYS_TRACES};
+
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_traces = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_TRACES));
+        drop(tx);
+
+        if !has_traces {
+            self.execute_internal_sql(CREATE_TRACES_SQL)?;
+            tracing::info!("Created {} system table", SYS_TRACES);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn ensure_metrics_table_exists(&self) -> crate::core::Result<()> {
+        use crate::storage::metrics::{CREATE_METRICS_SQL, SYS_METRICS};
+
+        let tx = self.engine.begin_transaction()?;
+        let tables = tx.list_tables()?;
+        let has_metrics = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_METRICS));
+        drop(tx);
+
+        if !has_metrics {
+            self.execute_internal_sql(CREATE_METRICS_SQL)?;
+            tracing::info!("Created {} system table", SYS_METRICS);
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn ensure_logs_table_exists(&self) -> crate::core::Result<()> {
         use crate::storage::logs::{CREATE_LOGS_SQL, SYS_LOGS};
 
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
         let has_logs = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_LOGS));
+        
+        let mut needs_migration = false;
+        if has_logs {
+            // Check if we need to migrate the logs table to include trace_id and span_id
+            let table = tx.get_table(SYS_LOGS)?;
+            let schema = table.schema();
+            needs_migration = !schema.columns.iter().any(|c| c.name == "trace_id");
+        }
         drop(tx);
 
         if !has_logs {
             self.execute_internal_sql(CREATE_LOGS_SQL)?;
             tracing::info!("Created {} system table", SYS_LOGS);
+        } else if needs_migration {
+            // Add the missing columns
+            self.execute_internal_sql("ALTER TABLE system.logs ADD COLUMN trace_id TEXT;")?;
+            self.execute_internal_sql("ALTER TABLE system.logs ADD COLUMN span_id TEXT;")?;
+            tracing::info!("Migrated {} system table to include tracing columns", SYS_LOGS);
         }
 
         Ok(())
@@ -385,6 +430,10 @@ impl Executor {
 
         // Ensure logs table exists
         self.ensure_logs_table_exists()?;
+
+        // Ensure telemetry tables exist
+        self.ensure_traces_table_exists()?;
+        self.ensure_metrics_table_exists()?;
 
         Ok(())
     }

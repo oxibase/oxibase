@@ -43,6 +43,8 @@ pub struct LogEntry {
     pub target: String,
     pub message: String,
     pub timestamp: chrono::DateTime<Utc>,
+    pub trace_id: Option<String>,
+    pub span_id: Option<String>,
 }
 
 /// Custom tracing layer that pushes high-severity logs into a crossbeam channel.
@@ -81,6 +83,8 @@ where
             target: event.metadata().target().to_string(),
             message: visitor.message,
             timestamp: Utc::now(),
+            trace_id: None, // Will be populated by tracing-opentelemetry in future
+            span_id: None,  // Will be populated by tracing-opentelemetry in future
         };
 
         // Attempt to send, but do not block if the channel is full
@@ -180,6 +184,9 @@ fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::R
         let target_value = Value::Text(entry.target.clone().into());
         let msg_value = Value::Text(entry.message.clone().into());
         let json_value = Value::null_unknown(); // Placeholder for future use
+        
+        let trace_id_value = entry.trace_id.clone().map_or(Value::Null(crate::core::DataType::Text), |id| Value::Text(id.into()));
+        let span_id_value = entry.span_id.clone().map_or(Value::Null(crate::core::DataType::Text), |id| Value::Text(id.into()));
 
         // id is AUTO_INCREMENT, so we pass Value::null_unknown() for it
         let row = vec![
@@ -189,6 +196,8 @@ fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::R
             target_value,          // target
             msg_value,             // message
             json_value,            // json_fields
+            trace_id_value,        // trace_id
+            span_id_value,         // span_id
         ];
 
         table.insert(row.into())?;

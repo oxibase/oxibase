@@ -47,6 +47,8 @@ fn test_internal_log_capture() {
             target: "test_target".to_string(),
             message: "Executing CREATE TABLE for 'test_log_capture'".to_string(),
             timestamp: chrono::Utc::now(),
+            trace_id: None,
+            span_id: None,
         })
         .unwrap();
 
