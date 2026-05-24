@@ -19,7 +19,7 @@ use crate::server::template::create_env;
 use crate::server::AppState;
 use crate::Value;
 use axum::{
-    extract::{Path, Query, Request, State},
+    extract::{Form, Path, Query, Request, State},
     http::StatusCode,
     response::{Html, IntoResponse},
     Json,
@@ -40,10 +40,19 @@ pub struct GetQueryParams {
 }
 
 /// Helper function to check if a table exists in the information schema
-fn table_exists(db: &Database, table_name: &str) -> Result<bool, String> {
-    let query = "SELECT 1 FROM information_schema.tables WHERE table_name = ?";
+fn table_exists(db: &Database, full_table_name: &str) -> Result<bool, String> {
+    let (schema_name, table_name) = if let Some(dot_pos) = full_table_name.find('.') {
+        (&full_table_name[..dot_pos], &full_table_name[dot_pos + 1..])
+    } else {
+        ("public", full_table_name)
+    };
+
+    let query = "SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?";
     let rows = db
-        .query(query, vec![Value::text(table_name)])
+        .query(
+            query,
+            vec![Value::text(schema_name), Value::text(table_name)],
+        )
         .map_err(|e| e.to_string())?;
 
     // If we have at least one row, the table exists
@@ -234,6 +243,36 @@ pub async fn dynamic_route_handler(
 
     // Build context
     let mut context = serde_json::Map::new();
+
+    // Parse simple query parameters into context (simple decoding)
+    if let Some(query_str) = req.uri().query() {
+        for pair in query_str.split('&') {
+            if let Some((key, val)) = pair.split_once('=') {
+                let mut decoded = String::new();
+                let mut chars = val.chars();
+                while let Some(c) = chars.next() {
+                    if c == '%' {
+                        if let (Some(h1), Some(h2)) = (chars.next(), chars.next()) {
+                            if let Ok(byte) = u8::from_str_radix(&format!("{}{}", h1, h2), 16) {
+                                decoded.push(byte as char);
+                            } else {
+                                decoded.push('%');
+                                decoded.push(h1);
+                                decoded.push(h2);
+                            }
+                        } else {
+                            decoded.push('%');
+                        }
+                    } else if c == '+' {
+                        decoded.push(' ');
+                    } else {
+                        decoded.push(c);
+                    }
+                }
+                context.insert(key.to_string(), JsonValue::String(decoded));
+            }
+        }
+    }
 
     if let Some(ctx_query) = context_query {
         // Run the query to fetch dynamic context
@@ -725,5 +764,275 @@ fn json_to_value(json: &JsonValue) -> Value {
         JsonValue::Array(_) | JsonValue::Object(_) => {
             Value::Json(std::sync::Arc::from(json.to_string()))
         }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct SqlRequest {
+    pub query: String,
+}
+
+pub async fn execute_sql(
+    State(state): State<AppState>,
+    Json(payload): Json<SqlRequest>,
+) -> impl IntoResponse {
+    let sql = payload.query.trim();
+
+    // Check if it's a row-returning query (SELECT, SHOW, EXPLAIN, etc)
+    let upper_sql = sql.to_uppercase();
+    let is_query = upper_sql.starts_with("SELECT")
+        || upper_sql.starts_with("SHOW")
+        || upper_sql.starts_with("EXPLAIN")
+        || upper_sql.starts_with("DESCRIBE")
+        || upper_sql.starts_with("WITH");
+
+    if is_query {
+        match state.db.query(sql, ()) {
+            Ok(rows_result) => {
+                let columns = rows_result.columns().to_vec();
+                let mut all_rows = Vec::new();
+
+                for row_res in rows_result {
+                    match row_res {
+                        Ok(row) => {
+                            let mut json_row = serde_json::Map::new();
+                            for (i, col_name) in columns.iter().enumerate() {
+                                let val =
+                                    row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                                json_row.insert(col_name.clone(), value_to_json(&val));
+                            }
+                            all_rows.push(JsonValue::Object(json_row));
+                        }
+                        Err(e) => {
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(serde_json::json!({ "error": format!("Row error: {}", e) })),
+                            )
+                                .into_response();
+                        }
+                    }
+                }
+
+                (
+                    StatusCode::OK,
+                    Json(serde_json::json!({
+                        "columns": columns,
+                        "rows": all_rows
+                    })),
+                )
+                    .into_response()
+            }
+            Err(e) => (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": format!("Query error: {}", e) })),
+            )
+                .into_response(),
+        }
+    } else {
+        match state.db.execute(sql, ()) {
+            Ok(rows_affected) => (
+                StatusCode::OK,
+                Json(serde_json::json!({ "rows_affected": rows_affected })),
+            )
+                .into_response(),
+            Err(e) => (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": format!("Execution error: {}", e) })),
+            )
+                .into_response(),
+        }
+    }
+}
+
+pub async fn workspace_execute_sql(
+    State(state): State<AppState>,
+    Form(form): Form<HashMap<String, String>>,
+) -> impl IntoResponse {
+    let sql = match form.get("query") {
+        Some(q) => q.trim(),
+        None => return (StatusCode::BAD_REQUEST, "Missing query").into_response(),
+    };
+
+    let mut context = serde_json::Map::new();
+    context.insert("query".to_string(), JsonValue::String(sql.to_string()));
+
+    let upper_sql = sql.to_uppercase();
+    let is_query = upper_sql.starts_with("SELECT")
+        || upper_sql.starts_with("SHOW")
+        || upper_sql.starts_with("EXPLAIN")
+        || upper_sql.starts_with("DESCRIBE")
+        || upper_sql.starts_with("WITH");
+
+    if is_query {
+        match state.db.query(sql, ()) {
+            Ok(rows_result) => {
+                let columns = rows_result.columns().to_vec();
+                let mut all_rows = Vec::new();
+
+                for row_res in rows_result {
+                    match row_res {
+                        Ok(row) => {
+                            let mut json_row = serde_json::Map::new();
+                            for (i, col_name) in columns.iter().enumerate() {
+                                let val =
+                                    row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                                json_row.insert(col_name.clone(), value_to_json(&val));
+                            }
+                            all_rows.push(JsonValue::Object(json_row));
+                        }
+                        Err(e) => {
+                            context.insert("error".to_string(), JsonValue::String(e.to_string()));
+                            break;
+                        }
+                    }
+                }
+
+                context.insert("columns".to_string(), serde_json::json!(columns));
+                context.insert("rows".to_string(), JsonValue::Array(all_rows));
+            }
+            Err(e) => {
+                context.insert("error".to_string(), JsonValue::String(e.to_string()));
+            }
+        }
+    } else {
+        match state.db.execute(sql, ()) {
+            Ok(rows_affected) => {
+                context.insert(
+                    "rows_affected".to_string(),
+                    serde_json::json!(rows_affected),
+                );
+            }
+            Err(e) => {
+                context.insert("error".to_string(), JsonValue::String(e.to_string()));
+            }
+        }
+    }
+
+    let env = create_env(state.db.clone());
+    let tmpl = match env.get_template("workspace_sql_results.html") {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template load error: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    match tmpl.render(JsonValue::Object(context)) {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct WorkspaceTableCreateForm {
+    pub table_name: String,
+    pub col_name: String,
+    pub col_type: String,
+}
+
+pub async fn workspace_create_table(
+    State(state): State<AppState>,
+    Form(form): Form<WorkspaceTableCreateForm>,
+) -> impl IntoResponse {
+    let sql = format!(
+        "CREATE TABLE {} ({} {})",
+        form.table_name, form.col_name, form.col_type
+    );
+
+    match state.db.execute(&sql, ()) {
+        Ok(_) => {
+            // Unpoly accepts a redirect or an HTML fragment
+            // We'll return an Unpoly-compatible response to close the modal and reload the sidebar
+            let html = r#"
+            <div class="p-4 bg-green-100 text-green-700 rounded">
+                Table created successfully.
+                <script>
+                    up.emit('table:created');
+                    up.layer.dismiss();
+                </script>
+            </div>
+            "#;
+            Html(html).into_response()
+        }
+        Err(e) => {
+            let html = format!(
+                r#"
+            <div class="p-4 bg-red-100 text-red-700 rounded">
+                Error creating table: {}
+            </div>
+            "#,
+                e
+            );
+            (StatusCode::BAD_REQUEST, Html(html)).into_response()
+        }
+    }
+}
+
+pub async fn workspace_get_table_data(
+    Path((schema, table)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut context = serde_json::Map::new();
+    context.insert("schema".to_string(), JsonValue::String(schema.clone()));
+    context.insert("table".to_string(), JsonValue::String(table.clone()));
+
+    let sql = format!("SELECT * FROM {}.{} LIMIT 100", schema, table);
+
+    match state.db.query(&sql, ()) {
+        Ok(rows_result) => {
+            let columns = rows_result.columns().to_vec();
+            let mut all_rows = Vec::new();
+
+            for row_res in rows_result {
+                match row_res {
+                    Ok(row) => {
+                        let mut json_row = serde_json::Map::new();
+                        for (i, col_name) in columns.iter().enumerate() {
+                            let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                            json_row.insert(col_name.clone(), value_to_json(&val));
+                        }
+                        all_rows.push(JsonValue::Object(json_row));
+                    }
+                    Err(e) => {
+                        context.insert("error".to_string(), JsonValue::String(e.to_string()));
+                        break;
+                    }
+                }
+            }
+
+            context.insert("columns".to_string(), serde_json::json!(columns));
+            context.insert("rows".to_string(), JsonValue::Array(all_rows));
+        }
+        Err(e) => {
+            context.insert("error".to_string(), JsonValue::String(e.to_string()));
+        }
+    }
+
+    let env = create_env(state.db.clone());
+    let tmpl = match env.get_template("workspace_data_grid.html") {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template load error: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    match tmpl.render(JsonValue::Object(context)) {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {}", e),
+        )
+            .into_response(),
     }
 }

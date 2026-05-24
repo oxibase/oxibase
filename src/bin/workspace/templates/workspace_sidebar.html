@@ -1,0 +1,34 @@
+{% extends "workspace_layout.html" %}
+{% block sidebar %}
+<ul class="menu w-full px-0" up-nav>
+    {% set current_schema = "" %}
+    {% for table in data %}
+        {% if table.table_schema != current_schema %}
+            {% if not loop.first %}</ul></details></li>{% endif %}
+            {% set current_schema = table.table_schema %}
+            <li>
+                <details open>
+                    <summary class="font-semibold text-xs uppercase tracking-wider opacity-70">
+                        <svg class="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        {{ table.table_schema }}
+                    </summary>
+                    <ul>
+        {% endif %}
+        
+        <li>
+            <a href="/workspace/data/{{ table.table_schema }}/{{ table.table_name }}" up-target="[up-main='content']" class="nav-link">
+                <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span class="truncate">{{ table.table_name }}</span>
+            </a>
+        </li>
+        
+        {% if loop.last %}</ul></details></li>{% endif %}
+    {% endfor %}
+    {% if data|length == 0 %}
+        <div class="p-4 text-center flex flex-col gap-3">
+            <p class="opacity-50 text-sm">No tables found.</p>
+            <a href="/workspace/meta/tables/new" up-layer="new modal" class="btn btn-sm btn-outline btn-primary w-full">Create Table</a>
+        </div>
+    {% endif %}
+</ul>
+{% endblock %}

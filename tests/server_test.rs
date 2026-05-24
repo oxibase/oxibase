@@ -40,9 +40,9 @@ async fn test_auto_api_crud_flow() {
     let db = setup_db("memory://test_auto_api_crud_flow").await;
     let app = create_router(db);
 
-    // 1. GET /api/users (Empty)
+    // 1. GET /api/data/users (Empty)
     let req = Request::builder()
-        .uri("/api/users")
+        .uri("/api/data/users")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -50,10 +50,10 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!([]));
 
-    // 2. POST /api/users (Insert)
+    // 2. POST /api/data/users (Insert)
     let req = Request::builder()
         .method("POST")
-        .uri("/api/users")
+        .uri("/api/data/users")
         .header("content-type", "application/json")
         .body(Body::from(json!({ "id": 1, "name": "Alice" }).to_string()))
         .unwrap();
@@ -62,9 +62,9 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!({ "rows_affected": 1 }));
 
-    // 3. GET /api/users (Verify Insert)
+    // 3. GET /api/data/users (Verify Insert)
     let req = Request::builder()
-        .uri("/api/users")
+        .uri("/api/data/users")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -72,10 +72,10 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!([{"id": 1, "name": "Alice"}]));
 
-    // 4. PATCH /api/users (Update)
+    // 4. PATCH /api/data/users (Update)
     let req = Request::builder()
         .method("PATCH")
-        .uri("/api/users?id=eq.1")
+        .uri("/api/data/users?id=eq.1")
         .header("content-type", "application/json")
         .body(Body::from(json!({ "name": "Alice Bob" }).to_string()))
         .unwrap();
@@ -84,9 +84,9 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!({ "rows_affected": 1 }));
 
-    // 5. GET /api/users (Verify Update)
+    // 5. GET /api/data/users (Verify Update)
     let req = Request::builder()
-        .uri("/api/users?id=eq.1")
+        .uri("/api/data/users?id=eq.1")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -94,10 +94,10 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!([{"id": 1, "name": "Alice Bob"}]));
 
-    // 6. DELETE /api/users
+    // 6. DELETE /api/data/users
     let req = Request::builder()
         .method("DELETE")
-        .uri("/api/users?id=eq.1")
+        .uri("/api/data/users?id=eq.1")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -105,9 +105,9 @@ async fn test_auto_api_crud_flow() {
     let body = get_json_response(res).await;
     assert_eq!(body, json!({ "rows_affected": 1 }));
 
-    // 7. GET /api/users (Verify Delete)
+    // 7. GET /api/data/users (Verify Delete)
     let req = Request::builder()
-        .uri("/api/users")
+        .uri("/api/data/users")
         .body(Body::empty())
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
@@ -125,7 +125,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     // 1. 404s for missing tables
     let req = Request::builder()
-        .uri("/api/nope")
+        .uri("/api/data/nope")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -133,7 +133,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/api/nope")
+        .uri("/api/data/nope")
         .header("content-type", "application/json")
         .body(Body::from("{}"))
         .unwrap();
@@ -142,7 +142,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     let req = Request::builder()
         .method("PATCH")
-        .uri("/api/nope?id=eq.1")
+        .uri("/api/data/nope?id=eq.1")
         .header("content-type", "application/json")
         .body(Body::from("{}"))
         .unwrap();
@@ -151,7 +151,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     let req = Request::builder()
         .method("DELETE")
-        .uri("/api/nope?id=eq.1")
+        .uri("/api/data/nope?id=eq.1")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -160,7 +160,7 @@ async fn test_auto_api_edge_cases_and_errors() {
     // 2. 400s for empty payloads on POST/PATCH
     let req = Request::builder()
         .method("POST")
-        .uri("/api/complex_types")
+        .uri("/api/data/complex_types")
         .header("content-type", "application/json")
         .body(Body::from("{}"))
         .unwrap();
@@ -169,7 +169,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     let req = Request::builder()
         .method("PATCH")
-        .uri("/api/complex_types?id=eq.1")
+        .uri("/api/data/complex_types?id=eq.1")
         .header("content-type", "application/json")
         .body(Body::from("{}"))
         .unwrap();
@@ -179,7 +179,7 @@ async fn test_auto_api_edge_cases_and_errors() {
     // 3. 400s for missing eq. filters on PATCH/DELETE
     let req = Request::builder()
         .method("PATCH")
-        .uri("/api/complex_types")
+        .uri("/api/data/complex_types")
         .header("content-type", "application/json")
         .body(Body::from(json!({"label": "foo"}).to_string()))
         .unwrap();
@@ -188,7 +188,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     let req = Request::builder()
         .method("DELETE")
-        .uri("/api/complex_types")
+        .uri("/api/data/complex_types")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -197,7 +197,7 @@ async fn test_auto_api_edge_cases_and_errors() {
     // 4. JSON type conversions (inserting null, bool, float, array)
     let req = Request::builder()
         .method("POST")
-        .uri("/api/complex_types")
+        .uri("/api/data/complex_types")
         .header("content-type", "application/json")
         .body(Body::from(
             json!({
@@ -215,7 +215,7 @@ async fn test_auto_api_edge_cases_and_errors() {
 
     // Verify type conversions via GET
     let req = Request::builder()
-        .uri("/api/complex_types")
+        .uri("/api/data/complex_types")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -228,7 +228,7 @@ async fn test_auto_api_edge_cases_and_errors() {
     // 5. 500s for DB execution errors
     // Bad select column
     let req = Request::builder()
-        .uri("/api/complex_types?select=bad_col")
+        .uri("/api/data/complex_types?select=bad_col")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
@@ -237,7 +237,7 @@ async fn test_auto_api_edge_cases_and_errors() {
     // Type mismatch on insert (insert string to int column)
     let req = Request::builder()
         .method("POST")
-        .uri("/api/complex_types")
+        .uri("/api/data/complex_types")
         .header("content-type", "application/json")
         .body(Body::from(json!({"id": "not_an_int"}).to_string()))
         .unwrap();

@@ -35,6 +35,9 @@ use oxibase::api::{Database, Transaction as ApiTransaction};
 use oxibase::common::version::version;
 use oxibase::Value;
 
+#[cfg(feature = "cli")]
+mod workspace;
+
 /// Version string constant
 const VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION_MAJOR"),
@@ -158,6 +161,14 @@ enum Commands {
         /// Host to bind to
         #[arg(long = "host", default_value = "127.0.0.1")]
         host: String,
+    },
+
+    /// Install the Workspace GUI app templates and routes into the database
+    #[cfg(feature = "cli")]
+    InstallWorkspace {
+        /// Database path (file://<path> or memory://)
+        #[arg(short = 'd', long = "db", default_value = "memory://")]
+        db_path: String,
     },
 }
 
@@ -946,6 +957,8 @@ fn main() {
         Some(Commands::Repl { db_path }) => (db_path.clone(), false),
         #[cfg(feature = "server")]
         Some(Commands::Serve { db_path, .. }) => (db_path.clone(), true),
+        #[cfg(feature = "cli")]
+        Some(Commands::InstallWorkspace { db_path }) => (db_path.clone(), false),
         None => ("memory://".to_string(), false), // Default to repl if no command is provided
     };
 
@@ -1000,6 +1013,11 @@ fn main() {
                 println!("Listening on {}", addr);
                 axum::serve(listener, app).await.expect("Server failed");
             });
+            return;
+        }
+        #[cfg(feature = "cli")]
+        Some(Commands::InstallWorkspace { .. }) => {
+            workspace::install(&db);
             return;
         }
         _ => {

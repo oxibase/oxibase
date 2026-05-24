@@ -1,0 +1,63 @@
+<div id="query-results" class="h-full w-full bg-base-100 flex flex-col absolute inset-0">
+{% if error %}
+    <div class="p-4 m-4">
+        <div role="alert" class="alert alert-error">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+                <h3 class="font-bold">Query Error</h3>
+                <div class="text-sm font-mono mt-1 whitespace-pre-wrap">{{ error }}</div>
+            </div>
+        </div>
+    </div>
+{% elif rows_affected is defined %}
+    <div class="p-4 m-4">
+        <div role="alert" class="alert alert-success">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+                <h3 class="font-bold">Success</h3>
+                <div class="text-sm mt-1">{{ rows_affected }} rows affected.</div>
+            </div>
+        </div>
+    </div>
+{% elif columns is defined %}
+    <div class="flex-1 overflow-x-auto overflow-y-auto">
+        <table class="table table-zebra table-pin-rows table-sm w-full">
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="hover">
+                    {% for col in columns %}
+                    <td>
+                        {% if row[col] is defined %}
+                            {{ row[col] }}
+                        {% else %}
+                            <span class="opacity-40 italic">null</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% if rows|length == 0 %}
+                <tr>
+                    <td colspan="{{ columns|length }}" class="px-6 py-10 text-center">
+                        <div class="opacity-50">
+                            <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                            <p>No results found</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <div class="bg-base-200/50 border-t border-base-200 px-4 py-2 shrink-0 text-xs opacity-70">
+        Showing <strong>{{ rows|length }}</strong> results
+    </div>
+{% endif %}
+</div>

@@ -1,0 +1,93 @@
+{% extends "workspace_layout.html" %}
+{% block content %}
+<div class="h-full flex flex-col gap-4">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="bg-secondary/10 text-secondary p-3 rounded-box">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold">{{ table }}</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <div class="badge badge-neutral badge-sm">{{ schema }}</div>
+                    <span class="text-xs opacity-60">schema</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <a href="/workspace/data/{{ schema }}/{{ table }}" up-target="[up-main='content']" class="btn btn-sm btn-outline">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Refresh
+            </a>
+            <form up-submit up-target="[up-main='content']" action="/workspace/sql_editor" method="get">
+                <input type="hidden" name="query" value="SELECT * FROM {{ schema }}.{{ table }} LIMIT 100;">
+                <button type="submit" class="btn btn-sm btn-secondary">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                    SQL
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden relative">
+        {% if error %}
+            <div class="p-6 m-6">
+                <div role="alert" class="alert alert-error">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div>
+                        <h3 class="font-bold">Error loading data</h3>
+                        <div class="text-sm font-mono mt-1">{{ error }}</div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="flex-1 overflow-auto absolute inset-0 bottom-10">
+                <table class="table table-zebra table-pin-rows table-sm w-full">
+                    <thead>
+                        <tr>
+                            {% for col in columns %}
+                            <th>
+                                <div class="flex items-center gap-1">
+                                    {{ col }}
+                                </div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr class="hover">
+                            {% for col in columns %}
+                            <td>
+                                {% if row[col] is defined %}
+                                    {{ row[col] }}
+                                {% else %}
+                                    <span class="opacity-40 italic">null</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        {% if rows|length == 0 %}
+                        <tr>
+                            <td colspan="{{ columns|length }}" class="px-6 py-16 text-center">
+                                <div class="opacity-50 max-w-sm mx-auto">
+                                    <div class="bg-base-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                                    </div>
+                                    <h3 class="text-lg font-bold mb-1">No data available</h3>
+                                    <p class="text-sm">This table is currently empty.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-base-200/50 border-t border-base-200 px-4 py-2 text-xs opacity-70 absolute bottom-0 left-0 right-0 h-10 flex items-center">
+                Showing <strong>{{ rows|length }}</strong> rows {% if rows|length == 100 %}(limit reached){% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
