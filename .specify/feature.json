@@ -1,1 +1,3 @@
-{"feature_directory": "specs/027-elaborate-existing-logs"}
+{
+  "feature_directory": "specs/029-opentelemetry-tracing"
+}
