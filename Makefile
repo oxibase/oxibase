@@ -84,4 +84,9 @@ run-all-files:
 	cargo build --release --features js,python
 	./target/release/oxibase repl -d file://./examples/oxibase.db
 
+# [run] Install workspace and run HTTP server on file-based database
+run-workspace: build
+	./target/release/oxibase install-workspace -d file://./examples/oxibase.db
+	./target/release/oxibase serve -d file://./examples/oxibase.db
+
 
