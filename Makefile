@@ -2,15 +2,15 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build buil-all coverage license docs docs-build docs-lib release help run-memory run-files run-all
+.PHONY: all lint test build buil-all coverage coverage-html coverage-check license docs docs-build docs-lib release help run-memory run-files run-all
 
 .PHONY: help
 # [other] Display help
 help:
 	@./scripts/help.sh ./Makefile
 
-# [dev] Run lint, test, and build (default target)
-all: lint test build
+# [dev] Run lint, test, coverage check, and build (default target)
+all: lint test coverage-check build
 
 # [dev] Check formatting and run clippy
 lint:
@@ -36,6 +36,14 @@ build-all:
 # [dev] Generate coverage report (requires cargo-llvm-cov)
 coverage:
 	cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+# [dev] Generate HTML coverage report (requires cargo-llvm-cov)
+coverage-html:
+	cargo llvm-cov --all-features --workspace --html
+
+# [dev] Check coverage against thresholds (requires cargo-llvm-cov)
+coverage-check:
+	cargo llvm-cov --all-features --workspace --fail-under-lines 70
 
 # [dev] Check license headers
 license:

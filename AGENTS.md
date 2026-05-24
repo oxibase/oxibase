@@ -9,6 +9,7 @@ This file contains high-signal, repo-specific context to help agents work effect
 - **Linting & Formatting**: Use `make lint` (runs `cargo fmt --all -- --check` and `cargo clippy --all-targets --all-features -- -D warnings`).
 - **Features**: The codebase has optional scripting backends: `js` (Boa), `python` (RustPython), and `rhai` (default). When testing or building specific backend logic, ensure you pass the right feature flag (e.g., `--features js`).
 - **License Headers**: All `.rs` files require an Apache-2.0 license header. You can use `./scripts/fix_copyrights.sh` to fix headers or run `make license` to verify them. 
+- **Code Coverage**: Verify your changes do not drop the overall test coverage below the minimum threshold by running `make coverage-check`. You can also generate an HTML report using `make coverage-html`.
 
 ## Code Standards
 - **No `unwrap()`**: Avoid using `unwrap()` or `expect()` in library code. Propagate errors properly using `Result` and the `thiserror`/`anyhow` crates.
