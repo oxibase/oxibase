@@ -321,7 +321,7 @@ impl Executor {
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
         let has_logs = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_LOGS));
-        
+
         let mut needs_migration = false;
         if has_logs {
             // Check if we need to migrate the logs table to include trace_id and span_id
@@ -338,7 +338,10 @@ impl Executor {
             // Add the missing columns
             self.execute_internal_sql("ALTER TABLE system.logs ADD COLUMN trace_id TEXT;")?;
             self.execute_internal_sql("ALTER TABLE system.logs ADD COLUMN span_id TEXT;")?;
-            tracing::info!("Migrated {} system table to include tracing columns", SYS_LOGS);
+            tracing::info!(
+                "Migrated {} system table to include tracing columns",
+                SYS_LOGS
+            );
         }
 
         Ok(())
@@ -428,10 +431,8 @@ impl Executor {
         // Ensure cron tables exist
         self.ensure_cron_tables_exist()?;
 
-        // Ensure logs table exists
-        self.ensure_logs_table_exists()?;
-
         // Ensure telemetry tables exist
+        self.ensure_logs_table_exists()?;
         self.ensure_traces_table_exists()?;
         self.ensure_metrics_table_exists()?;
 
