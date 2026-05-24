@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@
 pub mod buffer_pool;
 pub mod int64_map;
 pub mod logging;
+pub mod tracing;
 pub mod version;
 
 // Re-export main types for convenience

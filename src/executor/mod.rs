@@ -897,6 +897,13 @@ impl Executor {
             }
         };
 
+        let _span = tracing::info_span!(
+            "execute_statement",
+            transaction_id = ctx.transaction_id(),
+            query_string = ?statement,
+        )
+        .entered();
+
         match statement {
             // DDL statements
             Statement::CreateTable(stmt) => self.execute_create_table(stmt, &ctx),
