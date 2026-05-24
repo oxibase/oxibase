@@ -18,6 +18,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 pub mod handlers;
+pub mod meta;
 pub mod template;
 
 /// The shared application state for the Axum server.
@@ -49,12 +50,44 @@ pub fn create_router(db: Database) -> Router {
             axum::routing::post(handlers::invoke_procedure),
         )
         .route(
-            "/api/{table}",
+            "/api/data/{table}",
             get(handlers::get_table)
                 .post(handlers::insert_row)
                 .patch(handlers::update_row)
                 .delete(handlers::delete_row),
         )
+        .route("/api/sql", axum::routing::post(handlers::execute_sql))
+        .route(
+            "/workspace/sql",
+            axum::routing::post(handlers::workspace_execute_sql),
+        )
+        .route(
+            "/workspace/meta/tables",
+            axum::routing::post(handlers::workspace_create_table),
+        )
+        .route(
+            "/workspace/data/{schema}/{table}",
+            get(handlers::workspace_get_table_data),
+        )
+        .route("/api/meta/schemas", get(meta::list_schemas))
+        .route(
+            "/api/meta/tables",
+            get(meta::list_tables).post(meta::create_table),
+        )
+        .route(
+            "/api/meta/tables/{table}",
+            axum::routing::delete(meta::drop_table),
+        )
+        .route("/api/meta/views", get(meta::list_views))
+        .route(
+            "/api/meta/columns",
+            get(meta::list_columns).post(meta::add_column),
+        )
+        .route("/api/meta/functions", get(meta::list_functions))
+        .route("/api/meta/procedures", get(meta::list_functions))
+        .route("/api/meta/indexes", get(meta::list_indexes))
+        .route("/api/meta/constraints", get(meta::list_constraints))
+        .route("/api/meta/triggers", get(meta::list_triggers))
         .fallback(handlers::dynamic_route_handler)
         .with_state(state)
         // Add middleware for logging and CORS
