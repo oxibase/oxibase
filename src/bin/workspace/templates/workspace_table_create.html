@@ -1,15 +1,15 @@
 {% extends "workspace_layout.html" %}
 {% block content %}
-<div class="card bg-base-100 shadow-xl max-w-lg w-full mx-auto my-8">
-    <div class="card-body">
+<div class="w-full max-w-lg mx-auto">
+    <div class="p-4 sm:p-6">
         <div class="flex items-center justify-between mb-4 border-b border-base-200 pb-4">
-            <h2 class="card-title text-2xl">Create New Table</h2>
+            <h2 class="text-2xl font-bold">Create New Table</h2>
             <button type="button" onclick="up.layer.dismiss()" class="btn btn-sm btn-circle btn-ghost">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
         
-        <form up-submit up-target=".main-content" action="/workspace/meta/tables" method="post" class="space-y-4">
+        <form up-submit up-target="[up-main='content']" action="/workspace/meta/tables" method="post" class="space-y-4">
             <div class="form-control w-full">
                 <label class="label">
                     <span class="label-text font-medium">Table Name</span>
@@ -38,7 +38,7 @@
                 </div>
             </div>
             
-            <div class="card-actions justify-end mt-6">
+            <div class="flex justify-end gap-2 mt-6">
                 <button type="button" class="btn btn-ghost" onclick="up.layer.dismiss()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Create Table</button>
             </div>
