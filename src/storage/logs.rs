@@ -28,7 +28,9 @@ CREATE TABLE IF NOT EXISTS system.logs (
     level TEXT NOT NULL,
     target TEXT NOT NULL,
     message TEXT NOT NULL,
-    json_fields TEXT
+    json_fields TEXT,
+    trace_id TEXT,
+    span_id TEXT
 );
 "#;
 

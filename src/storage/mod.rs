@@ -28,9 +28,11 @@ pub mod functions;
 pub mod index;
 pub mod jobs;
 pub mod logs;
+pub mod metrics;
 pub mod mvcc;
 pub mod procedures;
 pub mod statistics;
+pub mod traces;
 pub mod traits;
 pub mod triggers;
 
@@ -92,3 +94,9 @@ pub use procedures::{is_procedures_table, StoredProcedure, CREATE_PROCEDURES_SQL
 
 // Re-export Logs types
 pub use logs::{is_logs_table, CREATE_LOGS_SQL, SYS_LOGS};
+
+// Re-export Traces types
+pub use traces::{is_traces_table, CREATE_TRACES_SQL, SYS_TRACES};
+
+// Re-export Metrics types
+pub use metrics::{is_metrics_table, CREATE_METRICS_SQL, SYS_METRICS};
