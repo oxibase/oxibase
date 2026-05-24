@@ -244,6 +244,36 @@ pub async fn dynamic_route_handler(
     // Build context
     let mut context = serde_json::Map::new();
 
+    // Parse simple query parameters into context (simple decoding)
+    if let Some(query_str) = req.uri().query() {
+        for pair in query_str.split('&') {
+            if let Some((key, val)) = pair.split_once('=') {
+                let mut decoded = String::new();
+                let mut chars = val.chars();
+                while let Some(c) = chars.next() {
+                    if c == '%' {
+                        if let (Some(h1), Some(h2)) = (chars.next(), chars.next()) {
+                            if let Ok(byte) = u8::from_str_radix(&format!("{}{}", h1, h2), 16) {
+                                decoded.push(byte as char);
+                            } else {
+                                decoded.push('%');
+                                decoded.push(h1);
+                                decoded.push(h2);
+                            }
+                        } else {
+                            decoded.push('%');
+                        }
+                    } else if c == '+' {
+                        decoded.push(' ');
+                    } else {
+                        decoded.push(c);
+                    }
+                }
+                context.insert(key.to_string(), JsonValue::String(decoded));
+            }
+        }
+    }
+
     if let Some(ctx_query) = context_query {
         // Run the query to fetch dynamic context
         let ctx_rows_res = match state.db.query(&ctx_query, ()) {
