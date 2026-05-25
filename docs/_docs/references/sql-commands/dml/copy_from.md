@@ -8,7 +8,7 @@ grand_parent: SQL Commands
 # COPY FROM
 
 <div id="rrdiagram"></div>
-<script>
+<script class="railroad-diagram-script">
   (function() {
     var diagram = Diagram([
       Sequence([

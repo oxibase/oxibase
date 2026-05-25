@@ -8,7 +8,7 @@ grand_parent: SQL Commands
 # Transaction Control
 
 <div id="rrdiagram"></div>
-<script>
+<script class="railroad-diagram-script">
   (function() {
     var diagram = Diagram([
       Choice(0, [

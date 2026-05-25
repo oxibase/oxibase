@@ -4,3 +4,32 @@
 <script src="{{ '/assets/js/theme-toggle.js' | relative_url }}"></script>
 <link rel="stylesheet" href="{{ '/assets/css/railroad.css' | relative_url }}">
 <script src="{{ '/assets/js/railroad.js' | relative_url }}"></script>
+<script>
+  function initRailroadDiagrams() {
+    const scripts = document.querySelectorAll("script.railroad-diagram-script:not(.executed)");
+    scripts.forEach(script => {
+        script.classList.add("executed");
+        try {
+            eval(script.innerText);
+        } catch(e) {
+            console.error("Error executing railroad diagram script:", e);
+        }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", initRailroadDiagrams);
+
+  const observer = new MutationObserver(function(mutations) {
+      let shouldInit = false;
+      for (let mutation of mutations) {
+          if (mutation.addedNodes.length > 0) {
+              shouldInit = true;
+              break;
+          }
+      }
+      if (shouldInit) {
+          initRailroadDiagrams();
+      }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+</script>

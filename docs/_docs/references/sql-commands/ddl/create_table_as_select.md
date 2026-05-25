@@ -8,7 +8,7 @@ grand_parent: SQL Commands
 # CREATE TABLE AS SELECT
 
 <div id="rrdiagram"></div>
-<script>
+<script class="railroad-diagram-script">
   (function() {
     var diagram = Diagram([
       Sequence([
