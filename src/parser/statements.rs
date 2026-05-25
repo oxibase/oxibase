@@ -38,6 +38,7 @@ impl Parser {
             let keyword = self.cur_token.literal.to_uppercase();
             match keyword.as_str() {
                 "SELECT" => self.parse_select_statement().map(Statement::Select),
+                "FROM" => self.parse_from_first_statement().map(Statement::Select),
                 "WITH" => self.parse_with_statement(),
                 "INSERT" => self.parse_insert_statement().map(Statement::Insert),
                 "UPDATE" => self.parse_update_statement().map(Statement::Update),
@@ -210,6 +211,148 @@ impl Parser {
             if self.peek_token_is_keyword("ONLY") {
                 self.next_token();
             }
+        }
+
+        self.current_clause.clear();
+        Some(stmt)
+    }
+
+    /// Parse a FROM-first statement (DuckDB-style)
+    pub fn parse_from_first_statement(&mut self) -> Option<SelectStatement> {
+        let token = self.cur_token.clone(); // The FROM token
+
+        let mut stmt = SelectStatement {
+            token,
+            distinct: false,
+            columns: Vec::new(),
+            with: None,
+            table_expr: None,
+            where_clause: None,
+            group_by: GroupByClause::default(),
+            having: None,
+            window_defs: Vec::new(),
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
+            set_operations: Vec::new(),
+        };
+
+        // Parse FROM clause
+        self.next_token(); // move to table expression
+        stmt.table_expr = Some(Box::new(self.parse_table_expression()?));
+
+        // Enter loop to parse subsequent clauses in any order
+        loop {
+            if !self.peek_token_is(TokenType::Keyword) {
+                break;
+            }
+
+            let keyword = self.peek_token.literal.to_uppercase();
+            match keyword.as_str() {
+                "SELECT" => {
+                    self.next_token(); // consume SELECT
+
+                    // Check for DISTINCT
+                    if self.peek_token_is_keyword("DISTINCT") {
+                        self.next_token();
+                        stmt.distinct = true;
+                    }
+
+                    self.next_token();
+                    stmt.columns = self.parse_select_columns();
+                }
+                "WHERE" => {
+                    self.next_token(); // consume WHERE
+                    self.current_clause = "WHERE".to_string();
+                    self.next_token();
+                    stmt.where_clause = Some(Box::new(self.parse_expression(Precedence::Lowest)?));
+                }
+                "GROUP" => {
+                    self.next_token(); // consume GROUP
+                    if !self.expect_keyword("BY") {
+                        return None;
+                    }
+                    self.current_clause = "GROUP BY".to_string();
+                    stmt.group_by = self.parse_group_by_clause();
+                }
+                "HAVING" => {
+                    self.next_token(); // consume HAVING
+                    self.current_clause = "HAVING".to_string();
+                    self.next_token();
+                    stmt.having = Some(Box::new(self.parse_expression(Precedence::Lowest)?));
+                }
+                "WINDOW" => {
+                    self.next_token(); // consume WINDOW
+                    self.current_clause = "WINDOW".to_string();
+                    stmt.window_defs = self.parse_window_definitions();
+                }
+                "ORDER" => {
+                    self.next_token(); // consume ORDER
+                    if !self.expect_keyword("BY") {
+                        return None;
+                    }
+                    self.current_clause = "ORDER BY".to_string();
+                    stmt.order_by = self.parse_order_by_expressions();
+                }
+                "LIMIT" => {
+                    self.next_token(); // consume LIMIT
+                    self.current_clause = "LIMIT".to_string();
+                    self.next_token();
+                    stmt.limit = Some(Box::new(self.parse_expression(Precedence::Lowest)?));
+                }
+                "OFFSET" => {
+                    self.next_token(); // consume OFFSET
+                    self.current_clause = "OFFSET".to_string();
+                    self.next_token();
+                    stmt.offset = Some(Box::new(self.parse_expression(Precedence::Lowest)?));
+
+                    if self.peek_token_is_keyword("ROWS") || self.peek_token_is_keyword("ROW") {
+                        self.next_token();
+                    }
+                }
+                "FETCH" => {
+                    self.next_token(); // consume FETCH
+
+                    if !self.peek_token_is_keyword("FIRST") && !self.peek_token_is_keyword("NEXT") {
+                        self.add_error(format!(
+                            "expected FIRST or NEXT after FETCH at {}",
+                            self.peek_token.position
+                        ));
+                        return None;
+                    }
+                    self.next_token(); // consume FIRST/NEXT
+
+                    self.current_clause = "FETCH".to_string();
+                    self.next_token();
+                    stmt.limit = Some(Box::new(self.parse_expression(Precedence::Lowest)?));
+
+                    if self.peek_token_is_keyword("ROWS") || self.peek_token_is_keyword("ROW") {
+                        self.next_token();
+                    }
+
+                    if self.peek_token_is_keyword("ONLY") {
+                        self.next_token();
+                    }
+                }
+                "UNION" | "INTERSECT" | "EXCEPT" => {
+                    if let Some(set_op) = self.parse_set_operation() {
+                        stmt.set_operations.push(set_op);
+                    } else {
+                        break;
+                    }
+                }
+                _ => {
+                    // Unknown or unexpected keyword, break the loop
+                    break;
+                }
+            }
+        }
+
+        // If no SELECT clause was provided, default to SELECT *
+        if stmt.columns.is_empty() {
+            stmt.columns.push(Expression::Star(StarExpression {
+                token: Token::new(TokenType::Operator, "*", stmt.token.position),
+            }));
         }
 
         self.current_clause.clear();
@@ -4384,5 +4527,43 @@ mod tests {
         } else {
             panic!("Expected CopyStatement");
         }
+    }
+
+    #[test]
+    fn test_parse_from_first_with_select() {
+        let stmt1 = parse_stmt("FROM tbl SELECT a, b").unwrap();
+        let stmt2 = parse_stmt("SELECT a, b FROM tbl").unwrap();
+        assert_eq!(stmt1.to_string(), stmt2.to_string());
+    }
+
+    #[test]
+    fn test_parse_from_first_complex_source() {
+        let stmt1 = parse_stmt("FROM (VALUES (1)) t(a) SELECT a").unwrap();
+        let stmt2 = parse_stmt("SELECT a FROM (VALUES (1)) t(a)").unwrap();
+        assert_eq!(stmt1.to_string(), stmt2.to_string());
+    }
+
+    #[test]
+    fn test_parse_from_first_any_order() {
+        let stmt1 = parse_stmt("FROM tbl WHERE a > 1 SELECT a, b ORDER BY a LIMIT 10").unwrap();
+        let stmt2 = parse_stmt("SELECT a, b FROM tbl WHERE a > 1 ORDER BY a LIMIT 10").unwrap();
+        assert_eq!(stmt1.to_string(), stmt2.to_string());
+
+        let stmt3 = parse_stmt("FROM tbl ORDER BY a SELECT a, b LIMIT 10 WHERE a > 1").unwrap();
+        assert_eq!(stmt3.to_string(), stmt2.to_string());
+    }
+
+    #[test]
+    fn test_parse_from_first_without_select() {
+        let stmt1 = parse_stmt("FROM tbl").unwrap();
+        let stmt2 = parse_stmt("SELECT * FROM tbl").unwrap();
+        assert_eq!(stmt1.to_string(), stmt2.to_string());
+    }
+
+    #[test]
+    fn test_parse_from_first_without_select_where() {
+        let stmt1 = parse_stmt("FROM tbl WHERE x > 1").unwrap();
+        let stmt2 = parse_stmt("SELECT * FROM tbl WHERE x > 1").unwrap();
+        assert_eq!(stmt1.to_string(), stmt2.to_string());
     }
 }
