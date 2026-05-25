@@ -1,7 +1,7 @@
 ---
 layout: default
 title: SHOW FUNCTIONS
-parent: UTILITY
+parent: Utility Commands
 grand_parent: SQL Commands
 ---
 

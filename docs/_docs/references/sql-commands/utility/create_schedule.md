@@ -1,7 +1,7 @@
 ---
 layout: default
 title: CREATE SCHEDULE
-parent: UTILITY
+parent: Utility Commands
 grand_parent: SQL Commands
 ---
 

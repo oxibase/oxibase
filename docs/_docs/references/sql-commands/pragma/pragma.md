@@ -1,7 +1,7 @@
 ---
 layout: default
 title: PRAGMA
-parent: PRAGMA
+parent: PRAGMA Commands
 grand_parent: SQL Commands
 ---
 

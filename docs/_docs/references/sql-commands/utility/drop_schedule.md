@@ -1,7 +1,7 @@
 ---
 layout: default
 title: DROP SCHEDULE
-parent: UTILITY
+parent: Utility Commands
 grand_parent: SQL Commands
 ---
 
