@@ -1,7 +1,7 @@
 ---
 layout: default
 title: DROP TABLE
-parent: DDL
+parent: Data Definition Language (DDL)
 grand_parent: SQL Commands
 ---
 

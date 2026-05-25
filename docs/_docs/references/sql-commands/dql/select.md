@@ -1,7 +1,7 @@
 ---
 layout: default
 title: SELECT
-parent: DQL
+parent: Data Query Language (DQL)
 grand_parent: SQL Commands
 ---
 

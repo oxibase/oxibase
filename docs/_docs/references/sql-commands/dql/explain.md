@@ -1,7 +1,7 @@
 ---
 layout: default
 title: EXPLAIN
-parent: DQL
+parent: Data Query Language (DQL)
 grand_parent: SQL Commands
 ---
 

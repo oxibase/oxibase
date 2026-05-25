@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Transaction Control
-parent: TCL
+parent: Transaction Control Language (TCL)
 grand_parent: SQL Commands
 ---
 

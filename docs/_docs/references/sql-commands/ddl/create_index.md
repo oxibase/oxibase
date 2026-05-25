@@ -1,7 +1,7 @@
 ---
 layout: default
 title: CREATE INDEX
-parent: DDL
+parent: Data Definition Language (DDL)
 grand_parent: SQL Commands
 ---
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 title: UPDATE
-parent: DML
+parent: Data Manipulation Language (DML)
 grand_parent: SQL Commands
 ---
 
