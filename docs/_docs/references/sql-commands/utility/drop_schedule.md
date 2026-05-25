@@ -7,6 +7,20 @@ grand_parent: SQL Commands
 
 # DROP SCHEDULE
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("DROP SCHEDULE"),
+        Optional(Sequence([Keyword("IF EXISTS")])),
+        NonTerminal("schedule_name")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Removes a job schedule from the database.
 
 #### Basic Syntax

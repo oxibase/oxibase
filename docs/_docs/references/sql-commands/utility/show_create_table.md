@@ -7,6 +7,19 @@ grand_parent: SQL Commands
 
 # SHOW CREATE TABLE
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("SHOW CREATE TABLE"),
+        NonTerminal("table_name")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Shows the CREATE TABLE statement for a table.
 
 ```sql

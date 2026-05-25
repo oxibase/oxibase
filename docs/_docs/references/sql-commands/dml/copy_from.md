@@ -7,6 +7,23 @@ grand_parent: SQL Commands
 
 # COPY FROM
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("COPY"),
+        NonTerminal("table_name"),
+        Optional(Sequence([Keyword("("), OneOrMore(NonTerminal("column_name"), Keyword(",")), Keyword(")")])),
+        Keyword("FROM"),
+        NonTerminal("file_path"),
+        Optional(Sequence([Keyword("WITH"), Keyword("("), OneOrMore(NonTerminal("option"), Keyword(",")), Keyword(")")]))
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 The COPY FROM statement bulk imports data from CSV or JSON files efficiently, bypassing standard row-by-row SQL parsing.
 
 #### Basic Syntax

@@ -7,6 +7,25 @@ grand_parent: SQL Commands
 
 # CREATE SCHEDULE
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("CREATE SCHEDULE"),
+        Optional(Sequence([Keyword("IF NOT EXISTS")])),
+        NonTerminal("schedule_name"),
+        Keyword("CRON"),
+        NonTerminal("cron_expression"),
+        Keyword("CALL"),
+        NonTerminal("procedure_name"),
+        Keyword("()")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Creates a new background job schedule that executes a stored procedure at specified intervals using standard Cron syntax.
 
 #### Basic Syntax

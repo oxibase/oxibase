@@ -7,6 +7,25 @@ grand_parent: SQL Commands
 
 # ALTER SCHEDULE
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("ALTER SCHEDULE"),
+        Optional(Sequence([Keyword("IF EXISTS")])),
+        NonTerminal("schedule_name"),
+        Choice(0, [
+          Sequence([Keyword("CRON"), NonTerminal("new_cron_expression")]),
+          Keyword("ACTIVE"),
+          Keyword("INACTIVE")
+        ])
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Modifies an existing job schedule to change its cron expression or toggle its active state.
 
 #### Basic Syntax

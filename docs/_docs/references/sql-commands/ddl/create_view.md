@@ -7,6 +7,22 @@ grand_parent: SQL Commands
 
 # CREATE VIEW
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("CREATE VIEW"),
+        NonTerminal("view_name"),
+        Keyword("AS"),
+        Keyword("SELECT"),
+        NonTerminal("...")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Creates a virtual table based on a SELECT statement.
 
 #### Basic Syntax

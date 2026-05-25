@@ -7,6 +7,27 @@ grand_parent: SQL Commands
 
 # CREATE FUNCTION
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("CREATE FUNCTION"),
+        Optional(Sequence([Keyword("IF NOT EXISTS")])),
+        NonTerminal("function_name"),
+        Keyword("("),
+        ZeroOrMore(Sequence([NonTerminal("param_name"), NonTerminal("data_type")]), Keyword(",")),
+        Keyword(")"),
+        Keyword("RETURNS"),
+        NonTerminal("return_type"),
+        Keyword("LANGUAGE BOA AS"),
+        NonTerminal("javascript_code")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Creates a user-defined function using JavaScript/TypeScript.
 
 #### Basic Syntax

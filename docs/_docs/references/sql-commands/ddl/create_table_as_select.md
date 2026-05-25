@@ -7,6 +7,22 @@ grand_parent: SQL Commands
 
 # CREATE TABLE AS SELECT
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("CREATE TABLE"),
+        NonTerminal("table_name"),
+        Keyword("AS"),
+        Keyword("SELECT"),
+        NonTerminal("...")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Creates a new table from the result of a SELECT query.
 
 #### Basic Syntax

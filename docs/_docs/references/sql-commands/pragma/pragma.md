@@ -7,6 +7,20 @@ grand_parent: SQL Commands
 
 # PRAGMA
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("PRAGMA"),
+        NonTerminal("name"),
+        Optional(Sequence([Keyword("="), NonTerminal("value")]))
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Sets or gets configuration options.
 
 ```sql

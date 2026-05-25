@@ -7,6 +7,27 @@ grand_parent: SQL Commands
 
 # CREATE INDEX
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("CREATE"),
+        Optional(Keyword("UNIQUE")),
+        Keyword("INDEX"),
+        Optional(Sequence([Keyword("IF NOT EXISTS")])),
+        NonTerminal("index_name"),
+        Keyword("ON"),
+        NonTerminal("table_name"),
+        Keyword("("),
+        OneOrMore(NonTerminal("column_name"), Keyword(",")),
+        Keyword(")")
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Creates an index on table columns for faster queries.
 
 #### Basic Syntax

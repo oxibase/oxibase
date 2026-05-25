@@ -7,6 +7,19 @@ grand_parent: SQL Commands
 
 # SHOW FUNCTIONS
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("SHOW"),
+        Choice(0, [Keyword("FUNCTIONS"), Keyword("FUNCTION")])
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Lists all available SQL functions (scalar, aggregate, and window functions).
 
 #### Basic Syntax

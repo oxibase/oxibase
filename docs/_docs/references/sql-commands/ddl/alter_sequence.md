@@ -7,6 +7,25 @@ grand_parent: SQL Commands
 
 # ALTER SEQUENCE
 
+<div id="rrdiagram"></div>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("ALTER SEQUENCE"),
+        Optional(Keyword("IF EXISTS")),
+        NonTerminal("sequence_name"),
+        Optional(Sequence([Keyword("RESTART WITH"), NonTerminal("restart_value")])),
+        Optional(Sequence([Keyword("INCREMENT BY"), NonTerminal("increment_value")])),
+        Optional(Choice(0, [Sequence([Keyword("MINVALUE"), NonTerminal("min_value")]), Keyword("NO MINVALUE")])),
+        Optional(Choice(0, [Sequence([Keyword("MAXVALUE"), NonTerminal("max_value")]), Keyword("NO MAXVALUE")])),
+        Optional(Choice(0, [Keyword("CYCLE"), Keyword("NO CYCLE")]))
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  });
+</script>
+
 Modifies the properties of an existing sequence.
 
 #### Basic Syntax
