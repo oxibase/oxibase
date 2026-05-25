@@ -1,0 +1,7 @@
+404: Not Found
+/* Oxibase Overrides */
+svg.railroad-diagram { background-color: transparent; }
+svg.railroad-diagram path { stroke-width: 2; stroke: currentColor; fill: none; }
+svg.railroad-diagram text { font: 14px monospace; fill: currentColor; }
+svg.railroad-diagram text.label { font: 12px sans-serif; }
+svg.railroad-diagram rect { stroke-width: 2; stroke: currentColor; fill: transparent; }
