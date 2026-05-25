@@ -9,7 +9,7 @@ grand_parent: SQL Commands
 
 <div id="rrdiagram"></div>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  (function() {
     var diagram = Diagram([
       Sequence([
         Keyword("CREATE SEQUENCE"),
@@ -23,7 +23,7 @@ grand_parent: SQL Commands
       ])
     ]);
     document.getElementById("rrdiagram").innerHTML = diagram.toString();
-  });
+  })();
 </script>
 
 Creates a new sequence object to generate unique, monotonic numbers. Highly concurrent and avoids transaction conflicts.

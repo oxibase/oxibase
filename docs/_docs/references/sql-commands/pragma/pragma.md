@@ -9,7 +9,7 @@ grand_parent: SQL Commands
 
 <div id="rrdiagram"></div>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  (function() {
     var diagram = Diagram([
       Sequence([
         Keyword("PRAGMA"),
@@ -18,7 +18,7 @@ grand_parent: SQL Commands
       ])
     ]);
     document.getElementById("rrdiagram").innerHTML = diagram.toString();
-  });
+  })();
 </script>
 
 Sets or gets configuration options.

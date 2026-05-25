@@ -9,7 +9,7 @@ grand_parent: SQL Commands
 
 <div id="rrdiagram"></div>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  (function() {
     var diagram = Diagram([
       Sequence([
         Keyword("ALTER SEQUENCE"),
@@ -23,7 +23,7 @@ grand_parent: SQL Commands
       ])
     ]);
     document.getElementById("rrdiagram").innerHTML = diagram.toString();
-  });
+  })();
 </script>
 
 Modifies the properties of an existing sequence.

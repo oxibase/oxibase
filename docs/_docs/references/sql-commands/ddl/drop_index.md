@@ -9,7 +9,7 @@ grand_parent: SQL Commands
 
 <div id="rrdiagram"></div>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  (function() {
     var diagram = Diagram([
       Sequence([
         Keyword("DROP INDEX"),
@@ -20,7 +20,7 @@ grand_parent: SQL Commands
       ])
     ]);
     document.getElementById("rrdiagram").innerHTML = diagram.toString();
-  });
+  })();
 </script>
 
 Removes an index from a table.

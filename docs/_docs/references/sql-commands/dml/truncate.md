@@ -9,7 +9,7 @@ grand_parent: SQL Commands
 
 <div id="rrdiagram"></div>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  (function() {
     var diagram = Diagram([
       Sequence([
         Keyword("TRUNCATE TABLE"),
@@ -17,7 +17,7 @@ grand_parent: SQL Commands
       ])
     ]);
     document.getElementById("rrdiagram").innerHTML = diagram.toString();
-  });
+  })();
 </script>
 
 The TRUNCATE statement removes all rows from a table efficiently.

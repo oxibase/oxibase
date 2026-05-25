@@ -9,7 +9,7 @@ grand_parent: SQL Commands
 
 <div id="rrdiagram"></div>
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
+  (function() {
     var diagram = Diagram([
       Choice(0, [
         Sequence([Choice(0, [Keyword("BEGIN"), Keyword("BEGIN TRANSACTION")])]),
@@ -21,7 +21,7 @@ grand_parent: SQL Commands
       ])
     ]);
     document.getElementById("rrdiagram").innerHTML = diagram.toString();
-  });
+  })();
 </script>
 
 ## BEGIN TRANSACTION
