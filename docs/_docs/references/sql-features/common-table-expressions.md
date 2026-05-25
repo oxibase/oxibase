@@ -322,5 +322,5 @@ Oxibase provides comprehensive support for Common Table Expressions (CTEs) with 
 ## See Also
 
 - [Subqueries]({% link _docs/references/sql-features/subqueries.md %})
-- [SELECT Statement]({% link _docs/references/sql-commands.md %}#select)
+- [SELECT Statement]({% link _docs/references/sql-commands/dql/select.md %})
 - [Query Optimization]({% link _docs/explanations/performance/optimization.md %})

@@ -54,3 +54,4 @@ docs/node_modules
 examples/oxibase.db
 /data/
 .env*
+jekyll.log

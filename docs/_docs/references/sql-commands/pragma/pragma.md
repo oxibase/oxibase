@@ -1,35 +1,45 @@
 ---
 layout: default
-title: PRAGMA Commands
-parent: References
-nav_order: 10
+title: PRAGMA
+parent: PRAGMA Commands
+grand_parent: SQL Commands
 ---
 
-# PRAGMA Commands
+# PRAGMA
 
-This document describes the PRAGMA commands available in Oxibase based on implementations and test cases.
+<div id="rrdiagram"></div>
+<script class="railroad-diagram-script">
+  (function() {
+    var diagram = Diagram([
+      Sequence([
+        Keyword("PRAGMA"),
+        NonTerminal("name"),
+        Optional(Sequence([Keyword("="), NonTerminal("value")]))
+      ])
+    ]);
+    document.getElementById("rrdiagram").innerHTML = diagram.toString();
+  })();
+</script>
 
-## Overview
-
-Oxibase provides PRAGMA commands for configuring and inspecting the database engine. These commands primarily focus on persistence settings and storage behavior.
-
-## Syntax
-
-The basic syntax for PRAGMA commands is:
+Sets or gets configuration options.
 
 ```sql
-PRAGMA [pragma_name] = [value];
+-- Set a value
+PRAGMA name = value;
+
+-- Get current value
+PRAGMA name;
 ```
 
-or to retrieve the current value:
+#### Supported PRAGMAs
 
-```sql
-PRAGMA [pragma_name];
-```
-
-## Available PRAGMA Commands
-
-Oxibase currently supports the following PRAGMA commands:
+| PRAGMA | Description | Default |
+|--------|-------------|---------|
+| sync_mode | WAL sync mode (0=None, 1=Normal, 2=Full) | 1 |
+| snapshot_interval | Snapshot interval in seconds | 300 |
+| keep_snapshots | Number of snapshots to retain | 3 |
+| wal_flush_trigger | Operations before WAL flush | 1000 |
+| create_snapshot | Manually create a snapshot | - |
 
 ### Snapshot and WAL Configuration
 

@@ -150,7 +150,7 @@ PRAGMA snapshot_interval;
 PRAGMA create_snapshot;
 ```
 
-See the [PRAGMA Commands]({% link _docs/references/pragma-commands.md %}) documentation for details.
+See the [PRAGMA Commands]({% link _docs/references/sql-commands/pragma/pragma.md %}) documentation for details.
 
 ## Best Practices
 
