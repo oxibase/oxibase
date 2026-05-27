@@ -15,9 +15,9 @@ use crate::api::Database;
 use minijinja::{Environment, Error as JinjaError, ErrorKind};
 use std::sync::Arc;
 
-/// A custom loader for minijinja to fetch template source from `templates.source`
+/// A custom loader for minijinja to fetch template source from `interface.templates`
 pub fn db_template_loader(name: &str, db: Arc<Database>) -> Result<Option<String>, JinjaError> {
-    let query = "SELECT content FROM templates.source WHERE name = ?";
+    let query = "SELECT content FROM interface.templates WHERE name = ?";
 
     // Convert Value strings properly to prevent format errors
     let rows_result = db
