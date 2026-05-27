@@ -206,7 +206,7 @@ pub async fn dynamic_route_handler(
 
     // Lookup the route
     let query =
-        "SELECT template_name, context_query FROM routes.definitions WHERE method = ? AND path = ?";
+        "SELECT template_name, context_query FROM interface.routes WHERE method = ? AND path = ?";
     let rows_res = match state
         .db
         .query(query, vec![Value::text(method), Value::text(path)])

@@ -25,21 +25,21 @@ This starts the server on `127.0.0.1:8080` by default.
 
 When the server starts, it automatically provisions two internal system tables to manage web pages:
 
-1. **`templates.source`**: Stores raw Jinja template HTML.
+1. **`interface.templates`**: Stores raw Jinja template HTML.
    - `name` (TEXT): The unique filename/identifier for the template.
    - `content` (TEXT): The HTML content containing Jinja syntax.
 2. **`routes.definitions`**: Maps HTTP paths to your templates and optionally executes SQL to provide data.
    - `method` (TEXT): The HTTP method (`GET`, `POST`, etc.).
    - `path` (TEXT): The URL path to intercept (e.g., `/`, `/dashboard`).
-   - `template_name` (TEXT): Foreign key referencing a template in `templates.source`.
+   - `template_name` (TEXT): Foreign key referencing a template in `interface.templates`.
    - `context_query` (TEXT): Optional SQL query. The results are injected into the template context.
 
 ## Step 1: Storing a Simple Template
 
-To create a new web page, insert your HTML code into the `templates.source` table using standard SQL.
+To create a new web page, insert your HTML code into the `interface.templates` table using standard SQL.
 
 ```sql
-INSERT INTO templates.source (name, content) 
+INSERT INTO interface.templates (name, content) 
 VALUES ('about.html', '
 <!DOCTYPE html>
 <html>
@@ -82,7 +82,7 @@ Next, write a template that iterates over the `data` array:
 
 ```sql
 {% raw %}
-INSERT INTO templates.source (name, content) 
+INSERT INTO interface.templates (name, content) 
 VALUES ('products.html', '
 <h1>Our Products</h1>
 <ul>
@@ -117,7 +117,7 @@ Oxibase's embedded Jinja engine natively understands relationships between templ
 **1. Create a Base Layout:**
 ```sql
 {% raw %}
-INSERT INTO templates.source (name, content) VALUES ('layout.html', '
+INSERT INTO interface.templates (name, content) VALUES ('layout.html', '
 <html>
 <head><title>My App</title></head>
 <body>
@@ -134,7 +134,7 @@ INSERT INTO templates.source (name, content) VALUES ('layout.html', '
 **2. Create a Child Template:**
 ```sql
 {% raw %}
-INSERT INTO templates.source (name, content) VALUES ('home.html', '
+INSERT INTO interface.templates (name, content) VALUES ('home.html', '
 {% extends "layout.html" %}
 {% block content %}
     <h2>Welcome to the Home Page!</h2>
@@ -151,7 +151,7 @@ Because both routing definitions and HTML templates are read transactionally fro
 
 ```sql
 -- Fix a typo in your live website
-UPDATE templates.source 
+UPDATE interface.templates 
 SET content = REPLACE(content, 'Wlecome', 'Welcome') 
 WHERE name = 'home.html';
 ```

@@ -253,8 +253,8 @@ async fn test_dynamic_route_rendering() {
     // First init the router to create tables
     let app = create_router(db.clone());
 
-    db.execute("INSERT INTO templates.source (name, content) VALUES ('hello.html', '<h1>Hello {{ data[0].name }}!</h1>')", ()).unwrap();
-    db.execute("INSERT INTO routes.definitions (method, path, template_name, context_query) VALUES ('GET', '/hello', 'hello.html', 'SELECT ''World'' AS name')", ()).unwrap();
+    db.execute("INSERT INTO interface.templates (name, content) VALUES ('hello.html', '<h1>Hello {{ data[0].name }}!</h1>')", ()).unwrap();
+    db.execute("INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/hello', 'hello.html', 'SELECT ''World'' AS name')", ()).unwrap();
 
     // GET /hello
     let req = Request::builder()
@@ -281,11 +281,11 @@ async fn test_dynamic_route_updates() {
 
     // Add initial template
     db.execute(
-        "INSERT INTO templates.source (name, content) VALUES ('page.html', '<h1>Version 1</h1>')",
+        "INSERT INTO interface.templates (name, content) VALUES ('page.html', '<h1>Version 1</h1>')",
         (),
     )
     .unwrap();
-    db.execute("INSERT INTO routes.definitions (method, path, template_name) VALUES ('GET', '/page', 'page.html')", ()).unwrap();
+    db.execute("INSERT INTO interface.routes (method, path, template_name) VALUES ('GET', '/page', 'page.html')", ()).unwrap();
 
     // GET /page (V1)
     let req = Request::builder().uri("/page").body(Body::empty()).unwrap();
@@ -297,7 +297,7 @@ async fn test_dynamic_route_updates() {
 
     // Update template (V2)
     db.execute(
-        "UPDATE templates.source SET content = '<h1>Version 2</h1>' WHERE name = 'page.html'",
+        "UPDATE interface.templates SET content = '<h1>Version 2</h1>' WHERE name = 'page.html'",
         (),
     )
     .unwrap();
@@ -310,7 +310,7 @@ async fn test_dynamic_route_updates() {
     assert!(body_str2.contains("Version 2"));
 
     // Delete route
-    db.execute("DELETE FROM routes.definitions WHERE path = '/page'", ())
+    db.execute("DELETE FROM interface.routes WHERE path = '/page'", ())
         .unwrap();
 
     // GET /page (404)
@@ -326,20 +326,20 @@ async fn test_dynamic_route_template_inheritance() {
 
     // Insert base layout template
     db.execute(
-        "INSERT INTO templates.source (name, content) VALUES ('layout.html', '<main>{% block content %}{% endblock %}</main>')",
+        "INSERT INTO interface.templates (name, content) VALUES ('layout.html', '<main>{% block content %}{% endblock %}</main>')",
         (),
     )
     .unwrap();
 
     // Insert child template extending the layout
     db.execute(
-        "INSERT INTO templates.source (name, content) VALUES ('child.html', '{% extends \"layout.html\" %}{% block content %}<p>Inherited Content!</p>{% endblock %}')",
+        "INSERT INTO interface.templates (name, content) VALUES ('child.html', '{% extends \"layout.html\" %}{% block content %}<p>Inherited Content!</p>{% endblock %}')",
         (),
     )
     .unwrap();
 
     // Route for the child template
-    db.execute("INSERT INTO routes.definitions (method, path, template_name) VALUES ('GET', '/inherited', 'child.html')", ()).unwrap();
+    db.execute("INSERT INTO interface.routes (method, path, template_name) VALUES ('GET', '/inherited', 'child.html')", ()).unwrap();
 
     // GET /inherited
     let req = Request::builder()

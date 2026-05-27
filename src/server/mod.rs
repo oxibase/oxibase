@@ -30,14 +30,18 @@ pub struct AppState {
 /// Creates and configures the Axum router for the Auto-API layer.
 pub fn create_router(db: Database) -> Router {
     // Initialize system schemas and tables for template rendering. We ignore errors since they might already exist
-    let _ = db.execute("CREATE SCHEMA routes", ());
-    let _ = db.execute("CREATE SCHEMA templates", ());
+    let _ = db.execute("CREATE SCHEMA interface", ());
+
     let _ = db.execute(
-        "CREATE TABLE routes.definitions (method TEXT, path TEXT, template_name TEXT, context_query TEXT)",
-        ()
+        "CREATE TABLE interface.routes (method TEXT, path TEXT, template_name TEXT, context_query TEXT)",
+        (),
     );
     let _ = db.execute(
-        "CREATE TABLE templates.source (name TEXT, content TEXT)",
+        "CREATE TABLE interface.templates (name TEXT, content TEXT)",
+        (),
+    );
+    let _ = db.execute(
+        "CREATE TABLE interface.templates (name TEXT, content TEXT)",
         (),
     );
 
