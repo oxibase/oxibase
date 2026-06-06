@@ -926,10 +926,14 @@ fn main() {
     let (trace_tx, trace_rx) = crossbeam_channel::bounded(10000);
     let trace_layer = oxibase::common::tracing::SystemTraceLayer::new(trace_tx);
 
+    let (metrics_tx, metrics_rx) = crossbeam_channel::bounded(10000);
+    let metrics_layer = oxibase::common::metrics::SystemMetricsLayer::new(metrics_tx);
+
     let registry = tracing_subscriber::registry()
         .with(fmt_layer.with_filter(console_filter))
         .with(internal_layer)
-        .with(trace_layer);
+        .with(trace_layer)
+        .with(metrics_layer);
 
     if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
         use opentelemetry_otlp::WithExportConfig;
@@ -977,6 +981,8 @@ fn main() {
             oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
             // Start the trace flusher thread
             oxibase::common::tracing::start_trace_flusher(db.engine().clone(), trace_rx);
+            // Start the metrics flusher thread
+            oxibase::common::metrics::start_metrics_flusher(db.engine().clone(), metrics_rx);
             db
         }
         Err(e) => {
