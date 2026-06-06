@@ -198,6 +198,8 @@ pub fn start_log_flusher(
         .spawn(move || {
             // Mark this thread as the log flusher to prevent infinite loops
             IS_LOG_FLUSHER.with(|f| *f.borrow_mut() = true);
+            crate::common::tracing::IS_TELEMETRY_THREAD.with(|f| *f.borrow_mut() = true);
+            crate::common::metrics::IS_METRICS_THREAD.with(|f| *f.borrow_mut() = true);
 
             let batch_size = 100;
             let timeout = Duration::from_secs(1);

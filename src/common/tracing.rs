@@ -105,6 +105,27 @@ where
         }
 
         let span = ctx.span(id).expect("Span not found");
+
+        let attributes = {
+            let mut ext = span.extensions_mut();
+            if let Some(data) = ext.get_mut::<(
+                Instant,
+                DateTime<Utc>,
+                String,
+                String,
+                serde_json::Map<String, serde_json::Value>,
+                String, // trace_id
+                String, // span_id
+            )>() {
+                std::mem::take(&mut data.4)
+            } else {
+                return;
+            }
+        };
+
+        let mut visitor = AttributeVisitor { attributes };
+        values.record(&mut visitor);
+
         let mut ext = span.extensions_mut();
         if let Some(data) = ext.get_mut::<(
             Instant,
@@ -115,10 +136,6 @@ where
             String, // trace_id
             String, // span_id
         )>() {
-            let mut visitor = AttributeVisitor {
-                attributes: std::mem::take(&mut data.4),
-            };
-            values.record(&mut visitor);
             data.4 = visitor.attributes;
         }
     }
@@ -246,6 +263,8 @@ pub fn start_trace_flusher(
         .spawn(move || {
             // Mark this thread as the telemetry flusher to prevent infinite loops
             IS_TELEMETRY_THREAD.with(|f| *f.borrow_mut() = true);
+            crate::common::logging::IS_LOG_FLUSHER.with(|f| *f.borrow_mut() = true);
+            crate::common::metrics::IS_METRICS_THREAD.with(|f| *f.borrow_mut() = true);
 
             let batch_size = 100;
             let timeout = Duration::from_secs(1);
