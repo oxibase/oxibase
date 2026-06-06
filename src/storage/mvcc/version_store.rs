@@ -795,9 +795,12 @@ impl VersionStore {
                             let slice =
                                 unsafe { arena_data_slice.get_unchecked(meta.start..meta.end) };
                             result.push((row_id, Row::from_values(slice.to_vec())));
+                        } else {
+                            // Fallback to cloned data if idx is out of bounds due to concurrent insert
+                            result.push((row_id, e.version.data.clone()));
                         }
                     } else {
-                        // No arena entry (batch-committed row) - clone from version
+                        // Fallback to cloned data (for recent un-arena'd versions)
                         result.push((row_id, e.version.data.clone()));
                     }
                     break;
