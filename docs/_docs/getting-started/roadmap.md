@@ -8,7 +8,7 @@ nav_order: 2
 # Oxibase Roadmap
 {: .no_toc}
 
-The roadmap outlines the journey from a single-node into scalable distributed
+The roadmap outlines the journey from a single-node into a scalable distributed
 autonomous system. The goal is not to become the fastest, the most scalable
 solution but to learn and explore how the computation and data processing
 paradigms can be rethought.
@@ -20,15 +20,15 @@ classDiagram
     %% --- RELATIONSHIPS ---
     %% Use the short class names here, not "Layer.Class"
     Validation ..> External_Gateway
-    Validation ..> Workstation
-    Validation ..> Performance
-    Validation ..> Security
+    External_Gateway ..> Workstation
 
-    Workstation ..> Horizontal_Architecture
+    Workstation ..> Performance
+    Workstation ..> Security
+    Workstation ..> Unikernel_Compiler
+
     External_Gateway ..> Horizontal_Architecture
     Security ..> Horizontal_Architecture
     Performance ..> Horizontal_Architecture
-    Unikernel_Compiler ..> Horizontal_Architecture
 
     %% --- LAYERS & CLASS DEFINITIONS ---
 
@@ -38,6 +38,7 @@ classDiagram
         - Triggers  ✅
         - Scheduled actions  ✅
         - Debugger support
+        - Logging, Tracing & Metrics
     }
     class External_Gateway {
         - DML REST endpoints  ✅
@@ -49,9 +50,9 @@ classDiagram
         - Authentication
     }
     class Workstation {
-        - FaaS-like DevEx
-          - Manage any object
-          - Develop any object
+        - FaaS-like DevEx ✅
+          - Manage any object ✅
+          - Develop any object ✅
         - Debug Queries step-by-step
         - Debug stored procedures
     }
@@ -120,10 +121,28 @@ Control) system, store and execute procedures, debug them, monitor and trace
 them, invoke them and finally provide a dev-friendly interface for interacting
 with the system. This should serve as a demo of the system's capabilities.
 
+- **Observability**: Implement comprehensive logging, tracing, and metrics to monitor system health, query performance, and procedure execution.
+
 #### Goal
 Validate the development experience and build a community around the project.
 
-### Phase 1: Foundation
+
+### Phase 1: Workstation (Developer Experience)
+
+Create an Integrated Development Environment (IDE) for local and remote
+management of the system. It should serve as an object manager and debugger at
+the same time, providing a seamless experience for developers. Draw inspiration
+from IDEs like Zed for code editing; Chrome DevTools for the debugging
+experience; and DataGrip for the Database Management. Prioritizing this phase
+captures early adopters by providing a seamless, FaaS-like local and remote
+IDE experience while deeper engine work continues.
+
+#### Goal
+Create a workstation that serves developers of all levels to create, test, and
+deploy applications.
+
+
+### Phase 2: Foundation
 
 Parallel efforts to establish Oxibase's core capabilities and prepare for
 scaling. They focus on single-node enhancements that enable seamless
@@ -147,7 +166,7 @@ Leverage the open-source data community to build a reliable system that can
 handle large-scale data processing and storage.
 
 
-### Phase 2a: Scale
+### Phase 3: Scale
 
 Explore distributing the system across multiple nodes, with a focus on
 multi-node parallelism, and distributed storage. Explore having dedicated
@@ -173,19 +192,7 @@ nodes for metadata management, compute, and data storage.
 Scale horizontally.
 
 
-### Phase 2b: Workstation
-
-Create an Integrated Development Environment (IDE) for local and remote
-management of the system. It should serve as an object manager and debugger at
-the same time, providing a seamless experience for developers. Draw inspiration
-from IDEs like Zed for code editing; Chrome DevTools for the debugging
-experience; and DataGrip for the Database Management.
-
-#### Goal
-Create a workstation that serves developers of all levels to create, test, and
-deploy applications.
-
-### Phase 3: Auto Scaling
+### Phase 4: Auto Scaling
 
 Explore how the system can autonomously scale resources based on demand. Explore
 distributing data and computation based on the workload as well as the
@@ -219,14 +226,22 @@ We are currently at [Phase 0](#phase-0-validation).
     - [x] **Service invocation**: Add support for service invocation with a webserver.
     - [x] **Scheduling**: Add support for scheduling procedures.
     - [x] **Triggers**: Add support for triggers in the executor layer, on insert, update or delete.
-- [ ] **v0.6.0 (Observability & Debugging)**
-    - [ ] **Logging**: Comprehensive internal logging system (`system.logs`).
-    - [ ] **Tracing**: Distributed query and procedure tracing (`system.traces`).
-    - [ ] **Debug Adapter Protocol**: DAP server for Rhai and PL/SQL procedures.
 
-- [ ] **v0.7.0 (Security & Authorization)**
-    - [ ] **Authorization**: Add Casbin-rs for role-based (objects) and attribute-based (row-level) authorization.
-    - [ ] **Security**: Add support for security contexts in the executor layer.
+#### Workstation / DevEx
+
+- [x] **IDE Integration**: Build initial FaaS-like development experience and object management.
+- [ ] **Step-by-step Debugger**: Enable debugging for queries and stored procedures.
+
+#### v0.6.0 (Observability & Debugging)
+
+- [ ] **Logging**: Comprehensive internal logging system (`system.logs`).
+- [ ] **Tracing**: Distributed query and procedure tracing (`system.traces`).
+- [ ] **Debug Adapter Protocol**: DAP server for Rhai and PL/SQL procedures.
+
+#### v0.7.0 (Security & Authorization)
+
+- [ ] **Authorization**: Add Casbin-rs for role-based (objects) and attribute-based (row-level) authorization.
+- [ ] **Security**: Add support for security contexts in the executor layer.
 
 ### Supported objects
 
@@ -253,8 +268,7 @@ We are currently at [Phase 0](#phase-0-validation).
 
 ### Declarative Schema Migration
 
-Modify the schema by applying DDL in static create files stored in the database version management system.
-(oxigration) or 
+Modify the schema by applying DDL in static create files stored in the database version management system. (oxigration)
 
 ### Automatic blue-green migrations 
 
@@ -262,8 +276,8 @@ Any schema changes triggers an automatic blue-green migration.
 
 ### DML based schema migrations
 
-Setup an special internal schema that let's the user use DML to manipulate the
-schema of the database with DML in stead of DDL, bringing the DevEx of [aquameta].
+Setup a special internal schema that lets the user use DML to manipulate the
+schema of the database with DML instead of DDL, bringing the DevEx of [aquameta].
 
 
 
