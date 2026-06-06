@@ -919,6 +919,7 @@ fn main() {
         .with_thread_ids(true)
         .with_level(true)
         .with_writer(std::io::stderr);
+    use tracing_subscriber::filter::LevelFilter;
     use tracing_subscriber::Layer;
     let console_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
@@ -930,6 +931,7 @@ fn main() {
     let metrics_layer = oxibase::common::metrics::SystemMetricsLayer::new(metrics_tx);
 
     let registry = tracing_subscriber::registry()
+        .with(LevelFilter::INFO)
         .with(fmt_layer.with_filter(console_filter))
         .with(internal_layer)
         .with(trace_layer)

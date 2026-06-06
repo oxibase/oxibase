@@ -72,9 +72,11 @@ where
         let mut visitor = MetricVisitor::default();
         event.record(&mut visitor);
 
-        if let (Some(name), Some(m_type), Some(val)) =
-            (visitor.metric_name, visitor.metric_type, visitor.value)
-        {
+        if let (Some(name), Some(m_type), Some(val)) = (
+            visitor.metric_name.clone(),
+            visitor.metric_type.clone(),
+            visitor.value,
+        ) {
             let attributes_str =
                 serde_json::to_string(&visitor.attributes).unwrap_or_else(|_| "{}".to_string());
 

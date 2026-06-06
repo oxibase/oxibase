@@ -148,18 +148,14 @@ Parallel efforts to establish Oxibase's core capabilities and prepare for
 scaling. They focus on single-node enhancements that enable seamless
 development, connectivity, and deployment without relying on external systems.
 
-- **Optimize the Wire Protocols**: Implement [FlightSQL] for high-performance
-  client connections and [PostgresSQL wire protocol] for seamless integration.
-- **Query engine optimization**: Add [DataFusion] for query parsing, planning,
-  and optimization of `executor/`. Adopting [Apache Arrow's][Arrow] memory management and
-  data structures to optimize data loading and spill-to-disk operations.
-- **MVCC storage optimization**: Add [Vortex] for compressed columnar
-  storage that supports random access for efficient data retrieval for the
-  `mvcc` layer.
-- **Catalog optimization**: Use [Iceberg] for efficient metadata management and
-  leverage the DataFusion interface.
-- **Implement Hermit Unikernel**: Add unikernel compilation support for
-  bare-metal performance.
+- **Query engine optimization**: Integrate [DataFusion] for query parsing, planning, and vectorized execution. Adopting [Apache Arrow's][Arrow] memory management bridges the gap between fast in-memory transactions and OLAP execution.
+- **Differential MVCC (Intermediate Storage)**: Overhaul the MVCC layer to use a `(data, time, diff)` streaming paradigm (inspired by Differential Dataflow). Active transactions and intermediate states will be stored as an append-only stream of diffs (`+1`/`-1`), providing elegant, mathematical transaction isolation and rollback capabilities.
+- **Vortex Consolidation (Base Storage)**: Add [Vortex] for compressed columnar storage. Background compactors will automatically consolidate the intermediate diff streams into immutable, highly compressed Vortex arrays, optimizing the system for heavy analytical scans.
+- **HTAP Dual-Index Architecture**: To maintain microsecond latency for OLTP point queries without sacrificing OLAP throughput, implement a dual-index system: an in-memory B-Tree/Hash index tracking the active diff stream, combined with sparse Zone Maps for the consolidated Vortex files.
+- **Incremental Materialized Views**: Leverage the differential `+1`/`-1` paradigm to enable practically free, real-time maintenance of materialized views, updating aggregated states incrementally as changes stream in.
+- **Optimize the Wire Protocols**: Implement [FlightSQL] for high-performance client connections and [PostgresSQL wire protocol] for seamless integration.
+- **Catalog optimization**: Use [Iceberg] for efficient metadata management tracking the lifecycle of Vortex files and active diff streams.
+- **Implement Hermit Unikernel**: Add unikernel compilation support for bare-metal performance.
 
 #### Goal
 Leverage the open-source data community to build a reliable system that can
@@ -172,20 +168,14 @@ Explore distributing the system across multiple nodes, with a focus on
 multi-node parallelism, and distributed storage. Explore having dedicated
 nodes for metadata management, compute, and data storage.
 
-- **Support for distributed execution**: Implement [Ballista] for distributed
-  execution and scaling across nodes.
-- **Metadata layer**: Implement a consensus protocol to manage metadata between
-  nodes.
-- **Use a deterministic simulator**: Simulate failure points in the system to
-  prepare for horizontal scaling by testing most scenarios without real-world
-  risks.
+- **Distributed Time & Consistency**: Leverage the `(data, time, diff)` paradigm to smoothly transition from single-node sequences to distributed logical clocks (e.g., Hybrid Logical Clocks), enabling strictly serializable distributed transactions.
+- **Support for distributed execution**: Implement [Ballista] for distributed execution and scaling across nodes, natively shuffling Arrow batches generated from our Vortex/Differential storage.
+- **Metadata layer**: Implement a consensus protocol (e.g., Raft) to manage the Iceberg catalog and metadata between nodes.
+- **Use a deterministic simulator**: Simulate network partitions, disk failures, and clock drift in the system to prepare for horizontal scaling by testing most scenarios without real-world risks.
 - **Distributed Storage**: Distribute storage for fault tolerance.
-    - **Geo-replication**: Implement geo-replication for data redundancy and
-      availability.
-    - **Data Partitioning**: Implement data partitioning for efficient data
-      distribution.
-    - **Data locality**: Implement data locality for efficient and/or compliant
-      data access and computation.
+    - **Geo-replication**: Implement geo-replication for data redundancy and availability.
+    - **Data Partitioning**: Implement data partitioning for efficient data distribution.
+    - **Data locality**: Implement data locality for efficient and/or compliant data access and computation.
     - **Sharding**: Implement sharding for horizontal scaling.
 
 #### Goal
