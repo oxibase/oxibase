@@ -113,11 +113,14 @@ impl tracing::field::Visit for LogVisitor {
 pub fn start_log_flusher(
     engine: Arc<MVCCEngine>,
     receiver: Receiver<LogEntry>,
-) -> Arc<std::sync::atomic::AtomicBool> {
+) -> (
+    Arc<std::sync::atomic::AtomicBool>,
+    std::thread::JoinHandle<()>,
+) {
     let shutdown_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let flag_clone = Arc::clone(&shutdown_flag);
 
-    thread::Builder::new()
+    let handle = thread::Builder::new()
         .name("oxibase-log-flusher".to_string())
         .spawn(move || {
             // Mark this thread as the log flusher to prevent infinite loops
@@ -162,7 +165,7 @@ pub fn start_log_flusher(
         })
         .expect("Failed to spawn log flusher thread");
 
-    shutdown_flag
+    (shutdown_flag, handle)
 }
 
 fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::Result<()> {

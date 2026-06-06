@@ -32,7 +32,7 @@ fn test_metrics_ingestion() {
     let db = Database::open("memory://").expect("Failed to open database");
 
     // Start the background metrics flusher thread
-    let shutdown_flag =
+    let (shutdown_flag, handle) =
         oxibase::common::metrics::start_metrics_flusher(db.engine().clone(), metrics_rx);
 
     // Give the engine a moment to be fully ready
@@ -110,4 +110,5 @@ fn test_metrics_ingestion() {
 
     // Clean up
     shutdown_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+    let _ = handle.join();
 }
