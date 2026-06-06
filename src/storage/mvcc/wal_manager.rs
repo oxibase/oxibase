@@ -1326,6 +1326,15 @@ impl WALManager {
         if let Some(file) = wal_file.as_mut() {
             file.write_all(data)
                 .map_err(|e| Error::internal(format!("failed to write to WAL: {}", e)))?;
+
+            tracing::info!(
+                target: "oxibase::metrics",
+                metric_type = "counter",
+                metric_name = "storage_bytes_written",
+                value = data.len() as f64,
+                unit = "bytes",
+                description = "Total bytes written to storage"
+            );
         } else {
             return Err(Error::WalFileClosed);
         }

@@ -919,6 +919,7 @@ fn main() {
         .with_thread_ids(true)
         .with_level(true)
         .with_writer(std::io::stderr);
+    use tracing_subscriber::filter::LevelFilter;
     use tracing_subscriber::Layer;
     let console_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error"));
@@ -926,10 +927,15 @@ fn main() {
     let (trace_tx, trace_rx) = crossbeam_channel::bounded(10000);
     let trace_layer = oxibase::common::tracing::SystemTraceLayer::new(trace_tx);
 
+    let (metrics_tx, metrics_rx) = crossbeam_channel::bounded(10000);
+    let metrics_layer = oxibase::common::metrics::SystemMetricsLayer::new(metrics_tx);
+
     let registry = tracing_subscriber::registry()
+        .with(LevelFilter::INFO)
         .with(fmt_layer.with_filter(console_filter))
         .with(internal_layer)
-        .with(trace_layer);
+        .with(trace_layer)
+        .with(metrics_layer);
 
     if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
         use opentelemetry_otlp::WithExportConfig;
@@ -970,19 +976,58 @@ fn main() {
         println!("Oxibase v{}", version());
     }
 
+    struct TelemetryFlushers {
+        log_flusher: Option<(
+            std::sync::Arc<std::sync::atomic::AtomicBool>,
+            std::thread::JoinHandle<()>,
+        )>,
+        trace_flusher: Option<(
+            std::sync::Arc<std::sync::atomic::AtomicBool>,
+            std::thread::JoinHandle<()>,
+        )>,
+        metrics_flusher: Option<(
+            std::sync::Arc<std::sync::atomic::AtomicBool>,
+            std::thread::JoinHandle<()>,
+        )>,
+    }
+
+    impl Drop for TelemetryFlushers {
+        fn drop(&mut self) {
+            if let Some((flag, handle)) = self.log_flusher.take() {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                let _ = handle.join();
+            }
+            if let Some((flag, handle)) = self.trace_flusher.take() {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                let _ = handle.join();
+            }
+            if let Some((flag, handle)) = self.metrics_flusher.take() {
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                let _ = handle.join();
+            }
+        }
+    }
+
     // Open the database
     let db = match Database::open(&db_path) {
-        Ok(db) => {
-            // Start the log flusher thread now that we have an engine
-            oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
-            // Start the trace flusher thread
-            oxibase::common::tracing::start_trace_flusher(db.engine().clone(), trace_rx);
-            db
-        }
+        Ok(db) => db,
         Err(e) => {
             eprintln!("Error opening database: {}", e);
             std::process::exit(1);
         }
+    };
+
+    // Start the flusher threads
+    let log_flusher = oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
+    let trace_flusher =
+        oxibase::common::tracing::start_trace_flusher(db.engine().clone(), trace_rx);
+    let metrics_flusher =
+        oxibase::common::metrics::start_metrics_flusher(db.engine().clone(), metrics_rx);
+
+    let _flushers = TelemetryFlushers {
+        log_flusher: Some(log_flusher),
+        trace_flusher: Some(trace_flusher),
+        metrics_flusher: Some(metrics_flusher),
     };
 
     if !args.quiet {

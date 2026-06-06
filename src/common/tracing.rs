@@ -226,11 +226,14 @@ impl tracing::field::Visit for AttributeVisitor {
 pub fn start_trace_flusher(
     engine: Arc<MVCCEngine>,
     receiver: Receiver<SpanEvent>,
-) -> Arc<std::sync::atomic::AtomicBool> {
+) -> (
+    Arc<std::sync::atomic::AtomicBool>,
+    std::thread::JoinHandle<()>,
+) {
     let shutdown_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let flag_clone = Arc::clone(&shutdown_flag);
 
-    thread::Builder::new()
+    let handle = thread::Builder::new()
         .name("oxibase-trace-flusher".to_string())
         .spawn(move || {
             // Mark this thread as the telemetry flusher to prevent infinite loops
@@ -272,7 +275,7 @@ pub fn start_trace_flusher(
         })
         .expect("Failed to spawn trace flusher thread");
 
-    shutdown_flag
+    (shutdown_flag, handle)
 }
 
 fn insert_trace_batch(engine: &MVCCEngine, entries: &[SpanEvent]) -> crate::core::Result<()> {

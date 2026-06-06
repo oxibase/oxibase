@@ -779,6 +779,16 @@ impl Executor {
     /// If found, it uses the cached AST. Otherwise, it parses the query
     /// and caches the result for future use.
     fn execute_cached(&self, sql: &str, ctx: &ExecutionContext) -> Result<Box<dyn QueryResult>> {
+        // Increment the total queries metric
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "counter",
+            metric_name = "queries_total",
+            value = 1.0,
+            unit = "count",
+            description = "Total number of executed queries"
+        );
+
         // Try to get from cache
         if let Some(cached) = self.query_cache.get(sql) {
             // Validate parameter count if query has parameters

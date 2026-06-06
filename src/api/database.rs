@@ -427,12 +427,37 @@ impl Database {
 
         let param_values = params.into_params();
         let result = if param_values.is_empty() {
-            executor.execute(sql)?
+            executor.execute(sql)
         } else {
-            executor.execute_with_params(sql, &param_values)?
+            executor.execute_with_params(sql, &param_values)
         };
 
         let elapsed = start.elapsed();
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "histogram",
+            metric_name = "query_duration_ms",
+            value = elapsed.as_secs_f64() * 1000.0,
+            unit = "ms",
+            description = "Execution time of queries"
+        );
+
+        let result = match result {
+            Ok(res) => res,
+            Err(e) => {
+                tracing::info!(
+                    target: "oxibase::metrics",
+                    metric_type = "counter",
+                    metric_name = "errors_total",
+                    value = 1.0,
+                    unit = "count",
+                    description = "Total number of queries resulting in errors",
+                    error = %e
+                );
+                return Err(e);
+            }
+        };
+
         if elapsed.as_millis() > 1000 {
             tracing::warn!("Slow query detected ({}ms): {}", elapsed.as_millis(), sql);
         }
@@ -479,12 +504,37 @@ impl Database {
 
         let param_values = params.into_params();
         let result = if param_values.is_empty() {
-            executor.execute(sql)?
+            executor.execute(sql)
         } else {
-            executor.execute_with_params(sql, &param_values)?
+            executor.execute_with_params(sql, &param_values)
         };
 
         let elapsed = start.elapsed();
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "histogram",
+            metric_name = "query_duration_ms",
+            value = elapsed.as_secs_f64() * 1000.0,
+            unit = "ms",
+            description = "Execution time of queries"
+        );
+
+        let result = match result {
+            Ok(res) => res,
+            Err(e) => {
+                tracing::info!(
+                    target: "oxibase::metrics",
+                    metric_type = "counter",
+                    metric_name = "errors_total",
+                    value = 1.0,
+                    unit = "count",
+                    description = "Total number of queries resulting in errors",
+                    error = %e
+                );
+                return Err(e);
+            }
+        };
+
         if elapsed.as_millis() > 1000 {
             tracing::warn!("Slow query detected ({}ms): {}", elapsed.as_millis(), sql);
         }

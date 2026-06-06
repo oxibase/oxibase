@@ -24,6 +24,7 @@
 pub mod buffer_pool;
 pub mod int64_map;
 pub mod logging;
+pub mod metrics;
 pub mod tracing;
 pub mod version;
 

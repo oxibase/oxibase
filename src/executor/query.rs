@@ -5015,7 +5015,7 @@ impl Executor {
     /// Note: Nested BEGIN is a no-op when a transaction is already active
     pub(crate) fn execute_begin(
         &self,
-        _stmt: &BeginStatement,
+        stmt: &BeginStatement,
         _ctx: &ExecutionContext,
     ) -> Result<Box<dyn QueryResult>> {
         use super::ActiveTransaction;
@@ -5027,8 +5027,21 @@ impl Executor {
             return Ok(Box::new(ExecResult::empty()));
         }
 
+        // Determine isolation level
+        let isolation_level = match stmt.isolation_level.as_deref() {
+            Some("SNAPSHOT") => crate::core::IsolationLevel::SnapshotIsolation,
+            Some("READ COMMITTED") => crate::core::IsolationLevel::ReadCommitted,
+            Some(_) => {
+                return Err(Error::InvalidArgumentMessage(
+                    "Unsupported isolation level. Supported: SNAPSHOT, READ COMMITTED".to_string(),
+                ))
+            }
+            None => self.default_isolation_level,
+        };
+
         // Start a new transaction
-        let transaction = self.engine.begin_transaction()?;
+        let mut transaction = self.engine.begin_transaction_with_level(isolation_level)?;
+        let _ = transaction.set_isolation_level(isolation_level);
 
         *active_tx = Some(ActiveTransaction {
             transaction,
