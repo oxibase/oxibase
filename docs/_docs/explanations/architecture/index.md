@@ -14,7 +14,7 @@ Learn about the internal architecture of Oxibase, including storage engines, ind
 
 This section describes the high-level architecture of Oxibase: its layered structure, major components, module organization, and how data flows through the system during query execution. It provides a conceptual map of the codebase to help developers understand where different functionality lives and how the pieces fit together.
 
-For details on using Oxibase as a library or CLI tool, see [Getting Started]({% link _docs/getting-started/index.md %}). For implementation details of specific subsystems, see the [Storage Engine]({% link _docs/explanations/architecture/storage-engine.md %}), [MVCC Implementation]({% link _docs/explanations/architecture/mvcc-implementation.md %}), [Internal Logging]({% link _docs/explanations/architecture/internal-logging.md %}), and related pages.
+For details on using Oxibase as a library or CLI tool, see [Getting Started]({% link _docs/getting-started/index.md %}). For implementation details of specific subsystems, see the [Storage Engine]({% link _docs/explanations/architecture/storage-engine.md %}), [MVCC Implementation]({% link _docs/explanations/architecture/mvcc-implementation.md %}), [Internal Observability]({% link _docs/explanations/architecture/internal-observability.md %}), and related pages.
 
 ## Three-Tier Layered Architecture
 
