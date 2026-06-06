@@ -171,6 +171,15 @@ impl TransactionRegistry {
         // Record the transaction as active (DashMap is lock-free)
         self.active_transactions.insert(txn_id, begin_seq);
 
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "gauge",
+            metric_name = "transactions_active",
+            value = self.active_transactions.len() as f64,
+            unit = "count",
+            description = "Number of active transactions"
+        );
+
         (txn_id, begin_seq)
     }
 
@@ -226,6 +235,15 @@ impl TransactionRegistry {
         // Remove from active and add to committed
         self.active_transactions.remove(&txn_id);
         self.committed_transactions.insert(txn_id, commit_seq);
+
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "gauge",
+            metric_name = "transactions_active",
+            value = self.active_transactions.len() as f64,
+            unit = "count",
+            description = "Number of active transactions"
+        );
 
         commit_seq
     }
@@ -304,6 +322,15 @@ impl TransactionRegistry {
 
         // Also remove from committing state if present (atomic)
         self.committing_transactions.remove(&txn_id);
+
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "gauge",
+            metric_name = "transactions_active",
+            value = self.active_transactions.len() as f64,
+            unit = "count",
+            description = "Number of active transactions"
+        );
     }
 
     /// Gets the commit sequence for a transaction

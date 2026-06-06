@@ -203,6 +203,11 @@ pub fn start_metrics_flusher(
             let batch_size = 100;
             let timeout = Duration::from_secs(1);
 
+            let mut last_pool_check = std::time::Instant::now();
+            let mut last_small_stats = crate::common::buffer_pool::global::small().stats();
+            let mut last_medium_stats = crate::common::buffer_pool::global::medium().stats();
+            let mut last_large_stats = crate::common::buffer_pool::global::large().stats();
+
             loop {
                 if flag_clone.load(std::sync::atomic::Ordering::Relaxed) {
                     break;
@@ -211,17 +216,65 @@ pub fn start_metrics_flusher(
                 let mut entries = Vec::new();
 
                 // Wait for the first message with a timeout
-                match receiver.recv_timeout(timeout) {
-                    Ok(entry) => {
-                        entries.push(entry);
-                        while entries.len() < batch_size {
-                            match receiver.try_recv() {
-                                Ok(entry) => entries.push(entry),
-                                Err(_) => break,
-                            }
+                if let Ok(entry) = receiver.recv_timeout(timeout) {
+                    entries.push(entry);
+                    while entries.len() < batch_size {
+                        match receiver.try_recv() {
+                            Ok(entry) => entries.push(entry),
+                            Err(_) => break,
                         }
                     }
-                    Err(_) => continue, // Timeout or disconnected
+                }
+
+                if last_pool_check.elapsed() >= Duration::from_secs(1) {
+                    last_pool_check = std::time::Instant::now();
+
+                    let current_small = crate::common::buffer_pool::global::small().stats();
+                    let current_medium = crate::common::buffer_pool::global::medium().stats();
+                    let current_large = crate::common::buffer_pool::global::large().stats();
+
+                    let pools = [
+                        ("small", &current_small, &mut last_small_stats),
+                        ("medium", &current_medium, &mut last_medium_stats),
+                        ("large", &current_large, &mut last_large_stats),
+                    ];
+
+                    for (pool_name, current_stats, last_stats) in pools {
+                        let gets_delta =
+                            current_stats.get_count.saturating_sub(last_stats.get_count);
+                        let created_delta = current_stats
+                            .buffers_created
+                            .saturating_sub(last_stats.buffers_created);
+
+                        let misses = created_delta;
+                        let hits = gets_delta.saturating_sub(created_delta);
+
+                        if hits > 0 {
+                            entries.push(MetricEvent {
+                                name: "buffer_pool_hits".to_string(),
+                                description: Some(format!("Hits for {} buffer pool", pool_name)),
+                                unit: Some("count".to_string()),
+                                metric_type: "counter".to_string(),
+                                value: hits as f64,
+                                attributes: format!(r#"{{"pool": "{}"}}"#, pool_name),
+                                timestamp: Utc::now(),
+                            });
+                        }
+
+                        if misses > 0 {
+                            entries.push(MetricEvent {
+                                name: "buffer_pool_misses".to_string(),
+                                description: Some(format!("Misses for {} buffer pool", pool_name)),
+                                unit: Some("count".to_string()),
+                                metric_type: "counter".to_string(),
+                                value: misses as f64,
+                                attributes: format!(r#"{{"pool": "{}"}}"#, pool_name),
+                                timestamp: Utc::now(),
+                            });
+                        }
+
+                        *last_stats = current_stats.clone();
+                    }
                 }
 
                 if entries.is_empty() {
