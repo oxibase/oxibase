@@ -76,18 +76,26 @@ where
         attrs.record(&mut visitor);
 
         let mut ext = span.extensions_mut();
+
+        let span_id_str = id.into_u64().to_string();
+        let trace_id = format!("trace-{}", span_id_str); // Fallback
+
         ext.insert::<(
             Instant,
             DateTime<Utc>,
             String,
             String,
             serde_json::Map<String, serde_json::Value>,
+            String, // trace_id
+            String, // span_id
         )>((
             Instant::now(),
             Utc::now(),
             attrs.metadata().target().to_string(),
             attrs.metadata().name().to_string(),
             visitor.attributes,
+            trace_id,
+            span_id_str,
         ));
     }
 
@@ -104,6 +112,8 @@ where
             String,
             String,
             serde_json::Map<String, serde_json::Value>,
+            String, // trace_id
+            String, // span_id
         )>() {
             let mut visitor = AttributeVisitor {
                 attributes: std::mem::take(&mut data.4),
@@ -128,10 +138,6 @@ where
 
         let parent_span_id = span.parent().map(|p| p.id().into_u64().to_string());
 
-        // We will default to internal ID string representation if opentelemetry is not attached
-        // If attached, trace_id and span_id should ideally come from OpenTelemetry context
-        let span_id_str = id.into_u64().to_string();
-
         let ext = span.extensions();
         if let Some(data) = ext.get::<(
             Instant,
@@ -139,15 +145,17 @@ where
             String,
             String,
             serde_json::Map<String, serde_json::Value>,
+            String,
+            String,
         )>() {
-            let (start_instant, start_time, target, name, attributes) = data;
+            let (start_instant, start_time, target, name, attributes, trace_id, span_id) = data;
             let duration_ms = end_instant.duration_since(*start_instant).as_millis() as u64;
 
             let final_attrs = attributes.clone();
 
             // Extract OTel trace ID and span ID if present in the tracing-opentelemetry layer
-            let trace_id = format!("trace-{}", span_id_str); // Fallback
-            let span_id = span_id_str.clone();
+            let trace_id = trace_id.clone();
+            let span_id = span_id.clone();
 
             // Format attributes as JSON
             let attributes_str =

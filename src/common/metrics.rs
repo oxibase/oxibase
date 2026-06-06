@@ -77,6 +77,28 @@ where
             visitor.metric_type.clone(),
             visitor.value,
         ) {
+            if let Some(span) = _ctx.lookup_current() {
+                let ext = span.extensions();
+                if let Some(data) = ext.get::<(
+                    std::time::Instant,
+                    chrono::DateTime<Utc>,
+                    String,
+                    String,
+                    serde_json::Map<String, serde_json::Value>,
+                    String,
+                    String,
+                )>() {
+                    visitor.attributes.insert(
+                        "trace_id".to_string(),
+                        serde_json::Value::String(data.5.clone()),
+                    );
+                    visitor.attributes.insert(
+                        "span_id".to_string(),
+                        serde_json::Value::String(data.6.clone()),
+                    );
+                }
+            }
+
             let attributes_str =
                 serde_json::to_string(&visitor.attributes).unwrap_or_else(|_| "{}".to_string());
 

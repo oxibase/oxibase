@@ -55,3 +55,10 @@ examples/oxibase.db
 /data/
 .env*
 jekyll.log
+
+# Rust specific ignores
+debug/
+release/
+*.rlib
+*.log
+*.prof*
