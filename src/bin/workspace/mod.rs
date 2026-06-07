@@ -41,7 +41,9 @@ pub fn install(db: &Database) {
 
     // Load templates via include_str!
     let layout_html = include_str!("templates/workspace_layout.html");
-    let sidebar_html = include_str!("templates/workspace_sidebar.html");
+    let sidebar_data_html = include_str!("templates/workspace_sidebar_data.html");
+    let sidebar_compute_html = include_str!("templates/workspace_sidebar_compute.html");
+    let sidebar_observe_html = include_str!("templates/workspace_sidebar_observe.html");
     let editor_html = include_str!("templates/workspace_sql_editor.html");
     let results_html = include_str!("templates/workspace_sql_results.html");
     let table_create_html = include_str!("templates/workspace_table_create.html");
@@ -52,8 +54,16 @@ pub fn install(db: &Database) {
         vec![Value::text(layout_html)],
     );
     let _ = tx.execute(
-        "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar.html', ?)",
-        vec![Value::text(sidebar_html)],
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_data.html', ?)",
+        vec![Value::text(sidebar_data_html)],
+    );
+    let _ = tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_compute.html', ?)",
+        vec![Value::text(sidebar_compute_html)],
+    );
+    let _ = tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_observe.html', ?)",
+        vec![Value::text(sidebar_observe_html)],
     );
     let _ = tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sql_editor.html', ?)",
@@ -78,7 +88,17 @@ pub fn install(db: &Database) {
     );
 
     let _ = tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar', 'workspace_sidebar.html', 'SELECT table_schema, table_name FROM information_schema.tables ORDER BY table_schema, table_name')",
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/data', 'workspace_sidebar_data.html', 'SELECT table_schema, table_name FROM information_schema.tables ORDER BY table_schema, table_name')",
+        ()
+    );
+
+    let _ = tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/compute', 'workspace_sidebar_compute.html', NULL)",
+        ()
+    );
+
+    let _ = tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/observe', 'workspace_sidebar_observe.html', NULL)",
         ()
     );
 
