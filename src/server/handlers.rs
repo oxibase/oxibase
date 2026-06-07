@@ -1119,44 +1119,39 @@ pub async fn workspace_trace_view(
         Ok(rows_result) => {
             let columns = rows_result.columns().to_vec();
             let mut all_spans = Vec::new();
-            let mut total_duration = 0.0;
             let mut start_time = String::new();
             let mut end_time = String::new();
 
-            for row_res in rows_result {
-                if let Ok(row) = row_res {
-                    let mut json_row = serde_json::Map::new();
-                    for (i, col_name) in columns.iter().enumerate() {
-                        let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                        json_row.insert(col_name.clone(), value_to_json(&val));
-                    }
-                    
-                    if start_time.is_empty() {
-                        if let Some(st) = json_row.get("start_time") {
-                            start_time = st.as_str().unwrap_or("").to_string();
-                        }
-                    }
-                    if let Some(et) = json_row.get("end_time") {
-                        end_time = et.as_str().unwrap_or("").to_string();
-                    }
-                    
-                    all_spans.push(JsonValue::Object(json_row));
+            for row in rows_result.flatten() {
+                let mut json_row = serde_json::Map::new();
+                for (i, col_name) in columns.iter().enumerate() {
+                    let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                    json_row.insert(col_name.clone(), value_to_json(&val));
                 }
-            }
 
-            // Simple duration calculation for the whole trace
-            if let Some(first) = all_spans.first() {
-                if let Some(last) = all_spans.last() {
-                    // We'll calculate a simple total duration based on start and end time later in template or here
-                    // Actually, if we just use the last end_time - first start_time, it might be tricky to parse in rust without chrono.
-                    // Let's just pass the spans and calculate relative widths in the template if possible, or calculate here.
-                    // Let's pass the raw data and do simple calculations.
+                if start_time.is_empty() {
+                    if let Some(st) = json_row.get("start_time") {
+                        start_time = st.as_str().unwrap_or("").to_string();
+                    }
                 }
+                if let Some(et) = json_row.get("end_time") {
+                    end_time = et.as_str().unwrap_or("").to_string();
+                }
+
+                all_spans.push(JsonValue::Object(json_row));
             }
 
             context.insert("spans".to_string(), JsonValue::Array(all_spans.clone()));
-            context.insert("spans_json".to_string(), JsonValue::String(serde_json::to_string(&all_spans).unwrap_or_else(|_| "[]".to_string())));
-            context.insert("trace_start_time".to_string(), JsonValue::String(start_time));
+            context.insert(
+                "spans_json".to_string(),
+                JsonValue::String(
+                    serde_json::to_string(&all_spans).unwrap_or_else(|_| "[]".to_string()),
+                ),
+            );
+            context.insert(
+                "trace_start_time".to_string(),
+                JsonValue::String(start_time),
+            );
             context.insert("trace_end_time".to_string(), JsonValue::String(end_time));
         }
         Err(e) => {
