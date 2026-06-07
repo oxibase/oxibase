@@ -20,12 +20,12 @@
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Arc;
 
 use crate::core::{DataType, Error, Result, Row, Schema, Value};
 use crate::storage::expression::Expression;
 use crate::storage::traits::{QueryResult, Scanner, Table};
-
-use std::sync::Arc;
 
 /// A memory-bounded ring buffer table intended for telemetry data.
 /// It bypasses MVCC and the WAL.
@@ -34,6 +34,7 @@ pub struct SystemRingBufferTable {
     schema: Schema,
     capacity: usize,
     buffer: Arc<RwLock<VecDeque<Row>>>,
+    auto_increment_counter: AtomicI64,
 }
 
 impl SystemRingBufferTable {
@@ -49,6 +50,7 @@ impl SystemRingBufferTable {
             schema,
             capacity,
             buffer,
+            auto_increment_counter: AtomicI64::new(1),
         }
     }
 }
@@ -79,7 +81,33 @@ impl Table for SystemRingBufferTable {
         ))
     }
 
-    fn insert(&mut self, row: Row) -> Result<Row> {
+    fn insert(&mut self, mut row: Row) -> Result<Row> {
+        // Handle auto-increment
+        if let Some(pk_idx) = self.schema.columns.iter().position(|c| c.primary_key) {
+            let pk_col = &self.schema.columns[pk_idx];
+            if pk_col.auto_increment {
+                if let Some(value) = row.get(pk_idx) {
+                    if value.is_null() {
+                        let next_id = self.auto_increment_counter.fetch_add(1, Ordering::SeqCst);
+                        let _ = row.set(pk_idx, Value::Integer(next_id));
+                    } else if let Some(pk_val) = value.as_int64() {
+                        let mut current = self.auto_increment_counter.load(Ordering::SeqCst);
+                        while pk_val >= current {
+                            match self.auto_increment_counter.compare_exchange_weak(
+                                current,
+                                pk_val + 1,
+                                Ordering::SeqCst,
+                                Ordering::Relaxed,
+                            ) {
+                                Ok(_) => break,
+                                Err(actual) => current = actual,
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let mut buf = self.buffer.write();
         if buf.len() >= self.capacity {
             buf.pop_front();
@@ -88,7 +116,35 @@ impl Table for SystemRingBufferTable {
         Ok(row)
     }
 
-    fn insert_batch(&mut self, rows: Vec<Row>) -> Result<()> {
+    fn insert_batch(&mut self, mut rows: Vec<Row>) -> Result<()> {
+        let pk_idx = self.schema.columns.iter().position(|c| c.primary_key);
+        let is_auto_inc = pk_idx.map_or(false, |idx| self.schema.columns[idx].auto_increment);
+
+        for row in &mut rows {
+            if is_auto_inc {
+                let idx = pk_idx.unwrap();
+                if let Some(value) = row.get(idx) {
+                    if value.is_null() {
+                        let next_id = self.auto_increment_counter.fetch_add(1, Ordering::SeqCst);
+                        let _ = row.set(idx, Value::Integer(next_id));
+                    } else if let Some(pk_val) = value.as_int64() {
+                        let mut current = self.auto_increment_counter.load(Ordering::SeqCst);
+                        while pk_val >= current {
+                            match self.auto_increment_counter.compare_exchange_weak(
+                                current,
+                                pk_val + 1,
+                                Ordering::SeqCst,
+                                Ordering::Relaxed,
+                            ) {
+                                Ok(_) => break,
+                                Err(actual) => current = actual,
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let mut buf = self.buffer.write();
         for row in rows {
             if buf.len() >= self.capacity {
