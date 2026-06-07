@@ -73,4 +73,21 @@ fn test_telemetry_query() {
     // So top 2 should be WARN and INFO.
     assert_eq!(levels[0], "WARN");
     assert_eq!(levels[1], "INFO");
+
+    // Query 4: Auto-increment verification
+    let rows = db
+        .query(
+            "SELECT id FROM system.logs WHERE target = 'test_target'",
+            (),
+        )
+        .unwrap();
+    let mut ids = Vec::new();
+    for row in rows {
+        let id: i64 = row.unwrap().get(0).unwrap();
+        ids.push(id);
+    }
+    assert_eq!(ids.len(), 3);
+    assert!(ids[0] > 0);
+    assert_eq!(ids[1], ids[0] + 1);
+    assert_eq!(ids[2], ids[1] + 1);
 }
