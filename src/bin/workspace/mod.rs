@@ -48,6 +48,7 @@ pub fn install(db: &Database) {
     let results_html = include_str!("templates/workspace_sql_results.html");
     let table_create_html = include_str!("templates/workspace_table_create.html");
     let data_grid_html = include_str!("templates/workspace_data_grid.html");
+    let trace_view_html = include_str!("templates/workspace_trace_view.html");
 
     let _ = tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_layout.html', ?)",
@@ -80,6 +81,10 @@ pub fn install(db: &Database) {
     let _ = tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_data_grid.html', ?)",
         vec![Value::text(data_grid_html)],
+    );
+    let _ = tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_trace_view.html', ?)",
+        vec![Value::text(trace_view_html)],
     );
 
     let _ = tx.execute(

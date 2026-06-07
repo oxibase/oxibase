@@ -1105,3 +1105,83 @@ pub async fn workspace_get_table_data(
             .into_response(),
     }
 }
+
+pub async fn workspace_trace_view(
+    Path(trace_id): Path<String>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut context = serde_json::Map::new();
+    context.insert("trace_id".to_string(), JsonValue::String(trace_id.clone()));
+
+    let sql = "SELECT span_id, parent_span_id, name, span_kind, start_time, end_time, duration_ms, status_code, status_message, attributes FROM system.traces WHERE trace_id = ? ORDER BY start_time ASC";
+
+    match state.db.query(sql, vec![Value::text(&trace_id)]) {
+        Ok(rows_result) => {
+            let columns = rows_result.columns().to_vec();
+            let mut all_spans = Vec::new();
+            let mut total_duration = 0.0;
+            let mut start_time = String::new();
+            let mut end_time = String::new();
+
+            for row_res in rows_result {
+                if let Ok(row) = row_res {
+                    let mut json_row = serde_json::Map::new();
+                    for (i, col_name) in columns.iter().enumerate() {
+                        let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                        json_row.insert(col_name.clone(), value_to_json(&val));
+                    }
+                    
+                    if start_time.is_empty() {
+                        if let Some(st) = json_row.get("start_time") {
+                            start_time = st.as_str().unwrap_or("").to_string();
+                        }
+                    }
+                    if let Some(et) = json_row.get("end_time") {
+                        end_time = et.as_str().unwrap_or("").to_string();
+                    }
+                    
+                    all_spans.push(JsonValue::Object(json_row));
+                }
+            }
+
+            // Simple duration calculation for the whole trace
+            if let Some(first) = all_spans.first() {
+                if let Some(last) = all_spans.last() {
+                    // We'll calculate a simple total duration based on start and end time later in template or here
+                    // Actually, if we just use the last end_time - first start_time, it might be tricky to parse in rust without chrono.
+                    // Let's just pass the spans and calculate relative widths in the template if possible, or calculate here.
+                    // Let's pass the raw data and do simple calculations.
+                }
+            }
+
+            context.insert("spans".to_string(), JsonValue::Array(all_spans.clone()));
+            context.insert("spans_json".to_string(), JsonValue::String(serde_json::to_string(&all_spans).unwrap_or_else(|_| "[]".to_string())));
+            context.insert("trace_start_time".to_string(), JsonValue::String(start_time));
+            context.insert("trace_end_time".to_string(), JsonValue::String(end_time));
+        }
+        Err(e) => {
+            context.insert("error".to_string(), JsonValue::String(e.to_string()));
+        }
+    }
+
+    let env = create_env(state.db.clone());
+    let tmpl = match env.get_template("workspace_trace_view.html") {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template load error: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    match tmpl.render(JsonValue::Object(context)) {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {}", e),
+        )
+            .into_response(),
+    }
+}
