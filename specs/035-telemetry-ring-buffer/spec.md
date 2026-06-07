@@ -5,6 +5,11 @@
 **Status**: Draft  
 **Input**: User description: "Research and diagnose performance bottlenecks in the database's internal telemetry system (tracing, logging, and metrics)"
 
+## Clarifications
+
+### Session 2026-06-07
+- Q: Should we include user-facing SQL syntax (`CREATE UNLOGGED TABLE`) in this feature, or build the internal ring buffer for telemetry first and expose to users later? → A: Build the internal ring buffer for telemetry first; expose to users in a separate feature.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Non-blocking Telemetry Insertion (Priority: P1)
