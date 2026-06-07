@@ -558,22 +558,34 @@ impl MVCCEngine {
             WALOperationType::CreateTable => {
                 // Deserialize schema from entry data
                 if let Ok(schema) = self.deserialize_schema(&entry.data) {
-                    // Create the table (version store)
-                    let version_store = Arc::new(VersionStore::with_visibility_checker(
-                        schema.table_name.clone(),
-                        schema.clone(),
-                        Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
-                    ));
-
                     let table_name = schema.table_name_lower.clone();
                     let schema_name = schema.schema_name_lower.clone();
 
                     {
                         let mut schemas = self.schemas.write().unwrap();
                         let default_schema = schemas.entry(schema_name.clone()).or_default();
-                        default_schema.insert(table_name.clone(), schema);
+                        default_schema.insert(table_name.clone(), schema.clone());
                     }
-                    {
+
+                    let is_telemetry_table = schema_name == "system"
+                        && (table_name == "logs"
+                            || table_name == "traces"
+                            || table_name == "metrics");
+
+                    if is_telemetry_table {
+                        let buffer = std::sync::Arc::new(parking_lot::RwLock::new(
+                            std::collections::VecDeque::with_capacity(100_000),
+                        ));
+                        let mut ring_buffers = self.ring_buffers.write().unwrap();
+                        ring_buffers.insert(table_name, buffer);
+                    } else {
+                        // Create the table (version store)
+                        let version_store = Arc::new(VersionStore::with_visibility_checker(
+                            schema.table_name.clone(),
+                            schema.clone(),
+                            Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
+                        ));
+
                         let mut stores = self.version_stores.write().unwrap();
                         stores.insert(table_name, version_store);
                     }
@@ -1425,7 +1437,10 @@ impl MVCCEngine {
             default_schema.insert(table_name.clone(), schema.clone());
         }
 
-        if schema_name == "system" {
+        let is_telemetry_table = schema_name == "system"
+            && (table_name == "logs" || table_name == "traces" || table_name == "metrics");
+
+        if is_telemetry_table {
             let buffer = std::sync::Arc::new(parking_lot::RwLock::new(
                 std::collections::VecDeque::with_capacity(100_000),
             ));
@@ -1474,9 +1489,14 @@ impl MVCCEngine {
         let schema_name_lower = schema_name.to_lowercase();
         let table_name_lower = table_name.to_lowercase();
 
-        if schema_name_lower == "system" {
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
             return Err(Error::NotSupportedMessage(
-                "Cannot drop system tables".to_string(),
+                "Cannot drop system telemetry tables".to_string(),
             ));
         }
 
@@ -3141,16 +3161,21 @@ impl TransactionEngineOperations for EngineOperations {
                 .cloned()
                 .ok_or_else(|| {
                     tracing::debug!(
-                    "TableNotFound because table {} missing in schema {}. Tables in schema: {:?}",
-                    table_name_lower,
-                    schema_name_lower,
-                    default_schema.keys()
-                );
+                        "TableNotFound because table {} missing in schema {}. Tables in schema: {:?}",
+                        table_name_lower,
+                        schema_name_lower,
+                        default_schema.keys()
+                    );
                     Error::TableNotFound
                 })?
         };
 
-        if schema_name_lower == "system" {
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
             let buffer = {
                 let ring_buffers = (*self.ring_buffers).read().unwrap();
                 ring_buffers
@@ -3236,7 +3261,12 @@ impl TransactionEngineOperations for EngineOperations {
             default_schema.insert(table_name_lower.clone(), schema.clone());
         }
 
-        if schema_name_lower == "system" {
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
             let buffer = std::sync::Arc::new(parking_lot::RwLock::new(
                 std::collections::VecDeque::with_capacity(100_000),
             ));
@@ -3284,7 +3314,12 @@ impl TransactionEngineOperations for EngineOperations {
         let schema_name_lower = schema_name.to_lowercase();
         let table_name_lower = table_name.to_lowercase();
 
-        if schema_name_lower == "system" {
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
             return Err(Error::NotSupportedMessage(
                 "Cannot drop system tables".to_string(),
             ));
