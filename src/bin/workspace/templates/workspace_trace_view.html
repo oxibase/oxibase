@@ -1,6 +1,14 @@
 {% extends "workspace_layout.html" %}
 {% block content %}
 <div class="h-full flex flex-col gap-4 overflow-hidden">
+    <!-- Back Button -->
+    <div>
+        <a href="/workspace/data/system/traces" up-target="[up-main='content']" class="btn btn-sm btn-ghost">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Traces
+        </a>
+    </div>
+
     <!-- Header -->
     <div class="bg-base-100 p-4 rounded-box shadow-sm border border-base-200">
         <div class="flex items-center justify-between mb-4">
