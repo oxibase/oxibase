@@ -129,6 +129,7 @@ impl JobScheduler {
     }
 
     fn execute_job(&self, job_id: i64, name: &str, command: &str) {
+        let _span = tracing::info_span!("job.execute", job_id = job_id, job_name = name).entered();
         tracing::debug!("Executing scheduled job '{}' (ID: {})", name, job_id);
 
         let start_time = Utc::now();

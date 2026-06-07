@@ -20,6 +20,7 @@ use crate::server::AppState;
 use crate::Value;
 use axum::{
     extract::{Form, Path, Query, Request, State},
+    http::HeaderMap,
     http::StatusCode,
     response::{Html, IntoResponse},
     Json,
@@ -27,6 +28,19 @@ use axum::{
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+struct HeaderExtractor<'a>(&'a HeaderMap);
+
+impl<'a> opentelemetry::propagation::Extractor for HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
+}
 
 #[derive(Deserialize, Default)]
 pub struct GetQueryParams {
@@ -80,8 +94,16 @@ pub fn value_to_json(value: &Value) -> JsonValue {
 pub async fn get_table(
     Path(table): Path<String>,
     Query(params): Query<GetQueryParams>,
+    headers: HeaderMap,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "GET", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -340,9 +362,17 @@ pub async fn dynamic_route_handler(
 
 pub async fn insert_row(
     Path(table): Path<String>,
+    headers: HeaderMap,
     State(state): State<AppState>,
     Json(payload): Json<serde_json::Map<String, JsonValue>>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -420,9 +450,17 @@ pub async fn insert_row(
 pub async fn update_row(
     Path(table): Path<String>,
     Query(params): Query<GetQueryParams>,
+    headers: HeaderMap,
     State(state): State<AppState>,
     Json(payload): Json<serde_json::Map<String, JsonValue>>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "PUT/PATCH", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -522,8 +560,16 @@ pub async fn update_row(
 pub async fn delete_row(
     Path(table): Path<String>,
     Query(params): Query<GetQueryParams>,
+    headers: HeaderMap,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "DELETE", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -589,6 +635,13 @@ pub async fn invoke_procedure(
     req: Request,
 ) -> impl IntoResponse {
     let (parts, body) = req.into_parts();
+
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&parts.headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/api/rpc");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
 
     // Extract headers into a HashMap
     let mut headers = HashMap::new();
@@ -773,9 +826,17 @@ pub struct SqlRequest {
 }
 
 pub async fn execute_sql(
+    headers: HeaderMap,
     State(state): State<AppState>,
     Json(payload): Json<SqlRequest>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/api/sql");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     let sql = payload.query.trim();
 
     // Check if it's a row-returning query (SELECT, SHOW, EXPLAIN, etc)
@@ -845,9 +906,17 @@ pub async fn execute_sql(
 }
 
 pub async fn workspace_execute_sql(
+    headers: HeaderMap,
     State(state): State<AppState>,
     Form(form): Form<HashMap<String, String>>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/workspace/sql");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     let sql = match form.get("query") {
         Some(q) => q.trim(),
         None => return (StatusCode::BAD_REQUEST, "Missing query").into_response(),
