@@ -45,7 +45,7 @@ pub struct LogEntry {
     pub timestamp: chrono::DateTime<Utc>,
     pub trace_id: Option<String>,
     pub span_id: Option<String>,
-    pub json_fields: Option<String>,
+    pub json_fields: Option<Vec<(String, String)>>,
 }
 
 /// Custom tracing layer that pushes high-severity logs into a crossbeam channel.
@@ -89,7 +89,7 @@ where
                 chrono::DateTime<Utc>,
                 String,
                 String,
-                serde_json::Map<String, serde_json::Value>,
+                Vec<(String, String)>,
                 String,
                 String,
             )>() {
@@ -101,7 +101,7 @@ where
         let json_fields = if visitor.attributes.is_empty() {
             None
         } else {
-            serde_json::to_string(&visitor.attributes).ok()
+            Some(visitor.attributes)
         };
 
         let entry = LogEntry {
@@ -122,7 +122,7 @@ where
 #[derive(Default)]
 struct LogVisitor {
     message: String,
-    attributes: serde_json::Map<String, serde_json::Value>,
+    attributes: Vec<(String, String)>,
 }
 
 impl tracing::field::Visit for LogVisitor {
@@ -135,49 +135,41 @@ impl tracing::field::Visit for LogVisitor {
             }
         } else {
             let val = format!("{:?}", value);
-            let val_json = if val.starts_with('"') && val.ends_with('"') {
-                serde_json::Value::String(val[1..val.len() - 1].to_string())
+            let val_str = if val.starts_with('"') && val.ends_with('"') {
+                val[1..val.len() - 1].to_string()
             } else {
-                serde_json::Value::String(val)
+                val
             };
-            self.attributes.insert(field.name().to_string(), val_json);
+            self.attributes.push((field.name().to_string(), val_str));
         }
     }
 
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
-        if let Some(n) = serde_json::Number::from_f64(value) {
-            self.attributes
-                .insert(field.name().to_string(), serde_json::Value::Number(n));
-        }
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::Number(serde_json::Number::from(value)),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::Number(serde_json::Number::from(value)),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.attributes
-            .insert(field.name().to_string(), serde_json::Value::Bool(value));
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         if field.name() == "message" {
             self.message = value.to_string();
         } else {
-            self.attributes.insert(
-                field.name().to_string(),
-                serde_json::Value::String(value.to_string()),
-            );
+            self.attributes
+                .push((field.name().to_string(), value.to_string()));
         }
     }
 }
@@ -261,12 +253,21 @@ fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::R
         let level_value = Value::Text(entry.level.clone().into());
         let target_value = Value::Text(entry.target.clone().into());
         let msg_value = Value::Text(entry.message.clone().into());
-        let json_value = entry
-            .json_fields
-            .clone()
-            .map_or(Value::Null(crate::core::DataType::Text), |json| {
-                Value::Text(json.into())
-            });
+        let json_value =
+            entry
+                .json_fields
+                .clone()
+                .map_or(Value::Null(crate::core::DataType::Text), |json| {
+                    let mut map = serde_json::Map::new();
+                    for (k, v) in json {
+                        map.insert(k, serde_json::Value::String(v));
+                    }
+                    Value::Text(
+                        serde_json::to_string(&map)
+                            .unwrap_or_else(|_| "{}".to_string())
+                            .into(),
+                    )
+                });
 
         let trace_id_value = entry
             .trace_id

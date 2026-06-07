@@ -48,7 +48,7 @@ pub struct SpanEvent {
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
     pub duration_ms: u64,
-    pub attributes: String, // Stored as JSON string
+    pub attributes: Vec<(String, String)>, // Defer JSON stringification
 }
 
 /// Custom tracing layer that pushes span events into a crossbeam channel.
@@ -85,7 +85,7 @@ where
             DateTime<Utc>,
             String,
             String,
-            serde_json::Map<String, serde_json::Value>,
+            Vec<(String, String)>,
             String, // trace_id
             String, // span_id
         )>((
@@ -113,7 +113,7 @@ where
                 DateTime<Utc>,
                 String,
                 String,
-                serde_json::Map<String, serde_json::Value>,
+                Vec<(String, String)>,
                 String, // trace_id
                 String, // span_id
             )>() {
@@ -132,7 +132,7 @@ where
             DateTime<Utc>,
             String,
             String,
-            serde_json::Map<String, serde_json::Value>,
+            Vec<(String, String)>,
             String, // trace_id
             String, // span_id
         )>() {
@@ -161,7 +161,7 @@ where
             DateTime<Utc>,
             String,
             String,
-            serde_json::Map<String, serde_json::Value>,
+            Vec<(String, String)>,
             String,
             String,
         )>() {
@@ -174,9 +174,8 @@ where
             let trace_id = trace_id.clone();
             let span_id = span_id.clone();
 
-            // Format attributes as JSON
-            let attributes_str =
-                serde_json::to_string(&final_attrs).unwrap_or_else(|_| "{}".to_string());
+            // Pass attributes directly, flusher thread will format as JSON
+            let attributes = final_attrs;
 
             let entry = SpanEvent {
                 trace_id,
@@ -187,7 +186,7 @@ where
                 start_time: *start_time,
                 end_time,
                 duration_ms,
-                attributes: attributes_str,
+                attributes,
             };
 
             let _ = self.sender.try_send(entry);
@@ -197,7 +196,7 @@ where
 
 #[derive(Default)]
 struct AttributeVisitor {
-    attributes: serde_json::Map<String, serde_json::Value>,
+    attributes: Vec<(String, String)>,
 }
 
 impl tracing::field::Visit for AttributeVisitor {
@@ -205,45 +204,37 @@ impl tracing::field::Visit for AttributeVisitor {
         let key = field.name().to_string();
         let val = format!("{:?}", value);
         // Remove surrounding quotes if it's a plain string
-        let val_json = if val.starts_with('"') && val.ends_with('"') {
-            serde_json::Value::String(val[1..val.len() - 1].to_string())
+        let val_str = if val.starts_with('"') && val.ends_with('"') {
+            val[1..val.len() - 1].to_string()
         } else {
-            serde_json::Value::String(val)
+            val
         };
-        self.attributes.insert(key, val_json);
+        self.attributes.push((key, val_str));
     }
 
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
-        if let Some(n) = serde_json::Number::from_f64(value) {
-            self.attributes
-                .insert(field.name().to_string(), serde_json::Value::Number(n));
-        }
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::Number(serde_json::Number::from(value)),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::Number(serde_json::Number::from(value)),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.attributes
-            .insert(field.name().to_string(), serde_json::Value::Bool(value));
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::String(value.to_string()),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 }
 
@@ -333,7 +324,16 @@ fn insert_trace_batch(engine: &MVCCEngine, entries: &[SpanEvent]) -> crate::core
         let duration_ms_val = Value::Float(entry.duration_ms as f64);
         let status_code_val = Value::Text("OK".into());
         let status_message_val = Value::Null(crate::core::DataType::Text);
-        let attributes_val = Value::Text(entry.attributes.clone().into());
+        let attributes_str = if entry.attributes.is_empty() {
+            "{}".to_string()
+        } else {
+            let mut map = serde_json::Map::new();
+            for (k, v) in &entry.attributes {
+                map.insert(k.clone(), serde_json::Value::String(v.clone()));
+            }
+            serde_json::to_string(&map).unwrap_or_else(|_| "{}".to_string())
+        };
+        let attributes_val = Value::Text(attributes_str.into());
         let events_val = Value::Null(crate::core::DataType::Text);
 
         let row = vec![
