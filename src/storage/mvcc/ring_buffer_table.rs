@@ -118,7 +118,7 @@ impl Table for SystemRingBufferTable {
 
     fn insert_batch(&mut self, mut rows: Vec<Row>) -> Result<()> {
         let pk_idx = self.schema.columns.iter().position(|c| c.primary_key);
-        let is_auto_inc = pk_idx.map_or(false, |idx| self.schema.columns[idx].auto_increment);
+        let is_auto_inc = pk_idx.is_some_and(|idx| self.schema.columns[idx].auto_increment);
 
         for row in &mut rows {
             if is_auto_inc {
