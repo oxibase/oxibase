@@ -78,7 +78,23 @@ where
         let mut ext = span.extensions_mut();
 
         let span_id_str = id.into_u64().to_string();
-        let trace_id = format!("trace-{}", span_id_str); // Fallback
+        let mut trace_id = format!("trace-{}", span_id_str); // Fallback
+
+        // Inherit trace_id from parent if available
+        if let Some(parent) = ctx.span(id).and_then(|s| s.parent()) {
+            let ext = parent.extensions();
+            if let Some(data) = ext.get::<(
+                Instant,
+                DateTime<Utc>,
+                String,
+                String,
+                Vec<(String, String)>,
+                String,
+                String,
+            )>() {
+                trace_id = data.5.clone();
+            }
+        }
 
         ext.insert::<(
             Instant,
