@@ -44,7 +44,7 @@ pub struct MetricEvent {
     pub unit: Option<String>,
     pub metric_type: String,
     pub value: f64,
-    pub attributes: String, // Stored as JSON string
+    pub attributes: Vec<(String, String)>, // Defer JSON formatting
     pub timestamp: DateTime<Utc>,
 }
 
@@ -77,8 +77,27 @@ where
             visitor.metric_type.clone(),
             visitor.value,
         ) {
-            let attributes_str =
-                serde_json::to_string(&visitor.attributes).unwrap_or_else(|_| "{}".to_string());
+            if let Some(span) = _ctx.lookup_current() {
+                let ext = span.extensions();
+                if let Some(data) = ext.get::<(
+                    std::time::Instant,
+                    chrono::DateTime<Utc>,
+                    String,
+                    String,
+                    Vec<(String, String)>,
+                    String,
+                    String,
+                )>() {
+                    visitor
+                        .attributes
+                        .push(("trace_id".to_string(), data.5.clone()));
+                    visitor
+                        .attributes
+                        .push(("span_id".to_string(), data.6.clone()));
+                }
+            }
+
+            let attributes = visitor.attributes;
 
             let metric_event = MetricEvent {
                 name,
@@ -86,7 +105,7 @@ where
                 unit: visitor.unit,
                 metric_type: m_type,
                 value: val,
-                attributes: attributes_str,
+                attributes,
                 timestamp: Utc::now(),
             };
 
@@ -102,7 +121,7 @@ struct MetricVisitor {
     value: Option<f64>,
     unit: Option<String>,
     description: Option<String>,
-    attributes: serde_json::Map<String, serde_json::Value>,
+    attributes: Vec<(String, String)>,
 }
 
 impl tracing::field::Visit for MetricVisitor {
@@ -125,8 +144,7 @@ impl tracing::field::Visit for MetricVisitor {
             _ => {
                 // Ignore standard tracing keys if we don't want them in attributes
                 if key != "message" && key != "target" {
-                    self.attributes
-                        .insert(key.to_string(), serde_json::Value::String(val_str));
+                    self.attributes.push((key.to_string(), val_str));
                 }
             }
         }
@@ -135,9 +153,9 @@ impl tracing::field::Visit for MetricVisitor {
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
         if field.name() == "value" {
             self.value = Some(value);
-        } else if let Some(n) = serde_json::Number::from_f64(value) {
+        } else {
             self.attributes
-                .insert(field.name().to_string(), serde_json::Value::Number(n));
+                .push((field.name().to_string(), value.to_string()));
         }
     }
 
@@ -145,10 +163,8 @@ impl tracing::field::Visit for MetricVisitor {
         if field.name() == "value" {
             self.value = Some(value as f64);
         } else {
-            self.attributes.insert(
-                field.name().to_string(),
-                serde_json::Value::Number(serde_json::Number::from(value)),
-            );
+            self.attributes
+                .push((field.name().to_string(), value.to_string()));
         }
     }
 
@@ -156,16 +172,14 @@ impl tracing::field::Visit for MetricVisitor {
         if field.name() == "value" {
             self.value = Some(value as f64);
         } else {
-            self.attributes.insert(
-                field.name().to_string(),
-                serde_json::Value::Number(serde_json::Number::from(value)),
-            );
+            self.attributes
+                .push((field.name().to_string(), value.to_string()));
         }
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.attributes
-            .insert(field.name().to_string(), serde_json::Value::Bool(value));
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
@@ -176,10 +190,8 @@ impl tracing::field::Visit for MetricVisitor {
             "description" => self.description = Some(value.to_string()),
             _ => {
                 if field.name() != "message" && field.name() != "target" {
-                    self.attributes.insert(
-                        field.name().to_string(),
-                        serde_json::Value::String(value.to_string()),
-                    );
+                    self.attributes
+                        .push((field.name().to_string(), value.to_string()));
                 }
             }
         }
@@ -202,6 +214,8 @@ pub fn start_metrics_flusher(
         .spawn(move || {
             // Mark this thread as the metrics flusher to prevent infinite loops
             IS_METRICS_THREAD.with(|f| *f.borrow_mut() = true);
+            crate::common::tracing::IS_TELEMETRY_THREAD.with(|f| *f.borrow_mut() = true);
+            crate::common::logging::IS_LOG_FLUSHER.with(|f| *f.borrow_mut() = true);
 
             let batch_size = 100;
             let timeout = Duration::from_secs(1);
@@ -259,7 +273,7 @@ pub fn start_metrics_flusher(
                                 unit: Some("count".to_string()),
                                 metric_type: "counter".to_string(),
                                 value: hits as f64,
-                                attributes: format!(r#"{{"pool": "{}"}}"#, pool_name),
+                                attributes: vec![("pool".to_string(), pool_name.to_string())],
                                 timestamp: Utc::now(),
                             });
                         }
@@ -271,7 +285,7 @@ pub fn start_metrics_flusher(
                                 unit: Some("count".to_string()),
                                 metric_type: "counter".to_string(),
                                 value: misses as f64,
-                                attributes: format!(r#"{{"pool": "{}"}}"#, pool_name),
+                                attributes: vec![("pool".to_string(), pool_name.to_string())],
                                 timestamp: Utc::now(),
                             });
                         }
@@ -323,7 +337,15 @@ fn insert_metric_batch(engine: &MVCCEngine, entries: &[MetricEvent]) -> crate::c
             });
         let type_val = Value::Text(entry.metric_type.clone().into());
         let val_val = Value::Float(entry.value);
-        let attr_val = Value::Text(entry.attributes.clone().into());
+        let attr_val = Value::Text({
+            let mut map = serde_json::Map::new();
+            for (k, v) in &entry.attributes {
+                map.insert(k.clone(), serde_json::Value::String(v.clone()));
+            }
+            serde_json::to_string(&map)
+                .unwrap_or_else(|_| "{}".to_string())
+                .into()
+        });
         let ts_val = Value::Timestamp(entry.timestamp);
 
         let row = vec![

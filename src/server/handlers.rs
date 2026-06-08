@@ -20,6 +20,7 @@ use crate::server::AppState;
 use crate::Value;
 use axum::{
     extract::{Form, Path, Query, Request, State},
+    http::HeaderMap,
     http::StatusCode,
     response::{Html, IntoResponse},
     Json,
@@ -27,6 +28,19 @@ use axum::{
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+struct HeaderExtractor<'a>(&'a HeaderMap);
+
+impl<'a> opentelemetry::propagation::Extractor for HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
+}
 
 #[derive(Deserialize, Default)]
 pub struct GetQueryParams {
@@ -80,8 +94,16 @@ pub fn value_to_json(value: &Value) -> JsonValue {
 pub async fn get_table(
     Path(table): Path<String>,
     Query(params): Query<GetQueryParams>,
+    headers: HeaderMap,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "GET", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -340,9 +362,17 @@ pub async fn dynamic_route_handler(
 
 pub async fn insert_row(
     Path(table): Path<String>,
+    headers: HeaderMap,
     State(state): State<AppState>,
     Json(payload): Json<serde_json::Map<String, JsonValue>>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -420,9 +450,17 @@ pub async fn insert_row(
 pub async fn update_row(
     Path(table): Path<String>,
     Query(params): Query<GetQueryParams>,
+    headers: HeaderMap,
     State(state): State<AppState>,
     Json(payload): Json<serde_json::Map<String, JsonValue>>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "PUT/PATCH", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -522,8 +560,16 @@ pub async fn update_row(
 pub async fn delete_row(
     Path(table): Path<String>,
     Query(params): Query<GetQueryParams>,
+    headers: HeaderMap,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "DELETE", path = "/api/table");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     // Check if table exists
     match table_exists(&state.db, &table) {
         Ok(true) => {}
@@ -589,6 +635,13 @@ pub async fn invoke_procedure(
     req: Request,
 ) -> impl IntoResponse {
     let (parts, body) = req.into_parts();
+
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&parts.headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/api/rpc");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
 
     // Extract headers into a HashMap
     let mut headers = HashMap::new();
@@ -773,9 +826,17 @@ pub struct SqlRequest {
 }
 
 pub async fn execute_sql(
+    headers: HeaderMap,
     State(state): State<AppState>,
     Json(payload): Json<SqlRequest>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/api/sql");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     let sql = payload.query.trim();
 
     // Check if it's a row-returning query (SELECT, SHOW, EXPLAIN, etc)
@@ -845,9 +906,17 @@ pub async fn execute_sql(
 }
 
 pub async fn workspace_execute_sql(
+    headers: HeaderMap,
     State(state): State<AppState>,
     Form(form): Form<HashMap<String, String>>,
 ) -> impl IntoResponse {
+    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
+        prop.extract(&HeaderExtractor(&headers))
+    });
+    let span = tracing::info_span!("network.request", method = "POST", path = "/workspace/sql");
+    let _ = span.set_parent(parent_cx);
+    let _guard = span.enter();
+
     let sql = match form.get("query") {
         Some(q) => q.trim(),
         None => return (StatusCode::BAD_REQUEST, "Missing query").into_response(),
@@ -1017,6 +1086,81 @@ pub async fn workspace_get_table_data(
 
     let env = create_env(state.db.clone());
     let tmpl = match env.get_template("workspace_data_grid.html") {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template load error: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    match tmpl.render(JsonValue::Object(context)) {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+pub async fn workspace_trace_view(
+    Path(trace_id): Path<String>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut context = serde_json::Map::new();
+    context.insert("trace_id".to_string(), JsonValue::String(trace_id.clone()));
+
+    let sql = "SELECT span_id, parent_span_id, name, span_kind, start_time, end_time, duration_ms, status_code, status_message, attributes FROM system.traces WHERE trace_id = ? ORDER BY start_time ASC";
+
+    match state.db.query(sql, vec![Value::text(&trace_id)]) {
+        Ok(rows_result) => {
+            let columns = rows_result.columns().to_vec();
+            let mut all_spans = Vec::new();
+            let mut start_time = String::new();
+            let mut end_time = String::new();
+
+            for row in rows_result.flatten() {
+                let mut json_row = serde_json::Map::new();
+                for (i, col_name) in columns.iter().enumerate() {
+                    let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                    json_row.insert(col_name.clone(), value_to_json(&val));
+                }
+
+                if start_time.is_empty() {
+                    if let Some(st) = json_row.get("start_time") {
+                        start_time = st.as_str().unwrap_or("").to_string();
+                    }
+                }
+                if let Some(et) = json_row.get("end_time") {
+                    end_time = et.as_str().unwrap_or("").to_string();
+                }
+
+                all_spans.push(JsonValue::Object(json_row));
+            }
+
+            context.insert("spans".to_string(), JsonValue::Array(all_spans.clone()));
+            context.insert(
+                "spans_json".to_string(),
+                JsonValue::String(
+                    serde_json::to_string(&all_spans).unwrap_or_else(|_| "[]".to_string()),
+                ),
+            );
+            context.insert(
+                "trace_start_time".to_string(),
+                JsonValue::String(start_time),
+            );
+            context.insert("trace_end_time".to_string(), JsonValue::String(end_time));
+        }
+        Err(e) => {
+            context.insert("error".to_string(), JsonValue::String(e.to_string()));
+        }
+    }
+
+    let env = create_env(state.db.clone());
+    let tmpl = match env.get_template("workspace_trace_view.html") {
         Ok(t) => t,
         Err(e) => {
             return (

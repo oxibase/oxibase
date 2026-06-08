@@ -49,6 +49,7 @@ fn test_internal_log_capture() {
             timestamp: chrono::Utc::now(),
             trace_id: None,
             span_id: None,
+            json_fields: None,
         })
         .unwrap();
 

@@ -73,6 +73,10 @@ pub fn create_router(db: Database) -> Router {
             "/workspace/data/{schema}/{table}",
             get(handlers::workspace_get_table_data),
         )
+        .route(
+            "/workspace/traces/{trace_id}",
+            get(handlers::workspace_trace_view),
+        )
         .route("/api/meta/schemas", get(meta::list_schemas))
         .route(
             "/api/meta/tables",

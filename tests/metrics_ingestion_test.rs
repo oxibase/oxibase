@@ -22,7 +22,10 @@ fn test_metrics_ingestion() {
     let (metrics_tx, metrics_rx) = crossbeam_channel::bounded(100);
     let metrics_layer = oxibase::common::metrics::SystemMetricsLayer::new(metrics_tx);
 
-    let subscriber = Registry::default().with(metrics_layer);
+    let (trace_tx, trace_rx) = crossbeam_channel::bounded(100);
+    let trace_layer = oxibase::common::tracing::SystemTraceLayer::new(trace_tx);
+
+    let subscriber = Registry::default().with(trace_layer).with(metrics_layer);
 
     // Set the global default subscriber for this test thread
     let _guard = tracing::subscriber::set_default(subscriber);
@@ -31,31 +34,38 @@ fn test_metrics_ingestion() {
     // This uses the same engine that the flusher thread will use
     let db = Database::open("memory://").expect("Failed to open database");
 
-    // Start the background metrics flusher thread
-    let (shutdown_flag, handle) =
+    // Start the background flushers
+    let (shutdown_metrics, handle_metrics) =
         oxibase::common::metrics::start_metrics_flusher(db.engine().clone(), metrics_rx);
+    let (shutdown_trace, handle_trace) =
+        oxibase::common::tracing::start_trace_flusher(db.engine().clone(), trace_rx);
 
     // Give the engine a moment to be fully ready
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
-    // 3. Emit some metrics manually (as if from code)
-    tracing::info!(
-        target: "oxibase::metrics",
-        metric_type = "counter",
-        metric_name = "test_queries",
-        value = 1.0,
-        unit = "count",
-        description = "Test query counter"
-    );
+    // 3. Emit some metrics manually (as if from code) inside a span
+    {
+        let span = tracing::info_span!("metric_span");
+        let _enter = span.enter();
 
-    tracing::info!(
-        target: "oxibase::metrics",
-        metric_type = "gauge",
-        metric_name = "test_memory",
-        value = 1024.0,
-        unit = "bytes",
-        description = "Test memory gauge"
-    );
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "counter",
+            metric_name = "test_queries",
+            value = 1.0,
+            unit = "count",
+            description = "Test query counter"
+        );
+
+        tracing::info!(
+            target: "oxibase::metrics",
+            metric_type = "gauge",
+            metric_name = "test_memory",
+            value = 1024.0,
+            unit = "bytes",
+            description = "Test memory gauge"
+        );
+    }
 
     // 4. Also run a real query which should trigger queries_total metric
     let _ = db.execute("SELECT 1", ()).expect("Failed to execute query");
@@ -66,7 +76,7 @@ fn test_metrics_ingestion() {
     // 6. Query the system.metrics table
     let result = db
         .query(
-            "SELECT name, metric_type, value FROM system.metrics ORDER BY id",
+            "SELECT name, metric_type, value, attributes FROM system.metrics ORDER BY id",
             (),
         )
         .expect("Failed to query metrics");
@@ -87,10 +97,23 @@ fn test_metrics_ingestion() {
         let name: String = row.get(0).expect("name");
         let metric_type: String = row.get(1).expect("metric_type");
         let value: f64 = row.get(2).expect("value");
+        let attributes: Option<String> = row.get(3).unwrap_or(None);
 
         if name == "test_queries" {
             assert_eq!(metric_type, "counter");
             assert_eq!(value, 1.0);
+
+            // Verify trace_id and span_id are in attributes
+            let attr_str = attributes.unwrap_or_default();
+            assert!(
+                attr_str.contains("trace_id"),
+                "attributes should contain trace_id"
+            );
+            assert!(
+                attr_str.contains("span_id"),
+                "attributes should contain span_id"
+            );
+
             found_test_queries = true;
         } else if name == "test_memory" {
             assert_eq!(metric_type, "gauge");
@@ -109,6 +132,8 @@ fn test_metrics_ingestion() {
     assert!(found_queries_total, "Did not find queries_total metric");
 
     // Clean up
-    shutdown_flag.store(true, std::sync::atomic::Ordering::SeqCst);
-    let _ = handle.join();
+    shutdown_metrics.store(true, std::sync::atomic::Ordering::SeqCst);
+    shutdown_trace.store(true, std::sync::atomic::Ordering::SeqCst);
+    let _ = handle_metrics.join();
+    let _ = handle_trace.join();
 }

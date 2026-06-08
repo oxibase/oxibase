@@ -1,0 +1,118 @@
+{% extends "workspace_layout.html" %}
+{% block content %}
+<div class="h-full flex flex-col gap-4 overflow-hidden">
+    <!-- Back Button -->
+    <div>
+        <a href="/workspace/data/system/traces" up-target="[up-main='content']" class="btn btn-sm btn-ghost">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Traces
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-base-100 p-4 rounded-box shadow-sm border border-base-200">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <div class="text-sm font-semibold opacity-60 mb-1">TRACE ID</div>
+                <div class="text-2xl font-mono font-bold flex items-center gap-2">
+                    {{ trace_id }}
+                    <button class="btn btn-xs btn-ghost btn-square" onclick="navigator.clipboard.writeText('{{ trace_id }}')">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="flex gap-4 text-sm">
+                <div>
+                    <div class="opacity-60 uppercase text-xs font-bold mb-1">Started</div>
+                    <div class="font-mono">{{ trace_start_time }}</div>
+                </div>
+                <div>
+                    <div class="opacity-60 uppercase text-xs font-bold mb-1">Ended</div>
+                    <div class="font-mono">{{ trace_end_time }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline View -->
+    <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden">
+        <div class="bg-base-200/50 p-2 border-b border-base-200 flex text-xs font-semibold uppercase opacity-70">
+            <div class="w-1/4 px-2">Span Name</div>
+            <div class="w-1/6 px-2">Kind / Status</div>
+            <div class="w-7/12 px-2">Timeline</div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto" id="trace-timeline">
+            {% if error %}
+                <div class="p-6 text-error">{{ error }}</div>
+            {% else %}
+                {% if spans|length == 0 %}
+                    <div class="p-10 text-center opacity-50">No spans found for this trace.</div>
+                {% else %}
+                    <!-- Spans rendered via JS to calculate widths correctly -->
+                    <script>
+                        const spans = {{ spans_json | safe }};
+                        
+                        let minStartTime = Infinity;
+                        let maxEndTime = -Infinity;
+                        
+                        // Parse ISO strings to timestamps
+                        const parsedSpans = spans.map(s => {
+                            const start = new Date(s.start_time).getTime();
+                            const end = new Date(s.end_time).getTime();
+                            const duration = end - start;
+                            
+                            if (start < minStartTime) minStartTime = start;
+                            if (end > maxEndTime) maxEndTime = end;
+                            
+                            return { ...s, startTimestamp: start, durationComputed: duration };
+                        });
+                        
+                        const totalDuration = maxEndTime - minStartTime;
+                        
+                        const timelineEl = document.getElementById('trace-timeline');
+                        let html = '';
+                        
+                        parsedSpans.forEach((span, index) => {
+                            const leftPercent = totalDuration === 0 ? 0 : ((span.startTimestamp - minStartTime) / totalDuration) * 100;
+                            let widthPercent = totalDuration === 0 ? 100 : (span.durationComputed / totalDuration) * 100;
+                            
+                            // Minimum width to make it visible
+                            if (widthPercent < 0.5) widthPercent = 0.5;
+                            
+                            const statusColor = span.status_code === 'ERROR' ? 'bg-error' : 'bg-primary';
+                            const depth = span.parent_span_id && span.parent_span_id !== 'none' ? 1 : 0;
+                            // Naive depth indentation (could be improved with a real tree build)
+                            const paddingLeft = 0.5 + (depth * 1.5);
+                            
+                            html += `
+                                <div class="flex border-b border-base-200 hover:bg-base-200/30 text-sm group">
+                                    <div class="w-1/4 p-2 truncate flex items-center gap-2" style="padding-left: ${paddingLeft}rem">
+                                        <span class="opacity-50 text-xs font-mono w-4">${index + 1}</span>
+                                        <span class="font-medium truncate" title="${span.name}">${span.name}</span>
+                                    </div>
+                                    <div class="w-1/6 p-2 flex items-center gap-2">
+                                        <span class="badge badge-sm badge-outline">${span.span_kind || 'INTERNAL'}</span>
+                                        ${span.status_code === 'ERROR' ? `<span class="badge badge-sm badge-error">ERR</span>` : ''}
+                                    </div>
+                                    <div class="w-7/12 p-2 relative flex items-center">
+                                        <div class="absolute h-6 ${statusColor} rounded-sm opacity-80" 
+                                             style="left: ${leftPercent}%; width: ${widthPercent}%;">
+                                        </div>
+                                        <div class="absolute text-xs font-mono opacity-0 group-hover:opacity-100 bg-base-100/80 px-1 rounded z-10" 
+                                             style="left: ${leftPercent + widthPercent + 1}%">
+                                            ${span.duration_ms}ms
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        timelineEl.innerHTML = html;
+                    </script>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

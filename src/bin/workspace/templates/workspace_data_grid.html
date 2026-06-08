@@ -60,7 +60,11 @@
                             {% for col in columns %}
                             <td>
                                 {% if row[col] is defined %}
-                                    {{ row[col] }}
+                                    {% if table == 'traces' and col == 'trace_id' %}
+                                        <a href="/workspace/traces/{{ row[col] }}" up-target="[up-main='content']" class="link link-primary font-mono text-xs">{{ row[col] }}</a>
+                                    {% else %}
+                                        {{ row[col] }}
+                                    {% endif %}
                                 {% else %}
                                     <span class="opacity-40 italic">null</span>
                                 {% endif %}

@@ -384,6 +384,19 @@ impl Database {
         Ok((clean_path, config))
     }
 
+    #[inline]
+    fn truncate_sql(sql: &str) -> &str {
+        if sql.len() > 1024 {
+            let max_idx = (0..=1024)
+                .rev()
+                .find(|&i| sql.is_char_boundary(i))
+                .unwrap_or(0);
+            &sql[..max_idx]
+        } else {
+            sql
+        }
+    }
+
     /// Execute a SQL statement
     ///
     /// Use this for DDL (CREATE, DROP, ALTER) and DML (INSERT, UPDATE, DELETE) statements.
@@ -418,6 +431,7 @@ impl Database {
     /// )?;
     /// ```
     pub fn execute<P: Params>(&self, sql: &str, params: P) -> Result<i64> {
+        let _span = tracing::info_span!("db.execute", sql = %Self::truncate_sql(sql)).entered();
         let start = std::time::Instant::now();
         let executor = self
             .inner
@@ -495,6 +509,7 @@ impl Database {
     ///     .collect::<Result<Vec<_>, _>>()?;
     /// ```
     pub fn query<P: Params>(&self, sql: &str, params: P) -> Result<Rows> {
+        let _span = tracing::info_span!("db.query", sql = %Self::truncate_sql(sql)).entered();
         let start = std::time::Instant::now();
         let executor = self
             .inner
@@ -595,6 +610,8 @@ impl Database {
         params: P,
         timeout_ms: u64,
     ) -> Result<i64> {
+        let _span = tracing::info_span!("db.execute_with_timeout", sql = %Self::truncate_sql(sql))
+            .entered();
         let executor = self
             .inner
             .executor
@@ -630,6 +647,8 @@ impl Database {
         params: P,
         timeout_ms: u64,
     ) -> Result<Rows> {
+        let _span =
+            tracing::info_span!("db.query_with_timeout", sql = %Self::truncate_sql(sql)).entered();
         let executor = self
             .inner
             .executor
@@ -692,6 +711,8 @@ impl Database {
     /// )?;
     /// ```
     pub fn execute_named(&self, sql: &str, params: NamedParams) -> Result<i64> {
+        let _span =
+            tracing::info_span!("db.execute_named", sql = %Self::truncate_sql(sql)).entered();
         let executor = self
             .inner
             .executor
@@ -725,6 +746,7 @@ impl Database {
     /// }
     /// ```
     pub fn query_named(&self, sql: &str, params: NamedParams) -> Result<Rows> {
+        let _span = tracing::info_span!("db.query_named", sql = %Self::truncate_sql(sql)).entered();
         let executor = self
             .inner
             .executor

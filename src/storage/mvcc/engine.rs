@@ -279,6 +279,15 @@ pub struct MVCCEngine {
     #[allow(clippy::type_complexity)]
     pub(crate) sequences:
         Arc<RwLock<FxHashMap<String, FxHashMap<String, Arc<crate::core::SequenceState>>>>>,
+    #[allow(clippy::type_complexity)]
+    ring_buffers: Arc<
+        RwLock<
+            FxHashMap<
+                String,
+                std::sync::Arc<parking_lot::RwLock<std::collections::VecDeque<crate::core::Row>>>,
+            >,
+        >,
+    >,
     persistence: Arc<Option<PersistenceManager>>,
     /// Flag to indicate we're loading from disk to avoid triggering redundant WAL writes
     /// (Arc-wrapped for safe sharing with transactions)
@@ -319,6 +328,7 @@ impl MVCCEngine {
             txn_version_stores: Arc::new(RwLock::new(FxHashMap::default())),
             views: RwLock::new(FxHashMap::default()),
             sequences: Arc::new(RwLock::new(FxHashMap::default())),
+            ring_buffers: Arc::new(RwLock::new(FxHashMap::default())),
             persistence: Arc::new(persistence),
             loading_from_disk: Arc::new(AtomicBool::new(false)),
             file_lock: Mutex::new(None),
@@ -548,22 +558,34 @@ impl MVCCEngine {
             WALOperationType::CreateTable => {
                 // Deserialize schema from entry data
                 if let Ok(schema) = self.deserialize_schema(&entry.data) {
-                    // Create the table (version store)
-                    let version_store = Arc::new(VersionStore::with_visibility_checker(
-                        schema.table_name.clone(),
-                        schema.clone(),
-                        Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
-                    ));
-
                     let table_name = schema.table_name_lower.clone();
                     let schema_name = schema.schema_name_lower.clone();
 
                     {
                         let mut schemas = self.schemas.write().unwrap();
                         let default_schema = schemas.entry(schema_name.clone()).or_default();
-                        default_schema.insert(table_name.clone(), schema);
+                        default_schema.insert(table_name.clone(), schema.clone());
                     }
-                    {
+
+                    let is_telemetry_table = schema_name == "system"
+                        && (table_name == "logs"
+                            || table_name == "traces"
+                            || table_name == "metrics");
+
+                    if is_telemetry_table {
+                        let buffer = std::sync::Arc::new(parking_lot::RwLock::new(
+                            std::collections::VecDeque::with_capacity(100_000),
+                        ));
+                        let mut ring_buffers = self.ring_buffers.write().unwrap();
+                        ring_buffers.insert(table_name, buffer);
+                    } else {
+                        // Create the table (version store)
+                        let version_store = Arc::new(VersionStore::with_visibility_checker(
+                            schema.table_name.clone(),
+                            schema.clone(),
+                            Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
+                        ));
+
                         let mut stores = self.version_stores.write().unwrap();
                         stores.insert(table_name, version_store);
                     }
@@ -1408,22 +1430,33 @@ impl MVCCEngine {
         // Validate schema
         self.validate_schema(&schema)?;
 
-        // Create version store for this table
-        let version_store = Arc::new(VersionStore::with_visibility_checker(
-            schema.table_name.clone(),
-            schema.clone(),
-            Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
-        ));
-
-        // Store schema and version store
+        // Store schema
         {
             let mut schemas = self.schemas.write().unwrap();
             let default_schema = schemas.entry(schema_name.clone()).or_default();
             default_schema.insert(table_name.clone(), schema.clone());
         }
-        {
+
+        let is_telemetry_table = schema_name == "system"
+            && (table_name == "logs" || table_name == "traces" || table_name == "metrics");
+
+        if is_telemetry_table {
+            let buffer = std::sync::Arc::new(parking_lot::RwLock::new(
+                std::collections::VecDeque::with_capacity(100_000),
+            ));
+            {
+                let mut ring_buffers = self.ring_buffers.write().unwrap();
+                ring_buffers.insert(table_name.clone(), buffer);
+            }
+        } else {
+            // Create version store for this table
+            let version_store = Arc::new(VersionStore::with_visibility_checker(
+                schema.table_name.clone(),
+                schema.clone(),
+                Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
+            ));
             let mut stores = self.version_stores.write().unwrap();
-            stores.insert(table_name, version_store);
+            stores.insert(table_name.clone(), version_store);
         }
 
         // Record DDL operation in WAL
@@ -1455,6 +1488,17 @@ impl MVCCEngine {
 
         let schema_name_lower = schema_name.to_lowercase();
         let table_name_lower = table_name.to_lowercase();
+
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
+            return Err(Error::NotSupportedMessage(
+                "Cannot drop system telemetry tables".to_string(),
+            ));
+        }
 
         // Check if table exists
         {
@@ -3038,6 +3082,16 @@ struct EngineOperations {
     persistence: Arc<Option<PersistenceManager>>,
     /// Shared reference to loading_from_disk flag
     loading_from_disk: Arc<AtomicBool>,
+    /// Shared reference to ring buffers
+    #[allow(clippy::type_complexity)]
+    ring_buffers: Arc<
+        RwLock<
+            FxHashMap<
+                String,
+                std::sync::Arc<parking_lot::RwLock<std::collections::VecDeque<crate::core::Row>>>,
+            >,
+        >,
+    >,
 }
 
 // EngineOperations is Send + Sync because all fields are Arc-wrapped thread-safe types
@@ -3051,6 +3105,7 @@ impl EngineOperations {
             txn_version_stores: Arc::clone(&engine.txn_version_stores),
             persistence: Arc::clone(&engine.persistence),
             loading_from_disk: Arc::clone(&engine.loading_from_disk),
+            ring_buffers: Arc::clone(&engine.ring_buffers),
         }
     }
 
@@ -3091,7 +3146,7 @@ impl TransactionEngineOperations for EngineOperations {
         let table_name_lower = table_name_str.to_lowercase();
 
         // Ensure table exists in schemas map
-        {
+        let schema = {
             let schemas = self.schemas().read().unwrap();
             let default_schema = schemas.get(&schema_name_lower).ok_or_else(|| {
                 tracing::debug!(
@@ -3101,15 +3156,42 @@ impl TransactionEngineOperations for EngineOperations {
                 );
                 Error::TableNotFound
             })?;
-            if !default_schema.contains_key(&table_name_lower) {
-                tracing::debug!(
-                    "TableNotFound because table {} missing in schema {}. Tables in schema: {:?}",
-                    table_name_lower,
-                    schema_name_lower,
-                    default_schema.keys()
-                );
-                return Err(Error::TableNotFound);
-            }
+            default_schema
+                .get(&table_name_lower)
+                .cloned()
+                .ok_or_else(|| {
+                    tracing::debug!(
+                        "TableNotFound because table {} missing in schema {}. Tables in schema: {:?}",
+                        table_name_lower,
+                        schema_name_lower,
+                        default_schema.keys()
+                    );
+                    Error::TableNotFound
+                })?
+        };
+
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
+            let buffer = {
+                let ring_buffers = (*self.ring_buffers).read().unwrap();
+                ring_buffers
+                    .get(&table_name_lower)
+                    .cloned()
+                    .ok_or_else(|| {
+                        tracing::debug!(
+                            "TableNotFound because ring buffer missing for {}.",
+                            table_name_lower
+                        );
+                        Error::TableNotFound
+                    })?
+            };
+            return Ok(Box::new(crate::storage::mvcc::SystemRingBufferTable::new(
+                full_name, schema, 100_000, buffer,
+            )));
         }
 
         // Get version store (version_stores is currently flat with table_name_lower as key)
@@ -3172,31 +3254,50 @@ impl TransactionEngineOperations for EngineOperations {
             }
         }
 
-        // Create version store for this table
-        let version_store = Arc::new(VersionStore::with_visibility_checker(
-            schema.table_name.clone(),
-            schema.clone(),
-            Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
-        ));
-
-        // Store schema and version store
+        // Store schema
         {
             let mut schemas = (*self.schemas()).write().unwrap();
             let default_schema = schemas.entry(schema_name_lower.clone()).or_default();
-            default_schema.insert(table_name_lower.clone(), schema);
-        }
-        {
-            let mut stores = self.version_stores().write().unwrap();
-            stores.insert(table_name_lower, Arc::clone(&version_store));
+            default_schema.insert(table_name_lower.clone(), schema.clone());
         }
 
-        // Create transaction version store with txn_id 0 (will be set by caller)
-        let txn_versions = TransactionVersionStore::new(Arc::clone(&version_store), 0);
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
 
-        // Create MVCC table
-        let table = MVCCTable::new(0, version_store, txn_versions);
+        if is_telemetry_table {
+            let buffer = std::sync::Arc::new(parking_lot::RwLock::new(
+                std::collections::VecDeque::with_capacity(100_000),
+            ));
+            {
+                let mut ring_buffers = (*self.ring_buffers).write().unwrap();
+                ring_buffers.insert(table_name_lower.clone(), std::sync::Arc::clone(&buffer));
+            }
+            Ok(Box::new(crate::storage::mvcc::SystemRingBufferTable::new(
+                full_name, schema, 100_000, buffer,
+            )))
+        } else {
+            // Create version store for this table
+            let version_store = Arc::new(VersionStore::with_visibility_checker(
+                schema.table_name.clone(),
+                schema,
+                Arc::clone(&self.registry) as Arc<dyn VisibilityChecker>,
+            ));
 
-        Ok(Box::new(table))
+            {
+                let mut stores = self.version_stores().write().unwrap();
+                stores.insert(table_name_lower.clone(), Arc::clone(&version_store));
+            }
+
+            // Create transaction version store with txn_id 0 (will be set by caller)
+            let txn_versions = TransactionVersionStore::new(Arc::clone(&version_store), 0);
+
+            // Create MVCC table
+            let table = MVCCTable::new(0, version_store, txn_versions);
+
+            Ok(Box::new(table))
+        }
     }
 
     fn drop_table(&self, name: &str) -> Result<()> {
@@ -3212,6 +3313,17 @@ impl TransactionEngineOperations for EngineOperations {
 
         let schema_name_lower = schema_name.to_lowercase();
         let table_name_lower = table_name.to_lowercase();
+
+        let is_telemetry_table = schema_name_lower == "system"
+            && (table_name_lower == "logs"
+                || table_name_lower == "traces"
+                || table_name_lower == "metrics");
+
+        if is_telemetry_table {
+            return Err(Error::NotSupportedMessage(
+                "Cannot drop system tables".to_string(),
+            ));
+        }
 
         // Remove schema and version store
         {

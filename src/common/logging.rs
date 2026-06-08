@@ -45,6 +45,7 @@ pub struct LogEntry {
     pub timestamp: chrono::DateTime<Utc>,
     pub trace_id: Option<String>,
     pub span_id: Option<String>,
+    pub json_fields: Option<Vec<(String, String)>>,
 }
 
 /// Custom tracing layer that pushes high-severity logs into a crossbeam channel.
@@ -60,7 +61,7 @@ impl InternalLogLayer {
 
 impl<S> Layer<S> for InternalLogLayer
 where
-    S: Subscriber,
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         // Skip if we are inside the flusher thread
@@ -78,13 +79,39 @@ where
         let mut visitor = LogVisitor::default();
         event.record(&mut visitor);
 
+        let mut trace_id = None;
+        let mut span_id = None;
+
+        if let Some(span) = _ctx.lookup_current() {
+            let ext = span.extensions();
+            if let Some(data) = ext.get::<(
+                std::time::Instant,
+                chrono::DateTime<Utc>,
+                String,
+                String,
+                Vec<(String, String)>,
+                String,
+                String,
+            )>() {
+                trace_id = Some(data.5.clone());
+                span_id = Some(data.6.clone());
+            }
+        }
+
+        let json_fields = if visitor.attributes.is_empty() {
+            None
+        } else {
+            Some(visitor.attributes)
+        };
+
         let entry = LogEntry {
             level: level.to_string(),
             target: event.metadata().target().to_string(),
             message: visitor.message,
             timestamp: Utc::now(),
-            trace_id: None, // Will be populated by tracing-opentelemetry in future
-            span_id: None,  // Will be populated by tracing-opentelemetry in future
+            trace_id,
+            span_id,
+            json_fields,
         };
 
         // Attempt to send, but do not block if the channel is full
@@ -95,6 +122,7 @@ where
 #[derive(Default)]
 struct LogVisitor {
     message: String,
+    attributes: Vec<(String, String)>,
 }
 
 impl tracing::field::Visit for LogVisitor {
@@ -105,6 +133,43 @@ impl tracing::field::Visit for LogVisitor {
             if self.message.starts_with('"') && self.message.ends_with('"') {
                 self.message = self.message[1..self.message.len() - 1].to_string();
             }
+        } else {
+            let val = format!("{:?}", value);
+            let val_str = if val.starts_with('"') && val.ends_with('"') {
+                val[1..val.len() - 1].to_string()
+            } else {
+                val
+            };
+            self.attributes.push((field.name().to_string(), val_str));
+        }
+    }
+
+    fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
+    }
+
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        if field.name() == "message" {
+            self.message = value.to_string();
+        } else {
+            self.attributes
+                .push((field.name().to_string(), value.to_string()));
         }
     }
 }
@@ -125,6 +190,8 @@ pub fn start_log_flusher(
         .spawn(move || {
             // Mark this thread as the log flusher to prevent infinite loops
             IS_LOG_FLUSHER.with(|f| *f.borrow_mut() = true);
+            crate::common::tracing::IS_TELEMETRY_THREAD.with(|f| *f.borrow_mut() = true);
+            crate::common::metrics::IS_METRICS_THREAD.with(|f| *f.borrow_mut() = true);
 
             let batch_size = 100;
             let timeout = Duration::from_secs(1);
@@ -186,7 +253,21 @@ fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::R
         let level_value = Value::Text(entry.level.clone().into());
         let target_value = Value::Text(entry.target.clone().into());
         let msg_value = Value::Text(entry.message.clone().into());
-        let json_value = Value::null_unknown(); // Placeholder for future use
+        let json_value =
+            entry
+                .json_fields
+                .clone()
+                .map_or(Value::Null(crate::core::DataType::Text), |json| {
+                    let mut map = serde_json::Map::new();
+                    for (k, v) in json {
+                        map.insert(k, serde_json::Value::String(v));
+                    }
+                    Value::Text(
+                        serde_json::to_string(&map)
+                            .unwrap_or_else(|_| "{}".to_string())
+                            .into(),
+                    )
+                });
 
         let trace_id_value = entry
             .trace_id

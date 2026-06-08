@@ -48,7 +48,7 @@ pub struct SpanEvent {
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
     pub duration_ms: u64,
-    pub attributes: String, // Stored as JSON string
+    pub attributes: Vec<(String, String)>, // Defer JSON stringification
 }
 
 /// Custom tracing layer that pushes span events into a crossbeam channel.
@@ -76,18 +76,42 @@ where
         attrs.record(&mut visitor);
 
         let mut ext = span.extensions_mut();
+
+        let span_id_str = id.into_u64().to_string();
+        let mut trace_id = format!("trace-{}", span_id_str); // Fallback
+
+        // Inherit trace_id from parent if available
+        if let Some(parent) = ctx.span(id).and_then(|s| s.parent()) {
+            let ext = parent.extensions();
+            if let Some(data) = ext.get::<(
+                Instant,
+                DateTime<Utc>,
+                String,
+                String,
+                Vec<(String, String)>,
+                String,
+                String,
+            )>() {
+                trace_id = data.5.clone();
+            }
+        }
+
         ext.insert::<(
             Instant,
             DateTime<Utc>,
             String,
             String,
-            serde_json::Map<String, serde_json::Value>,
+            Vec<(String, String)>,
+            String, // trace_id
+            String, // span_id
         )>((
             Instant::now(),
             Utc::now(),
             attrs.metadata().target().to_string(),
             attrs.metadata().name().to_string(),
             visitor.attributes,
+            trace_id,
+            span_id_str,
         ));
     }
 
@@ -97,18 +121,37 @@ where
         }
 
         let span = ctx.span(id).expect("Span not found");
+
+        let attributes = {
+            let mut ext = span.extensions_mut();
+            if let Some(data) = ext.get_mut::<(
+                Instant,
+                DateTime<Utc>,
+                String,
+                String,
+                Vec<(String, String)>,
+                String, // trace_id
+                String, // span_id
+            )>() {
+                std::mem::take(&mut data.4)
+            } else {
+                return;
+            }
+        };
+
+        let mut visitor = AttributeVisitor { attributes };
+        values.record(&mut visitor);
+
         let mut ext = span.extensions_mut();
         if let Some(data) = ext.get_mut::<(
             Instant,
             DateTime<Utc>,
             String,
             String,
-            serde_json::Map<String, serde_json::Value>,
+            Vec<(String, String)>,
+            String, // trace_id
+            String, // span_id
         )>() {
-            let mut visitor = AttributeVisitor {
-                attributes: std::mem::take(&mut data.4),
-            };
-            values.record(&mut visitor);
             data.4 = visitor.attributes;
         }
     }
@@ -128,30 +171,27 @@ where
 
         let parent_span_id = span.parent().map(|p| p.id().into_u64().to_string());
 
-        // We will default to internal ID string representation if opentelemetry is not attached
-        // If attached, trace_id and span_id should ideally come from OpenTelemetry context
-        let span_id_str = id.into_u64().to_string();
-
         let ext = span.extensions();
         if let Some(data) = ext.get::<(
             Instant,
             DateTime<Utc>,
             String,
             String,
-            serde_json::Map<String, serde_json::Value>,
+            Vec<(String, String)>,
+            String,
+            String,
         )>() {
-            let (start_instant, start_time, target, name, attributes) = data;
+            let (start_instant, start_time, target, name, attributes, trace_id, span_id) = data;
             let duration_ms = end_instant.duration_since(*start_instant).as_millis() as u64;
 
             let final_attrs = attributes.clone();
 
             // Extract OTel trace ID and span ID if present in the tracing-opentelemetry layer
-            let trace_id = format!("trace-{}", span_id_str); // Fallback
-            let span_id = span_id_str.clone();
+            let trace_id = trace_id.clone();
+            let span_id = span_id.clone();
 
-            // Format attributes as JSON
-            let attributes_str =
-                serde_json::to_string(&final_attrs).unwrap_or_else(|_| "{}".to_string());
+            // Pass attributes directly, flusher thread will format as JSON
+            let attributes = final_attrs;
 
             let entry = SpanEvent {
                 trace_id,
@@ -162,7 +202,7 @@ where
                 start_time: *start_time,
                 end_time,
                 duration_ms,
-                attributes: attributes_str,
+                attributes,
             };
 
             let _ = self.sender.try_send(entry);
@@ -172,7 +212,7 @@ where
 
 #[derive(Default)]
 struct AttributeVisitor {
-    attributes: serde_json::Map<String, serde_json::Value>,
+    attributes: Vec<(String, String)>,
 }
 
 impl tracing::field::Visit for AttributeVisitor {
@@ -180,45 +220,37 @@ impl tracing::field::Visit for AttributeVisitor {
         let key = field.name().to_string();
         let val = format!("{:?}", value);
         // Remove surrounding quotes if it's a plain string
-        let val_json = if val.starts_with('"') && val.ends_with('"') {
-            serde_json::Value::String(val[1..val.len() - 1].to_string())
+        let val_str = if val.starts_with('"') && val.ends_with('"') {
+            val[1..val.len() - 1].to_string()
         } else {
-            serde_json::Value::String(val)
+            val
         };
-        self.attributes.insert(key, val_json);
+        self.attributes.push((key, val_str));
     }
 
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
-        if let Some(n) = serde_json::Number::from_f64(value) {
-            self.attributes
-                .insert(field.name().to_string(), serde_json::Value::Number(n));
-        }
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::Number(serde_json::Number::from(value)),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::Number(serde_json::Number::from(value)),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
         self.attributes
-            .insert(field.name().to_string(), serde_json::Value::Bool(value));
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.attributes.insert(
-            field.name().to_string(),
-            serde_json::Value::String(value.to_string()),
-        );
+        self.attributes
+            .push((field.name().to_string(), value.to_string()));
     }
 }
 
@@ -238,6 +270,8 @@ pub fn start_trace_flusher(
         .spawn(move || {
             // Mark this thread as the telemetry flusher to prevent infinite loops
             IS_TELEMETRY_THREAD.with(|f| *f.borrow_mut() = true);
+            crate::common::logging::IS_LOG_FLUSHER.with(|f| *f.borrow_mut() = true);
+            crate::common::metrics::IS_METRICS_THREAD.with(|f| *f.borrow_mut() = true);
 
             let batch_size = 100;
             let timeout = Duration::from_secs(1);
@@ -306,7 +340,16 @@ fn insert_trace_batch(engine: &MVCCEngine, entries: &[SpanEvent]) -> crate::core
         let duration_ms_val = Value::Float(entry.duration_ms as f64);
         let status_code_val = Value::Text("OK".into());
         let status_message_val = Value::Null(crate::core::DataType::Text);
-        let attributes_val = Value::Text(entry.attributes.clone().into());
+        let attributes_str = if entry.attributes.is_empty() {
+            "{}".to_string()
+        } else {
+            let mut map = serde_json::Map::new();
+            for (k, v) in &entry.attributes {
+                map.insert(k.clone(), serde_json::Value::String(v.clone()));
+            }
+            serde_json::to_string(&map).unwrap_or_else(|_| "{}".to_string())
+        };
+        let attributes_val = Value::Text(attributes_str.into());
         let events_val = Value::Null(crate::core::DataType::Text);
 
         let row = vec![

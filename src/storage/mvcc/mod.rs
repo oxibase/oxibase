@@ -44,6 +44,7 @@ pub mod hash_index;
 pub mod multi_column_index;
 pub mod persistence;
 pub mod registry;
+pub mod ring_buffer_table;
 pub mod scanner;
 pub mod snapshot;
 pub mod streaming_result;
@@ -69,6 +70,7 @@ pub use persistence::{
     DEFAULT_SNAPSHOT_INTERVAL,
 };
 pub use registry::{TransactionRegistry, INVALID_TRANSACTION_ID, RECOVERY_TRANSACTION_ID};
+pub use ring_buffer_table::SystemRingBufferTable;
 pub use scanner::{EmptyScanner, MVCCScanner, RangeScanner, SingleRowScanner};
 pub use snapshot::{DiskVersionStore, SnapshotReader, SnapshotWriter};
 pub use streaming_result::{AggregationScanner, StreamingResult, VisibleRowInfo};
