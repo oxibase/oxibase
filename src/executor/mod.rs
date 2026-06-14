@@ -425,7 +425,7 @@ impl Executor {
         Ok(())
     }
 
-    /// Initialize system schema and ensure system tables exist
+    /// Initialize system schema, migrate old `_sys_*` tables, and ensure `system.cron` tables exist
     fn ensure_system_schema_and_migrations(&self) -> crate::core::Result<()> {
         // Ensure system schema exists
         if let Err(e) = self.execute_internal_sql("CREATE SCHEMA IF NOT EXISTS system;") {
@@ -438,6 +438,97 @@ impl Executor {
         self.ensure_triggers_table_exists()?;
         self.ensure_table_stats_table_exists()?;
         self.ensure_column_stats_table_exists()?;
+
+        // Run migrations for old _sys_ tables to system.*
+        // Migrate _sys_procedures -> system.procedures manually to avoid deadlocks
+        if let Ok(tx) = self.engine.begin_transaction() {
+            if let Ok(tables) = tx.list_tables() {
+                if tables
+                    .iter()
+                    .any(|t| t.eq_ignore_ascii_case("_sys_procedures"))
+                {
+                    drop(tx);
+                    self.execute_internal_sql(
+                        "INSERT INTO system.procedures SELECT * FROM _sys_procedures;",
+                    )
+                    .ok();
+                }
+            }
+        }
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_procedures;")
+            .ok();
+
+        // Migrate _sys_functions -> system.functions manually to avoid deadlocks
+        if let Ok(tx) = self.engine.begin_transaction() {
+            if let Ok(tables) = tx.list_tables() {
+                if tables
+                    .iter()
+                    .any(|t| t.eq_ignore_ascii_case("_sys_functions"))
+                {
+                    drop(tx);
+                    self.execute_internal_sql(
+                        "INSERT INTO system.functions SELECT * FROM _sys_functions;",
+                    )
+                    .ok();
+                }
+            }
+        }
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_functions;")
+            .ok();
+
+        // Migrate _sys_triggers -> system.triggers manually to avoid deadlocks
+        if let Ok(tx) = self.engine.begin_transaction() {
+            if let Ok(tables) = tx.list_tables() {
+                if tables
+                    .iter()
+                    .any(|t| t.eq_ignore_ascii_case("_sys_triggers"))
+                {
+                    drop(tx);
+                    self.execute_internal_sql(
+                        "INSERT INTO system.triggers SELECT * FROM _sys_triggers;",
+                    )
+                    .ok();
+                }
+            }
+        }
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_triggers;")
+            .ok();
+
+        // Migrate _sys_table_stats -> system.table_stats manually to avoid deadlocks
+        if let Ok(tx) = self.engine.begin_transaction() {
+            if let Ok(tables) = tx.list_tables() {
+                if tables
+                    .iter()
+                    .any(|t| t.eq_ignore_ascii_case("_sys_table_stats"))
+                {
+                    drop(tx);
+                    self.execute_internal_sql(
+                        "INSERT INTO system.table_stats SELECT * FROM _sys_table_stats;",
+                    )
+                    .ok();
+                }
+            }
+        }
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_table_stats;")
+            .ok();
+
+        // Migrate _sys_column_stats -> system.column_stats manually to avoid deadlocks
+        if let Ok(tx) = self.engine.begin_transaction() {
+            if let Ok(tables) = tx.list_tables() {
+                if tables
+                    .iter()
+                    .any(|t| t.eq_ignore_ascii_case("_sys_column_stats"))
+                {
+                    drop(tx);
+                    self.execute_internal_sql(
+                        "INSERT INTO system.column_stats SELECT * FROM _sys_column_stats;",
+                    )
+                    .ok();
+                }
+            }
+        }
+        self.execute_internal_sql("DROP TABLE IF EXISTS _sys_column_stats;")
+            .ok();
 
         // Ensure cron tables exist
         self.ensure_cron_tables_exist()?;

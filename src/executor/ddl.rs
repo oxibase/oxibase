@@ -432,6 +432,14 @@ impl Executor {
             return Err(Error::TableNotFoundByName(table_name.clone()));
         }
 
+        // Drop triggers BEFORE acquiring active_tx lock to avoid deadlock with start_transaction_for_dml
+        if let Ok(true) = self
+            .engine
+            .table_exists(crate::storage::triggers::SYS_TRIGGERS)
+        {
+            let _ = self.delete_table_triggers(table_name);
+        }
+
         // Check if there's an active transaction
         let mut active_tx = self.active_transaction.lock().unwrap();
 
@@ -439,14 +447,6 @@ impl Executor {
             tracing::info!("Executing DROP TABLE for '{}' (in transaction)", table_name);
             // Transactional DDL: Get schema before dropping, then drop immediately
             let schema = self.engine.get_table_schema(table_name)?;
-
-            // Drop triggers
-            if let Ok(true) = self
-                .engine
-                .table_exists(crate::storage::triggers::SYS_TRIGGERS)
-            {
-                let _ = self.delete_table_triggers(table_name);
-            }
 
             self.engine.drop_table_internal(table_name)?;
 
@@ -466,12 +466,6 @@ impl Executor {
         } else {
             tracing::info!("Executing DROP TABLE for '{}'", table_name);
             // No active transaction - use engine method directly (auto-committed with WAL)
-            if let Ok(true) = self
-                .engine
-                .table_exists(crate::storage::triggers::SYS_TRIGGERS)
-            {
-                let _ = self.delete_table_triggers(table_name);
-            }
             self.engine.drop_table_internal(table_name)?;
         }
 

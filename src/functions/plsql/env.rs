@@ -55,6 +55,19 @@ impl Default for Environment {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct DapVariable {
+    pub name: String,
+    pub value: String,
+    pub type_hint: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DapScope {
+    pub name: String,
+    pub variables: Vec<DapVariable>,
+}
+
 impl Environment {
     /// Push a new frame onto the stack
     pub fn push_frame(&mut self, name: impl Into<String>) {
@@ -112,5 +125,39 @@ impl Environment {
     /// Exposed for future DAP support to inspect the stack
     pub fn frames(&self) -> &[StackFrame] {
         &self.frames
+    }
+
+    /// Converts current stack frames and variables to DAP structures
+    pub fn to_dap_scopes(&self) -> Vec<DapScope> {
+        self.frames
+            .iter()
+            .map(|f| {
+                let mut variables = f
+                    .variables
+                    .iter()
+                    .map(|(k, v)| DapVariable {
+                        name: k.clone(),
+                        value: match v {
+                            Value::Text(t) => t.to_string(),
+                            Value::Integer(i) => i.to_string(),
+                            Value::Float(f) => f.to_string(),
+                            Value::Boolean(b) => b.to_string(),
+                            Value::Null(_) => "NULL".to_string(),
+                            _ => format!("{:?}", v),
+                        },
+                        type_hint: format!("{:?}", v)
+                            .split('(')
+                            .next()
+                            .unwrap_or("")
+                            .to_string(),
+                    })
+                    .collect::<Vec<_>>();
+                variables.sort_by(|a, b| a.name.cmp(&b.name));
+                DapScope {
+                    name: f.name.clone(),
+                    variables,
+                }
+            })
+            .collect()
     }
 }
