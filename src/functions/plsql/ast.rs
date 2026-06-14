@@ -29,7 +29,7 @@ pub enum PlSqlStatement {
     /// WHILE ... LOOP ... END LOOP;
     While(WhileStatement),
     /// Standard SQL Statement (INSERT, UPDATE, DELETE, etc)
-    Sql(Box<crate::parser::ast::Statement>),
+    Sql(Token, Box<crate::parser::ast::Statement>),
     /// RETURN statement
     Return(Token, Option<Expression>),
     /// COMMIT transaction

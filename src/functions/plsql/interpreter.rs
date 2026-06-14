@@ -18,6 +18,10 @@ use crate::core::{Error, Result, Value};
 use crate::functions::FunctionRegistry;
 use std::sync::Arc;
 
+pub trait DebugAdapterHook: Send + Sync {
+    fn on_statement_before_eval(&self, line_number: usize, env: &Environment);
+}
+
 pub enum ExecutionStatus {
     Continue,
     Return(Option<Value>),
@@ -26,6 +30,7 @@ pub enum ExecutionStatus {
 pub struct PlSqlInterpreter<'a> {
     pub(crate) _function_registry: Arc<FunctionRegistry>,
     runner: Option<&'a dyn crate::functions::backends::SqlRunner>,
+    debug_hook: Option<Arc<dyn DebugAdapterHook>>,
 }
 
 impl<'a> PlSqlInterpreter<'a> {
@@ -36,7 +41,13 @@ impl<'a> PlSqlInterpreter<'a> {
         Self {
             _function_registry: function_registry,
             runner,
+            debug_hook: None,
         }
+    }
+
+    pub fn with_debug_hook(mut self, hook: Arc<dyn DebugAdapterHook>) -> Self {
+        self.debug_hook = Some(hook);
+        self
     }
 
     pub fn execute(&self, block: &BlockStatement, env: &mut Environment) -> Result<Option<Value>> {
@@ -303,6 +314,22 @@ impl<'a> PlSqlInterpreter<'a> {
         stmt: &PlSqlStatement,
         env: &mut Environment,
     ) -> Result<ExecutionStatus> {
+        if let Some(hook) = &self.debug_hook {
+            let line_number = match stmt {
+                PlSqlStatement::Declare(s) => s.token.position.line,
+                PlSqlStatement::Block(s) => s.token.position.line,
+                PlSqlStatement::Assignment(s) => s.token.position.line,
+                PlSqlStatement::If(s) => s.token.position.line,
+                PlSqlStatement::While(s) => s.token.position.line,
+                PlSqlStatement::Sql(t, _) => t.position.line,
+                PlSqlStatement::Return(t, _) => t.position.line,
+                PlSqlStatement::Commit(t) => t.position.line,
+                PlSqlStatement::Rollback(t) => t.position.line,
+                PlSqlStatement::BeginTransaction(t) => t.position.line,
+            };
+            hook.on_statement_before_eval(line_number, env);
+        }
+
         match stmt {
             PlSqlStatement::Declare(decl) => {
                 for v in &decl.declarations {
@@ -401,7 +428,7 @@ impl<'a> PlSqlInterpreter<'a> {
                 env.pop_frame();
                 Ok(ExecutionStatus::Continue)
             }
-            PlSqlStatement::Sql(box_stmt) => {
+            PlSqlStatement::Sql(_token, box_stmt) => {
                 println!("Executing SQL statement in plsql: {:?}", box_stmt);
                 if let Some(runner) = self.runner {
                     let mut modified_stmt = *box_stmt.clone();
