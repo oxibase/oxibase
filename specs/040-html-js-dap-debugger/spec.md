@@ -9,6 +9,7 @@
 
 #### Session 2026-06-14
 - Q: Which languages should be supported in the debugger? → A: PL/SQL, Rhai, and Python.
+- Q: Should the WebSocket DAP implementation strictly follow standard DAP headers (Content-Length) even though WebSockets provide framing? → A: Yes, follow standard DAP specification including headers.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -67,7 +68,7 @@ A database developer wants to step through paused code and inspect the current v
 ### Functional Requirements
 
 - **FR-001**: The UI MUST embed CodeMirror editor to display procedure code and support breakpoint gutter interactions.
-- **FR-002**: The frontend MUST include a standalone, vanilla JavaScript DAP Client Library (`dap-client.js`) to handle JSON-RPC message framing over WebSockets.
+- **FR-002**: The frontend MUST include a standalone, vanilla JavaScript DAP Client Library (`dap-client.js`) to handle DAP messages with standard HTTP-like headers (`Content-Length`) over WebSockets.
 - **FR-003**: The DAP Client MUST expose a Promise-based API for outgoing requests and an Event Emitter pattern for incoming events.
 - **FR-004**: The workspace layout MUST persist the debugger state and WebSocket connection during Unpoly fragment navigations (e.g., using `[up-keep]`).
 - **FR-005**: The UI MUST render debugging controls (Continue, Step Over, Stop) that are enabled only when the session is paused.
