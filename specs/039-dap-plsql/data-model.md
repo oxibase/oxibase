@@ -47,6 +47,18 @@ No structural changes to `Environment` in `src/functions/plsql/env.rs`, but new 
 ```rust
 impl Environment {
     /// Converts current stack frames and variables to DAP structures
-    pub fn to_dap_scopes(&self) -> Vec<DapScope> { ... }
+    pub fn to_dap_scopes(&self) -> Vec<DapScope> { /* ... */ }
+}
+```
+
+## 4. DAP `Source` Provider
+To satisfy FR-006, the debugger will need to store or dynamically fetch the source code for executing procedures. The debug hook or controller must assign an integer `sourceReference` to the procedure being executed, return a DAP `Source` object mentioning that `sourceReference`, and be able to respond to a DAP `source` request using that `sourceReference` to provide the original source `content`.
+
+```rust
+// In DebugController or related state:
+pub struct DebugController {
+    // ...
+    // Maps sourceReference -> source code string
+    pub active_sources: DashMap<i64, String>, 
 }
 ```

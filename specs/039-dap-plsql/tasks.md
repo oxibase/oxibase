@@ -33,7 +33,8 @@
 - [ ] T005 [P] [US1] Define `DebugAdapterHook` trait (or use existing `DebugController` traits) in `src/functions/plsql/interpreter.rs` (or a dedicated debug module).
 - [ ] T006 [P] [US1] Add `debug_hook: Option<Arc<dyn DebugAdapterHook>>` to `PlSqlInterpreter` in `src/functions/plsql/interpreter.rs`.
 - [ ] T007 [US1] Update `PlSqlInterpreter::evaluate_statement` in `src/functions/plsql/interpreter.rs` to invoke `debug_hook.on_statement_before_eval(line_number, env)` before executing the inner logic.
-- [ ] T008 [US1] Implement integration test in `tests/procedure_plsql_tests.rs` simulating a breakpoint hit.
+- [ ] T008 [US1] Implement `source` request handler in the DAP server/controller to serve the PL/SQL code for a given `sourceReference`.
+- [ ] T009 [US1] Implement integration test in `tests/procedure_plsql_tests.rs` simulating a breakpoint hit and retrieving the source via DAP `source` request.
 
 ## Phase 3: Inspect Local Variables and State (US2 - Priority P2)
 
@@ -41,9 +42,9 @@
 
 **Independent Test**: Integration test hitting a breakpoint, executing a mock `variables` request, and validating the returned environment data.
 
-- [ ] T009 [P] [US2] Implement `env_to_dap_scopes(env: &Environment)` (or equivalent method) to convert PL/SQL `Environment` variables to DAP variable standard structures in `src/functions/plsql/env.rs`.
-- [ ] T010 [US2] Wire the variable retrieval logic to the `DebugAdapterHook` implementation, allowing the DAP server to query state while the interpreter thread is blocked.
-- [ ] T011 [US2] Implement integration test verifying variables are correctly exposed during a paused state.
+- [ ] T010 [P] [US2] Implement `env_to_dap_scopes(env: &Environment)` (or equivalent method) to convert PL/SQL `Environment` variables to DAP variable standard structures in `src/functions/plsql/env.rs`.
+- [ ] T011 [US2] Wire the variable retrieval logic to the `DebugAdapterHook` implementation, allowing the DAP server to query state while the interpreter thread is blocked.
+- [ ] T012 [US2] Implement integration test verifying variables are correctly exposed during a paused state.
 
 ## Phase 4: Step Through Execution (US3 - Priority P3)
 
@@ -51,12 +52,12 @@
 
 **Independent Test**: Integration test issuing `next` and `continue` commands to the `DebugAdapterHook` and verifying execution resumes correctly.
 
-- [ ] T012 [US3] Implement logic within the `DebugAdapterHook` / DAP Server handler to process `next` (Step Over) by setting a temporary step breakpoint for the next line, then unblocking the interpreter thread.
-- [ ] T013 [US3] Implement logic to process `continue` by clearing step state and unblocking the interpreter thread.
-- [ ] T014 [US3] Implement integration test verifying step and continue execution flows.
+- [ ] T013 [US3] Implement logic within the `DebugAdapterHook` / DAP Server handler to process `next` (Step Over) by setting a temporary step breakpoint for the next line, then unblocking the interpreter thread.
+- [ ] T014 [US3] Implement logic to process `continue` by clearing step state and unblocking the interpreter thread.
+- [ ] T015 [US3] Implement integration test verifying step and continue execution flows.
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T015 Run `make lint` to format code and fix clippy warnings.
-- [ ] T016 Run `make license` to ensure Apache-2.0 headers are on all new/modified files.
-- [ ] T017 Run `make test-all` to ensure all cross-feature compilations (js, python, etc.) pass without issue.
+- [ ] T016 Run `make lint` to format code and fix clippy warnings.
+- [ ] T017 Run `make license` to ensure Apache-2.0 headers are on all new/modified files.
+- [ ] T018 Run `make test-all` to ensure all cross-feature compilations (js, python, etc.) pass without issue.
