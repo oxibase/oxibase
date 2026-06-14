@@ -15,7 +15,7 @@
 //! User-defined functions persistence
 //!
 //! This module provides storage for user-defined functions in system tables.
-//! Functions are stored in the `_sys_functions` system table and loaded
+//! Functions are stored in the `system.functions` system table and loaded
 //! during database startup.
 
 use serde::{Deserialize, Serialize};

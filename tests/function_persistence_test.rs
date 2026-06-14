@@ -166,11 +166,13 @@ fn test_function_if_not_exists_persistence() {
 fn test_functions_table_starts_empty() {
     let db = Database::open("memory://empty_table").expect("Failed to create database");
 
-    // System table doesn't exist yet - this should fail
-    let result = db.query_one::<i64, _>("SELECT COUNT(*) FROM system.functions", ());
-    assert!(result.is_err(), "System table should not exist initially");
+    // System table starts empty
+    let count = db
+        .query_one::<i64, _>("SELECT COUNT(*) FROM system.functions", ())
+        .unwrap();
+    assert_eq!(count, 0, "System table should start empty");
 
-    // Create a function to trigger table creation
+    // Create a function to test insertion
     db.execute(
         "CREATE FUNCTION temp_func() RETURNS INTEGER LANGUAGE DENO AS 'return 42;'",
         (),

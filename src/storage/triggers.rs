@@ -15,7 +15,7 @@
 //! Triggers persistence
 //!
 //! This module provides storage for event triggers in system tables.
-//! Triggers are stored in the `_sys_triggers` system table and loaded
+//! Triggers are stored in the `system.triggers` system table and loaded
 //! into memory during database startup.
 
 use serde::{Deserialize, Serialize};
