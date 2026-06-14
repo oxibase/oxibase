@@ -5,6 +5,10 @@
 **Status**: Draft  
 **Input**: User description: "for task #53"
 
+## Clarifications
+### Session 2026-06-14
+- Q: How will the DAP client access the procedure's source code, given that the code lives in the database? → A: DAP `sourceReference` (The DAP server will generate a unique `sourceReference` and send a `Source` object to the debugger, serving the code directly via the DAP `source` request).
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -76,7 +80,8 @@ As a database developer debugging a PL/SQL procedure, I want to use standard deb
 - **FR-002**: The `PlSqlInterpreter::execute()` loop MUST expose an interception point (hook) prior to evaluating each statement to check for active breakpoints.
 - **FR-003**: The system MUST map the internal PL/SQL `Environment` (representing scopes and stack frames) to standard DAP variable representations.
 - **FR-004**: The PL/SQL debugging capabilities MUST integrate with the shared `DebugController` architecture established for other execution environments (e.g., Rhai).
-- **FR-005**: The system MUST support DAP commands: `setBreakpoints`, `stackTrace`, `scopes`, `variables`, `next` (Step Over), and `continue`.
+- **FR-005**: The system MUST support DAP commands: `setBreakpoints`, `stackTrace`, `scopes`, `variables`, `next` (Step Over), `continue`, and `source`.
+- **FR-006**: The DAP server MUST serve the database-stored PL/SQL source code to the client IDE using the DAP `Source` object with a unique `sourceReference` and the `source` request protocol.
 
 ### Key Entities *(include if feature involves data)*
 
