@@ -432,6 +432,14 @@ impl Executor {
             return Err(Error::TableNotFoundByName(table_name.clone()));
         }
 
+        // Drop triggers BEFORE acquiring active_tx lock to avoid deadlock with start_transaction_for_dml
+        if let Ok(true) = self
+            .engine
+            .table_exists(crate::storage::triggers::SYS_TRIGGERS)
+        {
+            let _ = self.delete_table_triggers(table_name);
+        }
+
         // Check if there's an active transaction
         let mut active_tx = self.active_transaction.lock().unwrap();
 
@@ -439,14 +447,6 @@ impl Executor {
             tracing::info!("Executing DROP TABLE for '{}' (in transaction)", table_name);
             // Transactional DDL: Get schema before dropping, then drop immediately
             let schema = self.engine.get_table_schema(table_name)?;
-
-            // Drop triggers
-            if let Ok(true) = self
-                .engine
-                .table_exists(crate::storage::triggers::SYS_TRIGGERS)
-            {
-                let _ = self.delete_table_triggers(table_name);
-            }
 
             self.engine.drop_table_internal(table_name)?;
 
@@ -466,12 +466,6 @@ impl Executor {
         } else {
             tracing::info!("Executing DROP TABLE for '{}'", table_name);
             // No active transaction - use engine method directly (auto-committed with WAL)
-            if let Ok(true) = self
-                .engine
-                .table_exists(crate::storage::triggers::SYS_TRIGGERS)
-            {
-                let _ = self.delete_table_triggers(table_name);
-            }
             self.engine.drop_table_internal(table_name)?;
         }
 
@@ -1016,7 +1010,9 @@ impl Executor {
         drop(tx);
 
         if !has_procedures_table {
-            self.execute_functions_sql(CREATE_PROCEDURES_SQL)?;
+            if let Err(e) = self.execute_internal_sql(CREATE_PROCEDURES_SQL) {
+                tracing::error!("Failed to create procedures table: {}", e);
+            }
         }
 
         Ok(())
@@ -1363,15 +1359,15 @@ impl Executor {
 
     /// Ensure the functions system table exists
     pub(crate) fn ensure_functions_table_exists(&self) -> Result<()> {
-        // Check if table exists first - need a transaction
         let tx = self.engine.begin_transaction()?;
         let tables = tx.list_tables()?;
-        let has_functions_table = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
-        drop(tx); // Drop transaction before creating tables
+        let has_functions = tables.iter().any(|t| t.eq_ignore_ascii_case(SYS_FUNCTIONS));
+        drop(tx);
 
-        if !has_functions_table {
-            // Parse and execute CREATE TABLE for functions
-            self.execute_functions_sql(CREATE_FUNCTIONS_SQL)?;
+        if !has_functions {
+            if let Err(e) = self.execute_internal_sql(CREATE_FUNCTIONS_SQL) {
+                tracing::error!("Failed to create functions table: {}", e);
+            }
         }
 
         Ok(())
@@ -1461,23 +1457,6 @@ impl Executor {
         }
 
         tx.commit()?;
-        Ok(())
-    }
-
-    /// Execute SQL statement for functions (helper for system table creation)
-    fn execute_functions_sql(&self, sql: &str) -> Result<()> {
-        let mut parser = crate::parser::Parser::new(sql);
-        let program = parser
-            .parse_program()
-            .map_err(|e| Error::parse(e.to_string()))?;
-
-        for stmt in &program.statements {
-            let ctx = crate::executor::context::ExecutionContextBuilder::new()
-                .with_internal(true)
-                .build();
-            self.execute_statement(stmt, &ctx)?;
-        }
-
         Ok(())
     }
 
@@ -1783,7 +1762,10 @@ impl Executor {
         drop(tx);
 
         if !has_triggers_table {
-            self.execute_functions_sql(crate::storage::triggers::CREATE_TRIGGERS_SQL)?;
+            if let Err(e) = self.execute_internal_sql(crate::storage::triggers::CREATE_TRIGGERS_SQL)
+            {
+                tracing::error!("Failed to create triggers table: {}", e);
+            }
         }
         Ok(())
     }

@@ -382,6 +382,7 @@ impl PlSqlParser {
     }
 
     fn parse_sql_statement(&mut self) -> Option<PlSqlStatement> {
+        let token = self.cur_token.clone();
         let mut sql_parser =
             crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
         // parse_statement only parses one statement
@@ -394,7 +395,7 @@ impl PlSqlParser {
             if self.cur_token.literal == ";" {
                 self.next_token();
             }
-            return Some(PlSqlStatement::Sql(Box::new(stmt)));
+            return Some(PlSqlStatement::Sql(token, Box::new(stmt)));
         }
         None
     }
