@@ -20,8 +20,8 @@
 //!
 //! ## System Tables
 //!
-//! - `_sys_table_stats` - Table-level statistics (row count, page count, etc.)
-//! - `_sys_column_stats` - Column-level statistics (distinct count, min/max, histogram)
+//! - `system.table_stats` - Table-level statistics (row count, page count, etc.)
+//! - `system.column_stats` - Column-level statistics (distinct count, min/max, histogram)
 //!
 //! ## Usage
 //!

@@ -299,7 +299,7 @@ impl Executor {
         }
 
         // Add user-defined functions
-        // Query _sys_functions for user functions, if the table exists
+        // Query system.functions for user functions, if the table exists
         let sql =
             "SELECT schema, name, parameters, return_type FROM system.functions ORDER BY name";
         let mut parser = Parser::new(sql);
