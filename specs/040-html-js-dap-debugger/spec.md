@@ -10,21 +10,23 @@
 #### Session 2026-06-14
 - Q: Which languages should be supported in the debugger? → A: PL/SQL, Rhai, and Python.
 - Q: Should the WebSocket DAP implementation strictly follow standard DAP headers (Content-Length) even though WebSockets provide framing? → A: Yes, follow standard DAP specification including headers.
+- Q: Where and when should the debugging UI be available? → A: The debugging experience should be available ONLY when a procedure or function has been selected in the workstation list, similar to how traces are handled.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Connect and View Code (Priority: P1)
 
-A database developer working in the web workspace wants to view their PL/SQL, Rhai or Python procedure code and attach to an active debug session so they can prepare to debug their logic.
+A database developer working in the web workspace wants to view their PL/SQL, Rhai or Python procedure code and attach to an active debug session ONLY when a specific procedure or function has been selected from the workstation list, so they can prepare to debug their logic in a context-aware manner.
 
-**Why this priority**: Establishing the connection, rendering the code editor, and subscribing to the DAP WebSocket are the foundational steps required before any debugging actions can occur.
+**Why this priority**: Establishing the connection, rendering the code editor, and subscribing to the DAP WebSocket are the foundational steps required before any debugging actions can occur. Tying it to the selection list ensures it behaves consistently with existing features like traces.
 
-**Independent Test**: Can be tested by opening the workspace UI, navigating to the compute/SQL view, and ensuring the Monaco Editor initializes and successfully connects a WebSocket to the Oxibase backend without immediate errors.
+**Independent Test**: Can be tested by opening the workspace UI, selecting a procedure from the list, navigating to the compute/SQL view, and ensuring the CodeMirror Editor initializes with the procedure's code and successfully connects a WebSocket to the Oxibase backend.
 
 **Acceptance Scenarios**:
 
-1. **Given** the workspace UI is loaded, **When** the developer opens a PL/SQL procedure, **Then** the procedure code is rendered in a Monaco Editor instance.
-2. **Given** the code editor is visible, **When** the workspace initializes, **Then** a background WebSocket connection is established to the Oxibase DAP endpoint (`/workspace/dap-ws`).
+1. **Given** the workspace UI is loaded, **When** the developer selects a PL/SQL procedure from the workstation list, **Then** the debugging UI becomes available and the procedure code is rendered in a CodeMirror Editor instance.
+2. **Given** no procedure or function is selected in the list, **When** the user views the compute tab, **Then** the debugging experience and CodeMirror editor are NOT active or visible.
+3. **Given** the code editor is visible after selection, **When** the workspace initializes the debug view, **Then** a background WebSocket connection is established to the Oxibase DAP endpoint (`/workspace/dap-ws`).
 
 ---
 
@@ -67,7 +69,7 @@ A database developer wants to step through paused code and inspect the current v
 
 ### Functional Requirements
 
-- **FR-001**: The UI MUST embed CodeMirror editor to display procedure code and support breakpoint gutter interactions.
+- **FR-001**: The UI MUST embed CodeMirror editor to display procedure code and support breakpoint gutter interactions ONLY when a procedure or function is actively selected in the workstation list.
 - **FR-002**: The frontend MUST include a standalone, vanilla JavaScript DAP Client Library (`dap-client.js`) to handle DAP messages with standard HTTP-like headers (`Content-Length`) over WebSockets.
 - **FR-003**: The DAP Client MUST expose a Promise-based API for outgoing requests and an Event Emitter pattern for incoming events.
 - **FR-004**: The workspace layout MUST persist the debugger state and WebSocket connection during Unpoly fragment navigations (e.g., using `[up-keep]`).

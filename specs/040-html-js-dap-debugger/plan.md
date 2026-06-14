@@ -7,7 +7,7 @@
 
 ## Summary
 
-This feature adds a web-based debugger frontend to the Oxibase workspace. It embeds CodeMirror 6 for source code viewing and breakpoint management, uses a custom vanilla JavaScript DAP client to communicate over WebSockets without headers, and renders variables and execution state using native HTML elements, preserving state across Unpoly fragment navigations.
+This feature adds a web-based debugger frontend to the Oxibase workspace. It embeds CodeMirror 6 for source code viewing and breakpoint management, uses a custom vanilla JavaScript DAP client to communicate over WebSockets with standard DAP headers, and renders variables and execution state using native HTML elements, preserving state across Unpoly fragment navigations. The debugging experience is conditionally available only when a procedure or function has been selected from the workstation list.
 
 ## Technical Context
 
@@ -20,6 +20,7 @@ This feature adds a web-based debugger frontend to the Oxibase workspace. It emb
 - Must use vanilla JS for the DAP Client (no heavy frameworks like React/Vue).
 - Must integrate seamlessly with Unpoly (`up-keep`).
 - Backend WebSocket endpoint must serve strict DAP payloads including HTTP-like `Content-Length` headers.
+- The debugger UI (CodeMirror, toolbars, variable views) MUST be conditionally rendered ONLY when a procedure or function is selected in the workstation list.
 
 ## Constitution Check
 
