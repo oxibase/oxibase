@@ -167,7 +167,9 @@ fn test_functions_table_starts_empty() {
     let db = Database::open("memory://empty_table").expect("Failed to create database");
 
     // System table starts empty
-    let count = db.query_one::<i64, _>("SELECT COUNT(*) FROM system.functions", ()).unwrap();
+    let count = db
+        .query_one::<i64, _>("SELECT COUNT(*) FROM system.functions", ())
+        .unwrap();
     assert_eq!(count, 0, "System table should start empty");
 
     // Create a function to test insertion
