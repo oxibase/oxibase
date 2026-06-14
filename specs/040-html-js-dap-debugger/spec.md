@@ -5,11 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "html-js dap debugger"
 
+### Clarifications
+
+#### Session 2026-06-14
+- Q: Which languages should be supported in the debugger? → A: PL/SQL, Rhai, and Python.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Connect and View Code (Priority: P1)
 
-A database developer working in the web workspace wants to view their PL/SQL or Python procedure code and attach to an active debug session so they can prepare to debug their logic.
+A database developer working in the web workspace wants to view their PL/SQL, Rhai or Python procedure code and attach to an active debug session so they can prepare to debug their logic.
 
 **Why this priority**: Establishing the connection, rendering the code editor, and subscribing to the DAP WebSocket are the foundational steps required before any debugging actions can occur.
 
@@ -24,7 +29,7 @@ A database developer working in the web workspace wants to view their PL/SQL or 
 
 ### User Story 2 - Manage Breakpoints (Priority: P2)
 
-A database developer wants to set and remove breakpoints in their procedure code directly in the web UI so they can specify where execution should pause.
+A database developer wants to set and remove breakpoints in their procedure/function code in pl/SQL, Rhai or Python, directly in the web UI so they can specify where execution should pause.
 
 **Why this priority**: Breakpoints are the primary mechanism for controlling debug flow. Without them, users cannot stop execution at specific points of interest.
 
@@ -61,7 +66,7 @@ A database developer wants to step through paused code and inspect the current v
 
 ### Functional Requirements
 
-- **FR-001**: The UI MUST embed Monaco Editor (or an equivalent vanilla JS editor like CodeMirror 6) to display procedure code and support breakpoint gutter interactions.
+- **FR-001**: The UI MUST embed CodeMirror editor to display procedure code and support breakpoint gutter interactions.
 - **FR-002**: The frontend MUST include a standalone, vanilla JavaScript DAP Client Library (`dap-client.js`) to handle JSON-RPC message framing over WebSockets.
 - **FR-003**: The DAP Client MUST expose a Promise-based API for outgoing requests and an Event Emitter pattern for incoming events.
 - **FR-004**: The workspace layout MUST persist the debugger state and WebSocket connection during Unpoly fragment navigations (e.g., using `[up-keep]`).
@@ -72,7 +77,7 @@ A database developer wants to step through paused code and inspect the current v
 ### Key Entities
 
 - **DAP Client**: The vanilla JS class managing the WebSocket lifecycle and JSON-RPC mapping.
-- **Monaco Editor Instance**: The visual component rendering the source code and breakpoint indicators.
+- **CodeMirror Editor Instance**: The visual component rendering the source code and breakpoint indicators.
 - **Variables Tree**: The DOM structure representing the current execution scope's state.
 
 ## Success Criteria *(mandatory)*
@@ -82,7 +87,7 @@ A database developer wants to step through paused code and inspect the current v
 - **SC-001**: The DAP Client library is written in vanilla JavaScript without requiring a heavy frontend framework build step (e.g., no React/Vue required for the core client).
 - **SC-002**: A user can successfully set a breakpoint, trigger a procedure execution, and see the UI pause at the correct line.
 - **SC-003**: Navigating between "Compute" and "Data" tabs in the workspace does not disconnect the active debugging WebSocket.
-- **SC-004**: The variables panel accurately reflects the local environment state of the paused PL/SQL or Python procedure.
+- **SC-004**: The variables panel accurately reflects the local environment state of the paused PL/SQL, Rhai or Python procedure.
 
 ## Assumptions
 
