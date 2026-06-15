@@ -66,42 +66,51 @@
         import {sql} from "https://esm.sh/@codemirror/lang-sql@6";
         import {keymap} from "https://esm.sh/@codemirror/view@6.0.1";
 
-        up.compiler('#sql-editor-textarea', function(textarea) {
-            // Hide the original textarea
-            textarea.style.display = 'none';
+        if (!window.sqlEditorCompilerRegistered) {
+            window.sqlEditorCompilerRegistered = true;
+            up.compiler('#sql-editor-textarea', function(textarea) {
+                // Hide the original textarea
+                textarea.style.display = 'none';
 
-            // Create a wrapper for CM6
-            const wrapper = document.createElement('div');
-            wrapper.style.height = '100%';
-            wrapper.style.width = '100%';
-            textarea.parentNode.appendChild(wrapper);
+                // Create a wrapper for CM6
+                const wrapper = document.createElement('div');
+                wrapper.style.height = '100%';
+                wrapper.style.width = '100%';
+                textarea.parentNode.appendChild(wrapper);
 
-            // Command to submit the form
-            const submitForm = (view) => {
-                textarea.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                return true;
-            };
+                // Command to submit the form
+                const submitForm = (view) => {
+                    textarea.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    return true;
+                };
 
-            const editor = new EditorView({
-                doc: textarea.value,
-                extensions: [
-                    basicSetup,
-                    sql(),
-                    EditorView.updateListener.of((update) => {
-                        if (update.docChanged) {
-                            textarea.value = update.state.doc.toString();
-                        }
-                    }),
-                    keymap.of([
-                        { key: "Mod-Enter", run: submitForm }
-                    ])
-                ],
-                parent: wrapper
+                const editor = new EditorView({
+                    doc: textarea.value,
+                    extensions: [
+                        basicSetup,
+                        sql(),
+                        EditorView.updateListener.of((update) => {
+                            if (update.docChanged) {
+                                textarea.value = update.state.doc.toString();
+                            }
+                        }),
+                        keymap.of([
+                            { key: "Mod-Enter", run: submitForm }
+                        ])
+                    ],
+                    parent: wrapper
+                });
+                
+                // Focus the editor by default
+                editor.focus();
+
+                // Teardown
+                return () => {
+                    editor.destroy();
+                    wrapper.remove();
+                };
             });
-            
-            // Focus the editor by default
-            editor.focus();
-        });
+        }
     </script>
 </div>
 {% endblock %}
