@@ -13,7 +13,7 @@
     <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col min-h-[250px]">
         <form up-submit up-target="#query-results" action="/workspace/sql" method="post" class="flex-1 flex flex-col m-0 h-full">
             <div class="flex-1 p-0 relative h-full">
-                <textarea name="query" class="textarea textarea-ghost w-full h-full p-4 font-mono text-sm resize-none focus:outline-none focus:bg-base-100 rounded-b-none" placeholder="-- Enter your SQL query here...&#10;SELECT * FROM public.my_table limit 10;" required spellcheck="false">{% if query is defined %}{{ query }}{% endif %}</textarea>
+                <textarea id="sql-editor-textarea" name="query" class="textarea textarea-ghost w-full h-full p-4 font-mono text-sm resize-none focus:outline-none focus:bg-base-100 rounded-b-none" placeholder="-- Enter your SQL query here...&#10;SELECT * FROM public.my_table limit 10;" required spellcheck="false">{% if query is defined %}{{ query }}{% endif %}</textarea>
             </div>
             <div class="bg-base-200/50 border-t border-base-200 p-3 flex justify-between items-center rounded-b-box shrink-0">
                 <div class="text-xs opacity-60 flex items-center gap-1">
@@ -38,12 +38,46 @@
             </div>
         </div>
     </div>
+    <style>
+        .CodeMirror {
+            height: 100%;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875rem;
+            background-color: transparent;
+        }
+        .CodeMirror-gutters {
+            background-color: transparent;
+            border-right: 1px solid var(--color-base-200);
+        }
+    </style>
     <script>
-        document.querySelector('textarea[name="query"]').addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                this.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            }
+        up.compiler('#sql-editor-textarea', function(textarea) {
+            var editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'text/x-sql',
+                lineNumbers: true,
+                matchBrackets: true,
+                indentUnit: 4,
+            });
+            
+            // Sync CodeMirror to textarea on change, so up-submit works
+            editor.on('change', function() {
+                editor.save();
+            });
+
+            // Handle cmd+enter on CodeMirror
+            editor.setOption("extraKeys", {
+                "Cmd-Enter": function(cm) {
+                    textarea.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                },
+                "Ctrl-Enter": function(cm) {
+                    textarea.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            });
+
+            // Fill parent height
+            editor.setSize("100%", "100%");
         });
     </script>
 </div>
