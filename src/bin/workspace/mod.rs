@@ -111,7 +111,7 @@ pub fn install(db: &Database) {
     ).unwrap();
 
     tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/data', 'workspace_sidebar_data.html', 'SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN (''system'', ''information_schema'') ORDER BY table_schema, table_name')",
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/data', 'workspace_sidebar_data.html', 'SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN (''system'', ''information_schema'', ''interface'') ORDER BY table_schema, table_name')",
         ()
     ).unwrap();
 
@@ -139,6 +139,12 @@ pub fn install(db: &Database) {
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/debugger', 'workspace_debugger.html', NULL)",
         ()
     ).unwrap();
+
+    tx.execute(
+        "CREATE TABLE IF NOT EXISTS public.test (id INTEGER, name TEXT)",
+        (),
+    )
+    .unwrap();
 
     tx.commit().expect("Failed to commit transaction");
     println!("Workspace installation complete.");
