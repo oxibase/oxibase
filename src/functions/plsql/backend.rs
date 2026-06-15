@@ -36,7 +36,12 @@ impl crate::functions::plsql::interpreter::DebugAdapterHook for PlSqlDebugHook {
     fn on_statement_before_eval(&self, line_number: usize, env: &Environment) {
         if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
             if let Some(dc) = crate::functions::context::get_debug_controller() {
-                println!("PlSqlDebugHook: proc_name: {}, line_number: {}, has_breakpoint? {}", proc_name, line_number, dc.has_breakpoint(&proc_name, line_number));
+                println!(
+                    "PlSqlDebugHook: proc_name: {}, line_number: {}, has_breakpoint? {}",
+                    proc_name,
+                    line_number,
+                    dc.has_breakpoint(&proc_name, line_number)
+                );
                 if dc.has_breakpoint(&proc_name, line_number) {
                     let mut local_map = serde_json::Map::new();
                     for scope in env.to_dap_scopes() {

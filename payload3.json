@@ -1,0 +1,3 @@
+{
+  "query": "CREATE PROCEDURE my_python_proc(n INTEGER) LANGUAGE PYTHON AS '\ndef calculate_fibonacci(n):\n    if n is None:\n        n = 10\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    \n    fib = [0, 1]\n    for i in range(2, n):\n        fib.append(fib[i-1] + fib[i-2])\n    return fib\n\nresult = calculate_fibonacci(n)\nprint(\"Fibonacci sequence:\", result)\n';"
+}

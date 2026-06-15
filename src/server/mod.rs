@@ -47,7 +47,7 @@ pub fn create_router(db: Database) -> Router {
         (),
     );
 
-    let state = AppState { 
+    let state = AppState {
         db: Arc::new(db),
         debug_controller: Arc::new(crate::common::debug::DebugController::new()),
     };
@@ -78,10 +78,7 @@ pub fn create_router(db: Database) -> Router {
             "/workspace/data/{schema}/{table}",
             get(handlers::workspace_get_table_data),
         )
-        .route(
-            "/workspace/run_modal",
-            get(handlers::workspace_run_modal),
-        )
+        .route("/workspace/run_modal", get(handlers::workspace_run_modal))
         .route(
             "/workspace/traces/{trace_id}",
             get(handlers::workspace_trace_view),

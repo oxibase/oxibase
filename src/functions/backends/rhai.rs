@@ -108,7 +108,9 @@ impl RhaiBackend {
         );
         engine.register_static_module("oxibase", rhai::Shared::new(oxibase_module));
 
-        #[cfg(debug_assertions)] // since there is no standard debugging feature in our workspace, let's use debug build, or just remove the cfg
+        #[cfg(debug_assertions)]
+        #[allow(deprecated)]
+        // since there is no standard debugging feature in our workspace, let's use debug build, or just remove the cfg
         engine.register_debugger(
             |_engine, debugger| debugger,
             |context: rhai::EvalContext,
@@ -117,7 +119,8 @@ impl RhaiBackend {
              _source: Option<&str>,
              pos: rhai::Position| {
                 if let Some(line) = pos.line() {
-                    if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
+                    if let Some(proc_name) = crate::functions::context::get_current_procedure_name()
+                    {
                         if let Some(dc) = crate::functions::context::get_debug_controller() {
                             if dc.has_breakpoint(&proc_name, line) {
                                 let mut local_map = serde_json::Map::new();

@@ -163,7 +163,9 @@ impl Executor {
         let procedure = self
             .function_registry
             .get_procedure(&procedure_name_upper)
-            .ok_or(crate::core::Error::FunctionNotFound(procedure_name_upper.clone()))?;
+            .ok_or(crate::core::Error::FunctionNotFound(
+                procedure_name_upper.clone(),
+            ))?;
 
         let backend = self
             .function_registry

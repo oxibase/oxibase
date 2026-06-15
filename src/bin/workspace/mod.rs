@@ -33,8 +33,10 @@ pub fn install(db: &Database) {
     let mut tx = db.begin().expect("Failed to start transaction");
 
     // Clean up existing records to make installation idempotent
-    tx.execute("DELETE FROM interface.routes", ()).unwrap_or_default();
-    tx.execute("DELETE FROM interface.templates", ()).unwrap_or_default();
+    tx.execute("DELETE FROM interface.routes", ())
+        .unwrap_or_default();
+    tx.execute("DELETE FROM interface.templates", ())
+        .unwrap_or_default();
 
     // Load templates via include_str!
     let layout_html = include_str!("templates/workspace_layout.html");
@@ -52,11 +54,13 @@ pub fn install(db: &Database) {
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_layout.html', ?)",
         vec![Value::text(layout_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_data.html', ?)",
         vec![Value::text(sidebar_data_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_compute.html', ?)",
         vec![Value::text(sidebar_compute_html)],
@@ -68,31 +72,38 @@ pub fn install(db: &Database) {
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sql_editor.html', ?)",
         vec![Value::text(editor_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sql_results.html', ?)",
         vec![Value::text(results_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_table_create.html', ?)",
         vec![Value::text(table_create_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_data_grid.html', ?)",
         vec![Value::text(data_grid_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_trace_view.html', ?)",
         vec![Value::text(trace_view_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_run_modal.html', ?)",
         vec![Value::text(run_modal_html)],
-    ).unwrap();
+    )
+    .unwrap();
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_debugger.html', ?)",
         vec![Value::text(debugger_html)],
-    ).unwrap();
+    )
+    .unwrap();
 
     tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_layout.html', NULL)",

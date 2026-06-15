@@ -65,14 +65,24 @@ mod oxibase_py_module {
 
     #[pyfunction]
     fn _append_stdout(s: PyStrRef) {
-        crate::functions::context::append_stdout(&s.to_string());
+        crate::functions::context::append_stdout(s.as_ref());
     }
 
     #[pyfunction]
-    fn _check_breakpoint(line: usize, locals: rustpython_vm::builtins::PyDictRef, globals: rustpython_vm::builtins::PyDictRef, vm: &VirtualMachine) {
+    fn _check_breakpoint(
+        line: usize,
+        locals: rustpython_vm::builtins::PyDictRef,
+        globals: rustpython_vm::builtins::PyDictRef,
+        vm: &VirtualMachine,
+    ) {
         if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
             if let Some(dc) = crate::functions::context::get_debug_controller() {
-                println!("Tracing proc {} at line {}, has_breakpoint? {}", proc_name, line, dc.has_breakpoint(&proc_name, line));
+                println!(
+                    "Tracing proc {} at line {}, has_breakpoint? {}",
+                    proc_name,
+                    line,
+                    dc.has_breakpoint(&proc_name, line)
+                );
                 // Determine if we need to pause (either due to a breakpoint or a step action)
                 // For simplicity, we just check breakpoint hit here.
                 if dc.has_breakpoint(&proc_name, line) {
@@ -80,7 +90,10 @@ mod oxibase_py_module {
                     for (k, v) in locals.into_iter() {
                         if let Ok(key) = k.str(vm) {
                             if let Ok(val) = v.str(vm) {
-                                local_map.insert(key.to_string(), serde_json::Value::String(val.to_string()));
+                                local_map.insert(
+                                    key.to_string(),
+                                    serde_json::Value::String(val.to_string()),
+                                );
                             }
                         }
                     }
@@ -88,12 +101,19 @@ mod oxibase_py_module {
                     for (k, v) in globals.into_iter() {
                         if let Ok(key) = k.str(vm) {
                             if let Ok(val) = v.str(vm) {
-                                global_map.insert(key.to_string(), serde_json::Value::String(val.to_string()));
+                                global_map.insert(
+                                    key.to_string(),
+                                    serde_json::Value::String(val.to_string()),
+                                );
                             }
                         }
                     }
-                    
-                    let _action = dc.pause_execution(line, serde_json::Value::Object(local_map), serde_json::Value::Object(global_map));
+
+                    let _action = dc.pause_execution(
+                        line,
+                        serde_json::Value::Object(local_map),
+                        serde_json::Value::Object(global_map),
+                    );
                 }
             }
         }

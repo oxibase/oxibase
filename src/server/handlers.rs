@@ -749,10 +749,15 @@ pub async fn invoke_procedure(
                 let res = db_clone.query(&sql, args);
                 let stdout_captured = crate::functions::context::get_stdout();
                 (res, stdout_captured)
-            }
+            },
         )
-    }).await.unwrap_or_else(|e| {
-        (Err(crate::core::Error::internal(format!("Task panic: {}", e))), String::new())
+    })
+    .await
+    .unwrap_or_else(|e| {
+        (
+            Err(crate::core::Error::internal(format!("Task panic: {}", e))),
+            String::new(),
+        )
     });
 
     let result = match result {
@@ -1212,12 +1217,18 @@ pub async fn workspace_run_modal(
 ) -> impl IntoResponse {
     let mut context = serde_json::Map::new();
     let procedure_name = params.get("procedure_name").cloned().unwrap_or_default();
-    context.insert("procedure_name".to_string(), JsonValue::String(procedure_name.clone()));
+    context.insert(
+        "procedure_name".to_string(),
+        JsonValue::String(procedure_name.clone()),
+    );
 
     let sql = "SELECT parameters FROM system.procedures WHERE name = ?";
     let mut parameters_json = JsonValue::Array(Vec::new());
 
-    match state.db.query(sql, vec![Value::text(&procedure_name.to_uppercase())]) {
+    match state
+        .db
+        .query(sql, vec![Value::text(procedure_name.to_uppercase())])
+    {
         Ok(rows_result) => {
             if let Some(row) = rows_result.flatten().next() {
                 if let Some(Value::Text(params_str)) = row.get_value(0) {
@@ -1234,13 +1245,16 @@ pub async fn workspace_run_modal(
 
     // Filter out OUT parameters from the input form
     if let JsonValue::Array(params_arr) = parameters_json {
-        let in_params: Vec<JsonValue> = params_arr.into_iter().filter(|p| {
-            if let Some(mode) = p.get("mode").and_then(|m| m.as_str()) {
-                mode == "IN" || mode == "INOUT"
-            } else {
-                true // default mode is IN
-            }
-        }).collect();
+        let in_params: Vec<JsonValue> = params_arr
+            .into_iter()
+            .filter(|p| {
+                if let Some(mode) = p.get("mode").and_then(|m| m.as_str()) {
+                    mode == "IN" || mode == "INOUT"
+                } else {
+                    true // default mode is IN
+                }
+            })
+            .collect();
         context.insert("parameters".to_string(), JsonValue::Array(in_params));
     } else {
         context.insert("parameters".to_string(), parameters_json);
