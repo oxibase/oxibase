@@ -47,6 +47,7 @@ pub fn install(db: &Database) {
     let data_grid_html = include_str!("templates/workspace_data_grid.html");
     let trace_view_html = include_str!("templates/workspace_trace_view.html");
     let run_modal_html = include_str!("templates/workspace_run_modal.html");
+    let debugger_html = include_str!("templates/workspace_debugger.html");
 
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_layout.html', ?)",
@@ -88,6 +89,10 @@ pub fn install(db: &Database) {
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_run_modal.html', ?)",
         vec![Value::text(run_modal_html)],
     ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_debugger.html', ?)",
+        vec![Value::text(debugger_html)],
+    ).unwrap();
 
     tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_layout.html', NULL)",
@@ -116,6 +121,11 @@ pub fn install(db: &Database) {
 
     tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/meta/tables/new', 'workspace_table_create.html', NULL)",
+        ()
+    ).unwrap();
+
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/debugger', 'workspace_debugger.html', NULL)",
         ()
     ).unwrap();
 

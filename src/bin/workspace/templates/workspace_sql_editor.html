@@ -1,338 +1,32 @@
 {% extends "workspace_layout.html" %}
 {% block content %}
-<div class="h-full flex flex-col gap-4" id="debugger-workspace" up-keep>
+<div class="h-full flex flex-col gap-4">
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
             <div class="bg-primary/10 text-primary p-2 rounded-box">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </div>
-            <h2 class="text-2xl font-bold">{% if procedure_name is defined %}Debugging: {{ procedure_name }}{% else %}SQL Editor{% endif %}</h2>
+            <h2 class="text-2xl font-bold">SQL Editor</h2>
         </div>
-        
-        {% if procedure_name is defined %}
-        <!-- Debugger Toolbar -->
-        <div id="debug-toolbar" class="flex gap-2">
-            <button id="btn-save" class="btn btn-sm btn-outline">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                Save
-            </button>
-            <button id="btn-run" class="btn btn-sm btn-success">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
-                Run / Debug
-            </button>
-            <div class="divider divider-horizontal mx-1"></div>
-            <button id="btn-continue" class="btn btn-sm btn-primary" disabled>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
-                Continue
-            </button>
-            <button id="btn-step-over" class="btn btn-sm btn-secondary" disabled>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
-                Step Over
-            </button>
-            <button id="btn-stop" class="btn btn-sm btn-error" disabled>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Stop
-            </button>
-        </div>
-        {% endif %}
     </div>
     
     <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col min-h-[250px]">
-        {% if procedure_name is defined %}
-            <div id="cm-editor" class="flex-1 w-full h-full relative" style="overflow: auto;"></div>
-            <script type="module">
-                import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
-                import {StateField, StateEffect, RangeSet} from "https://esm.sh/@codemirror/state@6.0.1";
-                import {gutter, GutterMarker, Decoration, lineNumbers} from "https://esm.sh/@codemirror/view@6.0.1";
-                import {sql} from "https://esm.sh/@codemirror/lang-sql@6";
-                import {python} from "https://esm.sh/@codemirror/lang-python@6";
-                import {javascript} from "https://esm.sh/@codemirror/lang-javascript@6";
-                
-                // Initialize DAPClient
-                import { DAPClient } from "/workspace/static/js/dap-client.js";
-                
-                const procedureName = "{{ procedure_name }}";
-                const searchParams = new URLSearchParams(window.location.search);
-                const procType = searchParams.get("type") || "procedures";
-                let code = "";
-                let procData = null;
-                
-                try {
-                    const response = await fetch(`/api/data/system.${procType}?name=eq.${procedureName}`);
-                    const data = await response.json();
-                    if (data && data.length > 0 && data[0].code) {
-                        code = data[0].code;
-                        procData = data[0];
-                        
-                        // Extract just the body of the procedure/function if it was wrapped in a DDL statement
-                        const bodyMatch = code.match(/AS\s+'([\s\S]*)'/i);
-                        if (bodyMatch && bodyMatch[1]) {
-                            // Trim trailing semicolons after the string literal if they exist
-                            let extracted = bodyMatch[1];
-                            if (extracted.endsWith("';")) {
-                                extracted = extracted.substring(0, extracted.length - 2);
-                            } else if (extracted.endsWith("'")) {
-                                extracted = extracted.substring(0, extracted.length - 1);
-                            }
-                            code = extracted.replace(/''/g, "'");
-                        }
-                    } else {
-                        code = `-- Procedure ${procedureName} not found or has no code`;
-                    }
-                } catch(e) {
-                    console.error("Failed to fetch procedure code", e);
-                    code = `-- Error loading code`;
-                }
-                
-                // Determine Language Extension
-                let langExtension = javascript(); // Default for Rhai/JS
-                if (procData) {
-                    const lang = procData.LANGUAGE.toLowerCase();
-                    if (lang === 'plsql' || lang === 'sql') {
-                        langExtension = sql();
-                    } else if (lang === 'python') {
-                        langExtension = python();
-                    }
-                }
-                
-                window.cmEditor = new EditorView({
-                    doc: code,
-                    extensions: [
-                        basicSetup,
-                        langExtension,
-                        EditorView.theme({
-                            ".cm-content": {fontFamily: "monospace"},
-                            ".cm-activeLine": {backgroundColor: "rgba(255, 255, 0, 0.1)"},
-                            ".cm-gutterElement": {cursor: "pointer", transition: "color 0.1s"}
-                        })
-                    ],
-                    parent: document.getElementById("cm-editor")
-                });
-                
-                // Simple DOM-based breakpoint toggle for the line numbers gutter
-                document.getElementById("cm-editor").addEventListener('mousedown', function(event) {
-                    // Check if we clicked a line number in the gutter
-                    if (event.target.classList.contains("cm-gutterElement") && event.target.innerText.trim() !== "") {
-                        const lineText = event.target.innerText.trim();
-                        if (!isNaN(lineText)) {
-                            const lineNum = parseInt(lineText);
-                            
-                            // Toggle visual state
-                            if (event.target.style.color === "red") {
-                                event.target.style.color = "";
-                                event.target.style.fontWeight = "";
-                            } else {
-                                event.target.style.color = "red";
-                                event.target.style.fontWeight = "bold";
-                            }
-                            
-                            // Collect all breakpoints by scanning DOM
-                            const newBps = [];
-                            document.querySelectorAll(".cm-gutterElement").forEach(el => {
-                                if (el.style.color === "red") {
-                                    const num = parseInt(el.innerText.trim());
-                                    if (!isNaN(num)) newBps.push({ line: num });
-                                }
-                            });
-                            
-                            // Send DAP request
-                            if (window.dapClient) {
-                                window.dapClient.sendRequest('setBreakpoints', {
-                                    source: { path: procedureName },
-                                    breakpoints: newBps
-                                }).catch(e => console.error("Failed to set breakpoints", e));
-                            }
-                        }
-                    }
-                });
-                
-                // Initialize WS connection
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/workspace/dap-ws`;
-                window.dapClient = new DAPClient(wsUrl);
-                
-                window.dapClient.on('initialized', () => {
-                    console.log('Debugger initialized');
-                });
-                
-                window.dapClient.on('stopped', async (e) => {
-                    console.log('Debugger stopped', e);
-                    document.getElementById('btn-continue').disabled = false;
-                    document.getElementById('btn-step-over').disabled = false;
-                    document.getElementById('btn-stop').disabled = false;
-                    
-                    const threadId = e.body.threadId || 1;
-                    
-                    try {
-                        const threads = await window.dapClient.sendRequest('threads');
-                        const stackTrace = await window.dapClient.sendRequest('stackTrace', { threadId });
-                        if (stackTrace.body.stackFrames && stackTrace.body.stackFrames.length > 0) {
-                            const frameId = stackTrace.body.stackFrames[0].id;
-                            const scopes = await window.dapClient.sendRequest('scopes', { frameId });
-                            
-                            if (scopes.body.scopes && scopes.body.scopes.length > 0) {
-                                const varRef = scopes.body.scopes[0].variablesReference;
-                                const vars = await window.dapClient.sendRequest('variables', { variablesReference: varRef });
-                                
-                                // Render variables in the sidebar if available
-                                const container = document.getElementById('debug-variables-container');
-                                if (container) {
-                                    container.innerHTML = '';
-                                    vars.body.variables.forEach(v => {
-                                        const el = document.createElement('div');
-                                        el.innerHTML = `<strong>${v.name}</strong>: <span>${v.value}</span>`;
-                                        container.appendChild(el);
-                                    });
-                                }
-                            }
-                        }
-                    } catch (err) {
-                        console.error('Error fetching debug state', err);
-                    }
-                });
-                
-                window.dapClient.on('continued', () => {
-                    document.getElementById('btn-continue').disabled = true;
-                    document.getElementById('btn-step-over').disabled = true;
-                });
-                
-                document.getElementById('btn-continue').addEventListener('click', () => {
-                    window.dapClient.sendRequest('continue', { threadId: 1 });
-                });
-                
-                document.getElementById('btn-step-over').addEventListener('click', () => {
-                    window.dapClient.sendRequest('next', { threadId: 1 });
-                });
-                
-                document.getElementById('btn-stop').addEventListener('click', () => {
-                    window.dapClient.sendRequest('disconnect', {});
-                });
-                
-                document.getElementById('btn-save').addEventListener('click', async () => {
-                    if (!procData) return;
-                    const newCode = window.cmEditor.state.doc.toString();
-                    const btn = document.getElementById('btn-save');
-                    btn.disabled = true;
-                    btn.innerText = "Saving...";
-
-                    const isProcedure = procType === 'procedures';
-                    const kind = isProcedure ? 'PROCEDURE' : 'FUNCTION';
-                    let paramsArray = [];
-                    try {
-                        if (procData.parameters) {
-                            paramsArray = JSON.parse(procData.parameters);
-                        }
-                    } catch(e) {}
-                    
-                    let paramStr = paramsArray.map(p => `${p.name} ${p.data_type}`).join(", ");
-                    const escapedCode = newCode.replace(/'/g, "''");
-                    const ddl = `DROP ${kind} IF EXISTS ${procedureName};\nCREATE ${kind} ${procedureName}(${paramStr}) LANGUAGE ${procData.LANGUAGE} AS '${escapedCode}';`;
-                    
-                    try {
-                        const response = await fetch('/api/sql', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({query: ddl})
-                        });
-                        const res = await response.json();
-                        if (res.error) {
-                            alert("Error saving: " + res.error);
-                        } else {
-                            console.log("Saved successfully!");
-                        }
-                    } catch(err) {
-                        alert("Network error: " + err);
-                    } finally {
-                        btn.disabled = false;
-                        btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> Save`;
-                    }
-                });
-
-                document.getElementById('btn-run').addEventListener('click', async () => {
-                    let body = {};
-                    if (procData && procData.parameters && procData.parameters !== "[]") {
-                        try {
-                            // Open the new layer as a modal and wait for the user to submit the form
-                            body = await up.layer.ask({
-                                url: `/workspace/run_modal?procedure_name=${procedureName}`,
-                                mode: 'modal'
-                            });
-                            
-                            // Basic type conversion from string inputs based on original procData
-                            const params = JSON.parse(procData.parameters);
-                            for (const param of params) {
-                                if (body[param.name] !== undefined) {
-                                    let val = body[param.name];
-                                    if (param.data_type === 'INTEGER') {
-                                        val = parseInt(val, 10);
-                                        if (isNaN(val)) val = 0;
-                                    } else if (param.data_type === 'FLOAT') {
-                                        val = parseFloat(val);
-                                        if (isNaN(val)) val = 0.0;
-                                    } else if (param.data_type === 'BOOLEAN') {
-                                        val = (String(val).toLowerCase() === 'true' || val === '1');
-                                    }
-                                    body[param.name] = val;
-                                }
-                            }
-                        } catch (e) {
-                            return; // Layer was dismissed/cancelled
-                        }
-                    }
-                    
-                    const btn = document.getElementById('btn-run');
-                    btn.disabled = true;
-                    fetch(`/api/rpc/${procedureName}`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(body)
-                    }).then(r => r.json()).then(res => {
-                        if (res.error) {
-                            alert("Run error: " + res.error);
-                        } else {
-                            console.log("Run finished successfully:", res);
-                            const container = document.getElementById('debug-variables-container');
-                            if (res.result !== undefined) {
-                                if (container) {
-                                    container.innerHTML = `<div class="mb-2 font-bold text-success">Execution finished.</div><div><strong>Result</strong>: <pre class="mt-2 bg-base-300 p-2 rounded overflow-auto max-h-48">${typeof res.result === 'object' ? JSON.stringify(res.result, null, 2) : res.result}</pre></div>`;
-                                }
-                            } else if (res.status === "success") {
-                                if (container) {
-                                    container.innerHTML = `<div class="mb-2 font-bold text-success">Execution finished successfully. (No return value)</div>`;
-                                }
-                            }
-                        }
-                    }).catch(err => console.error("Run network error:", err))
-                      .finally(() => { btn.disabled = false; });
-                });
-
-                window.dapClient.connect();
-            </script>
-            <div class="mt-4 px-4 pb-4">
-                <h3 class="text-xs font-semibold uppercase opacity-50 mb-2">Debugger State</h3>
-                <div id="debug-variables-container" class="text-sm font-mono p-4 bg-base-200/50 rounded-box min-h-[150px] border border-base-200">
-                    <span class="opacity-40 italic">Not paused...</span>
-                </div>
+        <form up-submit up-target="#query-results" action="/workspace/sql" method="post" class="flex-1 flex flex-col m-0 h-full">
+            <div class="flex-1 p-0 relative h-full">
+                <textarea name="query" class="textarea textarea-ghost w-full h-full p-4 font-mono text-sm resize-none focus:outline-none focus:bg-base-100 rounded-b-none" placeholder="-- Enter your SQL query here...&#10;SELECT * FROM public.my_table limit 10;" required spellcheck="false">{% if query is defined %}{{ query }}{% endif %}</textarea>
             </div>
-        {% else %}
-            <form up-submit up-target="#query-results" action="/workspace/sql" method="post" class="flex-1 flex flex-col m-0 h-full">
-                <div class="flex-1 p-0 relative h-full">
-                    <textarea name="query" class="textarea textarea-ghost w-full h-full p-4 font-mono text-sm resize-none focus:outline-none focus:bg-base-100 rounded-b-none" placeholder="-- Enter your SQL query here...&#10;SELECT * FROM public.my_table limit 10;" required spellcheck="false">{% if query is defined %}{{ query }}{% endif %}</textarea>
+            <div class="bg-base-200/50 border-t border-base-200 p-3 flex justify-between items-center rounded-b-box shrink-0">
+                <div class="text-xs opacity-60 flex items-center gap-1">
+                    <kbd class="kbd kbd-sm">⌘</kbd> + <kbd class="kbd kbd-sm">Enter</kbd> to execute
                 </div>
-                <div class="bg-base-200/50 border-t border-base-200 p-3 flex justify-between items-center rounded-b-box shrink-0">
-                    <div class="text-xs opacity-60 flex items-center gap-1">
-                        <kbd class="kbd kbd-sm">⌘</kbd> + <kbd class="kbd kbd-sm">Enter</kbd> to execute
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Run Query
-                    </button>
-                </div>
-            </form>
-        {% endif %}
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Run Query
+                </button>
+            </div>
+        </form>
     </div>
     
-    {% if procedure_name is undefined %}
     <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col min-h-[300px]">
         <div class="bg-base-200/50 border-b border-base-200 px-4 py-3 rounded-t-box shrink-0">
             <h3 class="text-sm font-semibold">Results</h3>
@@ -352,6 +46,5 @@
             }
         });
     </script>
-    {% endif %}
 </div>
 {% endblock %}
