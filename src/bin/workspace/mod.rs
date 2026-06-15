@@ -140,12 +140,15 @@ pub fn install(db: &Database) {
         ()
     ).unwrap();
 
-    tx.execute(
+    tx.commit().expect("Failed to commit transaction");
+
+    db.execute("CREATE SCHEMA IF NOT EXISTS public", ())
+        .unwrap_or_default();
+
+    db.execute(
         "CREATE TABLE IF NOT EXISTS public.test (id INTEGER, name TEXT)",
         (),
     )
     .unwrap();
-
-    tx.commit().expect("Failed to commit transaction");
     println!("Workspace installation complete.");
 }
