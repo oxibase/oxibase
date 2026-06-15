@@ -739,9 +739,21 @@ pub async fn invoke_procedure(
     let placeholders: Vec<String> = (1..=args.len()).map(|i| format!("${}", i)).collect();
     let sql = format!("CALL {}({})", procedure_name, placeholders.join(", "));
 
-    // Execute
-    let result =
-        crate::functions::context::with_http_headers(headers, || state.db.query(&sql, args));
+    let debug_controller = std::sync::Arc::clone(&state.debug_controller);
+    let db_clone = std::sync::Arc::clone(&state.db);
+    let (result, stdout) = tokio::task::spawn_blocking(move || {
+        crate::functions::context::with_http_headers_and_debug(
+            headers,
+            Some(debug_controller),
+            || {
+                let res = db_clone.query(&sql, args);
+                let stdout_captured = crate::functions::context::get_stdout();
+                (res, stdout_captured)
+            }
+        )
+    }).await.unwrap_or_else(|e| {
+        (Err(crate::core::Error::internal(format!("Task panic: {}", e))), String::new())
+    });
 
     let result = match result {
         Ok(res) => res,
@@ -774,11 +786,24 @@ pub async fn invoke_procedure(
 
     // If there were no OUT params, the result might be empty.
     if !found_row && expected_out.is_empty() {
-        return (
-            StatusCode::OK,
-            Json(serde_json::json!({ "status": "success" })),
-        )
-            .into_response();
+        if stdout.is_empty() {
+            return (
+                StatusCode::OK,
+                Json(serde_json::json!({ "status": "success" })),
+            )
+                .into_response();
+        } else {
+            return (
+                StatusCode::OK,
+                Json(serde_json::json!({ "status": "success", "result": stdout })),
+            )
+                .into_response();
+        }
+    }
+
+    // If there is captured stdout, we can optionally add it to the map
+    if !stdout.is_empty() {
+        result_map.insert("_stdout".to_string(), JsonValue::String(stdout));
     }
 
     // Let's just return the result map inside {"result": ...}
@@ -1161,6 +1186,68 @@ pub async fn workspace_trace_view(
 
     let env = create_env(state.db.clone());
     let tmpl = match env.get_template("workspace_trace_view.html") {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Template load error: {}", e),
+            )
+                .into_response()
+        }
+    };
+
+    match tmpl.render(JsonValue::Object(context)) {
+        Ok(html) => Html(html).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template render error: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+pub async fn workspace_run_modal(
+    Query(params): Query<HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let mut context = serde_json::Map::new();
+    let procedure_name = params.get("procedure_name").cloned().unwrap_or_default();
+    context.insert("procedure_name".to_string(), JsonValue::String(procedure_name.clone()));
+
+    let sql = "SELECT parameters FROM system.procedures WHERE name = ?";
+    let mut parameters_json = JsonValue::Array(Vec::new());
+
+    match state.db.query(sql, vec![Value::text(&procedure_name.to_uppercase())]) {
+        Ok(rows_result) => {
+            if let Some(row) = rows_result.flatten().next() {
+                if let Some(Value::Text(params_str)) = row.get_value(0) {
+                    if let Ok(parsed) = serde_json::from_str::<JsonValue>(params_str.as_ref()) {
+                        parameters_json = parsed;
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            context.insert("error".to_string(), JsonValue::String(e.to_string()));
+        }
+    }
+
+    // Filter out OUT parameters from the input form
+    if let JsonValue::Array(params_arr) = parameters_json {
+        let in_params: Vec<JsonValue> = params_arr.into_iter().filter(|p| {
+            if let Some(mode) = p.get("mode").and_then(|m| m.as_str()) {
+                mode == "IN" || mode == "INOUT"
+            } else {
+                true // default mode is IN
+            }
+        }).collect();
+        context.insert("parameters".to_string(), JsonValue::Array(in_params));
+    } else {
+        context.insert("parameters".to_string(), parameters_json);
+    }
+
+    let env = create_env(state.db.clone());
+    let tmpl = match env.get_template("workspace_run_modal.html") {
         Ok(t) => t,
         Err(e) => {
             return (

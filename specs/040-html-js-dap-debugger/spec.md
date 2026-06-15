@@ -11,6 +11,8 @@
 - Q: Which languages should be supported in the debugger? → A: PL/SQL, Rhai, and Python.
 - Q: Should the WebSocket DAP implementation strictly follow standard DAP headers (Content-Length) even though WebSockets provide framing? → A: Yes, follow standard DAP specification including headers.
 - Q: Where and when should the debugging UI be available? → A: The debugging experience should be available ONLY when a procedure or function has been selected in the workstation list, similar to how traces are handled.
+- Q: What should the debugger layout and feature set look like? → A: A multi-panel, docked layout that activates automatically upon starting a debug session, featuring interactive line gutters for breakpoints, live state evaluation via variables trees, and an execution call stack.
+- Q: Should the initial MVP include a dedicated debug console/REPL panel for interactive evaluation? → A: Yes, include it in the MVP.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -56,8 +58,9 @@ A database developer wants to step through paused code and inspect the current v
 **Acceptance Scenarios**:
 
 1. **Given** an active debug session with a set breakpoint, **When** the backend execution hits the breakpoint and sends a `stopped` event, **Then** the UI highlights the current line in the editor AND enables the debugging controls (Step Over, Continue).
-2. **Given** the execution is paused, **When** the UI receives the stopped state, **Then** it automatically requests `threads`, `stackTrace`, `scopes`, and `variables` via DAP, AND displays the local variables in a collapsible tree in the sidebar.
-3. **Given** the execution is paused, **When** the user clicks "Step Over", **Then** a DAP `next` request is sent, the UI temporarily disables controls, and awaits the next `stopped` event.
+2. **Given** the execution is paused, **When** the UI receives the stopped state, **Then** it automatically requests `threads`, `stackTrace`, `scopes`, and `variables` via DAP, AND displays the local variables in a collapsible tree, the execution call stack, and the interactive debug console in their respective docked panels.
+3. **Given** the execution is paused, **When** the user types an expression into the interactive debug console and submits it, **Then** a DAP `evaluate` request is sent, and the result is displayed in the console log.
+4. **Given** the execution is paused, **When** the user clicks "Step Over", **Then** a DAP `next` request is sent, the UI temporarily disables controls, and awaits the next `stopped` event.
 
 ### Edge Cases
 
@@ -73,8 +76,8 @@ A database developer wants to step through paused code and inspect the current v
 - **FR-002**: The frontend MUST include a standalone, vanilla JavaScript DAP Client Library (`dap-client.js`) to handle DAP messages with standard HTTP-like headers (`Content-Length`) over WebSockets.
 - **FR-003**: The DAP Client MUST expose a Promise-based API for outgoing requests and an Event Emitter pattern for incoming events.
 - **FR-004**: The workspace layout MUST persist the debugger state and WebSocket connection during Unpoly fragment navigations (e.g., using `[up-keep]`).
-- **FR-005**: The UI MUST render debugging controls (Continue, Step Over, Stop) that are enabled only when the session is paused.
-- **FR-006**: The UI MUST display a variables tree using native HTML elements (e.g., `<details>`, `<summary>`) populated from DAP variable responses.
+- **FR-005**: The UI MUST automatically transition into a multi-panel, docked debugger layout when a debug session starts, rendering debugging controls (Continue, Step Over, Stop).
+- **FR-006**: The UI MUST display live state evaluation via a variables tree (using native HTML elements), an execution call stack, and an interactive debug console/REPL panel for evaluating arbitrary expressions.
 - **FR-007**: The backend Oxibase workspace server MUST expose a WebSocket endpoint (`/workspace/dap-ws`) that bridges JSON messages to the internal `DebugController`.
 
 ### Key Entities

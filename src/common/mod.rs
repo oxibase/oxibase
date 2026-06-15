@@ -22,6 +22,7 @@
 //! - [`int64_map`] - Fast hash maps for integer keys
 
 pub mod buffer_pool;
+pub mod debug;
 pub mod int64_map;
 pub mod logging;
 pub mod metrics;

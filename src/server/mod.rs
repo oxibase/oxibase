@@ -17,6 +17,7 @@ use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
+pub mod dap;
 pub mod handlers;
 pub mod meta;
 pub mod template;
@@ -25,6 +26,7 @@ pub mod template;
 #[derive(Clone)]
 pub struct AppState {
     pub db: Arc<Database>,
+    pub debug_controller: Arc<crate::common::debug::DebugController>,
 }
 
 /// Creates and configures the Axum router for the Auto-API layer.
@@ -45,7 +47,10 @@ pub fn create_router(db: Database) -> Router {
         (),
     );
 
-    let state = AppState { db: Arc::new(db) };
+    let state = AppState { 
+        db: Arc::new(db),
+        debug_controller: Arc::new(crate::common::debug::DebugController::new()),
+    };
 
     Router::new()
         // Define wildcards for the Auto-API
@@ -74,9 +79,18 @@ pub fn create_router(db: Database) -> Router {
             get(handlers::workspace_get_table_data),
         )
         .route(
+            "/workspace/run_modal",
+            get(handlers::workspace_run_modal),
+        )
+        .route(
             "/workspace/traces/{trace_id}",
             get(handlers::workspace_trace_view),
         )
+        .route(
+            "/workspace/static/js/dap-client.js",
+            get(dap::serve_dap_client),
+        )
+        .route("/workspace/dap-ws", get(dap::dap_ws_handler))
         .route("/api/meta/schemas", get(meta::list_schemas))
         .route(
             "/api/meta/tables",

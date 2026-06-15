@@ -163,7 +163,7 @@ impl Executor {
         let procedure = self
             .function_registry
             .get_procedure(&procedure_name_upper)
-            .ok_or(crate::core::Error::FunctionNotFound(procedure_name_upper))?;
+            .ok_or(crate::core::Error::FunctionNotFound(procedure_name_upper.clone()))?;
 
         let backend = self
             .function_registry
@@ -218,6 +218,8 @@ impl Executor {
             }
         };
 
+        crate::functions::context::set_current_procedure_name(Some(procedure_name_upper.clone()));
+
         let result = crate::functions::backends::with_sql_runner(
             Some(self as &dyn crate::functions::backends::SqlRunner),
             || {
@@ -230,6 +232,8 @@ impl Executor {
                 )
             },
         );
+
+        crate::functions::context::set_current_procedure_name(None);
 
         if started_implicit_tx {
             let mut active_tx = self.active_transaction.lock().unwrap();

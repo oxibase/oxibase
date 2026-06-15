@@ -20,7 +20,8 @@ This feature adds a web-based debugger frontend to the Oxibase workspace. It emb
 - Must use vanilla JS for the DAP Client (no heavy frameworks like React/Vue).
 - Must integrate seamlessly with Unpoly (`up-keep`).
 - Backend WebSocket endpoint must serve strict DAP payloads including HTTP-like `Content-Length` headers.
-- The debugger UI (CodeMirror, toolbars, variable views) MUST be conditionally rendered ONLY when a procedure or function is selected in the workstation list.
+- The debugger layout MUST automatically transition into a multi-panel, docked view when debugging starts.
+- The UI MUST support a live variables tree, an execution call stack, and an interactive debug console/REPL panel.
 
 ## Constitution Check
 

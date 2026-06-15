@@ -62,6 +62,8 @@
                                 {% if row[col] is defined %}
                                     {% if table == 'traces' and col == 'trace_id' %}
                                         <a href="/workspace/traces/{{ row[col] }}" up-target=":main" class="link link-primary font-mono text-xs">{{ row[col] }}</a>
+                                    {% elif table in ['procedures', 'functions'] and col == 'name' %}
+                                        <a href="/workspace/sql_editor?procedure_name={{ row[col] }}&type={{ table }}" up-target=":main" class="link link-primary font-mono text-xs">{{ row[col] }}</a>
                                     {% else %}
                                         {{ row[col] }}
                                     {% endif %}
