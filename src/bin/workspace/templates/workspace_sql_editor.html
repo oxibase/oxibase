@@ -63,12 +63,14 @@
     </style>
     <script type="module">
         import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
-        import {sql} from "https://esm.sh/@codemirror/lang-sql@6";
+        import {sql, PostgreSQL} from "https://esm.sh/@codemirror/lang-sql@6";
         import {keymap} from "https://esm.sh/@codemirror/view@6.0.1";
+        import {sqlExtension, cteCompletionSource} from "https://esm.sh/@marimo-team/codemirror-sql@0.2.8";
 
         if (!window.sqlEditorCompilerRegistered) {
             window.sqlEditorCompilerRegistered = true;
             up.compiler('#sql-editor-textarea', function(textarea) {
+                console.log("SQL Editor compiler running!");
                 // Hide the original textarea
                 textarea.style.display = 'none';
 
@@ -78,24 +80,86 @@
                 wrapper.style.width = '100%';
                 textarea.parentNode.appendChild(wrapper);
 
+                // Build schema for autocomplete
+                const sqlSchema = {};
+                {% if data %}
+                const rawSchemaData = [
+                    {% for row in data %}
+                    { schema: "{{ row.table_schema }}", table: "{{ row.table_name }}", column: "{{ row.column_name }}" }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ];
+
+                for (const row of rawSchemaData) {
+                    if (!sqlSchema[row.table]) sqlSchema[row.table] = [];
+                    sqlSchema[row.table].push({label: row.column, type: "property"});
+
+                    const fullTableName = row.schema + "." + row.table;
+                    if (!sqlSchema[fullTableName]) sqlSchema[fullTableName] = [];
+                    sqlSchema[fullTableName].push({label: row.column, type: "property"});
+                }
+                {% endif %}
+
                 // Command to submit the form
                 const submitForm = (view) => {
-                    textarea.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    const btn = textarea.form.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.click();
+                    } else {
+                        up.submit(textarea.form);
+                    }
                     return true;
                 };
+
+                // Capture keydown on the wrapper to handle Mod-Enter reliably
+                wrapper.addEventListener('keydown', (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const btn = textarea.form.querySelector('button[type="submit"]');
+                        if (btn) {
+                            btn.click();
+                        } else {
+                            up.submit(textarea.form);
+                        }
+                    }
+                }, { capture: true });
 
                 const editor = new EditorView({
                     doc: textarea.value,
                     extensions: [
                         basicSetup,
-                        sql(),
+                        sql({ schema: sqlSchema }),
+                        sql().language.data.of({
+                            autocomplete: cteCompletionSource,
+                        }),
+                        sqlExtension({
+                            linterConfig: {
+                                delay: 250,
+                            },
+                            gutterConfig: {
+                                backgroundColor: "transparent",
+                                errorBackgroundColor: "oklch(var(--er) / 0.2)",
+                                hideWhenNotFocused: true,
+                            },
+                            enableHover: true,
+                            hoverConfig: {
+                                schema: sqlSchema,
+                                hoverTime: 300,
+                                enableKeywords: true,
+                                enableTables: true,
+                                enableColumns: true,
+                            },
+                        }),
                         EditorView.updateListener.of((update) => {
                             if (update.docChanged) {
                                 textarea.value = update.state.doc.toString();
                             }
                         }),
                         keymap.of([
-                            { key: "Mod-Enter", run: submitForm }
+                            { key: "Mod-Enter", run: submitForm },
+                            { key: "Ctrl-Enter", run: submitForm },
+                            { key: "Cmd-Enter", run: submitForm },
+                            { key: "Meta-Enter", run: submitForm }
                         ])
                     ],
                     parent: wrapper

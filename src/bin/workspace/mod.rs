@@ -127,7 +127,7 @@ pub fn install(db: &Database) {
     ).unwrap();
 
     tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sql_editor', 'workspace_sql_editor.html', NULL)",
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sql_editor', 'workspace_sql_editor.html', 'SELECT table_schema, table_name, column_name FROM information_schema.columns ORDER BY table_schema, table_name, ordinal_position')",
         ()
     ).unwrap();
 
