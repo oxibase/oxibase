@@ -49,10 +49,10 @@ where
         let r_static: &'static dyn SqlRunner = unsafe { std::mem::transmute(r) };
         r_static as *const dyn SqlRunner
     });
-    
+
     // Save the previous runner state so we can restore it later
     let prev_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
-    
+
     CURRENT_SQL_RUNNER.with(|r| *r.borrow_mut() = ptr);
 
     // Execute the closure (which will run the scripting VM)
@@ -69,7 +69,7 @@ pub fn execute_sql_query(
     sql: &str,
 ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
     let runner_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
-    
+
     if let Some(ptr) = runner_ptr {
         // SAFETY: We guarantee that CURRENT_SQL_RUNNER is only set during the execution of a procedure
         // using `with_sql_runner`, and is cleared before the runner reference is dropped.
