@@ -134,7 +134,10 @@ impl Executor {
         // Prevent DML on reserved namespaces
         let table_name_raw = stmt.table_name.value();
         if Schema::is_reserved_namespace(&table_name_raw) && !ctx.is_internal() {
-            return Err(Error::ReservedNamespaceModification(table_name_raw));
+            // EXCEPTION: Allow inserts into system.logs so stored procedures can log messages
+            if table_name_raw.to_lowercase() != "system.logs" {
+                return Err(Error::ReservedNamespaceModification(table_name_raw));
+            }
         }
 
         // OPTIMIZATION: Use pre-computed lowercase name to avoid allocation per query

@@ -50,6 +50,7 @@ pub fn install(db: &Database) {
     let trace_view_html = include_str!("templates/workspace_trace_view.html");
     let run_modal_html = include_str!("templates/workspace_run_modal.html");
     let debugger_html = include_str!("templates/workspace_debugger.html");
+    let pizza_demo_sql = include_str!("templates/pizza_demo.sql");
 
     tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_layout.html', ?)",
@@ -142,13 +143,105 @@ pub fn install(db: &Database) {
 
     tx.commit().expect("Failed to commit transaction");
 
-    db.execute("CREATE SCHEMA IF NOT EXISTS public", ())
-        .unwrap_or_default();
+    // Run pizza demo setup script
 
-    db.execute(
-        "CREATE TABLE IF NOT EXISTS public.test (id INTEGER, name TEXT)",
-        (),
-    )
-    .unwrap();
+    // We split by ';' since db.execute doesn't support multiple statements well,
+    // though we have to be careful not to split inside DO blocks/PLSQL strings.
+    // The easiest is just executing the full script if execute() supports it,
+    // but the safer approach for Oxibase is a custom small parser or just running
+    // it line by line. Given the complex triggers, executing the statements directly
+    // might be tricky if we just split by ';'. Wait, I'll use a regex or split
+    // carefully, or maybe Oxibase supports multiple statements.
+    // Let's look at how execute works.
+    let pizza_queries = parse_sql_script(pizza_demo_sql);
+    for q in pizza_queries {
+        if !q.trim().is_empty() {
+            if let Err(e) = db.execute(&q, ()) {
+                eprintln!("Failed to execute pizza demo query: {}\nError: {:?}", q, e);
+            }
+        }
+    }
+
     println!("Workspace installation complete.");
+}
+
+// Simple script splitter that avoids splitting inside string literals ('...') or dollar quotes ($$...$$)
+fn parse_sql_script(script: &str) -> Vec<String> {
+    let mut queries = Vec::new();
+    let mut current_query = String::new();
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+    let mut in_dollar_quote = false;
+
+    let chars: Vec<char> = script.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let c = chars[i];
+
+        if in_single_quote {
+            if c == '\'' {
+                // Handle escaping: ''
+                if i + 1 < chars.len() && chars[i + 1] == '\'' {
+                    current_query.push(c);
+                    current_query.push(chars[i + 1]);
+                    i += 2;
+                    continue;
+                } else {
+                    in_single_quote = false;
+                }
+            }
+        } else if in_double_quote {
+            if c == '"' {
+                if i + 1 < chars.len() && chars[i + 1] == '"' {
+                    current_query.push(c);
+                    current_query.push(chars[i + 1]);
+                    i += 2;
+                    continue;
+                } else {
+                    in_double_quote = false;
+                }
+            }
+        } else if in_dollar_quote {
+            if c == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
+                in_dollar_quote = false;
+                current_query.push('$');
+                current_query.push('$');
+                i += 2;
+                continue;
+            }
+        } else {
+            if c == '\'' {
+                in_single_quote = true;
+            } else if c == '"' {
+                in_double_quote = true;
+            } else if c == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
+                in_dollar_quote = true;
+                current_query.push('$');
+                current_query.push('$');
+                i += 2;
+                continue;
+            } else if c == ';' {
+                queries.push(current_query.trim().to_string());
+                current_query.clear();
+                i += 1;
+                continue;
+            } else if c == '-' && i + 1 < chars.len() && chars[i + 1] == '-' {
+                // Skip comment line
+                while i < chars.len() && chars[i] != '\n' {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        current_query.push(c);
+        i += 1;
+    }
+
+    if !current_query.trim().is_empty() {
+        queries.push(current_query.trim().to_string());
+    }
+
+    queries
 }
