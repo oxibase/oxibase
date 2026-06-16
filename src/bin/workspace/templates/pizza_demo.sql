@@ -75,43 +75,6 @@ INSERT INTO pizza_demo.customer (name, address, phone) VALUES ('Alice', '123 Fak
 INSERT INTO pizza_demo.credit_card (name, number, expiration) VALUES ('Alice', '1111222233334444', '2028-01-01'), ('Bob', '5555666677778888', '2029-05-01');
 INSERT INTO pizza_demo.customer_credit_card (customer_id, credit_card_id) VALUES (1, 1), (2, 2);
 
--- Function to calculate the total price of an order
-CREATE FUNCTION pizza_demo.calculate_order_total(order_id INTEGER) RETURNS FLOAT LANGUAGE sql AS '
-    SELECT COALESCE((
-        SELECT SUM(s.price)
-        FROM pizza_demo.customer_pizzas cp
-        JOIN pizza_demo.pizzas p ON cp.pizza_id = p.id
-        JOIN pizza_demo.sizes s ON p.size_id = s.id
-        WHERE cp.customer_order_id = order_id
-    ), 0.0) + COALESCE((
-        SELECT SUM(d.price)
-        FROM pizza_demo.customer_drinks cd
-        JOIN pizza_demo.drinks d ON cd.drink_id = d.id
-        WHERE cd.customer_order_id = order_id
-    ), 0.0);
-';
-
--- Triggers to update the order total when items are added
-CREATE TRIGGER update_total_pizza
-AFTER INSERT ON pizza_demo.customer_pizzas
-FOR EACH ROW LANGUAGE plsql AS '
-BEGIN
-    UPDATE pizza_demo.customer_order 
-    SET total_price = pizza_demo.calculate_order_total(NEW.customer_order_id)
-    WHERE id = NEW.customer_order_id;
-END;
-';
-
-CREATE TRIGGER update_total_drink
-AFTER INSERT ON pizza_demo.customer_drinks
-FOR EACH ROW LANGUAGE plsql AS '
-BEGIN
-    UPDATE pizza_demo.customer_order 
-    SET total_price = pizza_demo.calculate_order_total(NEW.customer_order_id)
-    WHERE id = NEW.customer_order_id;
-END;
-';
-
 -- Procedure to simulate a random order
 CREATE PROCEDURE pizza_demo.simulate_random_order() LANGUAGE rhai AS '
     // Create the order
@@ -123,6 +86,9 @@ CREATE PROCEDURE pizza_demo.simulate_random_order() LANGUAGE rhai AS '
     
     // Add random drink
     oxibase::execute("INSERT INTO pizza_demo.customer_drinks (customer_order_id, drink_id) SELECT (SELECT MAX(id) FROM pizza_demo.customer_order), CAST(FLOOR(RANDOM() * 5) + 1 AS INTEGER)");
+    
+    // Explicitly update total price in the same procedure (bypasses cross-transaction visibility issues with nested triggers)
+    oxibase::execute("UPDATE pizza_demo.customer_order SET total_price = COALESCE((SELECT SUM(s.price) FROM pizza_demo.customer_pizzas cp JOIN pizza_demo.pizzas p ON cp.pizza_id = p.id JOIN pizza_demo.sizes s ON p.size_id = s.id WHERE cp.customer_order_id = (SELECT MAX(id) FROM pizza_demo.customer_order)), 0.0) + COALESCE((SELECT SUM(d.price) FROM pizza_demo.customer_drinks cd JOIN pizza_demo.drinks d ON cd.drink_id = d.id WHERE cd.customer_order_id = (SELECT MAX(id) FROM pizza_demo.customer_order)), 0.0) WHERE id = (SELECT MAX(id) FROM pizza_demo.customer_order)");
     
     // Log the event
     oxibase::execute("INSERT INTO system.logs (level, target, message) VALUES (''INFO'', ''pizza_demo'', ''Simulated random order'')");

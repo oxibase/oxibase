@@ -43,19 +43,23 @@ where
     F: FnOnce() -> R,
 {
     // Unsafe casting to extend lifetime to static temporarily
-    // This is safe because we clear the thread local before returning,
+    // This is safe because we restore the previous thread local before returning,
     // guaranteeing the reference isn't used after it becomes invalid.
     let ptr = runner.map(|r| {
         let r_static: &'static dyn SqlRunner = unsafe { std::mem::transmute(r) };
         r_static as *const dyn SqlRunner
     });
+    
+    // Save the previous runner state so we can restore it later
+    let prev_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
+    
     CURRENT_SQL_RUNNER.with(|r| *r.borrow_mut() = ptr);
 
     // Execute the closure (which will run the scripting VM)
     let result = f();
 
-    // Cleanup to ensure no dangling pointers
-    CURRENT_SQL_RUNNER.with(|r| *r.borrow_mut() = None);
+    // Restore the previous state
+    CURRENT_SQL_RUNNER.with(|r| *r.borrow_mut() = prev_ptr);
 
     result
 }
@@ -64,57 +68,54 @@ where
 pub fn execute_sql_query(
     sql: &str,
 ) -> crate::core::Result<Box<dyn crate::storage::traits::QueryResult>> {
-    CURRENT_SQL_RUNNER.with(|r| {
-        if let Some(ptr) = *r.borrow() {
-            // SAFETY: We guarantee that CURRENT_SQL_RUNNER is only set during the execution of a procedure
-            // using `with_sql_runner`, and is cleared before the runner reference is dropped.
-            let runner = unsafe { &*ptr };
-            runner.execute_query(sql)
-        } else {
-            Err(crate::core::Error::internal(
-                "Cannot execute SQL: No database context available in this procedure",
-            ))
-        }
-    })
+    let runner_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
+    
+    if let Some(ptr) = runner_ptr {
+        // SAFETY: We guarantee that CURRENT_SQL_RUNNER is only set during the execution of a procedure
+        // using `with_sql_runner`, and is cleared before the runner reference is dropped.
+        let runner = unsafe { &*ptr };
+        runner.execute_query(sql)
+    } else {
+        Err(crate::core::Error::internal(
+            "Cannot execute SQL: No database context available in this procedure",
+        ))
+    }
 }
 
 pub fn commit_transaction() -> crate::core::Result<()> {
-    CURRENT_SQL_RUNNER.with(|r| {
-        if let Some(ptr) = *r.borrow() {
-            let runner = unsafe { &*ptr };
-            runner.commit()
-        } else {
-            Err(crate::core::Error::internal(
-                "Cannot commit: No database context available in this procedure",
-            ))
-        }
-    })
+    let runner_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
+    if let Some(ptr) = runner_ptr {
+        let runner = unsafe { &*ptr };
+        runner.commit()
+    } else {
+        Err(crate::core::Error::internal(
+            "Cannot commit: No database context available in this procedure",
+        ))
+    }
 }
 
 pub fn rollback_transaction() -> crate::core::Result<()> {
-    CURRENT_SQL_RUNNER.with(|r| {
-        if let Some(ptr) = *r.borrow() {
-            let runner = unsafe { &*ptr };
-            runner.rollback()
-        } else {
-            Err(crate::core::Error::internal(
-                "Cannot rollback: No database context available in this procedure",
-            ))
-        }
-    })
+    let runner_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
+    if let Some(ptr) = runner_ptr {
+        let runner = unsafe { &*ptr };
+        runner.rollback()
+    } else {
+        Err(crate::core::Error::internal(
+            "Cannot rollback: No database context available in this procedure",
+        ))
+    }
 }
 
 pub fn begin_transaction() -> crate::core::Result<()> {
-    CURRENT_SQL_RUNNER.with(|r| {
-        if let Some(ptr) = *r.borrow() {
-            let runner = unsafe { &*ptr };
-            runner.begin()
-        } else {
-            Err(crate::core::Error::internal(
-                "Cannot begin: No database context available in this procedure",
-            ))
-        }
-    })
+    let runner_ptr = CURRENT_SQL_RUNNER.with(|r| *r.borrow());
+    if let Some(ptr) = runner_ptr {
+        let runner = unsafe { &*ptr };
+        runner.begin()
+    } else {
+        Err(crate::core::Error::internal(
+            "Cannot begin: No database context available in this procedure",
+        ))
+    }
 }
 
 /// A trait to allow scripting backends to execute native SQL queries
