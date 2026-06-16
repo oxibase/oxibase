@@ -36,7 +36,7 @@ rayon = "1.12"
 tokio = { version = "1.50", features = ["full"], optional = true }
 
 # Web server (optional)
-axum = { version = "0.8", optional = true }
+axum = { version = "0.8", features = ["ws"], optional = true }
 tower-http = { version = "0.6", features = ["cors", "trace"], optional = true }
 minijinja = { version = "2", optional = true }
 
@@ -64,7 +64,7 @@ crc32fast = "1.4"
 lz4_flex = "0.13"
 
 # Scripting backends for user-defined functions
-rhai = { version = "1.25", features = ["sync"] }
+rhai = { version = "1.25", features = ["sync", "internals", "debugging"] }
 boa_engine = { version = "0.21", optional = true }
 rustpython-vm = { version = "0.5", optional = true }
 

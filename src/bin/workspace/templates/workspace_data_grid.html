@@ -1,4 +1,13 @@
 {% extends "workspace_layout.html" %}
+{% block sidebar %}
+    {% if schema == 'system' and table in ['traces', 'logs', 'cron_runs', 'table_stats', 'column_stats', 'metrics'] %}
+        <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/observe" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+    {% elif schema == 'system' or schema == 'interface' %}
+        <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/compute" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+    {% else %}
+        <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/data" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+    {% endif %}
+{% endblock %}
 {% block content %}
 <div class="h-full flex flex-col gap-4">
     <div class="flex items-center justify-between">
@@ -19,7 +28,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 Refresh
             </a>
-            <form up-submit up-target=":main" action="/workspace/sql_editor" method="get">
+            <form up-submit up-target=":main" up-history="true" action="/workspace/sql_editor" method="get" up-on-rendered="up.render({url: '/workspace/sidebar/compute', target: '#sidebar-content'})">
                 <input type="hidden" name="query" value="SELECT * FROM {{ schema }}.{{ table }} LIMIT 100;">
                 <button type="submit" class="btn btn-sm btn-secondary">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
@@ -62,6 +71,8 @@
                                 {% if row[col] is defined %}
                                     {% if table == 'traces' and col == 'trace_id' %}
                                         <a href="/workspace/traces/{{ row[col] }}" up-target=":main" class="link link-primary font-mono text-xs">{{ row[col] }}</a>
+                                    {% elif table in ['procedures', 'functions'] and col == 'name' %}
+                                        <a href="/workspace/debugger?procedure_name={{ row[col] }}&type={{ table }}" up-target=":main" class="link link-primary font-mono text-xs">{{ row[col] }}</a>
                                     {% else %}
                                         {{ row[col] }}
                                     {% endif %}

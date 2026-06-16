@@ -18,26 +18,25 @@ use oxibase::Value;
 
 pub fn install(db: &Database) {
     println!("Installing Workspace app into database...");
-    let mut tx = db.begin().expect("Failed to start transaction");
 
-    // Create schemas and tables if they don't exist
-    let _ = tx.execute("CREATE SCHEMA IF NOT EXISTS interface", ());
-    let _ = tx.execute(
+    // Create schemas and tables if they don't exist (DDL outside transaction)
+    let _ = db.execute("CREATE SCHEMA IF NOT EXISTS interface", ());
+    let _ = db.execute(
         "CREATE TABLE IF NOT EXISTS interface.routes (method TEXT, path TEXT, template_name TEXT, context_query TEXT)",
         (),
     );
-    let _ = tx.execute(
-        "CREATE TABLE IF NOT EXISTS interface.templates (name TEXT, content TEXT)",
-        (),
-    );
-    let _ = tx.execute(
+    let _ = db.execute(
         "CREATE TABLE IF NOT EXISTS interface.templates (name TEXT, content TEXT)",
         (),
     );
 
+    let mut tx = db.begin().expect("Failed to start transaction");
+
     // Clean up existing records to make installation idempotent
-    let _ = tx.execute("DELETE FROM interface.routes", ());
-    let _ = tx.execute("DELETE FROM interface.templates", ());
+    tx.execute("DELETE FROM interface.routes", ())
+        .unwrap_or_default();
+    tx.execute("DELETE FROM interface.templates", ())
+        .unwrap_or_default();
 
     // Load templates via include_str!
     let layout_html = include_str!("templates/workspace_layout.html");
@@ -49,74 +48,200 @@ pub fn install(db: &Database) {
     let table_create_html = include_str!("templates/workspace_table_create.html");
     let data_grid_html = include_str!("templates/workspace_data_grid.html");
     let trace_view_html = include_str!("templates/workspace_trace_view.html");
+    let run_modal_html = include_str!("templates/workspace_run_modal.html");
+    let debugger_html = include_str!("templates/workspace_debugger.html");
+    let pizza_demo_sql = include_str!("templates/pizza_demo.sql");
 
-    let _ = tx.execute(
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_layout.html', ?)",
         vec![Value::text(layout_html)],
-    );
-    let _ = tx.execute(
+    )
+    .unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_data.html', ?)",
         vec![Value::text(sidebar_data_html)],
-    );
-    let _ = tx.execute(
+    )
+    .unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_compute.html', ?)",
         vec![Value::text(sidebar_compute_html)],
-    );
-    let _ = tx.execute(
+    ).unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sidebar_observe.html', ?)",
         vec![Value::text(sidebar_observe_html)],
-    );
-    let _ = tx.execute(
+    ).unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sql_editor.html', ?)",
         vec![Value::text(editor_html)],
-    );
-    let _ = tx.execute(
+    )
+    .unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_sql_results.html', ?)",
         vec![Value::text(results_html)],
-    );
-    let _ = tx.execute(
+    )
+    .unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_table_create.html', ?)",
         vec![Value::text(table_create_html)],
-    );
-    let _ = tx.execute(
+    )
+    .unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_data_grid.html', ?)",
         vec![Value::text(data_grid_html)],
-    );
-    let _ = tx.execute(
+    )
+    .unwrap();
+    tx.execute(
         "INSERT INTO interface.templates (name, content) VALUES ('workspace_trace_view.html', ?)",
         vec![Value::text(trace_view_html)],
-    );
+    )
+    .unwrap();
+    tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_run_modal.html', ?)",
+        vec![Value::text(run_modal_html)],
+    )
+    .unwrap();
+    tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_debugger.html', ?)",
+        vec![Value::text(debugger_html)],
+    )
+    .unwrap();
 
-    let _ = tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_layout.html', NULL)",
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_sidebar_compute.html', NULL)",
         ()
-    );
+    ).unwrap();
 
-    let _ = tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/data', 'workspace_sidebar_data.html', 'SELECT table_schema, table_name FROM information_schema.tables ORDER BY table_schema, table_name')",
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/data', 'workspace_sidebar_data.html', 'SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN (''system'', ''information_schema'', ''interface'') ORDER BY table_schema, table_name')",
         ()
-    );
+    ).unwrap();
 
-    let _ = tx.execute(
+    tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/compute', 'workspace_sidebar_compute.html', NULL)",
         ()
-    );
+    ).unwrap();
 
-    let _ = tx.execute(
+    tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sidebar/observe', 'workspace_sidebar_observe.html', NULL)",
         ()
-    );
+    ).unwrap();
 
-    let _ = tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sql_editor', 'workspace_sql_editor.html', NULL)",
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/sql_editor', 'workspace_sql_editor.html', 'SELECT table_schema, table_name, column_name FROM information_schema.columns ORDER BY table_schema, table_name, ordinal_position')",
         ()
-    );
+    ).unwrap();
 
-    let _ = tx.execute(
+    tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/meta/tables/new', 'workspace_table_create.html', NULL)",
         ()
-    );
+    ).unwrap();
+
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/debugger', 'workspace_debugger.html', NULL)",
+        ()
+    ).unwrap();
 
     tx.commit().expect("Failed to commit transaction");
+
+    // Run pizza demo setup script
+
+    // We split by ';' since db.execute doesn't support multiple statements well,
+    // though we have to be careful not to split inside DO blocks/PLSQL strings.
+    // The easiest is just executing the full script if execute() supports it,
+    // but the safer approach for Oxibase is a custom small parser or just running
+    // it line by line. Given the complex triggers, executing the statements directly
+    // might be tricky if we just split by ';'. Wait, I'll use a regex or split
+    // carefully, or maybe Oxibase supports multiple statements.
+    // Let's look at how execute works.
+    let pizza_queries = parse_sql_script(pizza_demo_sql);
+    for q in pizza_queries {
+        if !q.trim().is_empty() {
+            if let Err(e) = db.execute(&q, ()) {
+                eprintln!("Failed to execute pizza demo query: {}\nError: {:?}", q, e);
+            }
+        }
+    }
+
     println!("Workspace installation complete.");
+}
+
+// Simple script splitter that avoids splitting inside string literals ('...') or dollar quotes ($$...$$)
+fn parse_sql_script(script: &str) -> Vec<String> {
+    let mut queries = Vec::new();
+    let mut current_query = String::new();
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+    let mut in_dollar_quote = false;
+
+    let chars: Vec<char> = script.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let c = chars[i];
+
+        if in_single_quote {
+            if c == '\'' {
+                // Handle escaping: ''
+                if i + 1 < chars.len() && chars[i + 1] == '\'' {
+                    current_query.push(c);
+                    current_query.push(chars[i + 1]);
+                    i += 2;
+                    continue;
+                } else {
+                    in_single_quote = false;
+                }
+            }
+        } else if in_double_quote {
+            if c == '"' {
+                if i + 1 < chars.len() && chars[i + 1] == '"' {
+                    current_query.push(c);
+                    current_query.push(chars[i + 1]);
+                    i += 2;
+                    continue;
+                } else {
+                    in_double_quote = false;
+                }
+            }
+        } else if in_dollar_quote {
+            if c == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
+                in_dollar_quote = false;
+                current_query.push('$');
+                current_query.push('$');
+                i += 2;
+                continue;
+            }
+        } else {
+            if c == '\'' {
+                in_single_quote = true;
+            } else if c == '"' {
+                in_double_quote = true;
+            } else if c == '$' && i + 1 < chars.len() && chars[i + 1] == '$' {
+                in_dollar_quote = true;
+                current_query.push('$');
+                current_query.push('$');
+                i += 2;
+                continue;
+            } else if c == ';' {
+                queries.push(current_query.trim().to_string());
+                current_query.clear();
+                i += 1;
+                continue;
+            } else if c == '-' && i + 1 < chars.len() && chars[i + 1] == '-' {
+                // Skip comment line
+                while i < chars.len() && chars[i] != '\n' {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        current_query.push(c);
+        i += 1;
+    }
+
+    if !current_query.trim().is_empty() {
+        queries.push(current_query.trim().to_string());
+    }
+
+    queries
 }

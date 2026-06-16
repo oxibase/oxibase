@@ -62,6 +62,62 @@ mod oxibase_py_module {
             Err(e) => Err(vm.new_runtime_error(e.to_string())),
         }
     }
+
+    #[pyfunction]
+    fn _append_stdout(s: PyStrRef) {
+        crate::functions::context::append_stdout(s.as_ref());
+    }
+
+    #[pyfunction]
+    fn _check_breakpoint(
+        line: usize,
+        locals: rustpython_vm::builtins::PyDictRef,
+        globals: rustpython_vm::builtins::PyDictRef,
+        vm: &VirtualMachine,
+    ) {
+        if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
+            if let Some(dc) = crate::functions::context::get_debug_controller() {
+                println!(
+                    "Tracing proc {} at line {}, has_breakpoint? {}",
+                    proc_name,
+                    line,
+                    dc.has_breakpoint(&proc_name, line)
+                );
+                // Determine if we need to pause (either due to a breakpoint or a step action)
+                // For simplicity, we just check breakpoint hit here.
+                if dc.has_breakpoint(&proc_name, line) {
+                    let mut local_map = serde_json::Map::new();
+                    for (k, v) in locals.into_iter() {
+                        if let Ok(key) = k.str(vm) {
+                            if let Ok(val) = v.str(vm) {
+                                local_map.insert(
+                                    key.to_string(),
+                                    serde_json::Value::String(val.to_string()),
+                                );
+                            }
+                        }
+                    }
+                    let mut global_map = serde_json::Map::new();
+                    for (k, v) in globals.into_iter() {
+                        if let Ok(key) = k.str(vm) {
+                            if let Ok(val) = v.str(vm) {
+                                global_map.insert(
+                                    key.to_string(),
+                                    serde_json::Value::String(val.to_string()),
+                                );
+                            }
+                        }
+                    }
+
+                    let _action = dc.pause_execution(
+                        line,
+                        serde_json::Value::Object(local_map),
+                        serde_json::Value::Object(global_map),
+                    );
+                }
+            }
+        }
+    }
 }
 
 /// Python scripting backend
@@ -377,6 +433,25 @@ impl ScriptingBackend for PythonBackend {
                             ))
                         })?;
                 }
+
+                let redirect_code = r#"
+import sys
+import oxibase
+class CaptureStdout:
+    def write(self, s):
+        oxibase._append_stdout(s)
+    def flush(self):
+        pass
+sys.stdout = CaptureStdout()
+
+def trace_hook(frame, event, arg):
+    if event == "line":
+        oxibase._check_breakpoint(frame.f_lineno, frame.f_locals, frame.f_globals)
+    return trace_hook
+
+sys.settrace(trace_hook)
+"#;
+                let _ = vm.run_string(scope.clone(), redirect_code, "<redirect>".to_string());
 
                 match vm.compile(code, Mode::Exec, "<procedure>".to_string()) {
                     Ok(code_obj) => {

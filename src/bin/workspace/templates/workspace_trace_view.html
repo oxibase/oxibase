@@ -1,4 +1,7 @@
 {% extends "workspace_layout.html" %}
+{% block sidebar %}
+    <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/observe" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+{% endblock %}
 {% block content %}
 <div class="h-full flex flex-col gap-4 overflow-hidden">
     <!-- Back Button -->

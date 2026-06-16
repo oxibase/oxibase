@@ -30,6 +30,37 @@ impl PlSqlBackend {
     }
 }
 
+struct PlSqlDebugHook;
+
+impl crate::functions::plsql::interpreter::DebugAdapterHook for PlSqlDebugHook {
+    fn on_statement_before_eval(&self, line_number: usize, env: &Environment) {
+        if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
+            if let Some(dc) = crate::functions::context::get_debug_controller() {
+                println!(
+                    "PlSqlDebugHook: proc_name: {}, line_number: {}, has_breakpoint? {}",
+                    proc_name,
+                    line_number,
+                    dc.has_breakpoint(&proc_name, line_number)
+                );
+                if dc.has_breakpoint(&proc_name, line_number) {
+                    let mut local_map = serde_json::Map::new();
+                    for scope in env.to_dap_scopes() {
+                        for var in scope.variables {
+                            local_map.insert(var.name, serde_json::Value::String(var.value));
+                        }
+                    }
+
+                    let _ = dc.pause_execution(
+                        line_number,
+                        serde_json::Value::Object(local_map),
+                        serde_json::Value::Object(serde_json::Map::new()),
+                    );
+                }
+            }
+        }
+    }
+}
+
 impl ScriptingBackend for PlSqlBackend {
     fn name(&self) -> &'static str {
         "plsql"
@@ -58,7 +89,8 @@ impl ScriptingBackend for PlSqlBackend {
             env.define_global(param_names[i], arg.clone());
         }
 
-        let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), None);
+        let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), None)
+            .with_debug_hook(Arc::new(PlSqlDebugHook));
 
         if let Some(val) = interpreter.execute(&block, &mut env)? {
             Ok(val)
@@ -85,7 +117,8 @@ impl ScriptingBackend for PlSqlBackend {
             env.define_global(param_names[i], arg.clone());
         }
 
-        let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), _runner);
+        let interpreter = PlSqlInterpreter::new(self.function_registry.clone(), _runner)
+            .with_debug_hook(Arc::new(PlSqlDebugHook));
         interpreter.execute(&block, &mut env)?;
 
         // Write back OUT/INOUT values

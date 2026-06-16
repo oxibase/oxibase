@@ -10,10 +10,10 @@
             type="text/css"
         />
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-        <script src="https://unpkg.com/unpoly@3.7.3/unpoly.min.js"></script>
+        <script src="https://unpkg.com/unpoly@3.14.3/unpoly.min.js"></script>
         <link
             rel="stylesheet"
-            href="https://unpkg.com/unpoly@3.7.3/unpoly.min.css"
+            href="https://unpkg.com/unpoly@3.14.3/unpoly.min.css"
         />
         <style>
             body {
@@ -168,33 +168,25 @@
                     </div>
 
                     <div class="tabs tabs-box w-full p-2 flex justify-center" up-nav>
-                        <a href="/workspace/sidebar/compute" up-target="#sidebar-content" class="tab tab-sm nav-link">Compute</a>
-                        <a href="/workspace/sidebar/data" up-target="#sidebar-content" class="tab tab-sm nav-link">Data</a>
-                        <a href="/workspace/sidebar/observe" up-target="#sidebar-content" class="tab tab-sm nav-link">Observe</a>
+                        <a href="/workspace/sidebar/compute" up-target="#sidebar-content" up-history="true" up-alias="/workspace /workspace/sql_editor* /workspace/data/system/functions /workspace/data/system/procedures /workspace/data/system/triggers /workspace/data/system/cron /workspace/data/interface/routes /workspace/data/interface/templates /workspace/debugger*" class="tab tab-sm nav-link">Compute</a>
+                        <a href="/workspace/sidebar/data" up-target="#sidebar-content" up-history="true" up-alias="/workspace/data/* -/workspace/data/system/* -/workspace/data/interface/*" class="tab tab-sm nav-link">Data</a>
+                        <a href="/workspace/sidebar/observe" up-target="#sidebar-content" up-history="true" up-alias="/workspace/data/system/traces /workspace/data/system/logs /workspace/data/system/cron_runs /workspace/data/system/table_stats /workspace/data/system/column_stats /workspace/data/system/metrics" class="tab tab-sm nav-link">Observe</a>
                     </div>
 
                     <div id="sidebar-content" class="flex-1 overflow-y-auto p-2">
                         {% block sidebar %}
-                        <div
-                            class="p-4 text-center text-sm opacity-50 animate-pulse"
+                        <a
+                            up-defer="insert"
+                            up-target="#sidebar-content"
+                            href="/workspace/sidebar/compute"
+                            class="block p-4 text-center text-sm opacity-50 animate-pulse"
                         >
                             Loading...
-                        </div>
+                        </a>
                         {% endblock %}
                     </div>
                 </aside>
             </div>
         </div>
-
-        <script>
-            up.compiler("#sidebar-content", function (element) {
-                if (element.textContent.includes("Loading...")) {
-                    up.render({
-                        url: "/workspace/sidebar/data",
-                        target: "#sidebar-content",
-                    });
-                }
-            });
-        </script>
     </body>
 </html>

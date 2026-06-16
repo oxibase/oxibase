@@ -1,17 +1,19 @@
 {% extends "workspace_layout.html" %}
 {% block content %}
 <div class="h-full flex flex-col gap-4">
-    <div class="flex items-center gap-3">
-        <div class="bg-primary/10 text-primary p-2 rounded-box">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="bg-primary/10 text-primary p-2 rounded-box">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold">SQL Editor</h2>
         </div>
-        <h2 class="text-2xl font-bold">SQL Editor</h2>
     </div>
     
     <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col min-h-[250px]">
         <form up-submit up-target="#query-results" action="/workspace/sql" method="post" class="flex-1 flex flex-col m-0 h-full">
             <div class="flex-1 p-0 relative h-full">
-                <textarea name="query" class="textarea textarea-ghost w-full h-full p-4 font-mono text-sm resize-none focus:outline-none focus:bg-base-100 rounded-b-none" placeholder="-- Enter your SQL query here...&#10;SELECT * FROM public.my_table limit 10;" required spellcheck="false">{% if query is defined %}{{ query }}{% endif %}</textarea>
+                <textarea id="sql-editor-textarea" name="query" class="textarea textarea-ghost w-full h-full p-4 font-mono text-sm resize-none focus:outline-none focus:bg-base-100 rounded-b-none" placeholder="-- Enter your SQL query here...&#10;SELECT * FROM public.my_table limit 10;" required spellcheck="false">{% if query is defined %}{{ query }}{% endif %}</textarea>
             </div>
             <div class="bg-base-200/50 border-t border-base-200 p-3 flex justify-between items-center rounded-b-box shrink-0">
                 <div class="text-xs opacity-60 flex items-center gap-1">
@@ -36,13 +38,143 @@
             </div>
         </div>
     </div>
-</div>
-<script>
-    document.querySelector('textarea[name="query"]').addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            this.form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    <style>
+        .cm-editor {
+            height: 100%;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            font-size: 0.875rem;
+            background-color: transparent;
         }
-    });
-</script>
+        .cm-content {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+        .cm-gutters {
+            background-color: transparent !important;
+            border-right: 1px solid var(--color-base-200) !important;
+        }
+        .cm-scroller {
+            overflow: auto;
+        }
+        .cm-focused {
+            outline: none !important;
+            background-color: var(--color-base-100);
+        }
+    </style>
+    <script type="module">
+        import {EditorView, basicSetup} from "https://esm.sh/codemirror@6.0.1";
+        import {sql, PostgreSQL} from "https://esm.sh/@codemirror/lang-sql@6";
+        import {keymap} from "https://esm.sh/@codemirror/view@6.0.1";
+        import {sqlExtension, cteCompletionSource} from "https://esm.sh/@marimo-team/codemirror-sql@0.2.8";
+
+        if (!window.sqlEditorCompilerRegistered) {
+            window.sqlEditorCompilerRegistered = true;
+            up.compiler('#sql-editor-textarea', function(textarea) {
+                console.log("SQL Editor compiler running!");
+                // Hide the original textarea
+                textarea.style.display = 'none';
+
+                // Create a wrapper for CM6
+                const wrapper = document.createElement('div');
+                wrapper.style.height = '100%';
+                wrapper.style.width = '100%';
+                textarea.parentNode.appendChild(wrapper);
+
+                // Build schema for autocomplete
+                const sqlSchema = {};
+                {% if data %}
+                const rawSchemaData = [
+                    {% for row in data %}
+                    { schema: "{{ row.table_schema }}", table: "{{ row.table_name }}", column: "{{ row.column_name }}" }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ];
+
+                for (const row of rawSchemaData) {
+                    if (!sqlSchema[row.table]) sqlSchema[row.table] = [];
+                    sqlSchema[row.table].push({label: row.column, type: "property"});
+
+                    const fullTableName = row.schema + "." + row.table;
+                    if (!sqlSchema[fullTableName]) sqlSchema[fullTableName] = [];
+                    sqlSchema[fullTableName].push({label: row.column, type: "property"});
+                }
+                {% endif %}
+
+                // Command to submit the form
+                const submitForm = (view) => {
+                    const btn = textarea.form.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.click();
+                    } else {
+                        up.submit(textarea.form);
+                    }
+                    return true;
+                };
+
+                // Capture keydown on the wrapper to handle Mod-Enter reliably
+                wrapper.addEventListener('keydown', (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const btn = textarea.form.querySelector('button[type="submit"]');
+                        if (btn) {
+                            btn.click();
+                        } else {
+                            up.submit(textarea.form);
+                        }
+                    }
+                }, { capture: true });
+
+                const editor = new EditorView({
+                    doc: textarea.value,
+                    extensions: [
+                        basicSetup,
+                        sql({ schema: sqlSchema }),
+                        sql().language.data.of({
+                            autocomplete: cteCompletionSource,
+                        }),
+                        sqlExtension({
+                            linterConfig: {
+                                delay: 250,
+                            },
+                            gutterConfig: {
+                                backgroundColor: "transparent",
+                                errorBackgroundColor: "oklch(var(--er) / 0.2)",
+                                hideWhenNotFocused: true,
+                            },
+                            enableHover: true,
+                            hoverConfig: {
+                                schema: sqlSchema,
+                                hoverTime: 300,
+                                enableKeywords: true,
+                                enableTables: true,
+                                enableColumns: true,
+                            },
+                        }),
+                        EditorView.updateListener.of((update) => {
+                            if (update.docChanged) {
+                                textarea.value = update.state.doc.toString();
+                            }
+                        }),
+                        keymap.of([
+                            { key: "Mod-Enter", run: submitForm },
+                            { key: "Ctrl-Enter", run: submitForm },
+                            { key: "Cmd-Enter", run: submitForm },
+                            { key: "Meta-Enter", run: submitForm }
+                        ])
+                    ],
+                    parent: wrapper
+                });
+                
+                // Focus the editor by default
+                editor.focus();
+
+                // Teardown
+                return () => {
+                    editor.destroy();
+                    wrapper.remove();
+                };
+            });
+        }
+    </script>
+</div>
 {% endblock %}
