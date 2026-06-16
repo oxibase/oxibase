@@ -107,7 +107,7 @@ pub fn install(db: &Database) {
     .unwrap();
 
     tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_layout.html', NULL)",
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_sidebar_compute.html', NULL)",
         ()
     ).unwrap();
 
