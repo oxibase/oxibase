@@ -17,8 +17,6 @@
 //! This module provides pluggable scripting backends that allow user-defined
 //! functions to be written in different scripting languages.
 
-#[cfg(feature = "js")]
-pub mod boa;
 pub mod python;
 pub mod rhai;
 pub mod triggers;
@@ -170,10 +168,6 @@ pub fn create_backend_registry() -> BackendRegistry {
     // Note: PL/SQL backend needs a FunctionRegistry reference, so it's registered
     // outside of create_backend_registry or created in a two-step initialization.
     // For now we will manually register it in FunctionRegistry::new().
-
-    // Include optional backends based on features
-    #[cfg(feature = "js")]
-    registry.register_backend(Arc::new(boa::BoaBackend::new()));
 
     #[cfg(feature = "python")]
     registry.register_backend(Arc::new(python::PythonBackend::new()));

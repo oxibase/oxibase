@@ -65,7 +65,7 @@ lz4_flex = "0.13"
 
 # Scripting backends for user-defined functions
 rhai = { version = "1.25", features = ["sync", "internals", "debugging"] }
-boa_engine = { version = "0.21", optional = true }
+
 rustpython-vm = { version = "0.5", optional = true }
 
 # Utilities
@@ -110,7 +110,7 @@ pg-server = ["tokio"]
 server = ["tokio", "axum", "tower-http", "minijinja"]
 simd = []  # Enable SIMD optimizations
 rhai = []  # Rhai scripting backend (always enabled)
-js = ["boa_engine"]  # Boa JavaScript/TypeScript backend
+
 python = ["rustpython-vm"]  # Python backend
 
 [profile.release]

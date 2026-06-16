@@ -210,7 +210,7 @@ oxibase.ctx.new["balance"] = oxibase.ctx.new["balance"] + 10.0
 }
 
 #[test]
-#[cfg(feature = "js")]
+#[cfg(any())]
 fn test_js_trigger() {
     let executor = setup_executor();
     executor

@@ -57,29 +57,6 @@ fn main() -> Result<()> {
     let discounted: f64 = db.query_one("SELECT discount(100.0, 0.2)", ())?;
     println!("Discounted price: ${:.2}", discounted);
 
-    #[cfg(feature = "js")]
-    {
-        println!("\n--- Deno/JavaScript Examples ---");
-
-        // JavaScript function using Deno backend
-        db.execute(
-            r#"CREATE FUNCTION js_add(a INTEGER, b INTEGER) RETURNS INTEGER LANGUAGE DENO AS 'return a + b;'"#,
-            (),
-        )?;
-
-        let js_sum: i64 = db.query_one("SELECT js_add(10, 15)", ())?;
-        println!("JS Add: 10 + 15 = {}", js_sum);
-
-        // String manipulation in JavaScript
-        db.execute(
-            r#"CREATE FUNCTION js_format(name TEXT, age INTEGER) RETURNS TEXT LANGUAGE DENO AS 'return `${name} is ${age} years old`;' "#,
-            (),
-        )?;
-
-        let js_formatted: String = db.query_one("SELECT js_format('Alice', 30)", ())?;
-        println!("JS Format: {}", js_formatted);
-    }
-
     #[cfg(feature = "python")]
     {
         println!("\n--- Python Examples ---");
