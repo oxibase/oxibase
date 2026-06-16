@@ -10,10 +10,10 @@
             type="text/css"
         />
         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-        <script src="https://unpkg.com/unpoly@3.7.3/unpoly.min.js"></script>
+        <script src="https://unpkg.com/unpoly@3.14.3/unpoly.min.js"></script>
         <link
             rel="stylesheet"
-            href="https://unpkg.com/unpoly@3.7.3/unpoly.min.css"
+            href="https://unpkg.com/unpoly@3.14.3/unpoly.min.css"
         />
         <style>
             body {
@@ -177,6 +177,7 @@
                         {% block sidebar %}
                         <a
                             up-defer="insert"
+                            up-target="#sidebar-content"
                             href="/workspace/sidebar/compute"
                             class="block p-4 text-center text-sm opacity-50 animate-pulse"
                         >

@@ -1,4 +1,13 @@
 {% extends "workspace_layout.html" %}
+{% block sidebar %}
+    {% if schema == 'system' and table in ['traces', 'logs', 'cron_runs', 'table_stats', 'column_stats', 'metrics'] %}
+        <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/observe" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+    {% elif schema == 'system' or schema == 'interface' %}
+        <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/compute" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+    {% else %}
+        <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/data" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+    {% endif %}
+{% endblock %}
 {% block content %}
 <div class="h-full flex flex-col gap-4">
     <div class="flex items-center justify-between">
