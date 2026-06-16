@@ -175,6 +175,13 @@
 
                     <div id="sidebar-content" class="flex-1 overflow-y-auto p-2">
                         {% block sidebar %}
+                        <a
+                            up-defer="insert"
+                            href="/workspace/sidebar/compute"
+                            class="block p-4 text-center text-sm opacity-50 animate-pulse"
+                        >
+                            Loading...
+                        </a>
                         {% endblock %}
                     </div>
                 </aside>
