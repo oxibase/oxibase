@@ -38,6 +38,7 @@ DROP TRIGGER [IF EXISTS] trigger_name ON table_name;
 
 Triggers can be written in any scripting backend supported by your Oxibase installation:
 - **`rhai`**: The default embedded scripting language (always available).
+- **`plsql`**: The built-in procedural SQL language (always available).
 - **`js`**: JavaScript via Boa Engine (requires compiling with `--features js`).
 - **`python`**: Python via RustPython (requires compiling with `--features python`).
 
@@ -61,6 +62,7 @@ Inside the procedural trigger body, the engine exposes proxy objects representin
 You access row data via property/attribute access mapping exactly to your table schema.
 
 - **Rhai**: `oxibase.ctx.new.column_name`
+- **PL/SQL**: `NEW.column_name` and `OLD.column_name`
 - **JavaScript**: `oxibase.ctx.new.column_name`
 - **Python**: `oxibase.ctx.new.column_name` (or `oxibase.ctx.new['column_name']` depending on dictionary implementation)
 
@@ -69,6 +71,7 @@ You access row data via property/attribute access mapping exactly to your table 
 Triggers execute within the same transaction context as the statement that fired them. If a trigger encounters an error or explicitly throws an exception, the entire statement is safely rolled back.
 
 - **Rhai**: `throw "Invalid data";`
+- **PL/SQL**: N/A (Standard `RAISE` not yet implemented in MVP)
 - **JavaScript**: `throw new Error("Invalid data");`
 - **Python**: `raise RuntimeError("Invalid data")`
 
@@ -77,6 +80,7 @@ Triggers execute within the same transaction context as the statement that fired
 Triggers can perform side-effects by executing other SQL statements (e.g., inserting into an audit log). The exact syntax depends on the language:
 
 - **Rhai**: `oxibase::execute("INSERT INTO log (msg) VALUES ('test')");`
+- **PL/SQL**: Direct SQL execution: `INSERT INTO log (msg) VALUES ('test');`
 - **JavaScript**: `oxibase.execute("INSERT INTO log (msg) VALUES ('test')");`
 - **Python**: `oxibase.execute("INSERT INTO log (msg) VALUES ('test')")`
 
