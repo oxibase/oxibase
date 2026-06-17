@@ -202,9 +202,12 @@ impl ScriptingBackend for RhaiBackend {
         }
 
         // Execute the script
+        let processed = code
+            .replace("oxibase.ctx.new", "oxibase.ctx[\"new\"]")
+            .replace("oxibase.ctx.old", "oxibase.ctx[\"old\"]");
         match self
             .engine
-            .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
+            .eval_with_scope::<rhai::Dynamic>(&mut scope, &processed)
         {
             Ok(result) => {
                 // Convert Rhai result back to Value
@@ -227,7 +230,10 @@ impl ScriptingBackend for RhaiBackend {
     }
 
     fn validate_code(&self, code: &str) -> Result<()> {
-        match self.engine.compile(code) {
+        let processed = code
+            .replace("oxibase.ctx.new", "oxibase.ctx[\"new\"]")
+            .replace("oxibase.ctx.old", "oxibase.ctx[\"old\"]");
+        match self.engine.compile(&processed) {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::internal(format!("Rhai syntax error: {}", e))),
         }
@@ -272,9 +278,12 @@ impl ScriptingBackend for RhaiBackend {
         }
 
         // Execute the script
+        let processed = code
+            .replace("oxibase.ctx.new", "oxibase.ctx[\"new\"]")
+            .replace("oxibase.ctx.old", "oxibase.ctx[\"old\"]");
         match self
             .engine
-            .eval_with_scope::<rhai::Dynamic>(&mut scope, code)
+            .eval_with_scope::<rhai::Dynamic>(&mut scope, &processed)
         {
             Ok(_) => {
                 // Read modified values back from scope

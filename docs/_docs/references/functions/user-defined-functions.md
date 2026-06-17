@@ -7,7 +7,7 @@ nav_order: 5
 
 # User-Defined Functions
 
-Oxibase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language), with optional support for JavaScript/TypeScript (via Boa) and Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
+Oxibase supports user-defined functions written in multiple scripting languages through pluggable backends. By default, functions can be written in Rhai (a lightweight, fast scripting language) and PL/SQL (a native procedural language clone), with optional support for Python (via RustPython). This allows you to extend the database with custom logic while choosing the right tool for each use case.
 
 ## Overview
 
@@ -24,13 +24,6 @@ Oxibase supports multiple scripting backends, each optimized for different use c
 - **Availability**: Always enabled
 - **Use Case**: General-purpose scripting, high-performance requirements
 
-### Boa Backend (Optional)
-- **Language**: `LANGUAGE BOA` or `LANGUAGE JAVASCRIPT`
-- **Description**: Full JavaScript/TypeScript runtime with modern ES features
-- **Performance**: Good performance with rich ecosystem support
-- **Availability**: Enable with `--features js`
-- **Use Case**: Complex logic, JSON processing, date manipulation
-
 ### Python Backend (Optional)
 - **Language**: `LANGUAGE PYTHON`
 - **Description**: Python scripting with access to standard library
@@ -40,17 +33,11 @@ Oxibase supports multiple scripting backends, each optimized for different use c
 
 ## Enabling Optional Backends
 
-To use JavaScript/TypeScript or Python functions, enable the corresponding feature flags:
+To use Python functions, enable the corresponding feature flags:
 
 ```bash
-# Enable JavaScript/TypeScript support
-cargo build --features js
-
 # Enable Python support
 cargo build --features python
-
-# Enable both
-cargo build --features js,python
 ```
 
 ## Functions vs Stored Procedures
@@ -66,7 +53,7 @@ Oxibase supports both **user-defined functions** and **stored procedures**. Unde
 | **Data Modification** | Cannot perform DML (Insert, Update, Delete). | Can perform any DML operations. |
 | **Transactions** | **No** transaction control allowed. | Supports `COMMIT`, `ROLLBACK`, and `SAVEPOINT`. |
 | **Parameters** | Generally only **Input** parameters. | Supports **Input**, **Output**, and **In-Out**. |
-| **Error Handling** | Limited (JavaScript exceptions only). | Full support for error handling constructs. |
+| **Error Handling** | Limited (script exceptions only). | Full support for error handling constructs. |
 
 ### Key Differences
 
@@ -95,7 +82,7 @@ Functions are restricted to be "side-effect free" and cannot change database sta
 ```sql
 -- ✅ Valid function - read-only calculation
 CREATE FUNCTION calculate_tax(price INTEGER) RETURNS INTEGER
-LANGUAGE BOA AS 'return price * 0.08;';
+LANGUAGE PYTHON AS 'return price * 0.08';
 ```
 
 Procedures are designed for actions that modify data:
@@ -132,7 +119,7 @@ Use the `CREATE FUNCTION` statement to define a user-defined function:
 ```sql
 CREATE FUNCTION function_name(param1 TYPE1, param2 TYPE2, ...)
 RETURNS return_type
-LANGUAGE BOA AS 'JavaScript code here';
+LANGUAGE PYTHON AS 'python code here';
 ```
 
 ### Multiline Code Blocks
@@ -144,12 +131,9 @@ You can wrap the code inside `$$` or tagged dollar quotes (like `$python$`). Sin
 
 ```sql
 CREATE FUNCTION format_currency(amount INTEGER) RETURNS TEXT
-LANGUAGE BOA AS $$
-    const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(amount / 100);
-    return formatted;
+LANGUAGE PYTHON AS $$
+    # Simple formatting in python
+    return f"${amount / 100:.2f}"
 $$;
 ```
 
@@ -170,23 +154,23 @@ LANGUAGE PYTHON AS ```
 - `function_name`: The name of the function (must be unique)
 - `param1, param2, ...`: Parameter names and their data types
 - `return_type`: The data type of the return value
-- `LANGUAGE RHAI|DENO|PYTHON`: Specifies the scripting backend to use
-- `AS 'code'`: The JavaScript/TypeScript code that implements the function
+- `LANGUAGE RHAI|PYTHON`: Specifies the scripting backend to use
+- `AS 'code'`: The code that implements the function
 
 ### Supported Return Data Types
 
 User-defined functions can return values of these scalar data types:
 
-| Data Type | Description | JavaScript Example |
+| Data Type | Description | Python Example |
 |-----------|-------------|-------------------|
-| **`INTEGER`** | 64-bit signed integers | `return 42;` |
-| **`FLOAT`** | 64-bit floating-point numbers | `return 3.14159;` |
-| **`TEXT`** | UTF-8 text strings | `return "Hello World";` |
-| **`BOOLEAN`** | True/false values | `return arguments[0] > 10;` |
-| **`TIMESTAMP`** | Date and time values | `return new Date().toISOString();` |
-| **`JSON`** | JSON documents and objects | `return {name: "John", age: 30};` |
+| **`INTEGER`** | 64-bit signed integers | `return 42` |
+| **`FLOAT`** | 64-bit floating-point numbers | `return 3.14159` |
+| **`TEXT`** | UTF-8 text strings | `return "Hello World"` |
+| **`BOOLEAN`** | True/false values | `return True` |
+| **`TIMESTAMP`** | Date and time values | `return "2024-01-01T00:00:00Z"` |
+| **`JSON`** | JSON documents and objects | `return {"name": "John", "age": 30}` |
 
-Functions must return exactly one value and declare their return type in the `CREATE FUNCTION` statement. The JavaScript runtime automatically converts return values to the appropriate Oxibase type.
+Functions must return exactly one value and declare their return type in the `CREATE FUNCTION` statement. The script runtime automatically converts return values to the appropriate Oxibase type.
 
 > **Note:** Oxibase currently only supports scalar user-defined functions. Table-valued functions are planned for future releases.
 
@@ -576,16 +560,6 @@ LANGUAGE RHAI AS '
     }
     a / b
 ';
-
--- Boa
-CREATE FUNCTION safe_divide(a INTEGER, b INTEGER)
-RETURNS FLOAT
-LANGUAGE BOA AS '
-    if (b === 0) {
-        throw new Error("Division by zero");
-    }
-    return a / b;
-';
 ```
 
 ## Backend-Specific Considerations
@@ -595,12 +569,6 @@ LANGUAGE BOA AS '
 - **Features**: Basic arithmetic, string operations, conditionals, loops
 - **Limitations**: Limited standard library, no built-in JSON parsing
 - **Performance**: Excellent for numerical computations and simple logic
-
-### Boa Backend
-- **Syntax**: Full JavaScript/TypeScript with modern ES features
-- **Features**: Rich standard library, JSON support, date/time operations
-- **Limitations**: Higher memory usage and startup time
-- **Performance**: Good for complex algorithms and data processing
 
 ### Python Backend
 - **Syntax**: Standard Python syntax
@@ -615,13 +583,12 @@ LANGUAGE BOA AS '
 - Maximum execution time per function call is limited
 - Memory usage per function is bounded
 - No access to external modules or packages (backend-specific limitations apply)
-- Rhai has a smaller standard library compared to JavaScript/Python
+- Rhai has a smaller standard library compared to Python
 
 ## Best Practices
 
 1. **Choose the right backend**:
    - Use **Rhai** for simple, high-performance calculations
-   - Use **Boa** for complex logic, JSON processing, or date operations
    - Use **Python** for scientific computing or when you need extensive libraries
 
 2. **Keep functions simple** - Complex logic is better handled in application code
@@ -711,12 +678,6 @@ Validates UDF reliability across different environments:
 - **Error Format**: "Python execution error: {exception_string}"
 - **Security**: Isolated execution environment
 
-#### Boa Backend
-- **JavaScript/TypeScript**: Modern JS runtime with ES modules
-- **JSON Processing**: Native JSON support
-- **Date Operations**: Full Date API
-- **Error Format**: "Function execution failed: {error}"
-
 ### Testing Infrastructure
 
 #### Test Organization
@@ -752,7 +713,7 @@ cargo test --test multi_backend_integration_test --all-features
 
 ### Best Practices for UDF Testing
 
-1. **Test All Backends**: Ensure UDFs work across Rhai, Python, and Boa
+1. **Test All Backends**: Ensure UDFs work across Rhai and Python
 2. **Validate Error Messages**: Check error format consistency
 3. **Performance Benchmarking**: Compare execution times across backends
 4. **Type Edge Cases**: Test with null values, type mismatches, and boundaries

@@ -10,7 +10,7 @@ nav_order: 4
 
 Event triggers allow you to execute custom procedural logic automatically whenever data in a table is inserted, updated, or deleted. By hooking directly into the database engine, triggers ensure that critical business rules are enforced universally, regardless of which application or user issued the query.
 
-Because Oxibase is a polyglot database, you can write these triggers in Rhai, JavaScript, or Python.
+Because Oxibase is a polyglot database, you can write these triggers in PL/SQL, Rhai, JavaScript, or Python.
 
 ## 1. Data Validation (`BEFORE INSERT` / `BEFORE UPDATE`)
 
@@ -35,8 +35,8 @@ CREATE TRIGGER ensure_positive_balance
     BEFORE INSERT ON accounts
     FOR EACH ROW
     LANGUAGE rhai
-AS '
-    if oxibase.ctx["new"].balance < 0.0 {
+        AS '
+    if oxibase.ctx.new.balance < 0.0 {
         throw "Account balance cannot be negative!";
     }
 ';
@@ -119,6 +119,25 @@ UPDATE accounts SET balance = 200.0 WHERE id = 1;
 
 -- View the audit log
 SELECT * FROM audit_log;
+```
+
+### Example: Syncing Updates with PL/SQL
+
+You can use the native PL/SQL engine to access both `OLD` and `NEW` rows in the same transaction cleanly.
+
+```sql
+CREATE TRIGGER update_timestamp
+    BEFORE UPDATE ON accounts
+    FOR EACH ROW
+    LANGUAGE plsql
+AS $$
+BEGIN
+    IF OLD.balance != NEW.balance THEN
+        -- We can write to the new row dynamically
+        NEW.updated_at := CURRENT_TIMESTAMP;
+    END IF;
+END;
+$$;
 ```
 
 ## Dropping Triggers
