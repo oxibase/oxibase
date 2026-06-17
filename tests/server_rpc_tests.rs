@@ -125,7 +125,7 @@ async fn test_rpc_procedure_headers() {
         r#"
         CREATE PROCEDURE check_auth(OUT res TEXT)
         LANGUAGE rhai AS '
-            let token = get_http_header("Authorization");
+            let token = oxibase::get_http_header("Authorization");
             if token == () {
                 res = "missing";
             } else {

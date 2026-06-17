@@ -9,7 +9,7 @@ First, define a procedure in the database using SQL or any supported scripting l
 ```sql
 CREATE PROCEDURE process_order(user_id INTEGER, amount INTEGER)
 LANGUAGE RHAI AS $$
-    let auth = get_http_header("Authorization");
+    let auth = oxibase::get_http_header("Authorization");
     if auth == () || auth == null {
         throw "Unauthorized";
     }
