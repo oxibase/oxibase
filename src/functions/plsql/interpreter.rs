@@ -79,6 +79,8 @@ impl<'a> PlSqlInterpreter<'a> {
         match expr {
             Expression::BooleanLiteral(b) => Ok(Value::Boolean(b.value)),
             Expression::IntegerLiteral(i) => Ok(Value::Integer(i.value)),
+            Expression::FloatLiteral(f) => Ok(Value::Float(f.value)),
+            Expression::NullLiteral(_) => Ok(Value::Null(crate::core::DataType::Null)),
             Expression::StringLiteral(s) => Ok(Value::Text(std::sync::Arc::from(s.value.clone()))),
             Expression::Identifier(id) => {
                 if let Some(val) = env.get(&id.value) {
@@ -91,75 +93,64 @@ impl<'a> PlSqlInterpreter<'a> {
                 let left = self.eval_expr(&comp.left, env)?;
                 let right = self.eval_expr(&comp.right, env)?;
                 match comp.operator.as_str() {
-                    "<" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Boolean(l < r))
-                        } else {
-                            Ok(Value::Boolean(false))
+                    "<" => Ok(Value::Boolean(
+                        left.compare(&right)? == std::cmp::Ordering::Less,
+                    )),
+                    "<=" => Ok(Value::Boolean(matches!(
+                        left.compare(&right)?,
+                        std::cmp::Ordering::Less | std::cmp::Ordering::Equal
+                    ))),
+                    ">" => Ok(Value::Boolean(
+                        left.compare(&right)? == std::cmp::Ordering::Greater,
+                    )),
+                    ">=" => Ok(Value::Boolean(matches!(
+                        left.compare(&right)?,
+                        std::cmp::Ordering::Greater | std::cmp::Ordering::Equal
+                    ))),
+                    "=" => Ok(Value::Boolean(
+                        left.compare(&right)? == std::cmp::Ordering::Equal,
+                    )),
+                    "!=" | "<>" => Ok(Value::Boolean(
+                        left.compare(&right)? != std::cmp::Ordering::Equal,
+                    )),
+                    "+" => match (&left, &right) {
+                        (Value::Integer(l), Value::Integer(r)) => Ok(Value::Integer(l + r)),
+                        (Value::Float(l), Value::Float(r)) => Ok(Value::Float(l + r)),
+                        (Value::Integer(l), Value::Float(r)) => Ok(Value::Float(*l as f64 + r)),
+                        (Value::Float(l), Value::Integer(r)) => Ok(Value::Float(l + *r as f64)),
+                        _ => Err(Error::internal("Addition supported only for numeric types")),
+                    },
+                    "-" => match (&left, &right) {
+                        (Value::Integer(l), Value::Integer(r)) => Ok(Value::Integer(l - r)),
+                        (Value::Float(l), Value::Float(r)) => Ok(Value::Float(l - r)),
+                        (Value::Integer(l), Value::Float(r)) => Ok(Value::Float(*l as f64 - r)),
+                        (Value::Float(l), Value::Integer(r)) => Ok(Value::Float(l - *r as f64)),
+                        _ => Err(Error::internal(
+                            "Subtraction supported only for numeric types",
+                        )),
+                    },
+                    "*" => match (&left, &right) {
+                        (Value::Integer(l), Value::Integer(r)) => Ok(Value::Integer(l * r)),
+                        (Value::Float(l), Value::Float(r)) => Ok(Value::Float(l * r)),
+                        (Value::Integer(l), Value::Float(r)) => Ok(Value::Float(*l as f64 * r)),
+                        (Value::Float(l), Value::Integer(r)) => Ok(Value::Float(l * *r as f64)),
+                        _ => Err(Error::internal(
+                            "Multiplication supported only for numeric types",
+                        )),
+                    },
+                    "/" => match (&left, &right) {
+                        (Value::Integer(l), Value::Integer(r)) => {
+                            if *r == 0 {
+                                Err(Error::internal("Division by zero"))
+                            } else {
+                                Ok(Value::Integer(l / r))
+                            }
                         }
-                    }
-                    "<=" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Boolean(l <= r))
-                        } else {
-                            Ok(Value::Boolean(false))
-                        }
-                    }
-                    ">" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Boolean(l > r))
-                        } else {
-                            Ok(Value::Boolean(false))
-                        }
-                    }
-                    ">=" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Boolean(l >= r))
-                        } else {
-                            Ok(Value::Boolean(false))
-                        }
-                    }
-                    "=" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Boolean(l == r))
-                        } else {
-                            Ok(Value::Boolean(false))
-                        }
-                    }
-                    "!=" | "<>" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Boolean(l != r))
-                        } else {
-                            Ok(Value::Boolean(false))
-                        }
-                    }
-                    "+" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Integer(l + r))
-                        } else {
-                            Err(Error::internal(
-                                "Addition supported only for integers in MVP",
-                            ))
-                        }
-                    }
-                    "-" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Integer(l - r))
-                        } else {
-                            Err(Error::internal(
-                                "Subtraction supported only for integers in MVP",
-                            ))
-                        }
-                    }
-                    "*" => {
-                        if let (Value::Integer(l), Value::Integer(r)) = (&left, &right) {
-                            Ok(Value::Integer(l * r))
-                        } else {
-                            Err(Error::internal(
-                                "Multiplication supported only for integers in MVP",
-                            ))
-                        }
-                    }
+                        (Value::Float(l), Value::Float(r)) => Ok(Value::Float(l / r)),
+                        (Value::Integer(l), Value::Float(r)) => Ok(Value::Float(*l as f64 / r)),
+                        (Value::Float(l), Value::Integer(r)) => Ok(Value::Float(l / *r as f64)),
+                        _ => Err(Error::internal("Division supported only for numeric types")),
+                    },
                     _ => Err(Error::internal(
                         "Operator not implemented in PL/SQL interpreter yet",
                     )),
@@ -349,6 +340,15 @@ impl<'a> PlSqlInterpreter<'a> {
                             || ty.contains("CHAR")
                         {
                             initial_val = Value::Text(std::sync::Arc::from(String::new()));
+                        } else if ty.contains("FLOAT")
+                            || ty.contains("DECIMAL")
+                            || ty.contains("NUMERIC")
+                        {
+                            initial_val = Value::Null(crate::core::DataType::Float);
+                        } else if ty.contains("JSON") {
+                            initial_val = Value::Null(crate::core::DataType::Json);
+                        } else if ty.contains("TIMESTAMP") {
+                            initial_val = Value::Null(crate::core::DataType::Timestamp);
                         }
                     }
                     if env.assign(&v.name, initial_val.clone()).is_err() {
@@ -368,10 +368,15 @@ impl<'a> PlSqlInterpreter<'a> {
             PlSqlStatement::Assignment(assign) => {
                 let val = self.eval_expr(&assign.expression, env)?;
                 println!("Evaluating assign: {} = {:?}", assign.variable, val);
+                let final_val = if let Some(existing) = env.get(&assign.variable) {
+                    val.coerce_to_type(existing.data_type())
+                } else {
+                    val.clone()
+                };
                 // Variables bound from CALL are actually defined globally in the env by backend.
                 // Assignment updates them correctly. If not found, fall back to current frame.
-                if env.assign(&assign.variable, val.clone()).is_err() {
-                    env.define(&assign.variable, val);
+                if env.assign(&assign.variable, final_val.clone()).is_err() {
+                    env.define(&assign.variable, final_val);
                 }
                 Ok(ExecutionStatus::Continue)
             }
