@@ -277,7 +277,10 @@ fn test_plsql_arithmetic_errors() {
     let res = db.query("SELECT test_div_zero();", ()).unwrap();
     let mut rows = res;
     let row = rows.next().unwrap().unwrap();
-    assert_eq!(row.get::<Value>(0).unwrap(), Value::Null(oxibase::core::DataType::Null));
+    assert_eq!(
+        row.get::<Value>(0).unwrap(),
+        Value::Null(oxibase::core::DataType::Null)
+    );
 
     let create_sql2 = r#"
         CREATE FUNCTION test_invalid_add() RETURNS INT
@@ -293,7 +296,10 @@ fn test_plsql_arithmetic_errors() {
     db.execute(create_sql2, ()).unwrap();
     let mut res2 = db.query("SELECT test_invalid_add();", ()).unwrap();
     let row2 = res2.next().unwrap().unwrap();
-    assert_eq!(row2.get::<Value>(0).unwrap(), Value::Null(oxibase::core::DataType::Null));
+    assert_eq!(
+        row2.get::<Value>(0).unwrap(),
+        Value::Null(oxibase::core::DataType::Null)
+    );
 
     let create_sql3 = r#"
         CREATE FUNCTION test_invalid_sub() RETURNS INT
@@ -309,7 +315,10 @@ fn test_plsql_arithmetic_errors() {
     db.execute(create_sql3, ()).unwrap();
     let mut res3 = db.query("SELECT test_invalid_sub();", ()).unwrap();
     let row3 = res3.next().unwrap().unwrap();
-    assert_eq!(row3.get::<Value>(0).unwrap(), Value::Null(oxibase::core::DataType::Null));
+    assert_eq!(
+        row3.get::<Value>(0).unwrap(),
+        Value::Null(oxibase::core::DataType::Null)
+    );
 
     let create_sql4 = r#"
         CREATE FUNCTION test_invalid_mul() RETURNS INT
@@ -325,7 +334,10 @@ fn test_plsql_arithmetic_errors() {
     db.execute(create_sql4, ()).unwrap();
     let mut res4 = db.query("SELECT test_invalid_mul();", ()).unwrap();
     let row4 = res4.next().unwrap().unwrap();
-    assert_eq!(row4.get::<Value>(0).unwrap(), Value::Null(oxibase::core::DataType::Null));
+    assert_eq!(
+        row4.get::<Value>(0).unwrap(),
+        Value::Null(oxibase::core::DataType::Null)
+    );
 
     let create_sql5 = r#"
         CREATE FUNCTION test_invalid_div() RETURNS INT
@@ -341,7 +353,10 @@ fn test_plsql_arithmetic_errors() {
     db.execute(create_sql5, ()).unwrap();
     let mut res5 = db.query("SELECT test_invalid_div();", ()).unwrap();
     let row5 = res5.next().unwrap().unwrap();
-    assert_eq!(row5.get::<Value>(0).unwrap(), Value::Null(oxibase::core::DataType::Null));
+    assert_eq!(
+        row5.get::<Value>(0).unwrap(),
+        Value::Null(oxibase::core::DataType::Null)
+    );
 }
 
 #[test]
