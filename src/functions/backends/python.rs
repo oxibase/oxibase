@@ -64,7 +64,10 @@ mod oxibase_py_module {
     }
 
     #[pyfunction]
-    fn get_http_header(header_name: PyStrRef, vm: &VirtualMachine) -> PyResult<rustpython_vm::PyObjectRef> {
+    fn get_http_header(
+        header_name: PyStrRef,
+        vm: &VirtualMachine,
+    ) -> PyResult<rustpython_vm::PyObjectRef> {
         let mut header_value = None;
         crate::functions::context::HTTP_HEADERS.with(|headers| {
             if let Some(map) = headers.borrow().as_ref() {
