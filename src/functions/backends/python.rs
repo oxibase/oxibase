@@ -64,6 +64,30 @@ mod oxibase_py_module {
     }
 
     #[pyfunction]
+    fn get_http_header(
+        header_name: PyStrRef,
+        vm: &VirtualMachine,
+    ) -> PyResult<rustpython_vm::PyObjectRef> {
+        let mut header_value = None;
+        crate::functions::context::HTTP_HEADERS.with(|headers| {
+            if let Some(map) = headers.borrow().as_ref() {
+                let search_key = header_name.to_string().to_lowercase();
+                for (k, v) in map {
+                    if k.to_lowercase() == search_key {
+                        header_value = Some(v.clone());
+                        break;
+                    }
+                }
+            }
+        });
+
+        match header_value {
+            Some(v) => Ok(vm.ctx.new_str(v).into()),
+            None => Ok(vm.ctx.none()),
+        }
+    }
+
+    #[pyfunction]
     fn _append_stdout(s: PyStrRef) {
         crate::functions::context::append_stdout(s.as_ref());
     }

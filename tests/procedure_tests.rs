@@ -139,15 +139,15 @@ fn test_rhai_transaction_commit_rollback() {
         AS '
             // Insert and commit
             oxibase::execute("INSERT INTO tx_test(id, val) VALUES (1, ''first'')");
-            commit();
+            oxibase::commit();
             
             // Insert and rollback
             oxibase::execute("INSERT INTO tx_test(id, val) VALUES (2, ''second'')");
-            rollback();
+            oxibase::rollback();
             
             // Insert after rollback and commit
             oxibase::execute("INSERT INTO tx_test(id, val) VALUES (3, ''third'')");
-            commit();
+            oxibase::commit();
         ';
     "#;
 
