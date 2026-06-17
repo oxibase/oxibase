@@ -401,7 +401,15 @@ impl PlSqlParser {
     }
 
     fn parse_assignment_statement(&mut self) -> Option<PlSqlStatement> {
-        let variable = self.cur_token.literal.clone();
+        let mut variable = self.cur_token.literal.clone();
+
+        // Support compound variables like NEW.column
+        if self.peek_token.literal == "." {
+            self.next_token(); // Move to .
+            variable.push('.');
+            self.next_token(); // Move to next ident
+            variable.push_str(&self.cur_token.literal);
+        }
 
         // Expect := or = or :
         if self.peek_token.literal == "=" {

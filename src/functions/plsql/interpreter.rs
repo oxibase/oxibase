@@ -89,6 +89,57 @@ impl<'a> PlSqlInterpreter<'a> {
                     Err(Error::internal(format!("Variable not found: {}", id.value)))
                 }
             }
+            Expression::QualifiedIdentifier(qid) => {
+                let qualifier = qid.qualifier.value.to_uppercase();
+                let col_name = &qid.name.value;
+
+                if qualifier == "NEW" || qualifier == "OLD" {
+                    let mut val = None;
+                    let mut found = false;
+
+                    crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
+                        if let Some(schema_ptr) = *s.borrow() {
+                            let schema = unsafe { &*schema_ptr };
+                            if let Some(idx) = schema.get_column_index(col_name) {
+                                found = true;
+                                if qualifier == "NEW" {
+                                    crate::functions::backends::triggers::CURRENT_NEW_ROW.with(
+                                        |r| {
+                                            if let Some(row_ptr) = *r.borrow() {
+                                                let row = unsafe { &*row_ptr };
+                                                if let Some(v) = row.get(idx) {
+                                                    val = Some(v.clone());
+                                                }
+                                            }
+                                        },
+                                    );
+                                } else {
+                                    crate::functions::backends::triggers::CURRENT_OLD_ROW.with(
+                                        |r| {
+                                            if let Some(row_ptr) = *r.borrow() {
+                                                let row = unsafe { &*row_ptr };
+                                                if let Some(v) = row.get(idx) {
+                                                    val = Some(v.clone());
+                                                }
+                                            }
+                                        },
+                                    );
+                                }
+                            }
+                        }
+                    });
+
+                    if found {
+                        return Ok(val.unwrap_or(Value::Null(crate::core::DataType::Null)));
+                    } else {
+                        return Err(Error::internal(format!("Column not found: {}", col_name)));
+                    }
+                }
+                Err(Error::internal(format!(
+                    "Qualified identifier not fully supported: {}",
+                    qid
+                )))
+            }
             Expression::Infix(comp) => {
                 let left = self.eval_expr(&comp.left, env)?;
                 let right = self.eval_expr(&comp.right, env)?;
@@ -368,6 +419,40 @@ impl<'a> PlSqlInterpreter<'a> {
             PlSqlStatement::Assignment(assign) => {
                 let val = self.eval_expr(&assign.expression, env)?;
                 println!("Evaluating assign: {} = {:?}", assign.variable, val);
+
+                let var_upper = assign.variable.to_uppercase();
+                if let Some(col_name) = var_upper.strip_prefix("NEW.") {
+                    let mut success = false;
+                    let mut error = None;
+
+                    crate::functions::backends::triggers::CURRENT_SCHEMA.with(|s| {
+                        if let Some(schema_ptr) = *s.borrow() {
+                            let schema = unsafe { &*schema_ptr };
+                            if let Some(idx) = schema.get_column_index(col_name) {
+                                crate::functions::backends::triggers::CURRENT_NEW_ROW.with(|r| {
+                                    if let Some(row_ptr) = *r.borrow_mut() {
+                                        let row = unsafe { &mut *row_ptr };
+                                        if let Some(col) = schema.get_column(idx) {
+                                            let coerced = val.coerce_to_type(col.data_type);
+                                            let _ = row.set(idx, coerced);
+                                            success = true;
+                                        }
+                                    }
+                                });
+                            } else {
+                                error = Some(format!("Column not found: {}", col_name));
+                            }
+                        }
+                    });
+
+                    if let Some(err) = error {
+                        return Err(Error::internal(err));
+                    }
+                    if success {
+                        return Ok(ExecutionStatus::Continue);
+                    }
+                }
+
                 let final_val = if let Some(existing) = env.get(&assign.variable) {
                     val.coerce_to_type(existing.data_type())
                 } else {

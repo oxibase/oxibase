@@ -141,6 +141,50 @@ fn test_audit_trigger() {
 }
 
 #[test]
+fn test_plsql_trigger() {
+    let executor = setup_executor();
+    executor
+        .execute("CREATE TABLE products_plsql (id INTEGER PRIMARY KEY, status TEXT, updated_at TIMESTAMP)")
+        .unwrap();
+
+    // Trigger that reads OLD and NEW
+    executor
+        .execute(
+            r#"
+        CREATE TRIGGER audit_status_plsql
+        BEFORE UPDATE ON products_plsql
+        FOR EACH ROW
+        LANGUAGE plsql
+        AS '
+        BEGIN
+            IF OLD.status != NEW.status THEN
+                NEW.updated_at := ''2025-01-01 10:00:00'';
+            END IF;
+        END;
+        '
+    "#,
+        )
+        .unwrap();
+
+    executor
+        .execute("INSERT INTO products_plsql (id, status, updated_at) VALUES (1, 'active', '2024-01-01 00:00:00')")
+        .unwrap();
+
+    executor
+        .execute("UPDATE products_plsql SET status = 'inactive' WHERE id = 1")
+        .unwrap();
+
+    let mut result = executor
+        .execute("SELECT updated_at FROM products_plsql WHERE id = 1")
+        .unwrap();
+    assert!(result.next());
+
+    // Test the value was modified
+    let val = result.row().get(0).unwrap();
+    assert_eq!(val.to_string(), "2025-01-01T10:00:00+00:00");
+}
+
+#[test]
 #[cfg(feature = "python")]
 fn test_python_trigger() {
     let executor = setup_executor();
