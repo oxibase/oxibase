@@ -34,7 +34,6 @@ Procedures support the following parameter modes:
 ## Supported Backends
 
 - **`rhai`**: Lightweight scripting with access to database context (Default)
-- **`js` / `javascript`**: Full JavaScript/TypeScript runtime (Requires `--features js`)
 - **`python`**: Python scripting environment (Requires `--features python`)
 - **`plsql`**: Native database procedural language clone (Always available)
 
@@ -87,7 +86,6 @@ You can explicitly control transaction boundaries inside stored procedures. This
 
 - **PL/SQL**: Use native `COMMIT;`, `ROLLBACK;`, and `BEGIN;` statements.
 - **Rhai**: Use `oxibase::commit()`, `oxibase::rollback()`, and `oxibase::begin()`.
-- **JavaScript (Boa)**: Use `oxibase.commit()`, `oxibase.rollback()`, and `oxibase.begin()`.
 - **Python**: Use `oxibase.commit()`, `oxibase.rollback()`, and `oxibase.begin()`.
 
 ### Example (PL/SQL)

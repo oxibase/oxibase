@@ -227,7 +227,7 @@ GROUP BY category;
 
 ## Creating User-Defined Functions
 
-Extend SQL with custom functions written in Rhai, Python, or JavaScript:
+Extend SQL with custom functions written in PL/SQL, Rhai, or Python:
 
 ```sql
 -- Create a function that calculates discount

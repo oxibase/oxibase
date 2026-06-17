@@ -10,7 +10,7 @@ nav_order: 2
 
 [Rhai](https://rhai.rs/) is a fast, embedded scripting language designed specifically for Rust. It is the default procedural language in Oxibase and is always available without requiring any additional compilation feature flags.
 
-Rhai's syntax is very similar to Rust and JavaScript, making it an intuitive choice for logic encapsulation.
+Rhai's syntax is very similar to Rust and C-like languages, making it an intuitive choice for logic encapsulation.
 
 ## Basic Usage
 

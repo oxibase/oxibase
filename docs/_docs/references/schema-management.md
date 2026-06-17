@@ -220,15 +220,15 @@ DROP INDEX idx_user_email;
 
 ## User-Defined Functions
 
-Oxibase supports creating custom functions using JavaScript/TypeScript:
+Oxibase supports creating custom functions using Rhai, PL/SQL, or Python:
 
 ### Creating Functions
 
 ```sql
 CREATE FUNCTION add_numbers(a INTEGER, b INTEGER)
 RETURNS INTEGER
-LANGUAGE BOA AS $$ 
-    return a + b; 
+LANGUAGE RHAI AS $$ 
+    a + b 
 $$;
 ```
 
