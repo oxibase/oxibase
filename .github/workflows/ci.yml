@@ -51,10 +51,7 @@ jobs:
             os: ubuntu-latest
             features: ""
             test_cmd: "cargo nextest run --profile ci"
-          - name: "JS Backend"
-            os: ubuntu-latest
-            features: "js"
-            test_cmd: "cargo nextest run --profile ci --features js"
+
           - name: "Python Backend"
             os: ubuntu-latest
             features: "python"

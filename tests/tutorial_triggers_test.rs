@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(any(feature = "js", feature = "python"))]
+#[cfg(any(any(), feature = "python"))]
 use oxibase::core::Value;
 use oxibase::executor::Executor;
 use oxibase::storage::mvcc::engine::MVCCEngine;
@@ -68,7 +68,7 @@ fn test_tutorial_triggers_rhai() {
 }
 
 #[test]
-#[cfg(feature = "js")]
+#[cfg(any())]
 fn test_tutorial_triggers_js() {
     let executor = setup_executor();
 

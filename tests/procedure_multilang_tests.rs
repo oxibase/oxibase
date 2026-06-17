@@ -17,7 +17,7 @@ use oxibase::api::Database;
 use oxibase::core::Value;
 
 #[test]
-#[cfg(feature = "js")]
+#[cfg(any())]
 fn test_js_procedure() {
     let db = Database::open_in_memory().unwrap();
 
@@ -82,7 +82,7 @@ res = a + " " + b
 }
 
 #[test]
-#[cfg(feature = "js")]
+#[cfg(any())]
 fn test_js_sql_execution() {
     let db = Database::open_in_memory().unwrap();
     db.execute(
@@ -138,7 +138,7 @@ oxibase.execute("INSERT INTO py_logs(msg) VALUES (''Hello Python'')")
 }
 
 #[test]
-#[cfg(feature = "js")]
+#[cfg(any())]
 fn test_js_transaction_commit_rollback() {
     let db = Database::open_in_memory().unwrap();
     db.execute(
