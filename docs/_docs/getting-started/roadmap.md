@@ -72,6 +72,7 @@ classDiagram
         - Deterministic Simulator
         - Failure simulation
         - Dedicated Clustering
+        - Topology-agnostic Networking
         - Sharding
         - Geolocation
         - Distributed Computation
@@ -169,6 +170,7 @@ multi-node parallelism, and distributed storage. Explore having dedicated
 nodes for metadata management, compute, and data storage.
 
 - **Distributed Time & Consistency**: Leverage the `(data, time, diff)` paradigm to smoothly transition from single-node sequences to distributed logical clocks (e.g., Hybrid Logical Clocks), enabling strictly serializable distributed transactions.
+- **Cluster Networking & Topology**: Integrate [Iroh] to enable seamless cluster setup with any topology. By leveraging its hole-punching and QUIC-based stack, nodes can securely discover and connect to each other across different networks using public keys instead of fragile IP addresses.
 - **Support for distributed execution**: Implement [Ballista] for distributed execution and scaling across nodes, natively shuffling Arrow batches generated from our Vortex/Differential storage.
 - **Metadata layer**: Implement a consensus protocol (e.g., Raft) to manage the Iceberg catalog and metadata between nodes.
 - **Use a deterministic simulator**: Simulate network partitions, disk failures, and clock drift in the system to prepare for horizontal scaling by testing most scenarios without real-world risks.
@@ -281,3 +283,4 @@ schema of the database with DML instead of DDL, bringing the DevEx of [aquameta]
 [Iceberg]: https://github.com/apache/iceberg-rust/
 [FDW]: https://github.com/supabase/wrappers
 [aquameta]: https://github.com/aquameta/meta_triggers
+[Iroh]: https://iroh.computer/
