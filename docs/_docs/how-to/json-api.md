@@ -129,7 +129,7 @@ The response is a JSON object containing the values of the `OUT` or `INOUT` para
 
 #### Accessing HTTP Metadata from Procedures
 
-When a procedure is invoked via `/api/rpc/`, it can read the incoming HTTP request headers using the built-in `get_http_header('header_name')` SQL function. This is useful for passing authentication tokens, user agents, or custom metadata securely into your business logic.
+When a procedure is invoked via `/api/rpc/`, it can read the incoming HTTP request headers using the built-in `oxibase::get_http_header('header_name')` SQL function. This is useful for passing authentication tokens, user agents, or custom metadata securely into your business logic.
 
 ```sql
 CREATE PROCEDURE get_my_ip(OUT ip_address TEXT)

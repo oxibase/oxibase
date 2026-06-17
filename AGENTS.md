@@ -7,6 +7,7 @@ This file contains high-signal, repo-specific context to help agents work effect
   - Standard tests: `make test` (or `cargo nextest run --profile ci`)
   - All features: `make test-all`
 - **Linting & Formatting**: Use `make lint` (runs `cargo fmt --all -- --check` and `cargo clippy --all-targets --all-features -- -D warnings`).
+  - **IMPORTANT**: ALWAYS run `make lint` and fix any issues before pushing code to avoid CI failures.
 - **Features**: The codebase has optional scripting backends: `js` (Boa), `python` (RustPython), and `rhai` (default). When testing or building specific backend logic, ensure you pass the right feature flag (e.g., `--features js`).
 - **License Headers**: All `.rs` files require an Apache-2.0 license header. You can use `./scripts/fix_copyrights.sh` to fix headers or run `make license` to verify them. 
 - **Code Coverage**: Verify your changes do not drop the overall test coverage below the minimum threshold by running `make coverage-check`. You can also generate an HTML report using `make coverage-html`.
@@ -33,6 +34,6 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-specs/040-html-js-dap-debugger/plan.md
+specs/042-workflow-ide/plan.md
 <!-- SPECKIT END -->
 

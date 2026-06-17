@@ -86,8 +86,8 @@ You can explicitly control transaction boundaries inside stored procedures. This
 ### Language Syntax
 
 - **PL/SQL**: Use native `COMMIT;`, `ROLLBACK;`, and `BEGIN;` statements.
-- **Rhai**: Use the globally registered `commit()`, `rollback()`, and `begin()` functions.
-- **JavaScript (Boa)**: Use the globally registered `commit()`, `rollback()`, and `begin()` functions.
+- **Rhai**: Use `oxibase::commit()`, `oxibase::rollback()`, and `oxibase::begin()`.
+- **JavaScript (Boa)**: Use `oxibase.commit()`, `oxibase.rollback()`, and `oxibase.begin()`.
 - **Python**: Use `oxibase.commit()`, `oxibase.rollback()`, and `oxibase.begin()`.
 
 ### Example (PL/SQL)

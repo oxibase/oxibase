@@ -42,7 +42,17 @@ impl RhaiBackend {
         engine.register_type_with_name::<OldRowProxy>("OldRowProxy");
         engine.register_indexer_get(|proxy: &mut OldRowProxy, prop: &str| proxy.get(prop));
 
-        engine.register_fn(
+        let mut oxibase_module = rhai::Module::new();
+        oxibase_module.set_native_fn(
+            "execute",
+            |sql: rhai::ImmutableString| -> std::result::Result<i64, Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::execute_sql_query(&sql) {
+                    Ok(res) => Ok(res.rows_affected()),
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+        oxibase_module.set_native_fn(
             "get_http_header",
             |header_name: String| -> std::result::Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
                 let mut header_value = None;
@@ -64,8 +74,7 @@ impl RhaiBackend {
                 }
             },
         );
-
-        engine.register_fn(
+        oxibase_module.set_native_fn(
             "commit",
             || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
                 match crate::functions::backends::commit_transaction() {
@@ -74,8 +83,7 @@ impl RhaiBackend {
                 }
             },
         );
-
-        engine.register_fn(
+        oxibase_module.set_native_fn(
             "rollback",
             || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
                 match crate::functions::backends::rollback_transaction() {
@@ -84,24 +92,11 @@ impl RhaiBackend {
                 }
             },
         );
-
-        engine.register_fn(
+        oxibase_module.set_native_fn(
             "begin",
             || -> std::result::Result<(), Box<rhai::EvalAltResult>> {
                 match crate::functions::backends::begin_transaction() {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(e.to_string().into()),
-                }
-            },
-        );
-
-        // Register oxibase module
-        let mut oxibase_module = rhai::Module::new();
-        oxibase_module.set_native_fn(
-            "execute",
-            |sql: rhai::ImmutableString| -> std::result::Result<i64, Box<rhai::EvalAltResult>> {
-                match crate::functions::backends::execute_sql_query(&sql) {
-                    Ok(res) => Ok(res.rows_affected()),
                     Err(e) => Err(e.to_string().into()),
                 }
             },
