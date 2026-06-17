@@ -37,8 +37,8 @@ classDiagram
         - Stored functions  ✅
         - Triggers  ✅
         - Scheduled actions  ✅
-        - Debugger support
-        - Logging, Tracing & Metrics
+        - Debugger support ✅
+        - Logging, Tracing & Metrics ✅
     }
     class External_Gateway {
         - DML REST endpoints  ✅
@@ -53,8 +53,8 @@ classDiagram
         - FaaS-like DevEx ✅
           - Manage any object ✅
           - Develop any object ✅
-        - Debug Queries step-by-step
-        - Debug stored procedures
+        - Debug Queries step-by-step ✅
+        - Debug stored procedures ✅
     }
 
     class Performance {
@@ -222,13 +222,13 @@ We are currently at [Phase 0](#phase-0-validation).
 #### Workstation / DevEx
 
 - [x] **IDE Integration**: Build initial FaaS-like development experience and object management.
-- [ ] **Step-by-step Debugger**: Enable debugging for queries and stored procedures.
+- [x] **Step-by-step Debugger**: Enable debugging for queries and stored procedures.
 
 #### v0.6.0 (Observability & Debugging)
 
-- [ ] **Logging**: Comprehensive internal logging system (`system.logs`).
-- [ ] **Tracing**: Distributed query and procedure tracing (`system.traces`).
-- [ ] **Debug Adapter Protocol**: DAP server for Rhai and PL/SQL procedures.
+- [x] **Logging**: Comprehensive internal logging system (`system.logs`).
+- [x] **Tracing**: Distributed query and procedure tracing (`system.traces`).
+- [x] **Debug Adapter Protocol**: DAP server for Rhai and PL/SQL procedures.
 
 #### v0.7.0 (Security & Authorization)
 
