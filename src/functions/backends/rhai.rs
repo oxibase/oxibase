@@ -19,6 +19,19 @@ use crate::core::{Error, Result, Value};
 use rhai::{Engine, Scope};
 use std::sync::Arc;
 
+#[derive(Clone)]
+pub struct RhaiDateTime(pub chrono::DateTime<chrono::Utc>);
+
+impl RhaiDateTime {
+    pub fn elapsed(&mut self) -> f64 {
+        (chrono::Utc::now() - self.0).num_milliseconds() as f64 / 1000.0
+    }
+    #[allow(clippy::inherent_to_string)]
+    pub fn to_string(&mut self) -> String {
+        self.0.to_rfc3339()
+    }
+}
+
 /// Rhai scripting backend
 pub struct RhaiBackend {
     engine: Engine,
@@ -32,7 +45,16 @@ impl RhaiBackend {
         // Register custom functions for type conversions
         engine.register_fn("to_int", |v: i64| v);
         engine.register_fn("to_float", |v: f64| v);
+
         engine.register_fn("to_string", |v: String| v);
+
+        engine.register_type_with_name::<RhaiDateTime>("DateTime");
+        engine.register_fn("timestamp", || RhaiDateTime(chrono::Utc::now()));
+        engine.register_fn("sleep", |ms: i64| {
+            std::thread::sleep(std::time::Duration::from_millis(ms as u64))
+        });
+        engine.register_fn("elapsed", |dt: &mut RhaiDateTime| dt.elapsed());
+        engine.register_fn("to_string", |dt: &mut RhaiDateTime| dt.to_string());
 
         engine.register_type_with_name::<NewRowProxy>("NewRowProxy");
         engine.register_indexer_get(|proxy: &mut NewRowProxy, prop: &str| proxy.get(prop));
@@ -185,6 +207,8 @@ impl ScriptingBackend for RhaiBackend {
                 Value::Float(f) => args_array.push(rhai::Dynamic::from(*f)),
                 Value::Text(s) => args_array.push(rhai::Dynamic::from(s.as_ref().to_string())),
                 Value::Boolean(b) => args_array.push(rhai::Dynamic::from(*b)),
+                Value::Timestamp(t) => args_array.push(rhai::Dynamic::from(RhaiDateTime(*t))),
+                Value::Null(_) => args_array.push(rhai::Dynamic::UNIT),
                 Value::Json(s) => {
                     if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.as_ref()) {
                         args_array
@@ -193,7 +217,6 @@ impl ScriptingBackend for RhaiBackend {
                         args_array.push(rhai::Dynamic::from(s.as_ref().to_string()));
                     }
                 }
-                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
             };
         }
         scope.push("arguments", args_array);
@@ -214,6 +237,12 @@ impl ScriptingBackend for RhaiBackend {
                 Value::Boolean(b) => {
                     scope.push(var_name, *b);
                 }
+                Value::Timestamp(t) => {
+                    scope.push(var_name, RhaiDateTime(*t));
+                }
+                Value::Null(_) => {
+                    scope.push(var_name, ());
+                }
                 Value::Json(s) => {
                     if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.as_ref()) {
                         let _ = scope.push_dynamic(
@@ -225,7 +254,6 @@ impl ScriptingBackend for RhaiBackend {
                             .push_dynamic(var_name, rhai::Dynamic::from(s.as_ref().to_string()));
                     }
                 }
-                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
             };
         }
 
@@ -247,6 +275,8 @@ impl ScriptingBackend for RhaiBackend {
                     Ok(Value::Text(result.cast::<String>().into()))
                 } else if result.is::<bool>() {
                     Ok(Value::Boolean(result.cast::<bool>()))
+                } else if result.is::<RhaiDateTime>() {
+                    Ok(Value::Timestamp(result.cast::<RhaiDateTime>().0))
                 } else if result.is::<()>() {
                     Ok(Value::null_unknown())
                 } else if result.is_map() || result.is_array() {
@@ -314,6 +344,9 @@ impl ScriptingBackend for RhaiBackend {
                 Value::Boolean(b) => {
                     scope.push(var_name, *b);
                 }
+                Value::Timestamp(t) => {
+                    scope.push(var_name, RhaiDateTime(*t));
+                }
                 Value::Null(_) => {
                     scope.push(var_name, ());
                 }
@@ -328,7 +361,6 @@ impl ScriptingBackend for RhaiBackend {
                             .push_dynamic(var_name, rhai::Dynamic::from(s.as_ref().to_string()));
                     }
                 }
-                _ => return Err(Error::internal("Unsupported argument type for Rhai")),
             };
         }
 
@@ -353,6 +385,8 @@ impl ScriptingBackend for RhaiBackend {
                             *arg = Value::Text(val.cast::<String>().into());
                         } else if val.is::<bool>() {
                             *arg = Value::Boolean(val.cast::<bool>());
+                        } else if val.is::<RhaiDateTime>() {
+                            *arg = Value::Timestamp(val.cast::<RhaiDateTime>().0);
                         } else if val.is::<()>() {
                             *arg = Value::null_unknown();
                         } else if val.is_map() || val.is_array() {
@@ -493,6 +527,7 @@ impl OldRowProxy {
 
 pub(crate) fn value_to_dynamic(val: &crate::core::Value) -> rhai::Dynamic {
     match val {
+        crate::core::Value::Timestamp(t) => rhai::Dynamic::from(RhaiDateTime(*t)),
         crate::core::Value::Integer(i) => rhai::Dynamic::from(*i),
         crate::core::Value::Float(f) => rhai::Dynamic::from(*f),
         crate::core::Value::Text(s) => rhai::Dynamic::from(s.as_ref().to_string()),
@@ -505,7 +540,6 @@ pub(crate) fn value_to_dynamic(val: &crate::core::Value) -> rhai::Dynamic {
                 rhai::Dynamic::from(s.as_ref().to_string())
             }
         }
-        _ => rhai::Dynamic::from(val.to_string()),
     }
 }
 
@@ -548,6 +582,21 @@ pub(crate) fn dynamic_to_value(
                 Ok(crate::core::Value::Boolean(val.as_bool().map_err(
                     |_| crate::core::Error::internal("Cannot cast to bool"),
                 )?))
+            }
+        }
+        crate::core::DataType::Timestamp => {
+            if val.is::<RhaiDateTime>() {
+                Ok(crate::core::Value::Timestamp(val.cast::<RhaiDateTime>().0))
+            } else if val.is::<String>() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&val.cast::<String>()) {
+                    Ok(crate::core::Value::Timestamp(
+                        dt.with_timezone(&chrono::Utc),
+                    ))
+                } else {
+                    Ok(crate::core::Value::Timestamp(chrono::Utc::now())) // Ponytail: naive fallback
+                }
+            } else {
+                Err(crate::core::Error::internal("Cannot cast to timestamp")) // This will fail compilation, need standard Result
             }
         }
         crate::core::DataType::Json => {

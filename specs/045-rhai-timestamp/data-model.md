@@ -1,0 +1,5 @@
+# Data Model: Rhai Timestamp
+
+This feature requires no changes to the Oxibase schema, storage layout, logical plan nodes, or parser AST. The time functionality (`timestamp()`, `sleep()`) is entirely managed within the Rhai runtime executing inside the `rhai::Engine` instantiated for user-defined functions. 
+
+The Rhai `timestamp()` function relies internally on Rust's `std::time::Instant`, and returns a `rhai::Dynamic` wrapping an opaque struct. These values are transient within the script and do not interact directly with Oxibase's `Value` types unless a script explicitly attempts to return them (in which case they will map to `Dynamic::UNIT` or fail, since Oxibase's `value_to_dynamic` / `dynamic_to_value` does not support `timestamp` types, which is acceptable and expected for opaque scripting objects).
