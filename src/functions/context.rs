@@ -85,6 +85,13 @@ pub fn append_stdout(s: &str) {
     });
 }
 
+/// Clears the current stdout capture
+pub fn clear_stdout() {
+    STDOUT_CAPTURE.with(|out| {
+        out.borrow_mut().clear();
+    });
+}
+
 /// Gets the current stdout capture
 pub fn get_stdout() -> String {
     STDOUT_CAPTURE.with(|out| out.borrow().clone())

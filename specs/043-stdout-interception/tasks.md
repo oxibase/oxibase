@@ -30,8 +30,8 @@ We will deliver this feature in two main increments matching the prioritized use
 
 **Independent Test**: Can be fully tested by integration tests executing a script with `print("hello")` and asserting the resulting execution context contains "hello" in its stdout buffer.
 
-- [ ] T001 [US1] Add `engine.on_print` hook in `RhaiBackend::new` to forward output to `crate::functions::context::append_stdout` in `src/functions/backends/rhai.rs`
-- [ ] T002 [US1] Write integration test to verify a Rhai script with `print("test");` correctly populates the execution context's stdout buffer in `tests/procedure_rhai_tests.rs` or equivalent.
+- [x] T001 [US1] Add `engine.on_print` hook in `RhaiBackend::new` to forward output to `crate::functions::context::append_stdout` in `src/functions/backends/rhai.rs`
+- [x] T002 [US1] Write integration test to verify a Rhai script with `print("test");` correctly populates the execution context's stdout buffer in `tests/procedure_rhai_tests.rs` or equivalent.
 
 ---
 
@@ -41,11 +41,11 @@ We will deliver this feature in two main increments matching the prioritized use
 
 **Independent Test**: Can be fully tested by parsing and executing PL/SQL blocks containing `PRINT` and `RAISE NOTICE`, and checking the resulting execution context logs.
 
-- [ ] T003 [US2] Add `Print(Token, Expression)` variant to the `PlSqlStatement` enum in `src/functions/plsql/ast.rs`
-- [ ] T004 [US2] Add logic to parse `PRINT` keyword and an expression, returning `PlSqlStatement::Print` in `src/functions/plsql/parser.rs`
-- [ ] T005 [US2] Add logic to parse `RAISE NOTICE` keywords and an expression, returning `PlSqlStatement::Print` in `src/functions/plsql/parser.rs`
-- [ ] T006 [US2] Implement evaluation for `PlSqlStatement::Print` in `PlSqlInterpreter::execute_statement` to call `crate::functions::context::append_stdout` with the evaluated expression's string representation in `src/functions/plsql/interpreter.rs`
-- [ ] T007 [US2] Write integration test to verify a PL/SQL script with `PRINT 'test';` and `RAISE NOTICE 'test2';` correctly populates the execution context's stdout buffer in `tests/procedure_plsql_tests.rs`
+- [x] T003 [US2] Add `Print(Token, Expression)` variant to the `PlSqlStatement` enum in `src/functions/plsql/ast.rs`
+- [x] T004 [US2] Add logic to parse `PRINT` keyword and an expression, returning `PlSqlStatement::Print` in `src/functions/plsql/parser.rs`
+- [x] T005 [US2] Add logic to parse `RAISE NOTICE` keywords and an expression, returning `PlSqlStatement::Print` in `src/functions/plsql/parser.rs`
+- [x] T006 [US2] Implement evaluation for `PlSqlStatement::Print` in `PlSqlInterpreter::execute_statement` to call `crate::functions::context::append_stdout` with the evaluated expression's string representation in `src/functions/plsql/interpreter.rs`
+- [x] T007 [US2] Write integration test to verify a PL/SQL script with `PRINT 'test';` and `RAISE NOTICE 'test2';` correctly populates the execution context's stdout buffer in `tests/procedure_plsql_tests.rs`
 
 ---
 
@@ -53,8 +53,8 @@ We will deliver this feature in two main increments matching the prioritized use
 
 **Goal**: Ensure the entire system is robust, documented, and meets quality standards.
 
-- [ ] T008 Run `make lint` and fix any formatting or clippy warnings introduced by these changes.
-- [ ] T009 Run `make test` to ensure all existing and new tests pass.
+- [x] T008 Run `make lint` and fix any formatting or clippy warnings introduced by these changes.
+- [x] T009 Run `make test` to ensure all existing and new tests pass.
 
 ---
 

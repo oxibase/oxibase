@@ -329,6 +329,67 @@ impl PlSqlParser {
                         }
                         Some(stmt)
                     }
+                    "PRINT" => {
+                        let token = self.cur_token.clone();
+                        self.next_token(); // Move past PRINT
+                        let mut sql_parser = crate::parser::Parser::new(
+                            &self.code[self.cur_token.position.offset..],
+                        );
+                        if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                            // Advance our lexer until semicolon
+                            while self.cur_token.literal != ";"
+                                && self.cur_token.token_type != TokenType::Eof
+                            {
+                                self.next_token();
+                            }
+                            let stmt = PlSqlStatement::Print(token, expr);
+                            if self.cur_token.literal == ";" {
+                                self.next_token();
+                            }
+                            Some(stmt)
+                        } else {
+                            self.errors.push(format!(
+                                "Failed to parse expression in PRINT: {:?}",
+                                sql_parser.errors()
+                            ));
+                            None
+                        }
+                    }
+                    "RAISE" => {
+                        if self.peek_token.literal.eq_ignore_ascii_case("NOTICE") {
+                            let token = self.cur_token.clone();
+                            self.next_token(); // Move past RAISE
+                            self.next_token(); // Move past NOTICE
+                            let mut sql_parser = crate::parser::Parser::new(
+                                &self.code[self.cur_token.position.offset..],
+                            );
+                            if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                                // Advance our lexer until semicolon
+                                while self.cur_token.literal != ";"
+                                    && self.cur_token.token_type != TokenType::Eof
+                                {
+                                    self.next_token();
+                                }
+                                let stmt = PlSqlStatement::Print(token, expr);
+                                if self.cur_token.literal == ";" {
+                                    self.next_token();
+                                }
+                                Some(stmt)
+                            } else {
+                                self.errors.push(format!(
+                                    "Failed to parse expression in RAISE NOTICE: {:?}",
+                                    sql_parser.errors()
+                                ));
+                                None
+                            }
+                        } else {
+                            // Fallback to standard SQL parser or other logic
+                            if let Some(stmt) = self.parse_assignment_statement() {
+                                return Some(stmt);
+                            }
+                            self.parse_sql_statement()
+                        }
+                    }
                     _ => {
                         // Try assignment first
                         if let Some(stmt) = self.parse_assignment_statement() {
@@ -367,6 +428,55 @@ impl PlSqlParser {
                         self.next_token();
                     }
                     return Some(stmt);
+                } else if kw == "PRINT" {
+                    let token = self.cur_token.clone();
+                    self.next_token(); // Move past PRINT
+                    let mut sql_parser =
+                        crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+                    if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                        // Advance our lexer until semicolon
+                        while self.cur_token.literal != ";"
+                            && self.cur_token.token_type != TokenType::Eof
+                        {
+                            self.next_token();
+                        }
+                        let stmt = PlSqlStatement::Print(token, expr);
+                        if self.cur_token.literal == ";" {
+                            self.next_token();
+                        }
+                        return Some(stmt);
+                    } else {
+                        self.errors.push(format!(
+                            "Failed to parse expression in PRINT: {:?}",
+                            sql_parser.errors()
+                        ));
+                        return None;
+                    }
+                } else if kw == "RAISE" && self.peek_token.literal.eq_ignore_ascii_case("NOTICE") {
+                    let token = self.cur_token.clone();
+                    self.next_token(); // Move past RAISE
+                    self.next_token(); // Move past NOTICE
+                    let mut sql_parser =
+                        crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+                    if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                        // Advance our lexer until semicolon
+                        while self.cur_token.literal != ";"
+                            && self.cur_token.token_type != TokenType::Eof
+                        {
+                            self.next_token();
+                        }
+                        let stmt = PlSqlStatement::Print(token, expr);
+                        if self.cur_token.literal == ";" {
+                            self.next_token();
+                        }
+                        return Some(stmt);
+                    } else {
+                        self.errors.push(format!(
+                            "Failed to parse expression in RAISE NOTICE: {:?}",
+                            sql_parser.errors()
+                        ));
+                        return None;
+                    }
                 }
 
                 // Try assignment first
