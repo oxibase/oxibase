@@ -14,13 +14,16 @@
 
 ## Phase 3: User Story 1 - Rhai Script with Time (Priority: P1)
 
-**Goal**: Ensure users can measure execution time or block execution using standard time concepts (`timestamp()`, `elapsed()`, and `sleep()`) inside their Rhai scripts.
+**Goal**: Ensure users can measure execution time or block execution using standard time concepts (`timestamp()`, `elapsed()`, and `sleep()`) inside their Rhai scripts, AND pass/return `Value::Timestamp` to/from scripts.
 
 **Independent Test**: Can be tested via `cargo nextest run --test rhai_scripting_test --features rhai`.
 
 **Tasks**:
 
-- [ ] T001 [US1] Create explicit timestamp test cases in `tests/rhai_scripting_test.rs` to verify `timestamp()` and `sleep()`
+- [ ] T001 [US1] Create a custom `RhaiDateTime` proxy object in `src/functions/backends/rhai.rs` to represent `Value::Timestamp`
+- [ ] T002 [US1] Update `value_to_dynamic` in `src/functions/backends/rhai.rs` to map `Value::Timestamp` to `RhaiDateTime`
+- [ ] T003 [US1] Update `dynamic_to_value` in `src/functions/backends/rhai.rs` to map `RhaiDateTime` back to `Value::Timestamp`
+- [ ] T004 [US1] Create explicit timestamp test cases in `tests/rhai_scripting_test.rs` to verify `timestamp()` and passing/returning DateTime objects
 
 ## Phase 4: Polish & Cross-Cutting
 

@@ -57,7 +57,7 @@ src/
 tests/             # Integration tests
 ```
 
-**Structure Decision**: This feature impacts tests only, specifically `tests/rhai_scripting_test.rs`, as the core `RhaiBackend` functionality already handles standard library features.
+**Structure Decision**: This feature impacts `src/functions/backends/rhai.rs` to add support for mapping `Value::Timestamp` to and from a custom Rhai DateTime object. It also impacts `tests/rhai_scripting_test.rs` to test the new mapping logic.
 
 ## Complexity Tracking
 
