@@ -1,6 +1,6 @@
 [package]
 name = "oxibase"
-version = "0.5.12"
+version = "0.5.13"
 edition = "2021"
 authors = ["oxibase Contributors"]
 description = "Autonomous relational database management system with MVCC, time-travel queries, and full ACID compliance"
@@ -64,7 +64,7 @@ crc32fast = "1.4"
 lz4_flex = "0.13"
 
 # Scripting backends for user-defined functions
-rhai = { version = "1.25", features = ["sync", "internals", "debugging"] }
+rhai = { version = "1.25", features = ["sync", "internals", "debugging", "metadata", "serde"] }
 
 rustpython-vm = { version = "0.5", optional = true }
 
