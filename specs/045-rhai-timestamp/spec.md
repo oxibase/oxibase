@@ -45,6 +45,7 @@ Users can measure execution time or block execution using standard time concepts
 - **SC-001**: Rhai scripts using `timestamp()` parse and execute without errors.
 - **SC-002**: `make test` runs without any regressions.
 - **SC-003**: Integration of the `BasicTimePackage` (or equivalent standard time functionality) into the Rhai engine setup without introducing panic conditions.
+- **SC-004**: Value::Timestamp is correctly converted to a Rhai object and correctly parsed back to Value::Timestamp when a Rhai function returns.
 
 ## Assumptions
 
