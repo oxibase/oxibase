@@ -253,3 +253,34 @@ fn test_plsql_transaction_explicit_nested_error() {
 
     let _ = db.execute("ROLLBACK;", ()).unwrap();
 }
+
+#[test]
+fn test_plsql_procedure_print_stdout() {
+    let db = Database::open_in_memory().unwrap();
+    oxibase::functions::context::clear_stdout();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_stdout() 
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            counter INT := 0;
+        BEGIN 
+            PRINT ''Starting plsql trace'';
+            counter := counter + 5;
+            RAISE NOTICE counter;
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL test_stdout();";
+    let res = db.execute(call_sql, ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    let stdout = oxibase::functions::context::get_stdout();
+    assert!(stdout.contains("Starting plsql trace"));
+    assert!(stdout.contains("5"));
+}

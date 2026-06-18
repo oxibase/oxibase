@@ -368,6 +368,7 @@ impl<'a> PlSqlInterpreter<'a> {
                 PlSqlStatement::Commit(t) => t.position.line,
                 PlSqlStatement::Rollback(t) => t.position.line,
                 PlSqlStatement::BeginTransaction(t) => t.position.line,
+                PlSqlStatement::Print(t, _) => t.position.line,
             };
             hook.on_statement_before_eval(line_number, env);
         }
@@ -568,6 +569,20 @@ impl<'a> PlSqlInterpreter<'a> {
                         "Cannot execute BEGIN: No SqlRunner bridge provided",
                     ))
                 }
+            }
+            PlSqlStatement::Print(_, expr) => {
+                let val = self.eval_expr(expr, env)?;
+                let output_str = match val {
+                    Value::Text(s) => s.to_string(),
+                    Value::Integer(i) => i.to_string(),
+                    Value::Float(f) => f.to_string(),
+                    Value::Boolean(b) => (if b { "true" } else { "false" }).to_string(),
+                    Value::Null(_) => "null".to_string(),
+                    _ => format!("{:?}", val),
+                };
+                crate::functions::context::append_stdout(&output_str);
+                crate::functions::context::append_stdout("\n");
+                Ok(ExecutionStatus::Continue)
             }
         }
     }

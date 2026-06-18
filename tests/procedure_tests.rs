@@ -195,3 +195,27 @@ fn test_rhai_transaction_commit_rollback() {
     // No more rows
     assert!(results.next().is_none());
 }
+
+#[test]
+fn test_rhai_procedure_print_stdout() {
+    let db = oxibase::api::Database::open_in_memory().unwrap();
+    oxibase::functions::context::clear_stdout();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_rhai_stdout() 
+        LANGUAGE rhai 
+        AS ' 
+        print("hello rhai stdout");
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL test_rhai_stdout();";
+    let res = db.execute(call_sql, ());
+    assert!(res.is_ok(), "Failed to call procedure: {:?}", res.err());
+
+    let stdout = oxibase::functions::context::get_stdout();
+    assert!(stdout.contains("hello rhai stdout"));
+}

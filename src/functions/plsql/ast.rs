@@ -38,6 +38,8 @@ pub enum PlSqlStatement {
     Rollback(Token),
     /// BEGIN explicit transaction (no-op at runtime)
     BeginTransaction(Token),
+    /// PRINT or RAISE NOTICE
+    Print(Token, Expression),
 }
 
 /// A variable declaration

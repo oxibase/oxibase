@@ -126,6 +126,10 @@ impl RhaiBackend {
         );
         engine.register_static_module("oxibase", rhai::Shared::new(oxibase_module));
 
+        engine.on_print(|x| {
+            crate::functions::context::append_stdout(x);
+        });
+
         #[cfg(debug_assertions)]
         #[allow(deprecated)]
         // since there is no standard debugging feature in our workspace, let's use debug build, or just remove the cfg
