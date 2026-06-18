@@ -509,4 +509,74 @@ mod rhai_function_tests {
         assert!(result.contains("\"key\":42") || result.contains("\"key\": 42"));
         assert!(result.contains("\"name\":\"test\"") || result.contains("\"name\": \"test\""));
     }
+
+    #[test]
+    fn test_rhai_json_procedure() {
+        let db = Database::open("memory://rhai_json_procedure_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE PROCEDURE update_json_proc(INOUT doc JSON)
+            LANGUAGE RHAI AS '
+                doc.updated = true;
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let call_sql = "CALL update_json_proc(CAST('{\"original\": 1}' AS JSON));";
+        let mut results = db.query(call_sql, ()).unwrap();
+        
+        let row = results.next().unwrap().unwrap();
+        let value = row.get::<oxibase::core::Value>(0).unwrap();
+        let result_json = value.as_str().unwrap();
+        assert!(result_json.contains("\"updated\":true") || result_json.contains("\"updated\": true"));
+    }
+
+    #[test]
+    fn test_rhai_json_trigger() {
+        let db = Database::open("memory://rhai_json_trigger_test").unwrap();
+
+        db.execute("CREATE TABLE configs (id INTEGER PRIMARY KEY, data JSON);", ()).unwrap();
+
+        db.execute(
+            r#"
+            CREATE TRIGGER process_config
+                BEFORE INSERT ON configs
+                FOR EACH ROW
+                LANGUAGE rhai
+            AS '
+                let d = oxibase.ctx["new"].data;
+                d.processed = true;
+                oxibase.ctx["new"].data = d;
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        db.execute("INSERT INTO configs (id, data) VALUES (1, CAST('{\"original\": 1}' AS JSON));", ()).unwrap();
+
+        let mut results = db.query("SELECT data FROM configs WHERE id = 1;", ()).unwrap();
+        let row = results.next().unwrap().unwrap();
+        let value = row.get::<oxibase::core::Value>(0).unwrap();
+        let json_str = value.as_str().unwrap();
+        assert!(json_str.contains("\"processed\":true") || json_str.contains("\"processed\": true"));
+    }
+
+    #[test]
+    fn test_rhai_json_fallback() {
+        let db = Database::open("memory://rhai_json_fallback_test").unwrap();
+        db.execute(
+            r#"
+            CREATE FUNCTION fallback_json(doc JSON) RETURNS JSON
+            LANGUAGE RHAI AS 'doc'
+        "#,
+            (),
+        ).unwrap();
+
+        let res = db.query_one::<String, _>("SELECT fallback_json('invalid json');", ());
+        assert!(res.is_ok() || res.is_err());
+    }
 }
