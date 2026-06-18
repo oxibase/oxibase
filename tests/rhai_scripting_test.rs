@@ -402,4 +402,111 @@ mod rhai_function_tests {
         // Since Rhai doesn't have file access APIs, this should work without security issues
         assert!(result.contains("Cannot access file system") || !result.contains("blocked"));
     }
+
+    #[test]
+    fn test_rhai_parse_json() {
+        let db = Database::open("memory://rhai_parse_json_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION extract_json_key(j TEXT) RETURNS INTEGER
+            LANGUAGE RHAI AS '
+                let obj = parse_json(j);
+                obj.key
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: i64 = db
+            .query_one("SELECT extract_json_key('{\"key\": 42}')", ())
+            .unwrap();
+        assert_eq!(result, 42);
+
+        db.execute(
+            r#"
+            CREATE FUNCTION extract_json_array(j TEXT) RETURNS INTEGER
+            LANGUAGE RHAI AS '
+                let arr = parse_json(j);
+                arr[1]
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: i64 = db
+            .query_one("SELECT extract_json_array('[10, 42, 30]')", ())
+            .unwrap();
+        assert_eq!(result, 42);
+    }
+
+    #[test]
+    fn test_rhai_parse_invalid_json() {
+        let db = Database::open("memory://rhai_parse_invalid_json_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION test_invalid_json(j TEXT) RETURNS INTEGER
+            LANGUAGE RHAI AS '
+                let obj = parse_json(j);
+                1
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: Result<i64, _> = db.query_one("SELECT test_invalid_json('{invalid json}')", ());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_rhai_json_arguments() {
+        let db = Database::open("memory://rhai_json_args_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION extract_from_native_json(doc JSON) RETURNS INTEGER
+            LANGUAGE RHAI AS '
+                doc.key
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: i64 = db
+            .query_one(
+                "SELECT extract_from_native_json(CAST('{\"key\": 42}' AS JSON))",
+                (),
+            )
+            .unwrap();
+        assert_eq!(result, 42);
+    }
+
+    #[test]
+    fn test_rhai_json_returns() {
+        let db = Database::open("memory://rhai_json_returns_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION create_native_json() RETURNS JSON
+            LANGUAGE RHAI AS '
+                #{
+                    key: 42,
+                    name: "test"
+                }
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: String = db.query_one("SELECT create_native_json()", ()).unwrap();
+        // Since JSON formatting can vary (spaces vs no spaces), parse and compare or use contains
+        assert!(result.contains("\"key\":42") || result.contains("\"key\": 42"));
+        assert!(result.contains("\"name\":\"test\"") || result.contains("\"name\": \"test\""));
+    }
 }
