@@ -663,4 +663,186 @@ mod rhai_function_tests {
         };
         assert_eq!(dt, now);
     }
+
+    #[test]
+    fn test_rhai_timestamp_to_string() {
+        let db = Database::open("memory://rhai_ts_to_string_test").unwrap();
+        db.execute(
+            r#"
+            CREATE FUNCTION ts_to_str() RETURNS TEXT
+            LANGUAGE RHAI AS 'timestamp().to_string()'
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: String = db.query_one("SELECT ts_to_str()", ()).unwrap();
+        // Just verify it parses back to a valid RFC3339 datetime
+        assert!(chrono::DateTime::parse_from_rfc3339(&result).is_ok());
+    }
+
+    #[test]
+    fn test_rhai_timestamp_procedure_inout() {
+        let db = Database::open("memory://rhai_ts_proc_inout_test").unwrap();
+        db.execute(
+            r#"
+            CREATE PROCEDURE update_ts_proc(INOUT ts TIMESTAMP)
+            LANGUAGE RHAI AS '
+                sleep(100);
+                ts = timestamp();
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let past = chrono::Utc::now() - chrono::Duration::days(1);
+        let call_sql = format!(
+            "CALL update_ts_proc(CAST('{}' AS TIMESTAMP));",
+            past.to_rfc3339()
+        );
+        let mut results = db.query(&call_sql, ()).unwrap();
+
+        let row = results.next().unwrap().unwrap();
+        let value = row.get::<oxibase::core::Value>(0).unwrap();
+        let updated_dt = if let oxibase::core::Value::Timestamp(t) = value {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+        assert!(updated_dt > past);
+    }
+
+    #[test]
+    fn test_rhai_timestamp_trigger() {
+        let db = Database::open("memory://rhai_ts_trigger_test").unwrap();
+
+        db.execute(
+            "CREATE TABLE events (id INTEGER PRIMARY KEY, created_at TIMESTAMP);",
+            (),
+        )
+        .unwrap();
+
+        db.execute(
+            r#"
+            CREATE TRIGGER process_event
+                BEFORE INSERT ON events
+                FOR EACH ROW
+                LANGUAGE rhai
+            AS '
+                oxibase.ctx["new"].created_at = timestamp();
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        let past = chrono::Utc::now() - chrono::Duration::days(1);
+        db.execute(
+            &format!(
+                "INSERT INTO events (id, created_at) VALUES (1, CAST('{}' AS TIMESTAMP));",
+                past.to_rfc3339()
+            ),
+            (),
+        )
+        .unwrap();
+
+        let mut results = db
+            .query("SELECT created_at FROM events WHERE id = 1;", ())
+            .unwrap();
+        let row = results.next().unwrap().unwrap();
+        let value = row.get::<oxibase::core::Value>(0).unwrap();
+        let updated_dt = if let oxibase::core::Value::Timestamp(t) = value {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+        assert!(updated_dt > past); // The trigger should have overridden the old timestamp
+    }
+
+    #[test]
+    fn test_rhai_timestamp_dynamic_to_value_fallback() {
+        use chrono::Datelike;
+        let db = Database::open("memory://rhai_ts_fallback_test").unwrap();
+
+        db.execute(
+            "CREATE TABLE events2 (id INTEGER PRIMARY KEY, created_at TIMESTAMP);",
+            (),
+        )
+        .unwrap();
+
+        db.execute(
+            r#"
+            CREATE TRIGGER process_event_str
+                BEFORE INSERT ON events2
+                FOR EACH ROW
+                LANGUAGE rhai
+            AS '
+                oxibase.ctx["new"].created_at = "2024-01-01T12:00:00Z";
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        db.execute("INSERT INTO events2 (id, created_at) VALUES (1, NULL);", ())
+            .unwrap();
+
+        let mut results = db
+            .query("SELECT created_at FROM events2 WHERE id = 1;", ())
+            .unwrap();
+        let row = results.next().unwrap().unwrap();
+        let value = row.get::<oxibase::core::Value>(0).unwrap();
+        let dt = if let oxibase::core::Value::Timestamp(t) = value {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+        assert_eq!(dt.year(), 2024);
+
+        // Fallback invalid string
+        db.execute(
+            r#"
+            CREATE TRIGGER process_event_invalid_str
+                BEFORE INSERT ON events2
+                FOR EACH ROW
+                LANGUAGE rhai
+            AS '
+                oxibase.ctx["new"].created_at = "invalid date";
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        db.execute("INSERT INTO events2 (id, created_at) VALUES (2, NULL);", ())
+            .unwrap();
+        let mut results = db
+            .query("SELECT created_at FROM events2 WHERE id = 2;", ())
+            .unwrap();
+        let row = results.next().unwrap().unwrap();
+        let value = row.get::<oxibase::core::Value>(0).unwrap();
+        let dt2 = if let oxibase::core::Value::Timestamp(t) = value {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+        assert!(dt2.year() >= 2024); // Fallback is Utc::now()
+    }
+
+    #[test]
+    fn test_rhai_null_argument() {
+        let db = Database::open("memory://rhai_null_arg_test").unwrap();
+        db.execute(
+            r#"
+            CREATE FUNCTION test_null(arg TIMESTAMP) RETURNS BOOLEAN
+            LANGUAGE RHAI AS 'arg == ()'
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: bool = db.query_one("SELECT test_null(NULL)", ()).unwrap();
+        assert!(result);
+    }
 }
