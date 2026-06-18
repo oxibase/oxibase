@@ -527,18 +527,24 @@ mod rhai_function_tests {
 
         let call_sql = "CALL update_json_proc(CAST('{\"original\": 1}' AS JSON));";
         let mut results = db.query(call_sql, ()).unwrap();
-        
+
         let row = results.next().unwrap().unwrap();
         let value = row.get::<oxibase::core::Value>(0).unwrap();
         let result_json = value.as_str().unwrap();
-        assert!(result_json.contains("\"updated\":true") || result_json.contains("\"updated\": true"));
+        assert!(
+            result_json.contains("\"updated\":true") || result_json.contains("\"updated\": true")
+        );
     }
 
     #[test]
     fn test_rhai_json_trigger() {
         let db = Database::open("memory://rhai_json_trigger_test").unwrap();
 
-        db.execute("CREATE TABLE configs (id INTEGER PRIMARY KEY, data JSON);", ()).unwrap();
+        db.execute(
+            "CREATE TABLE configs (id INTEGER PRIMARY KEY, data JSON);",
+            (),
+        )
+        .unwrap();
 
         db.execute(
             r#"
@@ -556,13 +562,21 @@ mod rhai_function_tests {
         )
         .unwrap();
 
-        db.execute("INSERT INTO configs (id, data) VALUES (1, CAST('{\"original\": 1}' AS JSON));", ()).unwrap();
+        db.execute(
+            "INSERT INTO configs (id, data) VALUES (1, CAST('{\"original\": 1}' AS JSON));",
+            (),
+        )
+        .unwrap();
 
-        let mut results = db.query("SELECT data FROM configs WHERE id = 1;", ()).unwrap();
+        let mut results = db
+            .query("SELECT data FROM configs WHERE id = 1;", ())
+            .unwrap();
         let row = results.next().unwrap().unwrap();
         let value = row.get::<oxibase::core::Value>(0).unwrap();
         let json_str = value.as_str().unwrap();
-        assert!(json_str.contains("\"processed\":true") || json_str.contains("\"processed\": true"));
+        assert!(
+            json_str.contains("\"processed\":true") || json_str.contains("\"processed\": true")
+        );
     }
 
     #[test]
@@ -574,7 +588,8 @@ mod rhai_function_tests {
             LANGUAGE RHAI AS 'doc'
         "#,
             (),
-        ).unwrap();
+        )
+        .unwrap();
 
         let res = db.query_one::<String, _>("SELECT fallback_json('invalid json');", ());
         assert!(res.is_ok() || res.is_err());
