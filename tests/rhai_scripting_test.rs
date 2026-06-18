@@ -594,4 +594,73 @@ mod rhai_function_tests {
         let res = db.query_one::<String, _>("SELECT fallback_json('invalid json');", ());
         assert!(res.is_ok() || res.is_err());
     }
+
+    #[test]
+    fn test_rhai_timestamp_function() {
+        let db = Database::open("memory://rhai_timestamp_test").unwrap();
+        db.execute(
+            r#"
+            CREATE FUNCTION get_now() RETURNS TIMESTAMP
+            LANGUAGE RHAI AS 'timestamp()'
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: oxibase::Value = db.query_one("SELECT get_now()", ()).unwrap();
+        let dt = if let oxibase::Value::Timestamp(t) = result {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+        let diff = chrono::Utc::now() - dt;
+        assert!(diff.num_seconds() < 2);
+    }
+
+    #[test]
+    fn test_rhai_timestamp_elapsed() {
+        let db = Database::open("memory://rhai_timestamp_elapsed_test").unwrap();
+        db.execute(
+            r#"
+            CREATE FUNCTION test_elapsed() RETURNS FLOAT
+            LANGUAGE RHAI AS '
+                let t = timestamp();
+                sleep(100);
+                t.elapsed()
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let elapsed: f64 = db.query_one("SELECT test_elapsed()", ()).unwrap();
+        assert!(elapsed >= 0.1);
+    }
+
+    #[test]
+    fn test_rhai_timestamp_pass_and_return() {
+        let db = Database::open("memory://rhai_timestamp_pass_test").unwrap();
+        db.execute(
+            r#"
+            CREATE FUNCTION return_same(t TIMESTAMP) RETURNS TIMESTAMP
+            LANGUAGE RHAI AS 't'
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let now = chrono::Utc::now();
+        // Insert into a string literal for the query
+        let query = format!(
+            "SELECT return_same(CAST('{}' AS TIMESTAMP))",
+            now.to_rfc3339()
+        );
+        let result: oxibase::Value = db.query_one(&query, ()).unwrap();
+        let dt = if let oxibase::Value::Timestamp(t) = result {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+        assert_eq!(dt, now);
+    }
 }
