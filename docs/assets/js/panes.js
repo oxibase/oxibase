@@ -458,14 +458,17 @@ document.addEventListener("DOMContentLoaded", function () {
         // Create new pane with spine and body
         const newPane = document.createElement("div");
         newPane.className = "pane";
-        newPane.innerHTML = `
-        <div class="pane-content">
-          <div class="pane-header">${titleText}</div>
-          <div class="pane-body">
-            ${mainContent.outerHTML}
-          </div>
-        </div>
-      `;
+        const paneContent = document.createElement("div");
+        paneContent.className = "pane-content";
+        const paneHeader = document.createElement("div");
+        paneHeader.className = "pane-header";
+        paneHeader.textContent = titleText;
+        const paneBody = document.createElement("div");
+        paneBody.className = "pane-body";
+        paneBody.appendChild(mainContent.cloneNode(true));
+        paneContent.appendChild(paneHeader);
+        paneContent.appendChild(paneBody);
+        newPane.appendChild(paneContent);
 
         this.paneSystem.panesContainer.appendChild(newPane);
         newPane.dataset.url = href;
