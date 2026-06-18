@@ -17,6 +17,7 @@
 use super::ScriptingBackend;
 use crate::core::{Error, Result, Value};
 use rhai::{Engine, Scope};
+use std::sync::Arc;
 
 /// Rhai scripting backend
 pub struct RhaiBackend {
@@ -184,6 +185,14 @@ impl ScriptingBackend for RhaiBackend {
                 Value::Float(f) => args_array.push(rhai::Dynamic::from(*f)),
                 Value::Text(s) => args_array.push(rhai::Dynamic::from(s.as_ref().to_string())),
                 Value::Boolean(b) => args_array.push(rhai::Dynamic::from(*b)),
+                Value::Json(s) => {
+                    if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.as_ref()) {
+                        args_array
+                            .push(rhai::serde::to_dynamic(json_val).unwrap_or(rhai::Dynamic::UNIT));
+                    } else {
+                        args_array.push(rhai::Dynamic::from(s.as_ref().to_string()));
+                    }
+                }
                 _ => return Err(Error::internal("Unsupported argument type for Rhai")),
             };
         }
@@ -193,10 +202,29 @@ impl ScriptingBackend for RhaiBackend {
         for (i, arg) in args.iter().enumerate() {
             let var_name = param_names[i];
             match arg {
-                Value::Integer(i) => scope.push(var_name, *i),
-                Value::Float(f) => scope.push(var_name, *f),
-                Value::Text(s) => scope.push(var_name, s.as_ref().to_string()),
-                Value::Boolean(b) => scope.push(var_name, *b),
+                Value::Integer(i) => {
+                    scope.push(var_name, *i);
+                }
+                Value::Float(f) => {
+                    scope.push(var_name, *f);
+                }
+                Value::Text(s) => {
+                    scope.push(var_name, s.as_ref().to_string());
+                }
+                Value::Boolean(b) => {
+                    scope.push(var_name, *b);
+                }
+                Value::Json(s) => {
+                    if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.as_ref()) {
+                        let _ = scope.push_dynamic(
+                            var_name,
+                            rhai::serde::to_dynamic(json_val).unwrap_or(rhai::Dynamic::UNIT),
+                        );
+                    } else {
+                        let _ = scope
+                            .push_dynamic(var_name, rhai::Dynamic::from(s.as_ref().to_string()));
+                    }
+                }
                 _ => return Err(Error::internal("Unsupported argument type for Rhai")),
             };
         }
@@ -221,6 +249,12 @@ impl ScriptingBackend for RhaiBackend {
                     Ok(Value::Boolean(result.cast::<bool>()))
                 } else if result.is::<()>() {
                     Ok(Value::null_unknown())
+                } else if result.is_map() || result.is_array() {
+                    if let Ok(json_val) = rhai::serde::from_dynamic::<serde_json::Value>(&result) {
+                        Ok(Value::Json(Arc::from(json_val.to_string())))
+                    } else {
+                        Ok(Value::Json(Arc::from(result.to_string())))
+                    }
                 } else {
                     Err(Error::internal("Unsupported return type from Rhai script"))
                 }
@@ -268,11 +302,32 @@ impl ScriptingBackend for RhaiBackend {
         for (i, arg) in args.iter().enumerate() {
             let var_name = param_names[i];
             match arg {
-                Value::Integer(i) => scope.push(var_name, *i),
-                Value::Float(f) => scope.push(var_name, *f),
-                Value::Text(s) => scope.push(var_name, s.as_ref().to_string()),
-                Value::Boolean(b) => scope.push(var_name, *b),
-                Value::Null(_) => scope.push(var_name, ()),
+                Value::Integer(i) => {
+                    scope.push(var_name, *i);
+                }
+                Value::Float(f) => {
+                    scope.push(var_name, *f);
+                }
+                Value::Text(s) => {
+                    scope.push(var_name, s.as_ref().to_string());
+                }
+                Value::Boolean(b) => {
+                    scope.push(var_name, *b);
+                }
+                Value::Null(_) => {
+                    scope.push(var_name, ());
+                }
+                Value::Json(s) => {
+                    if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.as_ref()) {
+                        let _ = scope.push_dynamic(
+                            var_name,
+                            rhai::serde::to_dynamic(json_val).unwrap_or(rhai::Dynamic::UNIT),
+                        );
+                    } else {
+                        let _ = scope
+                            .push_dynamic(var_name, rhai::Dynamic::from(s.as_ref().to_string()));
+                    }
+                }
                 _ => return Err(Error::internal("Unsupported argument type for Rhai")),
             };
         }
@@ -300,6 +355,14 @@ impl ScriptingBackend for RhaiBackend {
                             *arg = Value::Boolean(val.cast::<bool>());
                         } else if val.is::<()>() {
                             *arg = Value::null_unknown();
+                        } else if val.is_map() || val.is_array() {
+                            if let Ok(json_val) =
+                                rhai::serde::from_dynamic::<serde_json::Value>(&val)
+                            {
+                                *arg = Value::Json(Arc::from(json_val.to_string()));
+                            } else {
+                                *arg = Value::Json(Arc::from(val.to_string()));
+                            }
                         }
                     }
                 }
@@ -435,6 +498,13 @@ pub(crate) fn value_to_dynamic(val: &crate::core::Value) -> rhai::Dynamic {
         crate::core::Value::Text(s) => rhai::Dynamic::from(s.as_ref().to_string()),
         crate::core::Value::Boolean(b) => rhai::Dynamic::from(*b),
         crate::core::Value::Null(_) => rhai::Dynamic::UNIT,
+        crate::core::Value::Json(s) => {
+            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(s.as_ref()) {
+                rhai::serde::to_dynamic(json_val).unwrap_or(rhai::Dynamic::UNIT)
+            } else {
+                rhai::Dynamic::from(s.as_ref().to_string())
+            }
+        }
         _ => rhai::Dynamic::from(val.to_string()),
     }
 }
@@ -478,6 +548,17 @@ pub(crate) fn dynamic_to_value(
                 Ok(crate::core::Value::Boolean(val.as_bool().map_err(
                     |_| crate::core::Error::internal("Cannot cast to bool"),
                 )?))
+            }
+        }
+        crate::core::DataType::Json => {
+            if val.is_map() || val.is_array() {
+                if let Ok(json_val) = rhai::serde::from_dynamic::<serde_json::Value>(&val) {
+                    Ok(crate::core::Value::Json(Arc::from(json_val.to_string())))
+                } else {
+                    Ok(crate::core::Value::Json(Arc::from(val.to_string())))
+                }
+            } else {
+                Ok(crate::core::Value::Json(Arc::from(val.to_string())))
             }
         }
         _ => Ok(crate::core::Value::text(val.to_string())),
