@@ -218,6 +218,43 @@ impl<'a> PlSqlInterpreter<'a> {
                 } else {
                     Err(Error::internal(format!(
                         "Function not found: {}",
+                let func_name = fc.function.to_lowercase();
+                if func_name == "get_http_header" {
+                    if fc.arguments.len() != 1 {
+                        return Err(Error::internal(
+                            "get_http_header requires exactly 1 argument",
+                        ));
+                    }
+                    let header_name_val = self.eval_expr(&fc.arguments[0], env)?;
+                    let header_name = match header_name_val {
+                        Value::Text(s) => s.to_string(),
+                        _ => {
+                            return Err(Error::internal(
+                                "get_http_header argument must be a string",
+                            ))
+                        }
+                    };
+
+                    let mut header_value = None;
+                    crate::functions::context::HTTP_HEADERS.with(|headers| {
+                        if let Some(map) = headers.borrow().as_ref() {
+                            let search_key = header_name.to_lowercase();
+                            for (k, v) in map {
+                                if k.to_lowercase() == search_key {
+                                    header_value = Some(v.clone());
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
+                    match header_value {
+                        Some(v) => Ok(Value::Text(std::sync::Arc::from(v))),
+                        None => Ok(Value::Null(crate::core::DataType::Null)),
+                    }
+                } else {
+                    Err(Error::internal(format!(
+                        "Function call not supported in simple PL/SQL interpreter: {}",
                         fc.function
                     )))
                 }
@@ -471,7 +508,11 @@ impl<'a> PlSqlInterpreter<'a> {
                 }
 
                 let final_val = if let Some(existing) = env.get(&assign.variable) {
-                    val.coerce_to_type(existing.data_type())
+                    if existing.data_type() == crate::core::DataType::Null {
+                        val.clone()
+                    } else {
+                        val.coerce_to_type(existing.data_type())
+                    }
                 } else {
                     val.clone()
                 };
