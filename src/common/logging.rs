@@ -104,9 +104,15 @@ where
             Some(visitor.attributes)
         };
 
+        let mut target = event.metadata().target().to_string();
+        if target == "stored_procedure" {
+            target = crate::functions::context::get_current_procedure_name()
+                .unwrap_or_else(|| "user_procedure".to_string());
+        }
+
         let entry = LogEntry {
             level: level.to_string(),
-            target: event.metadata().target().to_string(),
+            target,
             message: visitor.message,
             timestamp: Utc::now(),
             trace_id,
@@ -299,4 +305,16 @@ fn insert_log_batch(engine: &MVCCEngine, entries: &[LogEntry]) -> crate::core::R
 
     tx.commit()?;
     Ok(())
+}
+
+/// Helper to log a dynamic message from procedural languages.
+pub fn log_message(level: &str, message: &str) {
+    match level.to_lowercase().as_str() {
+        "error" => tracing::error!(target: "stored_procedure", "{}", message),
+        "warn" => tracing::warn!(target: "stored_procedure", "{}", message),
+        "info" => tracing::info!(target: "stored_procedure", "{}", message),
+        "debug" => tracing::debug!(target: "stored_procedure", "{}", message),
+        "trace" => tracing::trace!(target: "stored_procedure", "{}", message),
+        _ => tracing::info!(target: "stored_procedure", "{}", message),
+    }
 }

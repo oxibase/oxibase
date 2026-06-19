@@ -124,6 +124,13 @@ impl RhaiBackend {
                 }
             },
         );
+        oxibase_module.set_native_fn(
+            "log",
+            |level: String, message: String| -> std::result::Result<(), Box<rhai::EvalAltResult>> {
+                crate::common::logging::log_message(&level, &message);
+                Ok(())
+            },
+        );
         engine.register_static_module("oxibase", rhai::Shared::new(oxibase_module));
 
         engine.on_print(|x| {

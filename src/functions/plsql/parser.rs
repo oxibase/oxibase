@@ -329,6 +329,41 @@ impl PlSqlParser {
                         }
                         Some(stmt)
                     }
+                    "LOG" => {
+                        let token = self.cur_token.clone();
+                        self.next_token(); // Move past LOG
+                        let level = self.cur_token.literal.clone();
+                        self.next_token(); // Move past level
+                        if self.cur_token.literal == "," {
+                            self.next_token(); // Move past comma
+                        }
+                        let mut sql_parser = crate::parser::Parser::new(
+                            &self.code[self.cur_token.position.offset..],
+                        );
+                        if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                            // Advance our lexer until semicolon
+                            while self.cur_token.literal != ";"
+                                && self.cur_token.token_type != TokenType::Eof
+                            {
+                                self.next_token();
+                            }
+                            let stmt = PlSqlStatement::Log {
+                                token,
+                                level,
+                                expression: expr,
+                            };
+                            if self.cur_token.literal == ";" {
+                                self.next_token();
+                            }
+                            Some(stmt)
+                        } else {
+                            self.errors.push(format!(
+                                "Failed to parse expression in LOG: {:?}",
+                                sql_parser.errors()
+                            ));
+                            None
+                        }
+                    }
                     "PRINT" => {
                         let token = self.cur_token.clone();
                         self.next_token(); // Move past PRINT
@@ -428,6 +463,39 @@ impl PlSqlParser {
                         self.next_token();
                     }
                     return Some(stmt);
+                } else if kw == "LOG" {
+                    let token = self.cur_token.clone();
+                    self.next_token(); // Move past LOG
+                    let level = self.cur_token.literal.clone();
+                    self.next_token(); // Move past level
+                    if self.cur_token.literal == "," {
+                        self.next_token(); // Move past comma
+                    }
+                    let mut sql_parser =
+                        crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+                    if let Some(expr) = sql_parser.parse_expression(Precedence::Lowest) {
+                        // Advance our lexer until semicolon
+                        while self.cur_token.literal != ";"
+                            && self.cur_token.token_type != TokenType::Eof
+                        {
+                            self.next_token();
+                        }
+                        let stmt = PlSqlStatement::Log {
+                            token,
+                            level,
+                            expression: expr,
+                        };
+                        if self.cur_token.literal == ";" {
+                            self.next_token();
+                        }
+                        return Some(stmt);
+                    } else {
+                        self.errors.push(format!(
+                            "Failed to parse expression in LOG: {:?}",
+                            sql_parser.errors()
+                        ));
+                        return None;
+                    }
                 } else if kw == "PRINT" {
                     let token = self.cur_token.clone();
                     self.next_token(); // Move past PRINT

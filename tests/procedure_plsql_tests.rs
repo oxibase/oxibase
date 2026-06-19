@@ -284,3 +284,59 @@ fn test_plsql_procedure_print_stdout() {
     assert!(stdout.contains("Starting plsql trace"));
     assert!(stdout.contains("5"));
 }
+
+#[test]
+fn test_plsql_procedure_logging() {
+    use tracing_subscriber::layer::SubscriberExt;
+    let (log_tx, log_rx) = crossbeam_channel::bounded(100);
+    let db = Database::open("memory://plsql_logging_test").unwrap();
+    let _shutdown = oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
+
+    let layer = oxibase::common::logging::InternalLogLayer::new(log_tx);
+    let _guard = tracing::subscriber::set_default(tracing_subscriber::registry().with(layer));
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_plsql_log_proc() 
+        LANGUAGE plsql 
+        AS ' 
+        BEGIN 
+            LOG WARN, ''PL/SQL dynamic warning log'';
+        END; 
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+    db.execute("CALL test_plsql_log_proc();", ()).unwrap();
+
+    // Give flusher a bit of time
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    // Query the system.logs table
+    let results = db
+        .query("SELECT level, target, message FROM system.logs WHERE LOWER(target) = 'test_plsql_log_proc';", ())
+        .unwrap();
+
+    let mut found = false;
+    for row_res in results {
+        let row = row_res.unwrap();
+        let level: String = row.get(0).unwrap();
+        let target: String = row.get(1).unwrap();
+        let message: String = row.get(2).unwrap();
+
+        if level == "WARN"
+            && target.to_lowercase() == "test_plsql_log_proc"
+            && message == "PL/SQL dynamic warning log"
+        {
+            found = true;
+            break;
+        }
+    }
+    assert!(
+        found,
+        "Did not find expected log entry from PL/SQL stored procedure"
+    );
+
+    // Clean up log flusher
+    _shutdown.0.store(true, std::sync::atomic::Ordering::SeqCst);
+    let _ = _shutdown.1.join();
+}

@@ -40,6 +40,12 @@ pub enum PlSqlStatement {
     BeginTransaction(Token),
     /// PRINT or RAISE NOTICE
     Print(Token, Expression),
+    /// LOG level, expr;
+    Log {
+        token: Token,
+        level: String,
+        expression: Expression,
+    },
 }
 
 /// A variable declaration
