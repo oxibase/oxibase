@@ -91,7 +91,7 @@ CREATE PROCEDURE pizza_demo.simulate_random_order() LANGUAGE rhai AS '
     oxibase::execute("UPDATE pizza_demo.customer_order SET total_price = COALESCE((SELECT SUM(s.price) FROM pizza_demo.customer_pizzas cp JOIN pizza_demo.pizzas p ON cp.pizza_id = p.id JOIN pizza_demo.sizes s ON p.size_id = s.id WHERE cp.customer_order_id = (SELECT MAX(id) FROM pizza_demo.customer_order)), 0.0) + COALESCE((SELECT SUM(d.price) FROM pizza_demo.customer_drinks cd JOIN pizza_demo.drinks d ON cd.drink_id = d.id WHERE cd.customer_order_id = (SELECT MAX(id) FROM pizza_demo.customer_order)), 0.0) WHERE id = (SELECT MAX(id) FROM pizza_demo.customer_order)");
 
     // Log the event
-    oxibase::execute("INSERT INTO system.logs (level, target, message) VALUES (''INFO'', ''pizza_demo'', ''Simulated random order'')");
+    oxibase::log("INFO", "Simulated random order");
 ';
 
 -- Schedule the simulation

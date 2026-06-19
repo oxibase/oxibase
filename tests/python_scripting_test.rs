@@ -439,4 +439,62 @@ except:
         let bool_result: bool = db.query_one("SELECT return_bool()", ()).unwrap();
         assert!(bool_result);
     }
+
+    #[test]
+    fn test_python_stored_procedure_logging() {
+        use tracing_subscriber::layer::SubscriberExt;
+        let (log_tx, log_rx) = crossbeam_channel::bounded(100);
+        let db = Database::open("memory://python_logging_test").unwrap();
+        let _shutdown = oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
+
+        let layer = oxibase::common::logging::InternalLogLayer::new(log_tx);
+        let _guard = tracing::subscriber::set_default(tracing_subscriber::registry().with(layer));
+
+        db.execute(
+            r#"
+            CREATE PROCEDURE log_proc_test_py()
+            LANGUAGE python
+            AS '
+import oxibase
+oxibase.log("warn", "test logging from python sp")
+';
+        "#,
+            (),
+        )
+        .unwrap();
+
+        db.execute("CALL log_proc_test_py();", ()).unwrap();
+
+        // Give flusher a bit of time
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
+        // Query the system.logs table
+        let results = db
+            .query("SELECT level, target, message FROM system.logs WHERE LOWER(target) = 'log_proc_test_py';", ())
+            .unwrap();
+
+        let mut found = false;
+        for row_res in results {
+            let row = row_res.unwrap();
+            let level: String = row.get(0).unwrap();
+            let target: String = row.get(1).unwrap();
+            let message: String = row.get(2).unwrap();
+
+            if level == "WARN"
+                && target.to_lowercase() == "log_proc_test_py"
+                && message == "test logging from python sp"
+            {
+                found = true;
+                break;
+            }
+        }
+        assert!(
+            found,
+            "Did not find expected log entry from Python stored procedure"
+        );
+
+        // Clean up log flusher
+        _shutdown.0.store(true, std::sync::atomic::Ordering::SeqCst);
+        let _ = _shutdown.1.join();
+    }
 }

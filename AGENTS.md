@@ -34,6 +34,6 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-specs/045-rhai-timestamp/plan.md
+specs/046-stored-procedure-logging/plan.md
 <!-- SPECKIT END -->
 

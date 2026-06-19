@@ -64,6 +64,11 @@ mod oxibase_py_module {
     }
 
     #[pyfunction]
+    fn log(level: PyStrRef, message: PyStrRef) {
+        crate::common::logging::log_message(level.as_ref(), message.as_ref());
+    }
+
+    #[pyfunction]
     fn get_http_header(
         header_name: PyStrRef,
         vm: &VirtualMachine,
