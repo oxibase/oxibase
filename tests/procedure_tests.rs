@@ -219,3 +219,33 @@ fn test_rhai_procedure_print_stdout() {
     let stdout = oxibase::functions::context::get_stdout();
     assert!(stdout.contains("hello rhai stdout"));
 }
+
+#[test]
+fn test_rhai_procedure_random() {
+    let db = oxibase::api::Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_random_proc(OUT res FLOAT) 
+        LANGUAGE rhai 
+        AS ' 
+        res = oxibase::random();
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create procedure: {:?}", res.err());
+
+    let call_sql = "CALL test_random_proc(0.0);";
+    let mut results = db.query(call_sql, ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    let val = row
+        .get::<oxibase::core::Value>(0)
+        .unwrap()
+        .as_float64()
+        .unwrap();
+    assert!(
+        (0.0..1.0).contains(&val),
+        "Expected float in [0, 1), got {}",
+        val
+    );
+}

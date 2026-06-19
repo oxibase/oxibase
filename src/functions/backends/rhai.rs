@@ -131,6 +131,13 @@ impl RhaiBackend {
                 Ok(())
             },
         );
+        oxibase_module.set_native_fn(
+            "random",
+            || -> std::result::Result<f64, Box<rhai::EvalAltResult>> {
+                use rand::RngExt;
+                Ok(rand::rng().random::<f64>())
+            },
+        );
         engine.register_static_module("oxibase", rhai::Shared::new(oxibase_module));
 
         engine.on_print(|x| {

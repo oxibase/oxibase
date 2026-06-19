@@ -406,3 +406,34 @@ fn test_plsql_arithmetic_all_combinations() {
     // f / f -> 2.0 / 2.0 = 1.0
     assert_eq!(row.get::<Value>(0).unwrap().as_float64().unwrap(), 1.0);
 }
+
+#[test]
+fn test_plsql_random() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE FUNCTION test_random_plsql() RETURNS FLOAT
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            r FLOAT;
+        BEGIN 
+            r := random();
+            RETURN r;
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create function: {:?}", res.err());
+
+    let call_sql = "SELECT test_random_plsql() AS r;";
+    let mut results = db.query(call_sql, ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    let val = row.get::<Value>(0).unwrap().as_float64().unwrap();
+    assert!(
+        (0.0..1.0).contains(&val),
+        "Expected float in [0, 1), got {}",
+        val
+    );
+}
