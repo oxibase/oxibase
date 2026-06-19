@@ -36,4 +36,3 @@ The system is an autonomous relational database management system.
 <!-- SPECKIT START -->
 specs/047-procedural-random/plan.md
 <!-- SPECKIT END -->
-
