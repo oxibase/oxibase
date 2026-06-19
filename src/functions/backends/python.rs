@@ -344,7 +344,9 @@ impl ScriptingBackend for PythonBackend {
 
     fn execute(&self, code: &str, args: &[Value], param_names: &[&str]) -> Result<Value> {
         // Create a new interpreter for each execution (isolation)
-        let interpreter = Interpreter::with_init(Settings::default(), |_| ());
+        let builder = Interpreter::builder(Settings::default());
+        let def = oxibase_py_module::module_def(&builder.ctx);
+        let interpreter = builder.add_native_module(def).build();
 
         interpreter
             .enter(|vm| {
