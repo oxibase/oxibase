@@ -104,7 +104,7 @@ CALL apply_tax(100.0, 0.20, 50.0);
 
 ## Types and Conversion
 
-Rhai supports dynamic typing, but it seamlessly binds to Oxibase's native SQL types (Integer, Float, Boolean, Text).
+Rhai supports dynamic typing, but it seamlessly binds to Oxibase's native SQL types (Integer, Float, Boolean, Text, Timestamp).
 
 To explicitly cast variables within Rhai, Oxibase exposes several built-in conversion functions you can use inside your scripts:
 - `to_string(value)` -> Text
@@ -116,5 +116,23 @@ CREATE PROCEDURE format_id(id INT, prefix TEXT, OUT formatted TEXT)
 LANGUAGE rhai
 AS '
     formatted = prefix + "-" + to_string(id);
+';
+```
+
+## Time and Timestamps
+
+Rhai natively supports handling Oxibase `TIMESTAMP` objects. You can also generate and manipulate timestamps natively in the script using built-in functions:
+- `timestamp()`: Returns the current UTC timestamp (equivalent to a SQL `TIMESTAMP`).
+- `elapsed(ts)`: Given a timestamp object `ts`, returns the elapsed time in seconds as a Float.
+- `sleep(ms)`: Blocks the execution for `ms` milliseconds.
+
+```sql
+CREATE PROCEDURE test_performance(OUT duration FLOAT)
+LANGUAGE rhai
+AS '
+    let start = timestamp();
+    sleep(100);
+    // ... complex logic ...
+    duration = start.elapsed();
 ';
 ```
