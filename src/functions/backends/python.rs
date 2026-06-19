@@ -69,6 +69,14 @@ mod oxibase_py_module {
     }
 
     #[pyfunction]
+    fn random(vm: &VirtualMachine) -> rustpython_vm::PyObjectRef {
+        use rand::RngExt;
+        use rustpython_vm::convert::ToPyObject;
+        let val = rand::rng().random::<f64>();
+        val.to_pyobject(vm)
+    }
+
+    #[pyfunction]
     fn get_http_header(
         header_name: PyStrRef,
         vm: &VirtualMachine,

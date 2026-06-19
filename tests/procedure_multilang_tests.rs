@@ -235,3 +235,35 @@ oxibase.commit()
     // No more rows
     assert!(results.next().is_none());
 }
+
+#[test]
+#[cfg(feature = "python")]
+fn test_python_procedure_random() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_random_py(OUT res FLOAT) 
+        LANGUAGE python 
+        AS '
+import oxibase
+res = oxibase.random()
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(
+        res.is_ok(),
+        "Failed to create python procedure: {:?}",
+        res.err()
+    );
+
+    let call_sql = "CALL test_random_py(0.0);";
+    let mut results = db.query(call_sql, ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    let val = row.get::<Value>(0).unwrap().as_float64().unwrap();
+    assert!(
+        (0.0..1.0).contains(&val),
+        "Expected float in [0, 1), got {}",
+        val
+    );
+}

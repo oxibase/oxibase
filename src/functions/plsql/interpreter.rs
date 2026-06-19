@@ -28,7 +28,7 @@ pub enum ExecutionStatus {
 }
 
 pub struct PlSqlInterpreter<'a> {
-    pub(crate) _function_registry: Arc<FunctionRegistry>,
+    pub(crate) function_registry: Arc<FunctionRegistry>,
     runner: Option<&'a dyn crate::functions::backends::SqlRunner>,
     debug_hook: Option<Arc<dyn DebugAdapterHook>>,
 }
@@ -39,7 +39,7 @@ impl<'a> PlSqlInterpreter<'a> {
         runner: Option<&'a dyn crate::functions::backends::SqlRunner>,
     ) -> Self {
         Self {
-            _function_registry: function_registry,
+            function_registry,
             runner,
             debug_hook: None,
         }
@@ -205,6 +205,21 @@ impl<'a> PlSqlInterpreter<'a> {
                     _ => Err(Error::internal(
                         "Operator not implemented in PL/SQL interpreter yet",
                     )),
+                }
+            }
+            Expression::FunctionCall(fc) => {
+                let mut evaluated_args = Vec::with_capacity(fc.arguments.len());
+                for arg in &fc.arguments {
+                    evaluated_args.push(self.eval_expr(arg, env)?);
+                }
+
+                if let Some(func) = self.function_registry.get_scalar(&fc.function) {
+                    func.evaluate(&evaluated_args)
+                } else {
+                    Err(Error::internal(format!(
+                        "Function not found: {}",
+                        fc.function
+                    )))
                 }
             }
             _ => Err(Error::internal(format!(
