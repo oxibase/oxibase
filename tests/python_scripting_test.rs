@@ -497,4 +497,71 @@ oxibase.log("warn", "test logging from python sp")
         _shutdown.0.store(true, std::sync::atomic::Ordering::SeqCst);
         let _ = _shutdown.1.join();
     }
+
+    #[test]
+    fn test_python_json_marshalling() {
+        let db = Database::open("memory://python_json_marshall_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION process_json(j JSON) RETURNS JSON
+            LANGUAGE PYTHON AS '
+                # Assert it is a dict
+                if not isinstance(arguments[0], dict):
+                    raise TypeError("Expected dict")
+                
+                # Mutate it and return
+                j = arguments[0]
+                j["processed"] = True
+                return j
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let result: String = db
+            .query_one("SELECT process_json(CAST('{\"key\": 42}' AS JSON))", ())
+            .unwrap();
+
+        assert!(result.contains("\"processed\": true") || result.contains("\"processed\":true"));
+        assert!(result.contains("\"key\": 42") || result.contains("\"key\":42"));
+    }
+
+    #[test]
+    fn test_python_timestamp_marshalling() {
+        let db = Database::open("memory://python_timestamp_marshall_test").unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION process_timestamp(ts TIMESTAMP) RETURNS TIMESTAMP
+            LANGUAGE PYTHON AS '
+                # Currently rustpython-stdlib is not included, so datetime falls back to string
+                if not isinstance(arguments[0], str):
+                    raise TypeError("Expected str fallback for timestamp")
+                
+                ts_str = arguments[0]
+                # Dummy manipulation: return the same string
+                return ts_str
+            '
+        "#,
+            (),
+        )
+        .unwrap();
+
+        let past = chrono::Utc::now() - chrono::Duration::days(1);
+        let query = format!(
+            "SELECT process_timestamp(CAST('{}' AS TIMESTAMP))",
+            past.to_rfc3339()
+        );
+        let result: oxibase::Value = db.query_one(&query, ()).unwrap();
+        let dt = if let oxibase::Value::Timestamp(t) = result {
+            t
+        } else {
+            panic!("Expected timestamp")
+        };
+
+        let diff = dt - past;
+        assert_eq!(diff.num_seconds(), 0);
+    }
 }
