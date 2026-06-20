@@ -349,7 +349,12 @@
                         }
                     }
                 }).catch(err => console.error("Run network error:", err))
-                  .finally(() => { btn.disabled = false; });
+                  .finally(() => { 
+                      btn.disabled = false; 
+                      document.getElementById('btn-continue').disabled = true;
+                      document.getElementById('btn-step-over').disabled = true;
+                      document.getElementById('btn-stop').disabled = true;
+                  });
             });
 
             window.dapClient.connect();
