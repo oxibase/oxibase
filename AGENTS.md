@@ -8,7 +8,7 @@ This file contains high-signal, repo-specific context to help agents work effect
   - All features: `make test-all`
 - **Linting & Formatting**: Use `make lint` (runs `cargo fmt --all -- --check` and `cargo clippy --all-targets --all-features -- -D warnings`).
   - **IMPORTANT**: ALWAYS run `make lint` and fix any issues before pushing code to avoid CI failures.
-- **Features**: The codebase has optional scripting backends: `js` (Boa), `python` (RustPython), and `rhai` (default). When testing or building specific backend logic, ensure you pass the right feature flag (e.g., `--features js`).
+- **Features**: The codebase has optional scripting backends: `python` (RustPython) and `rhai` (default). When testing or building specific backend logic, ensure you pass the right feature flag (e.g., `--features python`).
 - **License Headers**: All `.rs` files require an Apache-2.0 license header. You can use `./scripts/fix_copyrights.sh` to fix headers or run `make license` to verify them. 
 - **Code Coverage**: Verify your changes do not drop the overall test coverage below the minimum threshold by running `make coverage-check`. You can also generate an HTML report using `make coverage-html`.
 
@@ -29,7 +29,7 @@ The system is an autonomous relational database management system.
 - `src/core/`: Core data structures (`Value`, `Row`, `Schema`, `Error`).
 
 ## CI/CD & Artifacts
-- CI automatically runs `make lint`, `cargo nextest` across features (`js`, `python`), and checks licenses.
+- CI automatically runs `make lint`, `cargo nextest` across features (`python`), and checks licenses.
 - Code coverage is uploaded to Codecov via `cargo llvm-cov` (`make coverage`).
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
