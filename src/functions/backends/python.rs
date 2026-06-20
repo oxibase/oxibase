@@ -323,6 +323,103 @@ impl PythonBackend {
         Ok(())
     }
 
+    fn json_to_py(&self, vm: &VirtualMachine, json: &serde_json::Value) -> PyObjectRef {
+        match json {
+            serde_json::Value::Null => vm.ctx.none(),
+            serde_json::Value::Bool(b) => vm.ctx.new_bool(*b).into(),
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    vm.ctx.new_int(i).into()
+                } else if let Some(f) = n.as_f64() {
+                    vm.ctx.new_float(f).into()
+                } else {
+                    vm.ctx.none()
+                }
+            }
+            serde_json::Value::String(s) => vm.ctx.new_str(s.as_str()).into(),
+            serde_json::Value::Array(a) => {
+                let elements: Vec<PyObjectRef> = a.iter().map(|e| self.json_to_py(vm, e)).collect();
+                vm.ctx.new_list(elements).into()
+            }
+            serde_json::Value::Object(o) => {
+                let dict = vm.ctx.new_dict();
+                for (k, v) in o {
+                    let _ = dict.set_item(k, self.json_to_py(vm, v), vm);
+                }
+                dict.into()
+            }
+        }
+    }
+
+    fn py_to_json(&self, vm: &VirtualMachine, py_obj: &PyObjectRef) -> Result<serde_json::Value> {
+        if py_obj.is(&vm.ctx.none()) {
+            Ok(serde_json::Value::Null)
+        } else if &*py_obj.class().name() == "bool" {
+            if let Ok(s) = py_obj.str(vm) {
+                Ok(serde_json::Value::Bool(s.to_string() == "True"))
+            } else {
+                Ok(serde_json::Value::Bool(false))
+            }
+        } else if &*py_obj.class().name() == "int" {
+            if let Ok(s) = py_obj.str(vm) {
+                if let Ok(i) = s.to_string().parse::<i64>() {
+                    Ok(serde_json::json!(i))
+                } else {
+                    Ok(serde_json::Value::Null)
+                }
+            } else {
+                Ok(serde_json::Value::Null)
+            }
+        } else if &*py_obj.class().name() == "float" {
+            if let Ok(s) = py_obj.str(vm) {
+                if let Ok(f) = s.to_string().parse::<f64>() {
+                    Ok(serde_json::json!(f))
+                } else {
+                    Ok(serde_json::Value::Null)
+                }
+            } else {
+                Ok(serde_json::Value::Null)
+            }
+        } else if &*py_obj.class().name() == "str" {
+            if let Ok(s) = py_obj.str(vm) {
+                Ok(serde_json::Value::String(s.to_string()))
+            } else {
+                Ok(serde_json::Value::String(String::new()))
+            }
+        } else if &*py_obj.class().name() == "list" {
+            if let Ok(list) = py_obj.clone().downcast::<rustpython_vm::builtins::PyList>() {
+                let mut vec = Vec::new();
+                for item in list.borrow_vec().iter() {
+                    vec.push(self.py_to_json(vm, item).unwrap_or(serde_json::Value::Null));
+                }
+                Ok(serde_json::Value::Array(vec))
+            } else {
+                Ok(serde_json::Value::Array(vec![]))
+            }
+        } else if &*py_obj.class().name() == "dict" {
+            if let Ok(dict) = py_obj.clone().downcast::<rustpython_vm::builtins::PyDict>() {
+                let mut map = serde_json::Map::new();
+                for (k, v) in dict.into_iter() {
+                    if let Ok(k_str) = k.str(vm) {
+                        map.insert(
+                            k_str.to_string(),
+                            self.py_to_json(vm, &v).unwrap_or(serde_json::Value::Null),
+                        );
+                    }
+                }
+                Ok(serde_json::Value::Object(map))
+            } else {
+                Ok(serde_json::Value::Object(serde_json::Map::new()))
+            }
+        } else {
+            if let Ok(s) = py_obj.str(vm) {
+                Ok(serde_json::Value::String(s.to_string()))
+            } else {
+                Ok(serde_json::Value::String(String::new()))
+            }
+        }
+    }
+
     /// Convert Oxibase Value to Python object
     #[allow(dead_code)]
     fn convert_oxibase_to_python(&self, value: &Value, vm: &VirtualMachine) -> Result<PyObjectRef> {
@@ -333,14 +430,30 @@ impl PythonBackend {
             Value::Text(s) => Ok(s.as_ref().to_pyobject(vm)),
             Value::Boolean(b) => Ok(b.to_pyobject(vm)),
             Value::Timestamp(ts) => {
-                // Convert to Python datetime - simplified approach
-                // For now, convert to ISO string and let Python handle it
+                match vm.import("datetime", 0) {
+                    Ok(datetime_mod) => {
+                        if let Ok(datetime_cls) = datetime_mod.get_attr("datetime", vm) {
+                            if let Ok(fromisoformat) = datetime_cls.get_attr("fromisoformat", vm) {
+                                let iso_str = ts.to_rfc3339();
+                                let arg: PyObjectRef = vm.ctx.new_str(iso_str).into();
+                                match fromisoformat.call((arg,), vm) {
+                                    Ok(obj) => return Ok(obj),
+                                    Err(e) => println!("Error calling fromisoformat: {:?}", e),
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => println!("Error importing datetime: {:?}", e),
+                }
                 let iso_str = ts.to_rfc3339();
                 Ok(iso_str.to_pyobject(vm))
             }
             Value::Json(j) => {
-                // For now, just pass as string
-                Ok(j.as_ref().to_pyobject(vm))
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(j.as_ref()) {
+                    Ok(self.json_to_py(vm, &val))
+                } else {
+                    Ok(vm.ctx.new_str(j.as_ref()).into())
+                }
             }
         }
     }
@@ -355,11 +468,46 @@ impl PythonBackend {
             return Ok(Value::null_unknown());
         }
 
+        let class_name = py_obj.class().name();
+        let class_name_str = &*class_name;
+        println!("Converting python object of class: {}", class_name_str);
+
+        if class_name_str == "dict" || class_name_str == "list" {
+            if let Ok(json_val) = self.py_to_json(vm, py_obj) {
+                return Ok(Value::Json(std::sync::Arc::from(json_val.to_string())));
+            }
+        }
+
+        if class_name_str == "datetime" {
+            if let Ok(isoformat) = py_obj.get_attr("isoformat", vm) {
+                if let Ok(iso_str_obj) = isoformat.call((), vm) {
+                    if let Ok(s) = iso_str_obj.str(vm) {
+                        let s_str = s.to_string();
+                        // Try RFC3339 first
+                        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s_str) {
+                            return Ok(Value::Timestamp(dt.with_timezone(&chrono::Utc)));
+                        }
+                        // Fallback: it might not have timezone info, append Z
+                        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&format!("{}Z", s_str))
+                        {
+                            return Ok(Value::Timestamp(dt.with_timezone(&chrono::Utc)));
+                        }
+                    }
+                }
+            }
+        }
+
         // Try to extract as different types using str() and parsing
         if let Ok(str_repr) = py_obj.str(vm) {
             // Convert PyStr to String
             let s = str_repr.to_string();
             // Try to parse as different types
+            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s) {
+                return Ok(Value::Timestamp(dt.with_timezone(&chrono::Utc)));
+            }
+            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&format!("{}Z", s)) {
+                return Ok(Value::Timestamp(dt.with_timezone(&chrono::Utc)));
+            }
             if let Ok(i) = s.parse::<i64>() {
                 return Ok(Value::Integer(i));
             }

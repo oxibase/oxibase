@@ -340,3 +340,78 @@ fn test_plsql_procedure_logging() {
     _shutdown.0.store(true, std::sync::atomic::Ordering::SeqCst);
     let _ = _shutdown.1.join();
 }
+
+#[test]
+fn test_plsql_json_assignment() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_json_proc(OUT res JSON) 
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            v_json JSON;
+        BEGIN 
+            v_json := CAST(''{"key": "value"}'' AS JSON);
+            res := v_json;
+        END; 
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+
+    let mut results = db.query("CALL test_json_proc(NULL);", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    let val = row.get::<Value>(0).unwrap();
+    assert_eq!(val.data_type(), oxibase::core::DataType::Json);
+    assert_eq!(val.as_str().unwrap(), "{\"key\": \"value\"}");
+}
+
+#[test]
+fn test_plsql_timestamp_assignment() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_ts_proc(OUT res TIMESTAMP) 
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            v_ts TIMESTAMP;
+        BEGIN 
+            v_ts := CAST(''2026-06-20T10:00:00Z'' AS TIMESTAMP);
+            res := v_ts;
+        END; 
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+
+    let mut results = db.query("CALL test_ts_proc(NULL);", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    let val = row.get::<Value>(0).unwrap();
+    assert_eq!(val.data_type(), oxibase::core::DataType::Timestamp);
+}
+
+#[test]
+fn test_plsql_random() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE PROCEDURE test_random_proc(OUT res FLOAT) 
+        LANGUAGE plsql 
+        AS ' 
+        BEGIN 
+            res := random();
+        END; 
+        ';
+    "#;
+
+    db.execute(create_sql, ()).unwrap();
+
+    let mut results = db.query("CALL test_random_proc(0.0);", ()).unwrap();
+    let row = results.next().unwrap().unwrap();
+    let val = row.get::<Value>(0).unwrap();
+    assert_eq!(val.data_type(), oxibase::core::DataType::Float);
+    let f = val.as_float64().unwrap();
+    assert!((0.0..=1.0).contains(&f));
+}
