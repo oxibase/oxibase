@@ -413,6 +413,25 @@ impl ScriptingBackend for PythonBackend {
                     indented_code
                 );
 
+                let redirect_code = r#"
+import sys
+import oxibase
+class CaptureStdout:
+    def write(self, s):
+        oxibase._append_stdout(s)
+    def flush(self):
+        pass
+sys.stdout = CaptureStdout()
+
+def trace_hook(frame, event, arg):
+    if event == "line":
+        oxibase._check_breakpoint(frame.f_lineno, frame.f_locals, frame.f_globals)
+    return trace_hook
+
+sys.settrace(trace_hook)
+"#;
+                let _ = vm.run_string(scope.clone(), redirect_code, "<redirect>".to_string());
+
                 // Execute the wrapper
                 match vm.run_string(scope.clone(), &wrapper_code, "<user_function>".to_string()) {
                     Ok(_) => {
