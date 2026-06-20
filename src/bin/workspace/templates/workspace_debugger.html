@@ -272,7 +272,11 @@
                 
                 let paramStr = paramsArray.map(p => `${p.name} ${p.data_type}`).join(", ");
                 const escapedCode = newCode.replace(/'/g, "''");
-                const ddl = `DROP ${kind} IF EXISTS ${procedureName};\nCREATE ${kind} ${procedureName}(${paramStr}) LANGUAGE ${procData.LANGUAGE} AS '${escapedCode}';`;
+                const language = procData.LANGUAGE || procData.language || 'rhai';
+                const returnType = procData.return_type || procData.RETURN_TYPE || 'INT';
+                const ddl = isProcedure 
+                    ? `DROP PROCEDURE IF EXISTS ${procedureName};\nCREATE PROCEDURE ${procedureName}(${paramStr}) LANGUAGE ${language} AS '${escapedCode}';`
+                    : `DROP FUNCTION IF EXISTS ${procedureName};\nCREATE FUNCTION ${procedureName}(${paramStr}) RETURNS ${returnType} LANGUAGE ${language} AS '${escapedCode}';`;
                 
                 try {
                     const response = await fetch('/api/sql', {

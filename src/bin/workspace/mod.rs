@@ -245,3 +245,5 @@ fn parse_sql_script(script: &str) -> Vec<String> {
 
     queries
 }
+
+// ponytail: touched to force recompilation of embedded templates
