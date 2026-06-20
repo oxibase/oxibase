@@ -40,6 +40,41 @@ mod oxibase_py_module {
     }
 
     #[pyfunction]
+    fn query(sql: PyStrRef, vm: &VirtualMachine) -> PyResult<rustpython_vm::PyObjectRef> {
+        match crate::functions::backends::execute_sql_query(sql.as_ref()) {
+            Ok(mut res) => {
+                let mut py_rows = Vec::new();
+                let cols = res.columns().to_vec();
+                while res.next() {
+                    let py_dict = vm.ctx.new_dict();
+                    for (i, col) in cols.iter().enumerate() {
+                        let val = res
+                            .row()
+                            .get(i)
+                            .cloned()
+                            .unwrap_or(crate::core::Value::Null(crate::core::DataType::Null));
+                        let py_val = match val {
+                            crate::core::Value::Integer(v) => vm.ctx.new_int(v).into(),
+                            crate::core::Value::Float(v) => vm.ctx.new_float(v).into(),
+                            crate::core::Value::Text(v) => vm.ctx.new_str(v.to_string()).into(),
+                            crate::core::Value::Boolean(v) => vm.ctx.new_bool(v).into(),
+                            crate::core::Value::Timestamp(v) => {
+                                vm.ctx.new_str(v.to_rfc3339()).into()
+                            }
+                            crate::core::Value::Null(_) => vm.ctx.none(),
+                            crate::core::Value::Json(v) => vm.ctx.new_str(v.to_string()).into(),
+                        };
+                        let _ = py_dict.set_item(col.as_str(), py_val, vm);
+                    }
+                    py_rows.push(py_dict.into());
+                }
+                Ok(vm.ctx.new_list(py_rows).into())
+            }
+            Err(e) => Err(vm.new_runtime_error(e.to_string())),
+        }
+    }
+
+    #[pyfunction]
     fn commit(vm: &VirtualMachine) -> PyResult<()> {
         match crate::functions::backends::commit_transaction() {
             Ok(_) => Ok(()),
@@ -114,15 +149,21 @@ mod oxibase_py_module {
     ) {
         if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
             if let Some(dc) = crate::functions::context::get_debug_controller() {
+                if crate::functions::context::get_last_paused_line() != Some(line) {
+                    crate::functions::context::set_last_paused_line(None);
+                }
+
+                let has_bp = dc.has_breakpoint(&proc_name, line);
+                let is_stepping = crate::functions::context::get_is_stepping();
+                let already_paused =
+                    crate::functions::context::get_last_paused_line() == Some(line);
+
                 println!(
-                    "Tracing proc {} at line {}, has_breakpoint? {}",
-                    proc_name,
-                    line,
-                    dc.has_breakpoint(&proc_name, line)
+                    "Python trace: line {}, has_bp={}, is_stepping={}, already_paused={}",
+                    line, has_bp, is_stepping, already_paused
                 );
-                // Determine if we need to pause (either due to a breakpoint or a step action)
-                // For simplicity, we just check breakpoint hit here.
-                if dc.has_breakpoint(&proc_name, line) {
+
+                if (has_bp || is_stepping) && !already_paused {
                     let mut local_map = serde_json::Map::new();
                     for (k, v) in locals.into_iter() {
                         if let Ok(key) = k.str(vm) {
@@ -146,11 +187,25 @@ mod oxibase_py_module {
                         }
                     }
 
-                    let _action = dc.pause_execution(
+                    let action = dc.pause_execution(
                         line,
                         serde_json::Value::Object(local_map),
                         serde_json::Value::Object(global_map),
                     );
+
+                    crate::functions::context::set_last_paused_line(Some(line));
+
+                    match action {
+                        crate::common::debug::ResumeAction::Continue => {
+                            crate::functions::context::set_is_stepping(false);
+                        }
+                        crate::common::debug::ResumeAction::StepOver => {
+                            crate::functions::context::set_is_stepping(true);
+                        }
+                        crate::common::debug::ResumeAction::Disconnect => {
+                            crate::functions::context::set_is_stepping(false);
+                        }
+                    }
                 }
             }
         }
@@ -540,6 +595,25 @@ impl ScriptingBackend for PythonBackend {
                     "def __user_function():\n{}\nresult = __user_function()",
                     indented_code
                 );
+
+                let redirect_code = r#"
+import sys
+import oxibase
+class CaptureStdout:
+    def write(self, s):
+        oxibase._append_stdout(s)
+    def flush(self):
+        pass
+sys.stdout = CaptureStdout()
+
+def trace_hook(frame, event, arg):
+    if event == "line":
+        oxibase._check_breakpoint(frame.f_lineno, frame.f_locals, frame.f_globals)
+    return trace_hook
+
+sys.settrace(trace_hook)
+"#;
+                let _ = vm.run_string(scope.clone(), redirect_code, "<redirect>".to_string());
 
                 // Execute the wrapper
                 match vm.run_string(scope.clone(), &wrapper_code, "<user_function>".to_string()) {

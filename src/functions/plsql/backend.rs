@@ -36,13 +36,21 @@ impl crate::functions::plsql::interpreter::DebugAdapterHook for PlSqlDebugHook {
     fn on_statement_before_eval(&self, line_number: usize, env: &Environment) {
         if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
             if let Some(dc) = crate::functions::context::get_debug_controller() {
+                if crate::functions::context::get_last_paused_line() != Some(line_number) {
+                    crate::functions::context::set_last_paused_line(None);
+                }
+
+                let has_bp = dc.has_breakpoint(&proc_name, line_number);
+                let is_stepping = crate::functions::context::get_is_stepping();
+                let already_paused =
+                    crate::functions::context::get_last_paused_line() == Some(line_number);
+
                 println!(
-                    "PlSqlDebugHook: proc_name: {}, line_number: {}, has_breakpoint? {}",
-                    proc_name,
-                    line_number,
-                    dc.has_breakpoint(&proc_name, line_number)
+                    "PL/SQL trace: line {}, has_bp={}, is_stepping={}, already_paused={}",
+                    line_number, has_bp, is_stepping, already_paused
                 );
-                if dc.has_breakpoint(&proc_name, line_number) {
+
+                if (has_bp || is_stepping) && !already_paused {
                     let mut local_map = serde_json::Map::new();
                     for scope in env.to_dap_scopes() {
                         for var in scope.variables {
@@ -50,11 +58,25 @@ impl crate::functions::plsql::interpreter::DebugAdapterHook for PlSqlDebugHook {
                         }
                     }
 
-                    let _ = dc.pause_execution(
+                    let action = dc.pause_execution(
                         line_number,
                         serde_json::Value::Object(local_map),
                         serde_json::Value::Object(serde_json::Map::new()),
                     );
+
+                    crate::functions::context::set_last_paused_line(Some(line_number));
+
+                    match action {
+                        crate::common::debug::ResumeAction::Continue => {
+                            crate::functions::context::set_is_stepping(false);
+                        }
+                        crate::common::debug::ResumeAction::StepOver => {
+                            crate::functions::context::set_is_stepping(true);
+                        }
+                        crate::common::debug::ResumeAction::Disconnect => {
+                            crate::functions::context::set_is_stepping(false);
+                        }
+                    }
                 }
             }
         }

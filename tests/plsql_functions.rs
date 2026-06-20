@@ -437,3 +437,54 @@ fn test_plsql_random() {
         val
     );
 }
+
+#[test]
+fn test_plsql_table_declaration() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE FUNCTION test_table_decl() RETURNS INT
+        LANGUAGE plsql 
+        AS ' 
+        DECLARE
+            v_rows TABLE;
+        BEGIN 
+            RETURN 42;
+        END; 
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create function: {:?}", res.err());
+
+    let val: i64 = db.query_one("SELECT test_table_decl()", ()).unwrap();
+    assert_eq!(val, 42);
+}
+
+#[test]
+fn test_plsql_sugar_table_iteration() {
+    let db = Database::open_in_memory().unwrap();
+
+    let create_sql = r#"
+        CREATE FUNCTION test_table_loop_plsql() RETURNS TEXT
+        LANGUAGE plsql AS '
+        DECLARE
+            v_rows TABLE;
+            v_row JSON;
+            v_names TEXT := '''';
+        BEGIN
+            v_rows := query_rows(''SELECT ''''Alice'''' AS name UNION SELECT ''''Bob'''' AS name ORDER BY name'');
+            FOR v_row IN v_rows LOOP
+                v_names := v_names || v_row.name || '' '';
+            END LOOP;
+            RETURN v_names;
+        END;
+        ';
+    "#;
+
+    let res = db.execute(create_sql, ());
+    assert!(res.is_ok(), "Failed to create function: {:?}", res.err());
+
+    let val: String = db.query_one("SELECT test_table_loop_plsql()", ()).unwrap();
+    assert_eq!(val, "Alice Bob ");
+}

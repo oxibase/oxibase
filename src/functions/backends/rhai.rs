@@ -76,6 +76,42 @@ impl RhaiBackend {
             },
         );
         oxibase_module.set_native_fn(
+            "query",
+            |sql: rhai::ImmutableString| -> std::result::Result<rhai::Array, Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::execute_sql_query(&sql) {
+                    Ok(mut res) => {
+                        let mut arr = rhai::Array::new();
+                        let cols = res.columns().to_vec();
+                        while res.next() {
+                            let mut map = rhai::Map::new();
+                            for (i, col) in cols.iter().enumerate() {
+                                let val = res.row().get(i).cloned().unwrap_or(Value::Null(crate::core::DataType::Null));
+                                let dyn_val = match val {
+                                    Value::Integer(v) => rhai::Dynamic::from(v),
+                                    Value::Float(v) => rhai::Dynamic::from(v),
+                                    Value::Text(v) => rhai::Dynamic::from(v.to_string()),
+                                    Value::Boolean(v) => rhai::Dynamic::from(v),
+                                    Value::Timestamp(v) => rhai::Dynamic::from(RhaiDateTime(v)),
+                                    Value::Null(_) => rhai::Dynamic::UNIT,
+                                    Value::Json(v) => {
+                                        if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(v.as_ref()) {
+                                            rhai::serde::to_dynamic(json_val).unwrap_or(rhai::Dynamic::UNIT)
+                                        } else {
+                                            rhai::Dynamic::from(v.to_string())
+                                        }
+                                    }
+                                };
+                                map.insert(col.clone().into(), dyn_val);
+                            }
+                            arr.push(rhai::Dynamic::from(map));
+                        }
+                        Ok(arr)
+                    }
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+        oxibase_module.set_native_fn(
             "get_http_header",
             |header_name: String| -> std::result::Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
                 let mut header_value = None;
@@ -144,9 +180,7 @@ impl RhaiBackend {
             crate::functions::context::append_stdout(x);
         });
 
-        #[cfg(debug_assertions)]
         #[allow(deprecated)]
-        // since there is no standard debugging feature in our workspace, let's use debug build, or just remove the cfg
         engine.register_debugger(
             |_engine, debugger| debugger,
             |context: rhai::EvalContext,
@@ -155,10 +189,19 @@ impl RhaiBackend {
              _source: Option<&str>,
              pos: rhai::Position| {
                 if let Some(line) = pos.line() {
+                    if crate::functions::context::get_last_paused_line() != Some(line) {
+                        crate::functions::context::set_last_paused_line(None);
+                    }
+
                     if let Some(proc_name) = crate::functions::context::get_current_procedure_name()
                     {
                         if let Some(dc) = crate::functions::context::get_debug_controller() {
-                            if dc.has_breakpoint(&proc_name, line) {
+                            let has_bp = dc.has_breakpoint(&proc_name, line);
+                            let is_stepping = crate::functions::context::get_is_stepping();
+                            let already_paused =
+                                crate::functions::context::get_last_paused_line() == Some(line);
+
+                            if (has_bp || is_stepping) && !already_paused {
                                 let mut local_map = serde_json::Map::new();
                                 for (k, _, v) in context.scope().iter() {
                                     local_map.insert(
@@ -167,16 +210,33 @@ impl RhaiBackend {
                                     );
                                 }
 
-                                let _ = dc.pause_execution(
+                                let action = dc.pause_execution(
                                     line,
                                     serde_json::Value::Object(local_map),
                                     serde_json::Value::Object(serde_json::Map::new()),
                                 );
+
+                                crate::functions::context::set_last_paused_line(Some(line));
+
+                                match action {
+                                    crate::common::debug::ResumeAction::Continue => {
+                                        crate::functions::context::set_is_stepping(false);
+                                        return Ok(rhai::debugger::DebuggerCommand::StepInto);
+                                    }
+                                    crate::common::debug::ResumeAction::StepOver => {
+                                        crate::functions::context::set_is_stepping(true);
+                                        return Ok(rhai::debugger::DebuggerCommand::StepInto);
+                                    }
+                                    crate::common::debug::ResumeAction::Disconnect => {
+                                        crate::functions::context::set_is_stepping(false);
+                                        return Ok(rhai::debugger::DebuggerCommand::Continue);
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                Ok(rhai::debugger::DebuggerCommand::Continue)
+                Ok(rhai::debugger::DebuggerCommand::StepInto)
             },
         );
 

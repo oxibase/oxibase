@@ -499,6 +499,112 @@ oxibase.log("warn", "test logging from python sp")
     }
 
     #[test]
+    fn test_python_database_debugger() {
+        use oxibase::common::debug::{DebugController, ResumeAction};
+        use std::collections::HashMap;
+        use std::sync::Arc;
+        use std::thread;
+        use std::time::Duration;
+
+        let db = Database::open("memory://python_debug_db").unwrap();
+
+        db.execute(
+            r#"
+            CREATE PROCEDURE debug_python_proc()
+            LANGUAGE python
+            AS '
+x = 10
+y = 20
+x = x + 10
+y = y + 20
+';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        let dc = Arc::new(DebugController::new());
+        // Set breakpoint on line 3 (corresponds to "x = x + 10")
+        dc.set_breakpoints("DEBUG_PYTHON_PROC", vec![3]);
+
+        let db_clone = db.clone();
+        let dc_clone = Arc::clone(&dc);
+
+        let handle = thread::spawn(move || {
+            oxibase::functions::context::with_http_headers_and_debug(
+                HashMap::new(),
+                Some(dc_clone),
+                || {
+                    db_clone.execute("CALL debug_python_proc();", ()).unwrap();
+                },
+            );
+        });
+
+        // Let execution reach the breakpoint (poll with timeout)
+        for _ in 0..100 {
+            {
+                let state = dc.pause_mutex.lock().unwrap();
+                if state.is_paused {
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        // Verify that the thread is paused and we can see local variables
+        {
+            let state = dc.pause_mutex.lock().unwrap();
+            assert!(
+                state.is_paused,
+                "Python execution should be paused at the breakpoint"
+            );
+
+            if let Some(ref locals) = state.current_locals {
+                assert_eq!(locals["x"], "10");
+            } else {
+                panic!("No local variables captured at Python breakpoint");
+            }
+        }
+
+        // Issue a StepOver command
+        dc.resume(ResumeAction::StepOver);
+        thread::sleep(Duration::from_millis(50));
+
+        // Give it a moment to step and pause on the next line (line 4) (poll with timeout)
+        for _ in 0..100 {
+            {
+                let state = dc.pause_mutex.lock().unwrap();
+                if state.is_paused {
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        // Verify that the thread is paused at line 4 (even though there is no breakpoint there)
+        {
+            let state = dc.pause_mutex.lock().unwrap();
+            assert!(
+                state.is_paused,
+                "Python execution should be paused after StepOver"
+            );
+
+            if let Some(ref locals) = state.current_locals {
+                assert_eq!(locals["x"], "10");
+                assert_eq!(locals["y"], "20");
+            } else {
+                panic!("No local variables captured after Python StepOver");
+            }
+        }
+
+        // Resume execution with Continue
+        dc.resume(ResumeAction::Continue);
+
+        // Join thread
+        handle.join().unwrap();
+    }
+
+    #[test]
     fn test_python_json_marshalling() {
         let db = Database::open("memory://python_json_marshall_test").unwrap();
 
