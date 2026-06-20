@@ -35,6 +35,7 @@ pub struct PauseState {
     // Store variables/state here temporarily while paused so DAP can query it
     pub current_locals: Option<serde_json::Value>,
     pub current_globals: Option<serde_json::Value>,
+    pub current_line: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,7 +90,7 @@ impl DebugController {
 
     pub fn pause_execution(
         &self,
-        _line: usize,
+        line: usize,
         locals: serde_json::Value,
         globals: serde_json::Value,
     ) -> ResumeAction {
@@ -111,6 +112,7 @@ impl DebugController {
         state.resume_action = None;
         state.current_locals = Some(locals);
         state.current_globals = Some(globals);
+        state.current_line = Some(line);
 
         // Block the current thread until the client sends a resume action
         while state.resume_action.is_none() {
@@ -124,6 +126,7 @@ impl DebugController {
         state.is_paused = false;
         state.current_locals = None;
         state.current_globals = None;
+        state.current_line = None;
         action
     }
 

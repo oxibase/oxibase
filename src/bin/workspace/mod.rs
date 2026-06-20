@@ -17,7 +17,7 @@ use oxibase::api::Database;
 use oxibase::Value;
 
 pub fn install(db: &Database) {
-    println!("Installing Workspace app into database...");
+    println!("Installing polished Workspace app into database...");
 
     // Create schemas and tables if they don't exist (DDL outside transaction)
     let _ = db.execute("CREATE SCHEMA IF NOT EXISTS interface", ());

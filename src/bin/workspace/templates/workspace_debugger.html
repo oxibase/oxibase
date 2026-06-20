@@ -87,24 +87,64 @@
                 const lang = procData.LANGUAGE.toLowerCase();
                 if (lang === 'plsql' || lang === 'sql') {
                     langExtension = sql();
-                } else if (lang === 'python') {
-                    langExtension = python();
-                }
-            }
-            
-            window.cmEditor = new EditorView({
-                doc: code,
-                extensions: [
-                    basicSetup,
-                    langExtension,
-                    EditorView.theme({
-                        ".cm-content": {fontFamily: "monospace"},
-                        ".cm-activeLine": {backgroundColor: "rgba(255, 255, 0, 0.1)"},
-                        ".cm-gutterElement": {cursor: "pointer", transition: "color 0.1s"}
-                    })
-                ],
-                parent: document.getElementById("cm-editor")
-            });
+                 } else if (lang === 'python') {
+                     langExtension = python();
+                 }
+             }
+
+             window.currentPausedLine = null;
+
+             function syncDebuggerLineStyles() {
+                 // 1. Clear all existing line styles
+                 document.querySelectorAll('.cm-content .cm-line').forEach(el => {
+                     el.classList.remove('cm-breakpoint-line', 'cm-paused-line');
+                 });
+
+                 // 2. Highlight breakpoint lines based on red gutter elements
+                 document.querySelectorAll('.cm-gutterElement').forEach(el => {
+                     if (el.style.color === 'red') {
+                         const lineNum = parseInt(el.innerText.trim());
+                         if (!isNaN(lineNum)) {
+                             const lines = document.querySelectorAll('.cm-content .cm-line');
+                             const targetLine = lines[lineNum - 1];
+                             if (targetLine) {
+                                 targetLine.classList.add('cm-breakpoint-line');
+                             }
+                         }
+                     }
+                 });
+
+                 // 3. Highlight currently paused line
+                 if (window.currentPausedLine) {
+                     const lines = document.querySelectorAll('.cm-content .cm-line');
+                     const targetLine = lines[window.currentPausedLine - 1];
+                     if (targetLine) {
+                         targetLine.classList.add('cm-paused-line');
+                     }
+                 }
+             }
+             window.syncDebuggerLineStyles = syncDebuggerLineStyles;
+             
+             window.cmEditor = new EditorView({
+                 doc: code,
+                 extensions: [
+                     basicSetup,
+                     langExtension,
+                     EditorView.updateListener.of(update => {
+                         if (update.docChanged || update.viewportChanged) {
+                             setTimeout(syncDebuggerLineStyles, 0);
+                         }
+                     }),
+                     EditorView.theme({
+                         ".cm-content": {fontFamily: "monospace"},
+                         ".cm-activeLine": {backgroundColor: "rgba(255, 255, 0, 0.05)"},
+                         ".cm-gutterElement": {cursor: "pointer", transition: "color 0.1s"},
+                         ".cm-breakpoint-line": {backgroundColor: "rgba(239, 68, 68, 0.15) !important"},
+                         ".cm-paused-line": {backgroundColor: "rgba(251, 191, 36, 0.3) !important"}
+                     })
+                 ],
+                 parent: document.getElementById("cm-editor")
+             });
             
             // Simple DOM-based breakpoint toggle for the line numbers gutter
             document.getElementById("cm-editor").addEventListener('mousedown', function(event) {
@@ -122,6 +162,8 @@
                             event.target.style.color = "red";
                             event.target.style.fontWeight = "bold";
                         }
+                        
+                        syncDebuggerLineStyles();
                         
                         // Collect all breakpoints by scanning DOM
                         const newBps = [];
@@ -165,6 +207,11 @@
                     const stackTrace = await window.dapClient.sendRequest('stackTrace', { threadId });
                     if (stackTrace.body.stackFrames && stackTrace.body.stackFrames.length > 0) {
                         const frameId = stackTrace.body.stackFrames[0].id;
+                        const line = stackTrace.body.stackFrames[0].line;
+                        if (line) {
+                            window.currentPausedLine = line;
+                            syncDebuggerLineStyles();
+                        }
                         const scopes = await window.dapClient.sendRequest('scopes', { frameId });
                         
                         if (scopes.body.scopes && scopes.body.scopes.length > 0) {
@@ -188,10 +235,12 @@
                 }
             });
             
-            window.dapClient.on('continued', () => {
-                document.getElementById('btn-continue').disabled = true;
-                document.getElementById('btn-step-over').disabled = true;
-            });
+             window.dapClient.on('continued', () => {
+                 document.getElementById('btn-continue').disabled = true;
+                 document.getElementById('btn-step-over').disabled = true;
+                 window.currentPausedLine = null;
+                 syncDebuggerLineStyles();
+             });
             
             document.getElementById('btn-continue').addEventListener('click', () => {
                 window.dapClient.sendRequest('continue', { threadId: 1 });
