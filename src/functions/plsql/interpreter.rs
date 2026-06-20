@@ -209,7 +209,10 @@ impl<'a> PlSqlInterpreter<'a> {
             }
             Expression::FunctionCall(fc) => {
                 let func_name = fc.function.to_lowercase();
-                if func_name == "get_http_header" {
+                if func_name == "random" {
+                    use rand::RngExt;
+                    Ok(Value::Float(rand::rng().random::<f64>()))
+                } else if func_name == "get_http_header" {
                     if fc.arguments.len() != 1 {
                         return Err(Error::internal(
                             "get_http_header requires exactly 1 argument",
@@ -256,6 +259,32 @@ impl<'a> PlSqlInterpreter<'a> {
                             fc.function
                         )))
                     }
+                }
+            }
+            Expression::Cast(cast_expr) => {
+                let inner_val = self.eval_expr(&cast_expr.expr, env)?;
+                let type_name = cast_expr.type_name.to_uppercase();
+                if type_name == "JSON" {
+                    if let Value::Text(s) = inner_val {
+                        Ok(Value::Json(s))
+                    } else {
+                        Err(Error::internal("Cannot cast non-text to JSON"))
+                    }
+                } else if type_name == "TIMESTAMP" {
+                    if let Value::Text(s) = inner_val {
+                        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&s) {
+                            Ok(Value::Timestamp(dt.with_timezone(&chrono::Utc)))
+                        } else {
+                            Err(Error::internal("Invalid RFC3339 timestamp format"))
+                        }
+                    } else {
+                        Err(Error::internal("Cannot cast non-text to TIMESTAMP"))
+                    }
+                } else {
+                    Err(Error::internal(format!(
+                        "Cast to type {} not supported in simple PL/SQL interpreter",
+                        type_name
+                    )))
                 }
             }
             _ => Err(Error::internal(format!(
