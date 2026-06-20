@@ -1531,3 +1531,119 @@ impl ScalarFunction for GetHttpHeaderFunction {
         Box::new(Self {})
     }
 }
+
+/// QUERY_VALUE(sql) - Executes a query and returns the first column of the first row
+#[derive(Default)]
+pub struct QueryValueFunction;
+
+impl ScalarFunction for QueryValueFunction {
+    fn name(&self) -> &str {
+        "QUERY_VALUE"
+    }
+
+    fn info(&self) -> FunctionInfo {
+        FunctionInfo::new(
+            "QUERY_VALUE",
+            FunctionType::Scalar,
+            "Executes a query and returns the first column of the first row",
+            FunctionSignature::new(FunctionDataType::Any, vec![FunctionDataType::String], 1, 1),
+        )
+    }
+
+    fn evaluate(&self, args: &[Value]) -> Result<Value> {
+        crate::validate_arg_count!(args, "QUERY_VALUE", 1);
+
+        if args[0].is_null() {
+            return Ok(Value::null_unknown());
+        }
+
+        let sql = match &args[0] {
+            Value::Text(t) => t.to_string(),
+            _ => {
+                return Err(Error::invalid_argument(
+                    "QUERY_VALUE argument must be a string",
+                ))
+            }
+        };
+
+        let mut res = crate::functions::backends::execute_sql_query(&sql)?;
+        if res.next() {
+            let row = res.row();
+            if !row.is_empty() {
+                Ok(row
+                    .get(0)
+                    .cloned()
+                    .unwrap_or(Value::Null(crate::core::DataType::Null)))
+            } else {
+                Ok(Value::null_unknown())
+            }
+        } else {
+            Ok(Value::null_unknown())
+        }
+    }
+
+    fn clone_box(&self) -> Box<dyn ScalarFunction> {
+        Box::new(Self {})
+    }
+}
+
+/// QUERY_ROWS(sql) - Executes a query and returns all rows as a JSON array
+#[derive(Default)]
+pub struct QueryRowsFunction;
+
+impl ScalarFunction for QueryRowsFunction {
+    fn name(&self) -> &str {
+        "QUERY_ROWS"
+    }
+
+    fn info(&self) -> FunctionInfo {
+        FunctionInfo::new(
+            "QUERY_ROWS",
+            FunctionType::Scalar,
+            "Executes a query and returns all rows as a JSON array",
+            FunctionSignature::new(FunctionDataType::Any, vec![FunctionDataType::String], 1, 1),
+        )
+    }
+
+    fn evaluate(&self, args: &[Value]) -> Result<Value> {
+        crate::validate_arg_count!(args, "QUERY_ROWS", 1);
+
+        if args[0].is_null() {
+            return Ok(Value::null_unknown());
+        }
+
+        let sql = match &args[0] {
+            Value::Text(t) => t.to_string(),
+            _ => {
+                return Err(Error::invalid_argument(
+                    "QUERY_ROWS argument must be a string",
+                ))
+            }
+        };
+
+        let mut res = crate::functions::backends::execute_sql_query(&sql)?;
+        let cols = res.columns().to_vec();
+        let mut arr = Vec::new();
+        while res.next() {
+            let row = res.row();
+            let mut json_obj = serde_json::Map::new();
+            for (i, col) in cols.iter().enumerate() {
+                let val = row
+                    .get(i)
+                    .cloned()
+                    .unwrap_or(Value::Null(crate::core::DataType::Null));
+                json_obj.insert(col.clone(), crate::server::handlers::value_to_json(&val));
+            }
+            arr.push(serde_json::Value::Object(json_obj));
+        }
+
+        let json_str = serde_json::to_string(&serde_json::Value::Array(arr))
+            .map_err(|e| Error::internal(e.to_string()))?;
+
+        Ok(Value::Json(std::sync::Arc::from(json_str)))
+    }
+
+    fn clone_box(&self) -> Box<dyn ScalarFunction> {
+        Box::new(Self {})
+    }
+}

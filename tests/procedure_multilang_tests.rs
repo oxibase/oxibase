@@ -267,3 +267,33 @@ res = oxibase.random()
         val
     );
 }
+
+#[test]
+#[cfg(feature = "python")]
+fn test_python_scripting_query() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute(
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);",
+        (),
+    )
+    .unwrap();
+    db.execute("INSERT INTO users VALUES (1, 'Bob');", ())
+        .unwrap();
+
+    db.execute(
+        r#"
+        CREATE FUNCTION test_query_py() RETURNS TEXT
+        LANGUAGE PYTHON AS '
+import oxibase
+rows = oxibase.query("SELECT name FROM users WHERE id = 1")
+val = rows[0]["name"]
+return val;
+        ';
+        "#,
+        (),
+    )
+    .unwrap();
+
+    let val: String = db.query_one("SELECT test_query_py()", ()).unwrap();
+    assert_eq!(val, "Bob");
+}

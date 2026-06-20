@@ -152,7 +152,10 @@ impl PlSqlParser {
                 let name = self.cur_token.literal.clone();
                 self.next_token(); // Move to type
 
-                let data_type = self.cur_token.literal.clone();
+                let mut data_type = self.cur_token.literal.clone();
+                if data_type.eq_ignore_ascii_case("TABLE") {
+                    data_type = "JSON".to_string();
+                }
                 self.next_token(); // Move past type
 
                 let mut default_value = None;
@@ -270,6 +273,77 @@ impl PlSqlParser {
         None
     }
 
+    fn parse_for_loop_statement(&mut self) -> Option<PlSqlStatement> {
+        let token = self.cur_token.clone();
+        self.next_token(); // Move past FOR
+
+        // Expect loop variable (identifier)
+        if self.cur_token.token_type != TokenType::Identifier {
+            self.errors
+                .push("Expected loop variable after FOR".to_string());
+            return None;
+        }
+        let loop_variable = self.cur_token.literal.clone();
+        self.next_token(); // Move past loop variable
+
+        // Expect IN keyword
+        if !self.cur_token.literal.eq_ignore_ascii_case("IN") {
+            self.errors
+                .push("Expected IN after loop variable".to_string());
+            return None;
+        }
+        self.next_token(); // Move past IN
+
+        // Parse collection expression (could be a variable name, function call, etc.)
+        let mut sql_parser =
+            crate::parser::Parser::new(&self.code[self.cur_token.position.offset..]);
+        let collection_expr = sql_parser.parse_expression(Precedence::Lowest)?;
+
+        // Advance our lexer to LOOP
+        while !self.cur_token.literal.eq_ignore_ascii_case("LOOP") {
+            if self.cur_token.token_type == TokenType::Eof {
+                self.errors
+                    .push("Expected LOOP after FOR collection".to_string());
+                return None;
+            }
+            self.next_token();
+        }
+        self.next_token(); // Move past LOOP
+
+        let mut block = Vec::new();
+        while !self.cur_token.literal.eq_ignore_ascii_case("END") {
+            if self.cur_token.token_type == TokenType::Eof {
+                self.errors
+                    .push("Unexpected EOF waiting for END LOOP".to_string());
+                return None;
+            }
+            if let Some(stmt) = self.parse_statement() {
+                block.push(stmt);
+            } else {
+                self.next_token();
+            }
+        }
+
+        self.next_token(); // Consume END
+
+        if !self.cur_token.literal.eq_ignore_ascii_case("LOOP") {
+            self.errors.push("Expected LOOP after END".to_string());
+            return None;
+        }
+        self.next_token(); // Consume LOOP
+
+        if self.cur_token.literal == ";" {
+            self.next_token(); // Consume semicolon
+        }
+
+        Some(PlSqlStatement::ForLoop(super::ast::ForLoopStatement {
+            token,
+            loop_variable,
+            collection_expr,
+            body: block,
+        }))
+    }
+
     fn parse_statement(&mut self) -> Option<PlSqlStatement> {
         // Skip comments
         while self.cur_token.token_type == TokenType::Comment {
@@ -282,6 +356,7 @@ impl PlSqlParser {
                 match kw.as_str() {
                     "IF" => self.parse_if_statement(),
                     "WHILE" => self.parse_while_statement(),
+                    "FOR" => self.parse_for_loop_statement(),
                     "RETURN" => {
                         let token = self.cur_token.clone();
                         self.next_token();
@@ -438,7 +513,13 @@ impl PlSqlParser {
             }
             TokenType::Identifier => {
                 let kw = self.cur_token.literal.to_uppercase();
-                if kw == "RETURN" {
+                if kw == "IF" {
+                    return self.parse_if_statement();
+                } else if kw == "WHILE" {
+                    return self.parse_while_statement();
+                } else if kw == "FOR" {
+                    return self.parse_for_loop_statement();
+                } else if kw == "RETURN" {
                     let token = self.cur_token.clone();
                     self.next_token();
 

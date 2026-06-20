@@ -46,6 +46,8 @@ pub enum PlSqlStatement {
         level: String,
         expression: Expression,
     },
+    /// FOR loop statement
+    ForLoop(ForLoopStatement),
 }
 
 /// A variable declaration
@@ -93,4 +95,13 @@ pub struct WhileStatement {
     pub token: Token,
     pub condition: Expression,
     pub block: Vec<PlSqlStatement>,
+}
+
+/// FOR loop statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct ForLoopStatement {
+    pub token: Token,
+    pub loop_variable: String,
+    pub collection_expr: Expression,
+    pub body: Vec<PlSqlStatement>,
 }

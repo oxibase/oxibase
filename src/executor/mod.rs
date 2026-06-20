@@ -1016,64 +1016,73 @@ impl Executor {
         )
         .entered();
 
-        match statement {
-            // DDL statements
-            Statement::CreateTable(stmt) => self.execute_create_table(stmt, &ctx),
-            Statement::DropTable(stmt) => self.execute_drop_table(stmt, &ctx),
-            Statement::CreateIndex(stmt) => self.execute_create_index(stmt, &ctx),
-            Statement::DropIndex(stmt) => self.execute_drop_index(stmt, &ctx),
-            Statement::AlterTable(stmt) => self.execute_alter_table(stmt, &ctx),
-            Statement::CreateView(stmt) => self.execute_create_view(stmt, &ctx),
-            Statement::DropView(stmt) => self.execute_drop_view(stmt, &ctx),
-            Statement::CreateColumnarIndex(stmt) => self.execute_create_columnar_index(stmt, &ctx),
-            Statement::DropColumnarIndex(stmt) => self.execute_drop_columnar_index(stmt, &ctx),
-            Statement::CreateSchema(stmt) => self.execute_create_schema(stmt, &ctx),
-            Statement::DropSchema(stmt) => self.execute_drop_schema(stmt, &ctx),
-            Statement::UseSchema(stmt) => self.execute_use_schema(stmt, &ctx),
+        crate::functions::backends::with_sql_runner(
+            Some(self as &dyn crate::functions::backends::SqlRunner),
+            || {
+                match statement {
+                    // DDL statements
+                    Statement::CreateTable(stmt) => self.execute_create_table(stmt, &ctx),
+                    Statement::DropTable(stmt) => self.execute_drop_table(stmt, &ctx),
+                    Statement::CreateIndex(stmt) => self.execute_create_index(stmt, &ctx),
+                    Statement::DropIndex(stmt) => self.execute_drop_index(stmt, &ctx),
+                    Statement::AlterTable(stmt) => self.execute_alter_table(stmt, &ctx),
+                    Statement::CreateView(stmt) => self.execute_create_view(stmt, &ctx),
+                    Statement::DropView(stmt) => self.execute_drop_view(stmt, &ctx),
+                    Statement::CreateColumnarIndex(stmt) => {
+                        self.execute_create_columnar_index(stmt, &ctx)
+                    }
+                    Statement::DropColumnarIndex(stmt) => {
+                        self.execute_drop_columnar_index(stmt, &ctx)
+                    }
+                    Statement::CreateSchema(stmt) => self.execute_create_schema(stmt, &ctx),
+                    Statement::DropSchema(stmt) => self.execute_drop_schema(stmt, &ctx),
+                    Statement::UseSchema(stmt) => self.execute_use_schema(stmt, &ctx),
 
-            // DML statements
-            Statement::Insert(stmt) => self.execute_insert(stmt, &ctx),
-            Statement::Update(stmt) => self.execute_update(stmt, &ctx),
-            Statement::Delete(stmt) => self.execute_delete(stmt, &ctx),
-            Statement::Truncate(stmt) => self.execute_truncate(stmt, &ctx),
+                    // DML statements
+                    Statement::Insert(stmt) => self.execute_insert(stmt, &ctx),
+                    Statement::Update(stmt) => self.execute_update(stmt, &ctx),
+                    Statement::Delete(stmt) => self.execute_delete(stmt, &ctx),
+                    Statement::Truncate(stmt) => self.execute_truncate(stmt, &ctx),
 
-            // Query statements
-            Statement::Select(stmt) => self.execute_select(stmt, &ctx),
+                    // Query statements
+                    Statement::Select(stmt) => self.execute_select(stmt, &ctx),
 
-            // Transaction control
-            Statement::Begin(stmt) => self.execute_begin(stmt, &ctx),
-            Statement::Commit(stmt) => self.execute_commit_stmt(stmt, &ctx),
-            Statement::Rollback(stmt) => self.execute_rollback_stmt(stmt, &ctx),
-            Statement::Savepoint(stmt) => self.execute_savepoint(stmt, &ctx),
+                    // Transaction control
+                    Statement::Begin(stmt) => self.execute_begin(stmt, &ctx),
+                    Statement::Commit(stmt) => self.execute_commit_stmt(stmt, &ctx),
+                    Statement::Rollback(stmt) => self.execute_rollback_stmt(stmt, &ctx),
+                    Statement::Savepoint(stmt) => self.execute_savepoint(stmt, &ctx),
 
-            // Utility statements
-            Statement::Set(stmt) => self.execute_set(stmt, &ctx),
-            Statement::ShowTables(stmt) => self.execute_show_tables(stmt, &ctx),
-            Statement::ShowViews(stmt) => self.execute_show_views(stmt, &ctx),
-            Statement::ShowFunctions(stmt) => self.execute_show_functions(stmt, &ctx),
-            Statement::ShowCreateTable(stmt) => self.execute_show_create_table(stmt, &ctx),
-            Statement::ShowCreateView(stmt) => self.execute_show_create_view(stmt, &ctx),
-            Statement::ShowIndexes(stmt) => self.execute_show_indexes(stmt, &ctx),
-            Statement::Describe(stmt) => self.execute_describe(stmt, &ctx),
-            Statement::Pragma(stmt) => self.execute_pragma(stmt, &ctx),
-            Statement::Expression(stmt) => self.execute_expression_stmt(stmt, &ctx),
-            Statement::Explain(stmt) => self.execute_explain(stmt, &ctx),
-            Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
-            Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
-            Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
-            Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
-            Statement::DropProcedure(stmt) => self.execute_drop_procedure(stmt, &ctx),
-            Statement::CreateTrigger(stmt) => self.execute_create_trigger(stmt, &ctx),
-            Statement::DropTrigger(stmt) => self.execute_drop_trigger(stmt, &ctx),
-            Statement::CreateSequence(stmt) => self.execute_create_sequence(stmt, &ctx),
-            Statement::AlterSequence(stmt) => self.execute_alter_sequence(stmt, &ctx),
-            Statement::DropSequence(stmt) => self.execute_drop_sequence(stmt, &ctx),
-            Statement::Call(stmt) => self.execute_call(stmt, &ctx),
-            Statement::CreateSchedule(stmt) => self.execute_create_schedule(stmt, &ctx),
-            Statement::AlterSchedule(stmt) => self.execute_alter_schedule(stmt, &ctx),
-            Statement::DropSchedule(stmt) => self.execute_drop_schedule(stmt, &ctx),
-            Statement::Copy(stmt) => self.execute_copy(stmt, &ctx),
-        }
+                    // Utility statements
+                    Statement::Set(stmt) => self.execute_set(stmt, &ctx),
+                    Statement::ShowTables(stmt) => self.execute_show_tables(stmt, &ctx),
+                    Statement::ShowViews(stmt) => self.execute_show_views(stmt, &ctx),
+                    Statement::ShowFunctions(stmt) => self.execute_show_functions(stmt, &ctx),
+                    Statement::ShowCreateTable(stmt) => self.execute_show_create_table(stmt, &ctx),
+                    Statement::ShowCreateView(stmt) => self.execute_show_create_view(stmt, &ctx),
+                    Statement::ShowIndexes(stmt) => self.execute_show_indexes(stmt, &ctx),
+                    Statement::Describe(stmt) => self.execute_describe(stmt, &ctx),
+                    Statement::Pragma(stmt) => self.execute_pragma(stmt, &ctx),
+                    Statement::Expression(stmt) => self.execute_expression_stmt(stmt, &ctx),
+                    Statement::Explain(stmt) => self.execute_explain(stmt, &ctx),
+                    Statement::Analyze(stmt) => self.execute_analyze(stmt, &ctx),
+                    Statement::CreateFunction(stmt) => self.execute_create_function(stmt, &ctx),
+                    Statement::DropFunction(stmt) => self.execute_drop_function(stmt, &ctx),
+                    Statement::CreateProcedure(stmt) => self.execute_create_procedure(stmt, &ctx),
+                    Statement::DropProcedure(stmt) => self.execute_drop_procedure(stmt, &ctx),
+                    Statement::CreateTrigger(stmt) => self.execute_create_trigger(stmt, &ctx),
+                    Statement::DropTrigger(stmt) => self.execute_drop_trigger(stmt, &ctx),
+                    Statement::CreateSequence(stmt) => self.execute_create_sequence(stmt, &ctx),
+                    Statement::AlterSequence(stmt) => self.execute_alter_sequence(stmt, &ctx),
+                    Statement::DropSequence(stmt) => self.execute_drop_sequence(stmt, &ctx),
+                    Statement::Call(stmt) => self.execute_call(stmt, &ctx),
+                    Statement::CreateSchedule(stmt) => self.execute_create_schedule(stmt, &ctx),
+                    Statement::AlterSchedule(stmt) => self.execute_alter_schedule(stmt, &ctx),
+                    Statement::DropSchedule(stmt) => self.execute_drop_schedule(stmt, &ctx),
+                    Statement::Copy(stmt) => self.execute_copy(stmt, &ctx),
+                }
+            },
+        )
     }
 
     /// Begin a new transaction

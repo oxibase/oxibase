@@ -252,6 +252,8 @@ impl FunctionRegistry {
         registry.register_scalar::<TypeOfFunction>();
         registry.register_scalar::<SleepFunction>();
         registry.register_scalar::<crate::functions::scalar::GetHttpHeaderFunction>();
+        registry.register_scalar::<crate::functions::scalar::QueryValueFunction>();
+        registry.register_scalar::<crate::functions::scalar::QueryRowsFunction>();
 
         // Register built-in window functions
         // Register generate_series as scalar (returns JSON array for SELECT usage)

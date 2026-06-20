@@ -684,13 +684,92 @@ pub async fn invoke_procedure(
     let executor = crate::executor::Executor::new(std::sync::Arc::clone(state.db.engine()));
     let registry = executor.function_registry();
 
+    let mut is_function = false;
+
     let procedure = match registry.get_procedure(&procedure_name_upper) {
         Some(proc) => proc,
         None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(serde_json::json!({ "error": format!("Procedure '{}' not found", procedure_name) })),
-            ).into_response();
+            if let Some(info) = registry.get_info(&procedure_name_upper) {
+                is_function = true;
+                let query = "SELECT language FROM system.functions WHERE UPPER(name) = ?";
+                let mut lang = "rhai".to_string();
+                if let Ok(rows) = state
+                    .db
+                    .query(query, vec![crate::Value::text(&procedure_name_upper)])
+                {
+                    for r in rows.flatten() {
+                        if let Some(crate::Value::Text(s)) = r.get_value(0) {
+                            lang = s.to_string();
+                        }
+                    }
+                }
+
+                // Get parameter names if stored, or default them
+                let mut param_names = Vec::new();
+                let query_params = "SELECT parameters FROM system.functions WHERE UPPER(name) = ?";
+                if let Ok(rows) = state.db.query(
+                    query_params,
+                    vec![crate::Value::text(&procedure_name_upper)],
+                ) {
+                    for r in rows.flatten() {
+                        if let Some(crate::Value::Text(s)) = r.get_value(0) {
+                            if let Ok(serde_json::Value::Array(arr)) =
+                                serde_json::from_str::<serde_json::Value>(s.as_ref())
+                            {
+                                for p in arr {
+                                    if let Some(name) = p.get("name").and_then(|v| v.as_str()) {
+                                        param_names.push(name.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                crate::storage::procedures::StoredProcedure {
+                    id: 0,
+                    schema: Some("PUBLIC".to_string()),
+                    name: procedure_name_upper.clone(),
+                    parameters: info
+                        .signature
+                        .argument_types
+                        .iter()
+                        .enumerate()
+                        .map(|(i, dtype)| {
+                            let name = if i < param_names.len() {
+                                param_names[i].clone()
+                            } else {
+                                format!("arg{}", i)
+                            };
+                            let type_str = match dtype {
+                                crate::functions::FunctionDataType::Any => "ANY",
+                                crate::functions::FunctionDataType::Integer => "INTEGER",
+                                crate::functions::FunctionDataType::Float => "FLOAT",
+                                crate::functions::FunctionDataType::String => "TEXT",
+                                crate::functions::FunctionDataType::Boolean => "BOOLEAN",
+                                crate::functions::FunctionDataType::Timestamp => "TIMESTAMP",
+                                crate::functions::FunctionDataType::Date => "DATE",
+                                crate::functions::FunctionDataType::Time => "TIME",
+                                crate::functions::FunctionDataType::DateTime => "DATETIME",
+                                crate::functions::FunctionDataType::Json => "JSON",
+                                crate::functions::FunctionDataType::Unknown => "UNKNOWN",
+                            };
+                            crate::storage::procedures::StoredProcedureParameter {
+                                mode: "IN".to_string(),
+                                name,
+                                data_type: type_str.to_string(),
+                            }
+                        })
+                        .collect(),
+                    language: lang,
+                    code: String::new(),
+                }
+            } else {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({ "error": format!("Routine '{}' not found", procedure_name) })),
+                ).into_response();
+            }
         }
     };
 
@@ -734,10 +813,13 @@ pub async fn invoke_procedure(
         }
     }
 
-    // Now, we can formulate a CALL statement and execute it with parameters
-    // Format: CALL proc_name($1, $2, ...)
+    // Now, we can formulate a CALL or SELECT statement and execute it with parameters
     let placeholders: Vec<String> = (1..=args.len()).map(|i| format!("${}", i)).collect();
-    let sql = format!("CALL {}({})", procedure_name, placeholders.join(", "));
+    let sql = if is_function {
+        format!("SELECT {}({})", procedure_name, placeholders.join(", "))
+    } else {
+        format!("CALL {}({})", procedure_name, placeholders.join(", "))
+    };
 
     let debug_controller = std::sync::Arc::clone(&state.debug_controller);
     let db_clone = std::sync::Arc::clone(&state.db);
@@ -746,7 +828,9 @@ pub async fn invoke_procedure(
             headers,
             Some(debug_controller),
             || {
+                crate::functions::context::set_current_procedure_name(Some(procedure_name_upper));
                 let res = db_clone.query(&sql, args);
+                crate::functions::context::set_current_procedure_name(None);
                 let stdout_captured = crate::functions::context::get_stdout();
                 (res, stdout_captured)
             },

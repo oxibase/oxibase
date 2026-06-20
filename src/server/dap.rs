@@ -254,6 +254,11 @@ async fn process_dap_buffer(buffer: &mut String, socket: &mut WebSocket, state: 
                                             let _ = send_dap_message(socket, &resp_str).await;
                                         }
                                     } else if cmd == "stackTrace" {
+                                        let current_line = {
+                                            let pause_state =
+                                                state.debug_controller.pause_mutex.lock().unwrap();
+                                            pause_state.current_line.unwrap_or(0)
+                                        };
                                         let resp = serde_json::json!({
                                             "seq": 1,
                                             "type": "response",
@@ -262,7 +267,7 @@ async fn process_dap_buffer(buffer: &mut String, socket: &mut WebSocket, state: 
                                             "success": true,
                                             "body": {
                                                 "stackFrames": [
-                                                    {"id": 1, "name": "Execution Context", "line": 0, "column": 0}
+                                                    {"id": 1, "name": "Execution Context", "line": current_line, "column": 0}
                                                 ]
                                             }
                                         });

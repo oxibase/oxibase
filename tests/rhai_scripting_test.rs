@@ -902,4 +902,137 @@ mod rhai_function_tests {
         _shutdown.0.store(true, std::sync::atomic::Ordering::SeqCst);
         let _ = _shutdown.1.join();
     }
+
+    #[test]
+    fn test_rhai_debugger() {
+        use oxibase::common::debug::{DebugController, ResumeAction};
+        use std::collections::HashMap;
+        use std::sync::Arc;
+        use std::thread;
+        use std::time::Duration;
+
+        let db = Database::open("memory://rhai_debug_test").unwrap();
+
+        // Create a multi-line Rhai procedure
+        db.execute(
+            r#"
+            CREATE PROCEDURE debug_proc_test()
+            LANGUAGE rhai
+            AS '
+                let a = 10;
+                let b = 20;
+                let c = a + b;
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        let dc = Arc::new(DebugController::new());
+        // Set breakpoint on line 3 (corresponds to "let b = 20;")
+        dc.set_breakpoints("DEBUG_PROC_TEST", vec![3]);
+
+        let db_clone = db.clone();
+        let dc_clone = Arc::clone(&dc);
+
+        let handle = thread::spawn(move || {
+            oxibase::functions::context::with_http_headers_and_debug(
+                HashMap::new(),
+                Some(dc_clone),
+                || {
+                    db_clone.execute("CALL debug_proc_test();", ()).unwrap();
+                },
+            );
+        });
+
+        // Let execution reach the breakpoint (poll with timeout)
+        for _ in 0..100 {
+            {
+                let state = dc.pause_mutex.lock().unwrap();
+                if state.is_paused {
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        // Verify that the thread is paused and we can see local variables
+        {
+            let state = dc.pause_mutex.lock().unwrap();
+            assert!(
+                state.is_paused,
+                "Execution should be paused at the breakpoint"
+            );
+
+            // Verify variables are captured in current_locals
+            if let Some(ref locals) = state.current_locals {
+                assert_eq!(locals["a"], "10");
+            } else {
+                panic!("No local variables captured at breakpoint");
+            }
+        }
+
+        // Issue a StepOver command
+        dc.resume(ResumeAction::StepOver);
+        thread::sleep(Duration::from_millis(50));
+
+        // Give the debugger a moment to step and pause on the next line (line 4) (poll with timeout)
+        for _ in 0..100 {
+            {
+                let state = dc.pause_mutex.lock().unwrap();
+                if state.is_paused {
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        // Verify that the thread is paused at line 4 (even though there is no breakpoint on line 4)
+        {
+            let state = dc.pause_mutex.lock().unwrap();
+            assert!(state.is_paused, "Execution should be paused after StepOver");
+
+            // Since line 3 executed during the step, "b" must now be 20!
+            if let Some(ref locals) = state.current_locals {
+                assert_eq!(locals["a"], "10");
+                assert_eq!(locals["b"], "20");
+            } else {
+                panic!("No local variables captured after StepOver");
+            }
+        }
+
+        // Resume execution with Continue
+        dc.resume(ResumeAction::Continue);
+
+        // Join thread
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn test_rhai_scripting_query() {
+        let db = Database::open("memory://rhai_query_test").unwrap();
+        db.execute(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);",
+            (),
+        )
+        .unwrap();
+        db.execute("INSERT INTO users VALUES (1, 'Alice');", ())
+            .unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION test_query_rhai() RETURNS TEXT
+            LANGUAGE RHAI AS '
+                let rows = oxibase::query("SELECT name FROM users WHERE id = 1");
+                let val = rows[0]["name"];
+                return val;
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        let val: String = db.query_one("SELECT test_query_rhai()", ()).unwrap();
+        assert_eq!(val, "Alice");
+    }
 }
