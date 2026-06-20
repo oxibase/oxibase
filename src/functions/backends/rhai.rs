@@ -144,9 +144,7 @@ impl RhaiBackend {
             crate::functions::context::append_stdout(x);
         });
 
-        #[cfg(debug_assertions)]
         #[allow(deprecated)]
-        // since there is no standard debugging feature in our workspace, let's use debug build, or just remove the cfg
         engine.register_debugger(
             |_engine, debugger| debugger,
             |context: rhai::EvalContext,
@@ -155,10 +153,19 @@ impl RhaiBackend {
              _source: Option<&str>,
              pos: rhai::Position| {
                 if let Some(line) = pos.line() {
+                    if crate::functions::context::get_last_paused_line() != Some(line) {
+                        crate::functions::context::set_last_paused_line(None);
+                    }
+
                     if let Some(proc_name) = crate::functions::context::get_current_procedure_name()
                     {
                         if let Some(dc) = crate::functions::context::get_debug_controller() {
-                            if dc.has_breakpoint(&proc_name, line) {
+                            let has_bp = dc.has_breakpoint(&proc_name, line);
+                            let is_stepping = crate::functions::context::get_is_stepping();
+                            let already_paused =
+                                crate::functions::context::get_last_paused_line() == Some(line);
+
+                            if (has_bp || is_stepping) && !already_paused {
                                 let mut local_map = serde_json::Map::new();
                                 for (k, _, v) in context.scope().iter() {
                                     local_map.insert(
@@ -167,16 +174,33 @@ impl RhaiBackend {
                                     );
                                 }
 
-                                let _ = dc.pause_execution(
+                                let action = dc.pause_execution(
                                     line,
                                     serde_json::Value::Object(local_map),
                                     serde_json::Value::Object(serde_json::Map::new()),
                                 );
+
+                                crate::functions::context::set_last_paused_line(Some(line));
+
+                                match action {
+                                    crate::common::debug::ResumeAction::Continue => {
+                                        crate::functions::context::set_is_stepping(false);
+                                        return Ok(rhai::debugger::DebuggerCommand::StepInto);
+                                    }
+                                    crate::common::debug::ResumeAction::StepOver => {
+                                        crate::functions::context::set_is_stepping(true);
+                                        return Ok(rhai::debugger::DebuggerCommand::StepInto);
+                                    }
+                                    crate::common::debug::ResumeAction::Disconnect => {
+                                        crate::functions::context::set_is_stepping(false);
+                                        return Ok(rhai::debugger::DebuggerCommand::Continue);
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                Ok(rhai::debugger::DebuggerCommand::Continue)
+                Ok(rhai::debugger::DebuggerCommand::StepInto)
             },
         );
 

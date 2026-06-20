@@ -114,15 +114,21 @@ mod oxibase_py_module {
     ) {
         if let Some(proc_name) = crate::functions::context::get_current_procedure_name() {
             if let Some(dc) = crate::functions::context::get_debug_controller() {
+                if crate::functions::context::get_last_paused_line() != Some(line) {
+                    crate::functions::context::set_last_paused_line(None);
+                }
+
+                let has_bp = dc.has_breakpoint(&proc_name, line);
+                let is_stepping = crate::functions::context::get_is_stepping();
+                let already_paused =
+                    crate::functions::context::get_last_paused_line() == Some(line);
+
                 println!(
-                    "Tracing proc {} at line {}, has_breakpoint? {}",
-                    proc_name,
-                    line,
-                    dc.has_breakpoint(&proc_name, line)
+                    "Python trace: line {}, has_bp={}, is_stepping={}, already_paused={}",
+                    line, has_bp, is_stepping, already_paused
                 );
-                // Determine if we need to pause (either due to a breakpoint or a step action)
-                // For simplicity, we just check breakpoint hit here.
-                if dc.has_breakpoint(&proc_name, line) {
+
+                if (has_bp || is_stepping) && !already_paused {
                     let mut local_map = serde_json::Map::new();
                     for (k, v) in locals.into_iter() {
                         if let Ok(key) = k.str(vm) {
@@ -146,11 +152,25 @@ mod oxibase_py_module {
                         }
                     }
 
-                    let _action = dc.pause_execution(
+                    let action = dc.pause_execution(
                         line,
                         serde_json::Value::Object(local_map),
                         serde_json::Value::Object(global_map),
                     );
+
+                    crate::functions::context::set_last_paused_line(Some(line));
+
+                    match action {
+                        crate::common::debug::ResumeAction::Continue => {
+                            crate::functions::context::set_is_stepping(false);
+                        }
+                        crate::common::debug::ResumeAction::StepOver => {
+                            crate::functions::context::set_is_stepping(true);
+                        }
+                        crate::common::debug::ResumeAction::Disconnect => {
+                            crate::functions::context::set_is_stepping(false);
+                        }
+                    }
                 }
             }
         }

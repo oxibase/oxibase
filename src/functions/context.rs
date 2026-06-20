@@ -34,6 +34,12 @@ thread_local! {
 
     /// Thread-local storage for the currently executing procedure name.
     pub static CURRENT_PROCEDURE_NAME: RefCell<Option<String>> = const { RefCell::new(None) };
+
+    /// Thread-local storage for the last paused line to avoid duplicate pauses on the same line.
+    pub static LAST_PAUSED_LINE: RefCell<Option<usize>> = const { RefCell::new(None) };
+
+    /// Thread-local storage for whether stepping mode is active.
+    pub static IS_STEPPING: RefCell<bool> = const { RefCell::new(false) };
 }
 
 /// Executes a closure with HTTP headers and debug controller available in the thread-local context.
@@ -49,6 +55,8 @@ where
     HTTP_HEADERS.with(|h| *h.borrow_mut() = Some(headers));
     STDOUT_CAPTURE.with(|s| s.borrow_mut().clear());
     DEBUG_CONTROLLER.with(|c| *c.borrow_mut() = debug_controller);
+    LAST_PAUSED_LINE.with(|c| *c.borrow_mut() = None);
+    IS_STEPPING.with(|c| *c.borrow_mut() = false);
 
     // Execute the closure
     let result = f();
@@ -56,6 +64,8 @@ where
     // Cleanup to avoid leaking context across different executions on the same thread
     HTTP_HEADERS.with(|h| *h.borrow_mut() = None);
     DEBUG_CONTROLLER.with(|c| *c.borrow_mut() = None);
+    LAST_PAUSED_LINE.with(|c| *c.borrow_mut() = None);
+    IS_STEPPING.with(|c| *c.borrow_mut() = false);
 
     result
 }
@@ -100,4 +110,24 @@ pub fn get_stdout() -> String {
 /// Gets the current debug controller
 pub fn get_debug_controller() -> Option<std::sync::Arc<crate::common::debug::DebugController>> {
     DEBUG_CONTROLLER.with(|c| c.borrow().clone())
+}
+
+/// Gets the last paused line
+pub fn get_last_paused_line() -> Option<usize> {
+    LAST_PAUSED_LINE.with(|c| *c.borrow())
+}
+
+/// Sets the last paused line
+pub fn set_last_paused_line(line: Option<usize>) {
+    LAST_PAUSED_LINE.with(|c| *c.borrow_mut() = line);
+}
+
+/// Gets whether stepping is active
+pub fn get_is_stepping() -> bool {
+    IS_STEPPING.with(|c| *c.borrow())
+}
+
+/// Sets whether stepping is active
+pub fn set_is_stepping(stepping: bool) {
+    IS_STEPPING.with(|c| *c.borrow_mut() = stepping);
 }
