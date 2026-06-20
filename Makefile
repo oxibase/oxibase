@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build buil-all coverage coverage-html coverage-check license docs docs-build docs-lib release help run-memory run-files run-all
+.PHONY: all lint test build buil-all coverage coverage-html coverage-check license docs docs-build docs-lib release help run-memory run-files run-all install clean
 
 .PHONY: help
 # [other] Display help
@@ -36,6 +36,14 @@ build-release:
 # [dev] Build in release mode with all features
 build-all:
 	cargo build --release --all-features
+
+# [dev] Clean build artifacts
+clean:
+	cargo clean
+
+# [dev] Install CLI binary locally
+install:
+	cargo install --path .
 
 # [dev] Generate coverage report (requires cargo-llvm-cov)
 coverage:
