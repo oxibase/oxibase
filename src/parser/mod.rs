@@ -40,6 +40,7 @@ pub mod lexer;
 pub mod parser;
 pub mod precedence;
 pub mod token;
+pub mod visitor;
 
 // Expression and statement parsing are implemented as impl blocks on Parser
 mod expressions;
@@ -139,6 +140,7 @@ pub use token::{
     is_keyword, is_operator, is_punctuator, Position, Token, TokenType, KEYWORDS, OPERATORS,
     PUNCTUATORS,
 };
+pub use visitor::{walk_expression, walk_statement, DependencyExtractor, Visitor};
 
 /// Parse SQL and return statements
 ///
