@@ -945,8 +945,16 @@ mod rhai_function_tests {
             );
         });
 
-        // Let execution reach the breakpoint
-        thread::sleep(Duration::from_millis(150));
+        // Let execution reach the breakpoint (poll with timeout)
+        for _ in 0..100 {
+            {
+                let state = dc.pause_mutex.lock().unwrap();
+                if state.is_paused {
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
 
         // Verify that the thread is paused and we can see local variables
         {
@@ -966,9 +974,18 @@ mod rhai_function_tests {
 
         // Issue a StepOver command
         dc.resume(ResumeAction::StepOver);
+        thread::sleep(Duration::from_millis(50));
 
-        // Give the debugger a moment to step and pause on the next line (line 4)
-        thread::sleep(Duration::from_millis(150));
+        // Give the debugger a moment to step and pause on the next line (line 4) (poll with timeout)
+        for _ in 0..100 {
+            {
+                let state = dc.pause_mutex.lock().unwrap();
+                if state.is_paused {
+                    break;
+                }
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
 
         // Verify that the thread is paused at line 4 (even though there is no breakpoint on line 4)
         {

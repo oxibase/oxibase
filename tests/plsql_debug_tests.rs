@@ -139,8 +139,16 @@ fn test_plsql_database_debugger() {
         );
     });
 
-    // Let execution reach the breakpoint
-    thread::sleep(Duration::from_millis(150));
+    // Let execution reach the breakpoint (poll with timeout)
+    for _ in 0..100 {
+        {
+            let state = dc.pause_mutex.lock().unwrap();
+            if state.is_paused {
+                break;
+            }
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
 
     // Verify that the thread is paused and we can see local variables
     {
@@ -159,9 +167,18 @@ fn test_plsql_database_debugger() {
 
     // Issue a StepOver command
     dc.resume(ResumeAction::StepOver);
+    thread::sleep(Duration::from_millis(50));
 
-    // Give it a moment to step and pause on the next line (line 7)
-    thread::sleep(Duration::from_millis(150));
+    // Give it a moment to step and pause on the next line (line 7) (poll with timeout)
+    for _ in 0..100 {
+        {
+            let state = dc.pause_mutex.lock().unwrap();
+            if state.is_paused {
+                break;
+            }
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
 
     // Verify that the thread is paused at line 7 (even though there is no breakpoint there)
     {
