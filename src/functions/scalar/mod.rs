@@ -73,7 +73,8 @@ pub use utility::{
     CoalesceFunction, GetHttpHeaderFunction, GreatestFunction, IfNullFunction, IifFunction,
     JsonArrayFunction, JsonArrayLengthFunction, JsonExtractFunction, JsonKeysFunction,
     JsonObjectFunction, JsonTypeFunction, JsonTypeOfFunction, JsonValidFunction, LeastFunction,
-    NowFunction, NullIfFunction, SleepFunction, TypeOfFunction,
+    NowFunction, NullIfFunction, QueryRowsFunction, QueryValueFunction, SleepFunction,
+    TypeOfFunction,
 };
 
 use crate::core::Value;

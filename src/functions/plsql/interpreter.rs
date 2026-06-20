@@ -22,6 +22,7 @@ pub trait DebugAdapterHook: Send + Sync {
     fn on_statement_before_eval(&self, line_number: usize, env: &Environment);
 }
 
+#[derive(Debug, Clone)]
 pub enum ExecutionStatus {
     Continue,
     Return(Option<Value>),
@@ -134,6 +135,43 @@ impl<'a> PlSqlInterpreter<'a> {
                     } else {
                         return Err(Error::internal(format!("Column not found: {}", col_name)));
                     }
+                } else if let Some(Value::Json(json_str)) = env.get(&qid.qualifier.value) {
+                    if let Ok(json_val) =
+                        serde_json::from_str::<serde_json::Value>(json_str.as_ref())
+                    {
+                        if let Some(obj) = json_val.as_object() {
+                            let col_lower = col_name.to_lowercase();
+                            let mut matched_val = None;
+                            for (k, v) in obj {
+                                if k.to_lowercase() == col_lower {
+                                    matched_val = Some(v);
+                                    break;
+                                }
+                            }
+                            if let Some(v) = matched_val {
+                                let oxibase_val = match v {
+                                    serde_json::Value::Null => {
+                                        Value::Null(crate::core::DataType::Null)
+                                    }
+                                    serde_json::Value::Bool(b) => Value::Boolean(*b),
+                                    serde_json::Value::Number(num) => {
+                                        if let Some(i) = num.as_i64() {
+                                            Value::Integer(i)
+                                        } else {
+                                            Value::Float(num.as_f64().unwrap_or(0.0))
+                                        }
+                                    }
+                                    serde_json::Value::String(s) => {
+                                        Value::Text(std::sync::Arc::from(s.clone()))
+                                    }
+                                    serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+                                        Value::Json(std::sync::Arc::from(v.to_string()))
+                                    }
+                                };
+                                return Ok(oxibase_val);
+                            }
+                        }
+                    }
                 }
                 Err(Error::internal(format!(
                     "Qualified identifier not fully supported: {}",
@@ -164,6 +202,22 @@ impl<'a> PlSqlInterpreter<'a> {
                     "!=" | "<>" => Ok(Value::Boolean(
                         left.compare(&right)? != std::cmp::Ordering::Equal,
                     )),
+                    "||" => {
+                        let l_str = match &left {
+                            Value::Text(s) => s.to_string(),
+                            Value::Null(_) => "".to_string(),
+                            _ => left.to_string(),
+                        };
+                        let r_str = match &right {
+                            Value::Text(s) => s.to_string(),
+                            Value::Null(_) => "".to_string(),
+                            _ => right.to_string(),
+                        };
+                        Ok(Value::Text(std::sync::Arc::from(format!(
+                            "{}{}",
+                            l_str, r_str
+                        ))))
+                    }
                     "+" => match (&left, &right) {
                         (Value::Integer(l), Value::Integer(r)) => Ok(Value::Integer(l + r)),
                         (Value::Float(l), Value::Float(r)) => Ok(Value::Float(l + r)),
@@ -414,6 +468,7 @@ impl<'a> PlSqlInterpreter<'a> {
                 PlSqlStatement::Assignment(s) => s.token.position.line,
                 PlSqlStatement::If(s) => s.token.position.line,
                 PlSqlStatement::While(s) => s.token.position.line,
+                PlSqlStatement::ForLoop(s) => s.token.position.line,
                 PlSqlStatement::Sql(t, _) => t.position.line,
                 PlSqlStatement::Return(t, _) => t.position.line,
                 PlSqlStatement::Commit(t) => t.position.line,
@@ -472,6 +527,43 @@ impl<'a> PlSqlInterpreter<'a> {
             PlSqlStatement::Assignment(assign) => {
                 let val = self.eval_expr(&assign.expression, env)?;
                 println!("Evaluating assign: {} = {:?}", assign.variable, val);
+
+                if assign.variable.contains('.') {
+                    let parts: Vec<&str> = assign.variable.split('.').collect();
+                    if parts.len() == 2 {
+                        let base_var = parts[0];
+                        let field = parts[1];
+                        if let Some(Value::Json(json_str)) = env.get(base_var) {
+                            if let Ok(mut json_val) =
+                                serde_json::from_str::<serde_json::Value>(json_str.as_ref())
+                            {
+                                if let Some(obj) = json_val.as_object_mut() {
+                                    let json_rhs = crate::server::handlers::value_to_json(&val);
+                                    let mut matched_key = None;
+                                    let field_lower = field.to_lowercase();
+                                    for k in obj.keys() {
+                                        if k.to_lowercase() == field_lower {
+                                            matched_key = Some(k.clone());
+                                            break;
+                                        }
+                                    }
+                                    let key_to_use =
+                                        matched_key.unwrap_or_else(|| field.to_string());
+                                    obj.insert(key_to_use, json_rhs);
+
+                                    let updated_json_str =
+                                        serde_json::to_string(&json_val).unwrap_or_default();
+                                    let final_val =
+                                        Value::Json(std::sync::Arc::from(updated_json_str));
+                                    if env.assign(base_var, final_val.clone()).is_err() {
+                                        env.define(base_var, final_val);
+                                    }
+                                    return Ok(ExecutionStatus::Continue);
+                                }
+                            }
+                        }
+                    }
+                }
 
                 let var_upper = assign.variable.to_uppercase();
                 if let Some(col_name) = var_upper.strip_prefix("NEW.") {
@@ -573,6 +665,56 @@ impl<'a> PlSqlInterpreter<'a> {
                     }
                 }
                 env.pop_frame();
+                Ok(ExecutionStatus::Continue)
+            }
+            PlSqlStatement::ForLoop(for_stmt) => {
+                let collection_val = self.eval_expr(&for_stmt.collection_expr, env)?;
+                let items = match &collection_val {
+                    Value::Json(json_str) => {
+                        if let Ok(json_val) =
+                            serde_json::from_str::<serde_json::Value>(json_str.as_ref())
+                        {
+                            match json_val {
+                                serde_json::Value::Array(arr) => arr,
+                                _ => vec![json_val],
+                            }
+                        } else {
+                            vec![]
+                        }
+                    }
+                    Value::Null(_) => vec![],
+                    _ => {
+                        if let Ok(json_val) =
+                            serde_json::from_str::<serde_json::Value>(&collection_val.to_string())
+                        {
+                            vec![json_val]
+                        } else {
+                            vec![]
+                        }
+                    }
+                };
+
+                for item in items {
+                    env.push_frame("for_loop_body");
+                    let row_str = serde_json::to_string(&item).unwrap_or_default();
+                    let row_val = Value::Json(std::sync::Arc::from(row_str));
+                    env.define(&for_stmt.loop_variable, row_val);
+
+                    let mut returned = None;
+                    for stmt in &for_stmt.body {
+                        let res = self.execute_statement(stmt, env)?;
+                        if let ExecutionStatus::Return(val) = res {
+                            returned = Some(val);
+                            break;
+                        }
+                    }
+
+                    env.pop_frame();
+                    if let Some(val) = returned {
+                        return Ok(ExecutionStatus::Return(val));
+                    }
+                }
+
                 Ok(ExecutionStatus::Continue)
             }
             PlSqlStatement::Sql(_token, box_stmt) => {

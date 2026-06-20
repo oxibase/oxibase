@@ -76,6 +76,42 @@ impl RhaiBackend {
             },
         );
         oxibase_module.set_native_fn(
+            "query",
+            |sql: rhai::ImmutableString| -> std::result::Result<rhai::Array, Box<rhai::EvalAltResult>> {
+                match crate::functions::backends::execute_sql_query(&sql) {
+                    Ok(mut res) => {
+                        let mut arr = rhai::Array::new();
+                        let cols = res.columns().to_vec();
+                        while res.next() {
+                            let mut map = rhai::Map::new();
+                            for (i, col) in cols.iter().enumerate() {
+                                let val = res.row().get(i).cloned().unwrap_or(Value::Null(crate::core::DataType::Null));
+                                let dyn_val = match val {
+                                    Value::Integer(v) => rhai::Dynamic::from(v),
+                                    Value::Float(v) => rhai::Dynamic::from(v),
+                                    Value::Text(v) => rhai::Dynamic::from(v.to_string()),
+                                    Value::Boolean(v) => rhai::Dynamic::from(v),
+                                    Value::Timestamp(v) => rhai::Dynamic::from(RhaiDateTime(v)),
+                                    Value::Null(_) => rhai::Dynamic::UNIT,
+                                    Value::Json(v) => {
+                                        if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(v.as_ref()) {
+                                            rhai::serde::to_dynamic(json_val).unwrap_or(rhai::Dynamic::UNIT)
+                                        } else {
+                                            rhai::Dynamic::from(v.to_string())
+                                        }
+                                    }
+                                };
+                                map.insert(col.clone().into(), dyn_val);
+                            }
+                            arr.push(rhai::Dynamic::from(map));
+                        }
+                        Ok(arr)
+                    }
+                    Err(e) => Err(e.to_string().into()),
+                }
+            },
+        );
+        oxibase_module.set_native_fn(
             "get_http_header",
             |header_name: String| -> std::result::Result<rhai::Dynamic, Box<rhai::EvalAltResult>> {
                 let mut header_value = None;

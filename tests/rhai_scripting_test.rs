@@ -990,4 +990,32 @@ mod rhai_function_tests {
         // Join thread
         handle.join().unwrap();
     }
+
+    #[test]
+    fn test_rhai_scripting_query() {
+        let db = Database::open("memory://rhai_query_test").unwrap();
+        db.execute(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);",
+            (),
+        )
+        .unwrap();
+        db.execute("INSERT INTO users VALUES (1, 'Alice');", ())
+            .unwrap();
+
+        db.execute(
+            r#"
+            CREATE FUNCTION test_query_rhai() RETURNS TEXT
+            LANGUAGE RHAI AS '
+                let rows = oxibase::query("SELECT name FROM users WHERE id = 1");
+                let val = rows[0]["name"];
+                return val;
+            ';
+            "#,
+            (),
+        )
+        .unwrap();
+
+        let val: String = db.query_one("SELECT test_query_rhai()", ()).unwrap();
+        assert_eq!(val, "Alice");
+    }
 }

@@ -40,6 +40,41 @@ mod oxibase_py_module {
     }
 
     #[pyfunction]
+    fn query(sql: PyStrRef, vm: &VirtualMachine) -> PyResult<rustpython_vm::PyObjectRef> {
+        match crate::functions::backends::execute_sql_query(sql.as_ref()) {
+            Ok(mut res) => {
+                let mut py_rows = Vec::new();
+                let cols = res.columns().to_vec();
+                while res.next() {
+                    let py_dict = vm.ctx.new_dict();
+                    for (i, col) in cols.iter().enumerate() {
+                        let val = res
+                            .row()
+                            .get(i)
+                            .cloned()
+                            .unwrap_or(crate::core::Value::Null(crate::core::DataType::Null));
+                        let py_val = match val {
+                            crate::core::Value::Integer(v) => vm.ctx.new_int(v).into(),
+                            crate::core::Value::Float(v) => vm.ctx.new_float(v).into(),
+                            crate::core::Value::Text(v) => vm.ctx.new_str(v.to_string()).into(),
+                            crate::core::Value::Boolean(v) => vm.ctx.new_bool(v).into(),
+                            crate::core::Value::Timestamp(v) => {
+                                vm.ctx.new_str(v.to_rfc3339()).into()
+                            }
+                            crate::core::Value::Null(_) => vm.ctx.none(),
+                            crate::core::Value::Json(v) => vm.ctx.new_str(v.to_string()).into(),
+                        };
+                        let _ = py_dict.set_item(col.as_str(), py_val, vm);
+                    }
+                    py_rows.push(py_dict.into());
+                }
+                Ok(vm.ctx.new_list(py_rows).into())
+            }
+            Err(e) => Err(vm.new_runtime_error(e.to_string())),
+        }
+    }
+
+    #[pyfunction]
     fn commit(vm: &VirtualMachine) -> PyResult<()> {
         match crate::functions::backends::commit_transaction() {
             Ok(_) => Ok(()),
