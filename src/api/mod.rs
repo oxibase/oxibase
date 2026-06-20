@@ -1,4 +1,5 @@
 // Copyright 2025 Stoolap Contributors
+// Copyright 2025 Oxibase Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,7 +87,7 @@ pub mod rows;
 pub mod statement;
 pub mod transaction;
 
-pub use database::{Database, FromValue};
+pub use database::{Database, FromValue, RelatedObject};
 pub use params::{NamedParams, Params, ToParam};
 pub use rows::{FromRow, ResultRow, Rows};
 pub use statement::Statement;

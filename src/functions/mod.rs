@@ -23,6 +23,7 @@
 //! - [`FunctionRegistry`] - Registry for function lookup and validation
 
 pub mod aggregate;
+pub mod analyzer;
 pub mod backends;
 pub mod context;
 pub mod plsql;

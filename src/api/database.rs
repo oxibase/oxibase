@@ -992,6 +992,18 @@ impl Database {
         executor.clear_semantic_cache();
         Ok(())
     }
+
+    /// Statically analyze a procedural script to detect referenced database objects.
+    pub fn analyze_script(&self, script: &str, backend: &str) -> Result<Vec<RelatedObject>> {
+        crate::functions::analyzer::analyze_script(script, backend)
+    }
+}
+
+/// Represents a database object referenced by a script
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RelatedObject {
+    pub object_type: String, // "Table", "Procedure", "Function", "Dynamic"
+    pub name: String,
 }
 
 /// Trait for converting from Value to a Rust type
