@@ -86,7 +86,8 @@
         <div class="flex-1 overflow-y-auto font-mono text-xs p-4 bg-base-100 text-base-content rounded-box m-2" id="logs-container">
             <div class="flex flex-col gap-1.5" id="log-rows">
                 {% for log in logs %}
-                <div class="border-l-4 pl-3 hover:bg-base-200/50 py-1 transition-colors border-opacity-80
+                <div onclick="if(!event.target.closest('a') && !event.target.closest('button')) { this.querySelector('.details-panel').classList.toggle('hidden'); }" 
+                    class="border-l-4 pl-3 hover:bg-base-200/50 cursor-pointer py-1.5 transition-colors border-opacity-80
                     {% if log.level == 'ERROR' %}border-error bg-error/5
                     {% elif log.level == 'WARN' %}border-warning bg-warning/5
                     {% elif log.level == 'INFO' %}border-info
@@ -94,7 +95,7 @@
                 >
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div class="flex items-center gap-2 flex-1">
-                            <span class="opacity-40 select-none">[{{ log.timestamp }}]</span>
+                            <span class="opacity-50 select-none">[{{ log.timestamp }}]</span>
                             <span class="badge badge-xs uppercase font-bold
                                 {% if log.level == 'ERROR' %}badge-error
                                 {% elif log.level == 'WARN' %}badge-warning
@@ -103,8 +104,8 @@
                             >
                                 {{ log.level }}
                             </span>
-                            <span class="text-secondary-content/70 font-semibold">[{{ log.target }}]</span>
-                            <span class="text-base-content select-text font-medium">{{ log.message }}</span>
+                            <span class="text-secondary font-bold select-none">[{{ log.target }}]</span>
+                            <span class="text-neutral font-semibold select-text">{{ log.message }}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             {% if log.trace_id %}
@@ -116,24 +117,24 @@
                                 Trace
                             </a>
                             {% endif %}
-                            <button onclick="const details = this.closest('.border-l-4').querySelector('.details-panel'); details.classList.toggle('hidden')" class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content btn-square font-bold">...</button>
+                            <button onclick="this.closest('.border-l-4').querySelector('.details-panel').classList.toggle('hidden')" class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content btn-square font-bold">...</button>
                         </div>
                     </div>
                     
                     <!-- Collapsible Logs Detail Panel -->
-                    <div class="details-panel hidden mt-2 pt-2 border-t border-base-200 text-[11px] text-base-content/85 flex flex-col gap-1">
-                        <div><span class="opacity-40">Logger Target:</span> {{ log.target }}</div>
-                        <div><span class="opacity-40">Timestamp:</span> {{ log.timestamp }}</div>
+                    <div class="details-panel hidden mt-2 pt-2 border-t border-base-200 text-[11px] text-neutral flex flex-col gap-1">
+                        <div><span class="opacity-50 font-bold">Logger Target:</span> {{ log.target }}</div>
+                        <div><span class="opacity-50 font-bold">Timestamp:</span> {{ log.timestamp }}</div>
                         {% if log.trace_id %}
-                        <div><span class="opacity-40">Trace ID:</span> <span class="font-mono text-primary">{{ log.trace_id }}</span></div>
+                        <div><span class="opacity-50 font-bold">Trace ID:</span> <span class="font-mono text-primary font-bold">{{ log.trace_id }}</span></div>
                         {% endif %}
                         {% if log.span_id %}
-                        <div><span class="opacity-40">Span ID:</span> <span class="font-mono text-secondary">{{ log.span_id }}</span></div>
+                        <div><span class="opacity-50 font-bold">Span ID:</span> <span class="font-mono text-secondary font-bold">{{ log.span_id }}</span></div>
                         {% endif %}
                         {% if log.json_fields %}
                         <div class="mt-1">
-                            <span class="opacity-40">Context Fields:</span>
-                            <pre class="bg-base-200 p-2.5 rounded mt-0.5 text-success/90 overflow-x-auto">{{ log.json_fields }}</pre>
+                            <span class="opacity-50 font-bold">Context Fields:</span>
+                            <pre class="bg-base-200 p-2.5 rounded mt-0.5 text-success font-bold overflow-x-auto">{{ log.json_fields }}</pre>
                         </div>
                         {% endif %}
                     </div>
