@@ -1,164 +1,430 @@
-{% extends "workspace_layout.html" %}
-
-{% block sidebar %}
-    <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/observe" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
-{% endblock %}
-
-{% block content %}
-<div class="h-full flex flex-col gap-4" {% if auto_refresh == 'true' %}up-poll up-interval="5000"{% endif %}>
+{% extends "workspace_layout.html" %} {% block sidebar %}
+<a
+    up-defer="insert"
+    up-target="#sidebar-content"
+    href="/workspace/sidebar/observe"
+    class="block p-4 text-center text-sm opacity-50 animate-pulse"
+    >Loading...</a
+>
+{% endblock %} {% block content %}
+<div
+    class="h-full flex flex-col gap-4"
+    {%
+    if
+    auto_refresh=""
+    ="true"
+    %}up-poll
+    up-interval="5000"
+    {%
+    endif
+    %}
+>
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center gap-4">
             <div class="bg-primary/10 text-primary p-3 rounded-box">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                    ></path>
                 </svg>
             </div>
             <div>
                 <h2 class="text-2xl font-bold">Logs Explorer</h2>
-                <p class="text-xs opacity-60">System logging & debugging cockpit</p>
+                <p class="text-xs opacity-60">
+                    System logging & debugging cockpit
+                </p>
             </div>
         </div>
-        
+
         <!-- Severity Summary Histogram -->
         <div class="flex gap-2 text-xs">
-            <div class="px-3 py-1.5 rounded-box bg-error/10 border border-error/20 text-error font-medium">
+            <div
+                class="px-3 py-1.5 rounded-box bg-error/10 border border-error/20 text-error font-medium"
+            >
                 ERROR: {{ histogram.ERROR | default(0) }}
             </div>
-            <div class="px-3 py-1.5 rounded-box bg-warning/10 border border-warning/20 text-warning font-medium">
+            <div
+                class="px-3 py-1.5 rounded-box bg-warning/10 border border-warning/20 text-warning font-medium"
+            >
                 WARN: {{ histogram.WARN | default(0) }}
             </div>
-            <div class="px-3 py-1.5 rounded-box bg-primary/10 border border-primary/20 text-primary font-medium">
+            <div
+                class="px-3 py-1.5 rounded-box bg-primary/10 border border-primary/20 text-primary font-medium"
+            >
                 INFO: {{ histogram.INFO | default(0) }}
             </div>
-            <div class="px-3 py-1.5 rounded-box bg-base-300/50 border border-base-300 text-base-content/70 font-medium">
+            <div
+                class="px-3 py-1.5 rounded-box bg-base-300/50 border border-base-300 text-base-content/70 font-medium"
+            >
                 DEBUG: {{ histogram.DEBUG | default(0) }}
             </div>
         </div>
     </div>
 
     <!-- Filters & Controls Form -->
-    <form id="filters-form" up-autosubmit up-target=":main" up-history="true" action="/workspace/observe/logs" method="get" class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-base-100 p-4 rounded-box border border-base-200">
+    <form
+        id="filters-form"
+        up-autosubmit
+        up-target=":main"
+        up-history="true"
+        action="/workspace/observe/logs"
+        method="get"
+        class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-base-100 p-4 rounded-box border border-base-200"
+    >
         <!-- Search Field -->
         <div class="form-control w-full md:col-span-2">
-            <label class="label py-1"><span class="label-text text-xs opacity-60">Search query</span></label>
+            <label class="label py-1"
+                ><span class="label-text text-xs opacity-60"
+                    >Search query</span
+                ></label
+            >
             <div class="relative">
-                <input type="text" name="search" value="{{ filters.search | default('') }}" placeholder="Filter by message or target..." class="input input-sm input-bordered w-full pr-8" />
+                <input
+                    type="text"
+                    name="search"
+                    value="{{ filters.search | default('') }}"
+                    placeholder="Filter by message or target..."
+                    class="input input-sm input-bordered w-full pr-8"
+                />
                 {% if filters.search %}
-                <button type="button" onclick="const i=this.previousElementSibling; i.value=''; i.dispatchEvent(new Event('change', {bubbles:true}))" class="absolute right-2 top-1.5 opacity-50 hover:opacity-100">×</button>
+                <button
+                    type="button"
+                    onclick="
+                        const i = this.previousElementSibling;
+                        i.value = '';
+                        i.dispatchEvent(new Event('change', { bubbles: true }));
+                    "
+                    class="absolute right-2 top-1.5 opacity-50 hover:opacity-100"
+                >
+                    ×
+                </button>
                 {% endif %}
             </div>
         </div>
 
         <!-- Level Selector -->
         <div class="form-control w-full">
-            <label class="label py-1"><span class="label-text text-xs opacity-60">Severity level</span></label>
-            <select name="level" class="select select-sm select-bordered w-full">
-                <option value="all" {% if filters.level == 'all' or not filters.level %}selected{% endif %}>All Levels</option>
-                <option value="ERROR" {% if filters.level == 'ERROR' %}selected{% endif %}>ERROR</option>
-                <option value="WARN" {% if filters.level == 'WARN' %}selected{% endif %}>WARN</option>
-                <option value="INFO" {% if filters.level == 'INFO' %}selected{% endif %}>INFO</option>
-                <option value="DEBUG" {% if filters.level == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+            <label class="label py-1"
+                ><span class="label-text text-xs opacity-60"
+                    >Severity level</span
+                ></label
+            >
+            <select
+                name="level"
+                class="select select-sm select-bordered w-full"
+            >
+                <option
+                    value="all"
+                    {%
+                    if
+                    filters.level=""
+                    ="all"
+                    or
+                    not
+                    filters.level
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    All Levels
+                </option>
+                <option
+                    value="ERROR"
+                    {%
+                    if
+                    filters.level=""
+                    ="ERROR"
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    ERROR
+                </option>
+                <option
+                    value="WARN"
+                    {%
+                    if
+                    filters.level=""
+                    ="WARN"
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    WARN
+                </option>
+                <option
+                    value="INFO"
+                    {%
+                    if
+                    filters.level=""
+                    ="INFO"
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    INFO
+                </option>
+                <option
+                    value="DEBUG"
+                    {%
+                    if
+                    filters.level=""
+                    ="DEBUG"
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    DEBUG
+                </option>
             </select>
         </div>
 
         <!-- Limit Selector -->
         <div class="form-control w-full">
-            <label class="label py-1"><span class="label-text text-xs opacity-60">Max rows</span></label>
-            <select name="limit" class="select select-sm select-bordered w-full">
-                <option value="100" {% if filters.limit == 100 or not filters.limit %}selected{% endif %}>100 rows</option>
-                <option value="500" {% if filters.limit == 500 %}selected{% endif %}>500 rows</option>
-                <option value="1000" {% if filters.limit == 1000 %}selected{% endif %}>1000 rows</option>
+            <label class="label py-1"
+                ><span class="label-text text-xs opacity-60"
+                    >Max rows</span
+                ></label
+            >
+            <select
+                name="limit"
+                class="select select-sm select-bordered w-full"
+            >
+                <option
+                    value="100"
+                    {%
+                    if
+                    filters.limit=""
+                    ="100"
+                    or
+                    not
+                    filters.limit
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    100 rows
+                </option>
+                <option
+                    value="500"
+                    {%
+                    if
+                    filters.limit=""
+                    ="500"
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    500 rows
+                </option>
+                <option
+                    value="1000"
+                    {%
+                    if
+                    filters.limit=""
+                    ="1000"
+                    %}selected{%
+                    endif
+                    %}
+                >
+                    1000 rows
+                </option>
             </select>
         </div>
 
         <!-- Auto-Refresh Toggle -->
         <div class="form-control flex justify-end pb-1 md:items-end">
             <label class="label cursor-pointer gap-2 justify-start">
-                <input type="checkbox" name="auto_refresh" value="true" {% if auto_refresh == 'true' %}checked{% endif %} class="checkbox checkbox-primary checkbox-sm" />
-                <span class="label-text text-xs font-semibold">Auto-Refresh (5s)</span>
+                <input
+                    type="checkbox"
+                    name="auto_refresh"
+                    value="true"
+                    {%
+                    if
+                    auto_refresh=""
+                    ="true"
+                    %}checked{%
+                    endif
+                    %}
+                    class="checkbox checkbox-primary checkbox-sm"
+                />
+                <span class="label-text text-xs font-semibold"
+                    >Auto-Refresh (5s)</span
+                >
             </label>
         </div>
     </form>
 
     <!-- Logs Stream Card -->
-    <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden relative">
-        <div class="flex-1 overflow-y-auto font-mono text-xs p-4 bg-base-100 text-base-content rounded-box m-2" id="logs-container">
+    <div
+        class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden relative"
+    >
+        <div
+            class="flex-1 overflow-y-auto font-mono text-xs p-4 bg-base-100 text-base-content rounded-box m-2"
+            id="logs-container"
+        >
             <div class="flex flex-col gap-1.5" id="log-rows">
                 {% for log in logs %}
-                <div onclick="if(!event.target.closest('a') && !event.target.closest('button')) { this.querySelector('.details-panel').classList.toggle('hidden'); }" 
-                    class="border-l-4 pl-3 hover:bg-base-200/50 cursor-pointer py-1.5 transition-colors border-opacity-80
-                    {% if log.level == 'ERROR' %}border-error bg-error/5
-                    {% elif log.level == 'WARN' %}border-warning bg-warning/5
-                    {% elif log.level == 'INFO' %}border-info
-                    {% else %}border-base-300 opacity-60{% endif %}"
+                <div
+                    onclick="
+                        if (
+                            !event.target.closest('a') &&
+                            !event.target.closest('button')
+                        ) {
+                            this.querySelector(
+                                '.details-panel',
+                            ).classList.toggle('hidden');
+                        }
+                    "
+                    class="border-l-4 pl-3 hover:bg-base-200/50 cursor-pointer py-1.5 transition-colors border-opacity-80 {% if log.level == 'ERROR' %}border-error bg-error/5 {% elif log.level == 'WARN' %}border-warning bg-warning/5 {% elif log.level == 'INFO' %}border-info {% else %}border-base-300 opacity-90{% endif %}"
                 >
-                    <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-4"
+                    >
                         <div class="flex items-center gap-2 flex-1">
-                            <span class="opacity-50 select-none">[{{ log.timestamp }}]</span>
-                            <span class="badge badge-xs uppercase font-bold
-                                {% if log.level == 'ERROR' %}badge-error
-                                {% elif log.level == 'WARN' %}badge-warning
-                                {% elif log.level == 'INFO' %}badge-info
-                                {% else %}badge-ghost{% endif %}"
+                            <span class="opacity-50 select-none"
+                                >[{{ log.timestamp }}]</span
+                            >
+                            <span
+                                class="badge badge-xs uppercase font-bold {% if log.level == 'ERROR' %}badge-error {% elif log.level == 'WARN' %}badge-warning {% elif log.level == 'INFO' %}badge-info {% else %}badge-ghost{% endif %}"
                             >
                                 {{ log.level }}
                             </span>
-                            <span class="text-secondary font-bold select-none">[{{ log.target }}]</span>
-                            <span class="text-neutral font-semibold select-text">{{ log.message }}</span>
+                            <span class="text-secondary font-bold select-none"
+                                >[{{ log.target }}]</span
+                            >
+                            <span class="text-neutral font-semibold select-text"
+                                >{{ log.message }}</span
+                            >
                         </div>
                         <div class="flex items-center gap-2">
                             {% if log.trace_id %}
-                            <a href="/workspace/traces/{{ log.trace_id }}" up-target=":main" class="btn btn-xs btn-primary gap-1">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            <a
+                                href="/workspace/traces/{{ log.trace_id }}"
+                                up-target=":main"
+                                class="btn btn-xs btn-primary gap-1"
+                            >
+                                <svg
+                                    class="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                    ></path>
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    ></path>
                                 </svg>
                                 Trace
                             </a>
                             {% endif %}
-                            <button onclick="this.closest('.border-l-4').querySelector('.details-panel').classList.toggle('hidden')" class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content btn-square font-bold">...</button>
+                            <button
+                                onclick="
+                                    this.closest('.border-l-4')
+                                        .querySelector('.details-panel')
+                                        .classList.toggle('hidden')
+                                "
+                                class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content btn-square font-bold"
+                            >
+                                ...
+                            </button>
                         </div>
                     </div>
-                    
+
                     <!-- Collapsible Logs Detail Panel -->
-                    <div class="details-panel hidden mt-2 pt-2 border-t border-base-200 text-[11px] text-neutral flex flex-col gap-1">
-                        <div><span class="opacity-50 font-bold">Logger Target:</span> {{ log.target }}</div>
-                        <div><span class="opacity-50 font-bold">Timestamp:</span> {{ log.timestamp }}</div>
+                    <div
+                        class="details-panel hidden mt-2 pt-2 border-t border-base-200 text-[11px] text-neutral flex flex-col gap-1"
+                    >
+                        <div>
+                            <span class="opacity-50 font-bold"
+                                >Logger Target:</span
+                            >
+                            {{ log.target }}
+                        </div>
+                        <div>
+                            <span class="opacity-50 font-bold">Timestamp:</span>
+                            {{ log.timestamp }}
+                        </div>
                         {% if log.trace_id %}
-                        <div><span class="opacity-50 font-bold">Trace ID:</span> <span class="font-mono text-primary font-bold">{{ log.trace_id }}</span></div>
-                        {% endif %}
-                        {% if log.span_id %}
-                        <div><span class="opacity-50 font-bold">Span ID:</span> <span class="font-mono text-secondary font-bold">{{ log.span_id }}</span></div>
-                        {% endif %}
-                        {% if log.json_fields %}
+                        <div>
+                            <span class="opacity-50 font-bold">Trace ID:</span>
+                            <span class="font-mono text-primary font-bold"
+                                >{{ log.trace_id }}</span
+                            >
+                        </div>
+                        {% endif %} {% if log.span_id %}
+                        <div>
+                            <span class="opacity-50 font-bold">Span ID:</span>
+                            <span class="font-mono text-secondary font-bold"
+                                >{{ log.span_id }}</span
+                            >
+                        </div>
+                        {% endif %} {% if log.json_fields %}
                         <div class="mt-1">
-                            <span class="opacity-50 font-bold">Context Fields:</span>
-                            <pre class="bg-base-200 p-2.5 rounded mt-0.5 text-success font-bold overflow-x-auto">{{ log.json_fields }}</pre>
+                            <span class="opacity-50 font-bold"
+                                >Context Fields:</span
+                            >
+                            <pre
+                                class="bg-base-200 p-2.5 rounded mt-0.5 text-success font-bold overflow-x-auto"
+                            >
+{{ log.json_fields }}</pre
+                            >
                         </div>
                         {% endif %}
                     </div>
                 </div>
-                {% endfor %}
-                
-                {% if logs|length == 0 %}
+                {% endfor %} {% if logs|length == 0 %}
                 <div class="py-16 text-center text-base-content/50">
-                    <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    <svg
+                        class="w-12 h-12 mx-auto mb-3 opacity-30"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        ></path>
                     </svg>
                     No logs found matching active search criteria.
                 </div>
                 {% endif %}
             </div>
-            
+
             <!-- Infinite Scroll Loader link -->
             {% if has_more %}
-            <div class="mt-4 pt-4 border-t border-base-200 text-center" id="scroll-trigger-div">
-                <a href="/workspace/observe/logs?offset={{ next_offset }}&level={{ filters.level }}&search={{ filters.search }}&limit={{ filters.limit }}&auto_refresh={{ auto_refresh }}"
-                   up-target="#log-rows:after, #scroll-trigger-div"
-                   up-transition="none"
-                   class="btn btn-sm btn-outline text-base-content/60 hover:text-base-content gap-2">
-                    <span class="loading loading-spinner loading-xs opacity-50"></span>
+            <div
+                class="mt-4 pt-4 border-t border-base-200 text-center"
+                id="scroll-trigger-div"
+            >
+                <a
+                    href="/workspace/observe/logs?offset={{ next_offset }}&level={{ filters.level }}&search={{ filters.search }}&limit={{ filters.limit }}&auto_refresh={{ auto_refresh }}"
+                    up-target="#log-rows:after, #scroll-trigger-div"
+                    up-transition="none"
+                    class="btn btn-sm btn-outline text-base-content/60 hover:text-base-content gap-2"
+                >
+                    <span
+                        class="loading loading-spinner loading-xs opacity-50"
+                    ></span>
                     Load older logs...
                 </a>
             </div>
