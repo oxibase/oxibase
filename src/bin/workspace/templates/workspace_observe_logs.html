@@ -83,10 +83,10 @@
 
     <!-- Logs Stream Card -->
     <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden relative">
-        <div class="flex-1 overflow-y-auto font-mono text-xs p-4 bg-neutral text-neutral-content rounded-box m-2" id="logs-container">
+        <div class="flex-1 overflow-y-auto font-mono text-xs p-4 bg-base-100 text-base-content rounded-box m-2" id="logs-container">
             <div class="flex flex-col gap-1.5" id="log-rows">
                 {% for log in logs %}
-                <div class="border-l-4 pl-3 hover:bg-neutral-focus py-1 transition-colors border-opacity-80
+                <div class="border-l-4 pl-3 hover:bg-base-200/50 py-1 transition-colors border-opacity-80
                     {% if log.level == 'ERROR' %}border-error bg-error/5
                     {% elif log.level == 'WARN' %}border-warning bg-warning/5
                     {% elif log.level == 'INFO' %}border-info
@@ -104,7 +104,7 @@
                                 {{ log.level }}
                             </span>
                             <span class="text-secondary-content/70 font-semibold">[{{ log.target }}]</span>
-                            <span class="text-neutral-content select-text font-medium">{{ log.message }}</span>
+                            <span class="text-base-content select-text font-medium">{{ log.message }}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             {% if log.trace_id %}
@@ -116,12 +116,12 @@
                                 Trace
                             </a>
                             {% endif %}
-                            <button onclick="const details = this.closest('.border-l-4').querySelector('.details-panel'); details.classList.toggle('hidden')" class="btn btn-xs btn-ghost text-neutral-content/40 hover:text-neutral-content btn-square font-bold">...</button>
+                            <button onclick="const details = this.closest('.border-l-4').querySelector('.details-panel'); details.classList.toggle('hidden')" class="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content btn-square font-bold">...</button>
                         </div>
                     </div>
                     
                     <!-- Collapsible Logs Detail Panel -->
-                    <div class="details-panel hidden mt-2 pt-2 border-t border-neutral-focus/30 text-[11px] text-neutral-content/80 flex flex-col gap-1">
+                    <div class="details-panel hidden mt-2 pt-2 border-t border-base-200 text-[11px] text-base-content/85 flex flex-col gap-1">
                         <div><span class="opacity-40">Logger Target:</span> {{ log.target }}</div>
                         <div><span class="opacity-40">Timestamp:</span> {{ log.timestamp }}</div>
                         {% if log.trace_id %}
@@ -133,7 +133,7 @@
                         {% if log.json_fields %}
                         <div class="mt-1">
                             <span class="opacity-40">Context Fields:</span>
-                            <pre class="bg-black/20 p-2 rounded mt-0.5 text-success/90 overflow-x-auto">{{ log.json_fields }}</pre>
+                            <pre class="bg-base-200 p-2.5 rounded mt-0.5 text-success/90 overflow-x-auto">{{ log.json_fields }}</pre>
                         </div>
                         {% endif %}
                     </div>
@@ -141,7 +141,7 @@
                 {% endfor %}
                 
                 {% if logs|length == 0 %}
-                <div class="py-16 text-center text-neutral-content/50">
+                <div class="py-16 text-center text-base-content/50">
                     <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
@@ -152,11 +152,11 @@
             
             <!-- Infinite Scroll Loader link -->
             {% if has_more %}
-            <div class="mt-4 pt-4 border-t border-neutral-focus/30 text-center" id="scroll-trigger-div">
+            <div class="mt-4 pt-4 border-t border-base-200 text-center" id="scroll-trigger-div">
                 <a href="/workspace/observe/logs?offset={{ next_offset }}&level={{ filters.level }}&search={{ filters.search }}&limit={{ filters.limit }}&auto_refresh={{ auto_refresh }}"
                    up-target="#log-rows:after, #scroll-trigger-div"
                    up-transition="none"
-                   class="btn btn-sm btn-outline text-neutral-content/60 hover:text-neutral-content gap-2">
+                   class="btn btn-sm btn-outline text-base-content/60 hover:text-base-content gap-2">
                     <span class="loading loading-spinner loading-xs opacity-50"></span>
                     Load older logs...
                 </a>
