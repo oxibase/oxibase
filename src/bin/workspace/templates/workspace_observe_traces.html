@@ -1,0 +1,133 @@
+{% extends "workspace_layout.html" %}
+
+{% block sidebar %}
+    <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/observe" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
+{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col gap-4" {% if auto_refresh == 'true' %}up-poll up-interval="5000"{% endif %}>
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="bg-secondary/10 text-secondary p-3 rounded-box">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold">Traces Explorer</h2>
+                <p class="text-xs opacity-60">Distributed transaction summary and performance maps</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters & Controls Form -->
+    <form id="filters-form" up-autosubmit up-target=":main" up-history="true" action="/workspace/observe/traces" method="get" class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-base-100 p-4 rounded-box border border-base-200">
+        <!-- Search Field -->
+        <div class="form-control w-full md:col-span-2">
+            <label class="label py-1"><span class="label-text text-xs opacity-60">Search query</span></label>
+            <div class="relative">
+                <input type="text" name="search" value="{{ filters.search | default('') }}" placeholder="Filter by root span or Trace ID..." class="input input-sm input-bordered w-full pr-8" />
+                {% if filters.search %}
+                <button type="button" onclick="const i=this.previousElementSibling; i.value=''; i.dispatchEvent(new Event('change', {bubbles:true}))" class="absolute right-2 top-1.5 opacity-50 hover:opacity-100">×</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="form-control w-full">
+            <label class="label py-1"><span class="label-text text-xs opacity-60">Execution status</span></label>
+            <select name="status" class="select select-sm select-bordered w-full">
+                <option value="all" {% if filters.status == 'all' or not filters.status %}selected{% endif %}>All Traces</option>
+                <option value="errors_only" {% if filters.status == 'errors_only' %}selected{% endif %}>Errors Only</option>
+                <option value="success_only" {% if filters.status == 'success_only' %}selected{% endif %}>Success Only</option>
+            </select>
+        </div>
+
+        <!-- Limit Selector -->
+        <div class="form-control w-full">
+            <label class="label py-1"><span class="label-text text-xs opacity-60">Max traces</span></label>
+            <select name="limit" class="select select-sm select-bordered w-full">
+                <option value="100" {% if filters.limit == 100 or not filters.limit %}selected{% endif %}>100 traces</option>
+                <option value="500" {% if filters.limit == 500 %}selected{% endif %}>500 traces</option>
+                <option value="1000" {% if filters.limit == 1000 %}selected{% endif %}>1000 traces</option>
+            </select>
+        </div>
+
+        <!-- Auto-Refresh Toggle -->
+        <div class="form-control flex justify-end pb-1 md:items-end">
+            <label class="label cursor-pointer gap-2 justify-start">
+                <input type="checkbox" name="auto_refresh" value="true" {% if auto_refresh == 'true' %}checked{% endif %} class="checkbox checkbox-primary checkbox-sm" />
+                <span class="label-text text-xs font-semibold">Auto-Refresh (5s)</span>
+            </label>
+        </div>
+    </form>
+
+    <!-- Traces Catalog Card -->
+    <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden relative">
+        <div class="flex-1 overflow-auto absolute inset-0 bottom-10">
+            <table class="table table-zebra table-pin-rows table-sm w-full">
+                <thead>
+                    <tr>
+                        <th>Root Operation</th>
+                        <th>Trace ID</th>
+                        <th>Start Time</th>
+                        <th>Span Count</th>
+                        <th>Total Duration</th>
+                        <th>Status</th>
+                        <th class="w-16"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trace in traces %}
+                    <tr class="hover">
+                        <td class="font-bold text-base-content/95">{{ trace.root_span_name }}</td>
+                        <td class="font-mono text-xs text-primary">{{ trace.trace_id }}</td>
+                        <td class="font-mono text-xs opacity-75">{{ trace.start_time }}</td>
+                        <td>
+                            <div class="badge badge-sm badge-neutral">{{ trace.span_count }}</div>
+                        </td>
+                        <td>
+                            <span class="font-mono text-xs font-semibold">{{ trace.total_duration_ms }} ms</span>
+                        </td>
+                        <td>
+                            {% if trace.has_error == 1 or trace.has_error == true %}
+                            <span class="badge badge-sm badge-error font-semibold">ERROR</span>
+                            {% else %}
+                            <span class="badge badge-sm badge-success font-semibold text-white">SUCCESS</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/workspace/traces/{{ trace.trace_id }}" up-target=":main" class="btn btn-xs btn-ghost btn-square">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if traces|length == 0 %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-16 text-center">
+                            <div class="opacity-50 max-w-sm mx-auto">
+                                <div class="bg-base-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-bold mb-1">No traces found</h3>
+                                <p class="text-sm">Verify that code execution or SQL triggers are active, or clear search queries.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        <div class="bg-base-200/50 border-t border-base-200 px-4 py-2 text-xs opacity-70 absolute bottom-0 left-0 right-0 h-10 flex items-center">
+            Showing <strong>{{ traces|length }}</strong> distinct transactions
+        </div>
+    </div>
+</div>
+{% endblock %}

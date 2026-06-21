@@ -45,6 +45,10 @@ clean:
 install:
 	cargo install --path .
 
+# [dev] Install CLI binary locally
+install-all:
+	cargo install --all-features --path .
+
 # [dev] Generate coverage report (requires cargo-llvm-cov)
 coverage:
 	cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info

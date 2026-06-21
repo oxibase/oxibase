@@ -50,6 +50,8 @@ pub fn install(db: &Database) {
     let trace_view_html = include_str!("templates/workspace_trace_view.html");
     let run_modal_html = include_str!("templates/workspace_run_modal.html");
     let debugger_html = include_str!("templates/workspace_debugger.html");
+    let observe_logs_html = include_str!("templates/workspace_observe_logs.html");
+    let observe_traces_html = include_str!("templates/workspace_observe_traces.html");
     let pizza_demo_sql = include_str!("templates/pizza_demo.sql");
 
     tx.execute(
@@ -105,6 +107,16 @@ pub fn install(db: &Database) {
         vec![Value::text(debugger_html)],
     )
     .unwrap();
+    tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_observe_logs.html', ?)",
+        vec![Value::text(observe_logs_html)],
+    )
+    .unwrap();
+    tx.execute(
+        "INSERT INTO interface.templates (name, content) VALUES ('workspace_observe_traces.html', ?)",
+        vec![Value::text(observe_traces_html)],
+    )
+    .unwrap();
 
     tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace', 'workspace_sidebar_compute.html', NULL)",
@@ -138,6 +150,14 @@ pub fn install(db: &Database) {
 
     tx.execute(
         "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/debugger', 'workspace_debugger.html', NULL)",
+        ()
+    ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/logs', 'workspace_observe_logs.html', NULL)",
+        ()
+    ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/traces', 'workspace_observe_traces.html', NULL)",
         ()
     ).unwrap();
 
@@ -246,4 +266,4 @@ fn parse_sql_script(script: &str) -> Vec<String> {
     queries
 }
 
-// ponytail: touched to force recompilation of embedded templates
+// ponytail: force template rebuild

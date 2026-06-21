@@ -84,6 +84,14 @@ pub fn create_router(db: Database) -> Router {
             get(handlers::workspace_trace_view),
         )
         .route(
+            "/workspace/observe/logs",
+            get(handlers::workspace_observe_logs),
+        )
+        .route(
+            "/workspace/observe/traces",
+            get(handlers::workspace_observe_traces),
+        )
+        .route(
             "/workspace/static/js/dap-client.js",
             get(dap::serve_dap_client),
         )

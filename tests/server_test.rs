@@ -355,3 +355,102 @@ async fn test_dynamic_route_template_inheritance() {
     // Check if the inherited content is correctly embedded in the layout
     assert!(body_str.contains("<main><p>Inherited Content!</p></main>"));
 }
+
+#[tokio::test]
+async fn test_observe_dashboards() {
+    let db = Database::open("memory://test_observe_dashboards").unwrap();
+
+    // Create required tables
+    db.execute("CREATE SCHEMA IF NOT EXISTS interface", ())
+        .unwrap();
+    db.execute(
+        "CREATE TABLE interface.templates (name TEXT, content TEXT)",
+        (),
+    )
+    .unwrap();
+    db.execute("CREATE TABLE interface.routes (method TEXT, path TEXT, template_name TEXT, context_query TEXT)", ()).unwrap();
+
+    // Insert dummy templates
+    db.execute("INSERT INTO interface.templates (name, content) VALUES ('workspace_layout.html', '{% block content %}{% endblock %}')", ()).unwrap();
+    db.execute("INSERT INTO interface.templates (name, content) VALUES ('workspace_observe_logs.html', '{% extends \"workspace_layout.html\" %}{% block content %}{{ logs|length }} logs found: {% for l in logs %}{{ l.message }} {% endfor %}{% endblock %}')", ()).unwrap();
+    db.execute("INSERT INTO interface.templates (name, content) VALUES ('workspace_observe_traces.html', '{% extends \"workspace_layout.html\" %}{% block content %}{{ traces|length }} traces found: {% for t in traces %}{{ t.trace_id }} {% endfor %}{% endblock %}')", ()).unwrap();
+
+    // Start background flushers
+    let (log_tx, log_rx) = crossbeam_channel::bounded(100);
+    let _log_shutdown = oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
+
+    let (trace_tx, trace_rx) = crossbeam_channel::bounded(100);
+    let _trace_shutdown =
+        oxibase::common::tracing::start_trace_flusher(db.engine().clone(), trace_rx);
+
+    // Send mock logs
+    log_tx
+        .send(oxibase::common::logging::LogEntry {
+            level: "ERROR".to_string(),
+            target: "test".to_string(),
+            message: "Oops something failed".to_string(),
+            timestamp: chrono::Utc::now(),
+            trace_id: Some("trace-123".to_string()),
+            span_id: Some("span-1".to_string()),
+            json_fields: None,
+        })
+        .unwrap();
+
+    log_tx
+        .send(oxibase::common::logging::LogEntry {
+            level: "INFO".to_string(),
+            target: "test".to_string(),
+            message: "Service started".to_string(),
+            timestamp: chrono::Utc::now(),
+            trace_id: Some("trace-456".to_string()),
+            span_id: Some("span-2".to_string()),
+            json_fields: None,
+        })
+        .unwrap();
+
+    // Send mock trace span
+    trace_tx
+        .send(oxibase::common::tracing::SpanEvent {
+            trace_id: "trace-123".to_string(),
+            span_id: "span-1".to_string(),
+            parent_span_id: None,
+            name: "root-op".to_string(),
+            target: "test".to_string(),
+            start_time: chrono::Utc::now() - chrono::Duration::seconds(1),
+            end_time: chrono::Utc::now(),
+            duration_ms: 1000,
+            attributes: vec![],
+        })
+        .unwrap();
+
+    // Allow time for flushers to write
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    let app = create_router(db);
+
+    // 1. Test logs explorer with filter
+    let req = Request::builder()
+        .uri("/workspace/observe/logs?level=ERROR")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body_str.contains("1 logs found"));
+    assert!(body_str.contains("Oops something failed"));
+
+    // 2. Test traces explorer with filtering
+    let req = Request::builder()
+        .uri("/workspace/observe/traces?status=all")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body_str.contains("1 traces found"));
+    assert!(body_str.contains("trace-123"));
+}

@@ -3,119 +3,294 @@
     <a up-defer="insert" up-target="#sidebar-content" href="/workspace/sidebar/observe" class="block p-4 text-center text-sm opacity-50 animate-pulse">Loading...</a>
 {% endblock %}
 {% block content %}
-<div class="h-full flex flex-col gap-4 overflow-hidden">
+<div class="h-full flex flex-col gap-4 overflow-hidden relative">
     <!-- Back Button -->
-    <div>
-        <a href="/workspace/data/system/traces" up-target=":main" class="btn btn-sm btn-ghost">
-            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+    <div class="flex items-center justify-between">
+        <a href="/workspace/observe/traces" up-target=":main" class="btn btn-sm btn-ghost gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
             Back to Traces
         </a>
     </div>
 
-    <!-- Header -->
+    <!-- Header info -->
     <div class="bg-base-100 p-4 rounded-box shadow-sm border border-base-200">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
-                <div class="text-sm font-semibold opacity-60 mb-1">TRACE ID</div>
-                <div class="text-2xl font-mono font-bold flex items-center gap-2">
+                <div class="text-xs font-semibold opacity-60 mb-0.5">TRACE ID</div>
+                <div class="text-xl font-mono font-bold flex items-center gap-2">
                     {{ trace_id }}
                     <button class="btn btn-xs btn-ghost btn-square" onclick="navigator.clipboard.writeText('{{ trace_id }}')">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
-            <div class="flex gap-4 text-sm">
+            <div class="flex gap-4 text-xs font-mono">
                 <div>
-                    <div class="opacity-60 uppercase text-xs font-bold mb-1">Started</div>
-                    <div class="font-mono">{{ trace_start_time }}</div>
+                    <div class="opacity-60 uppercase text-[10px] font-bold mb-0.5">Started</div>
+                    <div>{{ trace_start_time }}</div>
                 </div>
                 <div>
-                    <div class="opacity-60 uppercase text-xs font-bold mb-1">Ended</div>
-                    <div class="font-mono">{{ trace_end_time }}</div>
+                    <div class="opacity-60 uppercase text-[10px] font-bold mb-0.5">Ended</div>
+                    <div>{{ trace_end_time }}</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Timeline View -->
-    <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden">
-        <div class="bg-base-200/50 p-2 border-b border-base-200 flex text-xs font-semibold uppercase opacity-70">
-            <div class="w-1/4 px-2">Span Name</div>
-            <div class="w-1/6 px-2">Kind / Status</div>
-            <div class="w-7/12 px-2">Timeline</div>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto" id="trace-timeline">
-            {% if error %}
-                <div class="p-6 text-error">{{ error }}</div>
-            {% else %}
-                {% if spans|length == 0 %}
-                    <div class="p-10 text-center opacity-50">No spans found for this trace.</div>
+    <!-- Main Workspace Split Panel -->
+    <div class="flex-1 flex gap-4 overflow-hidden">
+        <!-- Timeline Chart Column -->
+        <div class="card bg-base-100 shadow-sm border border-base-200 flex-1 flex flex-col overflow-hidden">
+            <div class="bg-base-200/50 p-2.5 border-b border-base-200 flex text-xs font-semibold uppercase opacity-70">
+                <div class="w-5/12 px-2">Operation Structure</div>
+                <div class="w-2/12 px-2">Duration</div>
+                <div class="w-5/12 px-2">Gantt Timing Map</div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto" id="trace-timeline">
+                {% if error %}
+                    <div class="p-6 text-error">{{ error }}</div>
                 {% else %}
-                    <!-- Spans rendered via JS to calculate widths correctly -->
-                    <script>
-                        const spans = {{ spans_json | safe }};
-                        
-                        let minStartTime = Infinity;
-                        let maxEndTime = -Infinity;
-                        
-                        // Parse ISO strings to timestamps
-                        const parsedSpans = spans.map(s => {
-                            const start = new Date(s.start_time).getTime();
-                            const end = new Date(s.end_time).getTime();
-                            const duration = end - start;
-                            
-                            if (start < minStartTime) minStartTime = start;
-                            if (end > maxEndTime) maxEndTime = end;
-                            
-                            return { ...s, startTimestamp: start, durationComputed: duration };
-                        });
-                        
-                        const totalDuration = maxEndTime - minStartTime;
-                        
-                        const timelineEl = document.getElementById('trace-timeline');
-                        let html = '';
-                        
-                        parsedSpans.forEach((span, index) => {
-                            const leftPercent = totalDuration === 0 ? 0 : ((span.startTimestamp - minStartTime) / totalDuration) * 100;
-                            let widthPercent = totalDuration === 0 ? 100 : (span.durationComputed / totalDuration) * 100;
-                            
-                            // Minimum width to make it visible
-                            if (widthPercent < 0.5) widthPercent = 0.5;
-                            
-                            const statusColor = span.status_code === 'ERROR' ? 'bg-error' : 'bg-primary';
-                            const depth = span.parent_span_id && span.parent_span_id !== 'none' ? 1 : 0;
-                            // Naive depth indentation (could be improved with a real tree build)
-                            const paddingLeft = 0.5 + (depth * 1.5);
-                            
-                            html += `
-                                <div class="flex border-b border-base-200 hover:bg-base-200/30 text-sm group">
-                                    <div class="w-1/4 p-2 truncate flex items-center gap-2" style="padding-left: ${paddingLeft}rem">
-                                        <span class="opacity-50 text-xs font-mono w-4">${index + 1}</span>
-                                        <span class="font-medium truncate" title="${span.name}">${span.name}</span>
-                                    </div>
-                                    <div class="w-1/6 p-2 flex items-center gap-2">
-                                        <span class="badge badge-sm badge-outline">${span.span_kind || 'INTERNAL'}</span>
-                                        ${span.status_code === 'ERROR' ? `<span class="badge badge-sm badge-error">ERR</span>` : ''}
-                                    </div>
-                                    <div class="w-7/12 p-2 relative flex items-center">
-                                        <div class="absolute h-6 ${statusColor} rounded-sm opacity-80" 
-                                             style="left: ${leftPercent}%; width: ${widthPercent}%;">
-                                        </div>
-                                        <div class="absolute text-xs font-mono opacity-0 group-hover:opacity-100 bg-base-100/80 px-1 rounded z-10" 
-                                             style="left: ${leftPercent + widthPercent + 1}%">
-                                            ${span.duration_ms}ms
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        
-                        timelineEl.innerHTML = html;
-                    </script>
+                    {% if spans|length == 0 %}
+                        <div class="p-10 text-center opacity-50">No spans found for this trace.</div>
+                    {% else %}
+                        <!-- Rendered recursively via JS tree builder -->
+                        <div id="tree-container" class="divide-y divide-base-100"></div>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar Attributes Panel (Starts Hidden, slides out) -->
+        <div id="details-panel" class="w-80 bg-base-100 border border-base-200 rounded-box shadow-sm flex flex-col overflow-hidden hidden">
+            <div class="bg-base-200/50 p-3 border-b border-base-200 flex items-center justify-between">
+                <h3 class="font-bold text-sm">Span Inspector</h3>
+                <button onclick="document.getElementById('details-panel').classList.add('hidden')" class="btn btn-xs btn-circle btn-ghost">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                <!-- Main Header -->
+                <div>
+                    <div class="text-[10px] uppercase font-bold opacity-50 mb-0.5">Operation Name</div>
+                    <div class="font-bold text-base text-base-content" id="panel-span-name"></div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-base-200/50 p-2 rounded-box">
+                        <div class="opacity-50 text-[10px]">DURATION</div>
+                        <div class="font-mono font-bold mt-0.5" id="panel-duration"></div>
+                    </div>
+                    <div class="bg-base-200/50 p-2 rounded-box">
+                        <div class="opacity-50 text-[10px]">KIND</div>
+                        <div class="font-bold mt-0.5" id="panel-kind"></div>
+                    </div>
+                </div>
+
+                <!-- Logs Deep-Link -->
+                <div class="border-t border-base-200 pt-3">
+                    <a id="panel-logs-link" href="#" up-target=":main" class="btn btn-sm btn-primary w-full gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        Filter Logs for Span
+                    </a>
+                </div>
+
+                <!-- Attributes Section -->
+                <div>
+                    <h4 class="font-bold text-xs uppercase opacity-50 mb-2 border-b border-base-200 pb-1">Attributes</h4>
+                    <div id="panel-attributes" class="text-xs font-mono bg-neutral text-neutral-content p-3 rounded-box overflow-x-auto whitespace-pre-wrap"></div>
+                </div>
+
+                <!-- Events Section -->
+                <div>
+                    <h4 class="font-bold text-xs uppercase opacity-50 mb-2 border-b border-base-200 pb-1">Events</h4>
+                    <div id="panel-events" class="text-xs font-mono flex flex-col gap-2"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+{% if spans|length > 0 %}
+<script>
+    (function() {
+        const spans = {{ spans_json | safe }};
+        
+        let minStartTime = Infinity;
+        let maxEndTime = -Infinity;
+        
+        // Find baseline trace coordinates
+        spans.forEach(s => {
+            const start = new Date(s.start_time).getTime();
+            const end = new Date(s.end_time).getTime();
+            if (start < minStartTime) minStartTime = start;
+            if (end > maxEndTime) maxEndTime = end;
+        });
+        
+        const totalDuration = maxEndTime - minStartTime;
+
+        // Assembly span map for hierarchy linkage
+        const spanMap = {};
+        const rootSpans = [];
+
+        spans.forEach(s => {
+            s.children = [];
+            spanMap[s.span_id] = s;
+        });
+
+        // Deduplicate spans by span_id
+        const uniqueSpans = Object.values(spanMap);
+
+        uniqueSpans.forEach(s => {
+            const parent = spanMap[s.parent_span_id];
+            if (parent && s.parent_span_id !== s.span_id) {
+                parent.children.push(s);
+            } else {
+                rootSpans.push(s);
+            }
+        });
+
+        window.rootSpansDebug = rootSpans;
+
+        // Toggle Expand state
+        window.toggleSpanNode = function(spanId) {
+            const childrenContainer = document.getElementById(`children-${spanId}`);
+            const icon = document.getElementById(`icon-${spanId}`);
+            if (childrenContainer) {
+                const isHidden = childrenContainer.classList.contains('hidden');
+                if (isHidden) {
+                    childrenContainer.classList.remove('hidden');
+                    icon.innerHTML = '▼';
+                } else {
+                    childrenContainer.classList.add('hidden');
+                    icon.innerHTML = '▶';
+                }
+            }
+        };
+
+        // Open Inspector Side drawer
+        window.inspectSpanNode = function(spanId) {
+            const span = spanMap[spanId];
+            if (!span) return;
+
+            document.getElementById('panel-span-name').innerText = span.name;
+            document.getElementById('panel-duration').innerText = `${span.duration_ms} ms`;
+            document.getElementById('panel-kind').innerText = span.span_kind || 'INTERNAL';
+
+            // Logs correlation link
+            const logsLink = document.getElementById('panel-logs-link');
+            logsLink.href = `/workspace/observe/logs?search=${span.span_id}`;
+
+            // Parse attributes
+            let attrsPretty = 'No attributes';
+            try {
+                if (span.attributes) {
+                    const parsed = typeof span.attributes === 'string' ? JSON.parse(span.attributes) : span.attributes;
+                    attrsPretty = JSON.stringify(parsed, null, 2);
+                }
+            } catch (e) {
+                attrsPretty = span.attributes;
+            }
+            document.getElementById('panel-attributes').innerText = attrsPretty;
+
+            // Render Events
+            const eventsContainer = document.getElementById('panel-events');
+            eventsContainer.innerHTML = '';
+            try {
+                const events = typeof span.events === 'string' ? JSON.parse(span.events) : span.events;
+                if (events && events.length > 0) {
+                    events.forEach(evt => {
+                        const evtEl = document.createElement('div');
+                        evtEl.className = 'bg-base-200 p-2 rounded';
+                        evtEl.innerHTML = `
+                            <div class="font-bold font-sans text-xs text-base-content">${evt.name}</div>
+                            <div class="text-[10px] opacity-60">${new Date(evt.timestamp).toLocaleTimeString()}</div>
+                            <pre class="text-[10px] text-success mt-1 overflow-x-auto">${JSON.stringify(evt.attributes, null, 2)}</pre>
+                        `;
+                        eventsContainer.appendChild(evtEl);
+                    });
+                } else {
+                    eventsContainer.innerHTML = '<div class="opacity-40 italic">No events</div>';
+                }
+            } catch (e) {
+                eventsContainer.innerHTML = '<div class="opacity-40 italic">No events</div>';
+            }
+
+            document.getElementById('details-panel').classList.remove('hidden');
+        };
+
+        // Recursive tree node renderer (Gantt timing)
+        function renderSpanNode(span, depth = 0) {
+            const start = new Date(span.start_time).getTime();
+            
+            const leftPercent = totalDuration === 0 ? 0 : ((start - minStartTime) / totalDuration) * 100;
+            let widthPercent = totalDuration === 0 ? 100 : (span.duration_ms / totalDuration) * 100;
+            if (widthPercent < 0.5) widthPercent = 0.5;
+
+            const isParent = span.children && span.children.length > 0;
+            const statusColor = span.status_code === 'ERROR' ? 'bg-error' : 'bg-primary';
+            const indentPadding = depth * 1.25;
+
+            let html = `
+                <div class="flex flex-col">
+                    <div class="flex border-b border-base-200/50 hover:bg-base-200/30 text-xs items-center group py-2">
+                        <!-- Indented Name -->
+                        <div class="w-5/12 flex items-center gap-1.5" style="padding-left: ${indentPadding}rem">
+                            <div class="w-4 h-4 flex items-center justify-center">
+                                ${isParent ? `
+                                    <button onclick="toggleSpanNode('${span.span_id}')" class="text-[10px] font-bold focus:outline-none opacity-50 hover:opacity-100 cursor-pointer w-4 h-4 flex items-center justify-center">
+                                        <span id="icon-${span.span_id}">▼</span>
+                                    </button>
+                                ` : '<span class="opacity-20 select-none">•</span>'}
+                            </div>
+                            <span onclick="inspectSpanNode('${span.span_id}')" class="font-semibold text-base-content/90 truncate cursor-pointer hover:underline flex-1" title="${span.name}">
+                                ${span.name}
+                            </span>
+                            ${span.status_code === 'ERROR' ? '<span class="badge badge-error badge-xs scale-90">ERR</span>' : ''}
+                        </div>
+                        
+                        <!-- Duration -->
+                        <div class="w-2/12 font-mono text-[11px] opacity-75 font-semibold px-2">
+                            ${span.duration_ms} ms
+                        </div>
+                        
+                        <!-- Gantt Timing Bar -->
+                        <div onclick="inspectSpanNode('${span.span_id}')" class="w-5/12 relative flex items-center h-8 cursor-pointer px-2">
+                            <div class="absolute h-5 ${statusColor} rounded-sm opacity-80 group-hover:opacity-100 transition-opacity" 
+                                 style="left: ${leftPercent}%; width: ${widthPercent}%;">
+                            </div>
+                            <div class="absolute text-[10px] font-mono opacity-0 group-hover:opacity-100 bg-black/80 text-white px-1.5 py-0.5 rounded shadow z-10 pointer-events-none" 
+                                 style="left: ${leftPercent + widthPercent + 1}%; transition: opacity 0.15s">
+                                ${span.duration_ms}ms
+                            </div>
+                        </div>
+                    </div>
+            `;
+
+            if (isParent) {
+                html += `<div id="children-${span.span_id}" class="flex flex-col">`;
+                span.children.forEach(child => {
+                    html += renderSpanNode(child, depth + 1);
+                });
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        const container = document.getElementById('tree-container');
+        let fullHtml = '';
+        rootSpans.forEach(root => {
+            fullHtml += renderSpanNode(root, 0);
+        });
+        container.innerHTML = fullHtml;
+    })();
+</script>
+{% endif %}
 {% endblock %}
