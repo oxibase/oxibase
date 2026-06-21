@@ -106,9 +106,11 @@ CREATE TABLE pizza_analytics.order_events_log (
 );
 
 CREATE TABLE pizza_analytics.daily_sales_summary (
-    summary_date TEXT PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    summary_date TEXT,
     total_orders INTEGER,
-    total_revenue FLOAT
+    total_revenue FLOAT,
+    UNIQUE(summary_date)
 );
 
 -- -------------------------------------------------------------
