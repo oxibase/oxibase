@@ -1814,7 +1814,7 @@ pub enum ColumnConstraint {
     AutoIncrement,
     Default(Expression),
     Check(Expression),
-    References(Identifier, Option<Identifier>),
+    References(TableName, Option<Identifier>),
 }
 
 impl fmt::Display for ColumnConstraint {
@@ -1871,7 +1871,7 @@ pub enum TableConstraint {
     ForeignKey {
         name: Option<String>,
         column: Identifier,
-        foreign_table: Identifier,
+        foreign_table: TableName,
         foreign_column: Identifier,
         on_delete: ReferentialAction,
         on_update: ReferentialAction,

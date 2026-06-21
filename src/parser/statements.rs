@@ -1805,11 +1805,7 @@ impl Parser {
             if !self.expect_keyword("REFERENCES") {
                 return None;
             }
-            if !self.expect_peek(TokenType::Identifier) {
-                return None;
-            }
-            let foreign_table =
-                Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+            let foreign_table = self.parse_table_name()?;
 
             if !self.expect_peek(TokenType::Punctuator) || self.cur_token.literal != "(" {
                 return None;
@@ -2024,11 +2020,7 @@ impl Parser {
                 }
                 "REFERENCES" => {
                     self.next_token(); // consume REFERENCES
-                    if !self.expect_peek(TokenType::Identifier) {
-                        return None;
-                    }
-                    let ref_table =
-                        Identifier::new(self.cur_token.clone(), self.cur_token.literal.clone());
+                    let ref_table = self.parse_table_name()?;
                     let ref_column = if self.peek_token_is_punctuator("(") {
                         self.next_token();
                         if !self.expect_peek(TokenType::Identifier) {
@@ -4267,7 +4259,7 @@ mod tests {
                 ..
             } => {
                 assert_eq!(column.value, "user_id");
-                assert_eq!(foreign_table.value, "users");
+                assert_eq!(foreign_table.value(), "users");
                 assert_eq!(foreign_column.value, "id");
                 assert_eq!(*on_delete, ReferentialAction::Cascade);
                 assert_eq!(*on_update, ReferentialAction::SetNull);
@@ -4301,7 +4293,7 @@ mod tests {
             } => {
                 assert_eq!(name.as_deref(), Some("fk_user"));
                 assert_eq!(column.value, "user_id");
-                assert_eq!(foreign_table.value, "users");
+                assert_eq!(foreign_table.value(), "users");
                 assert_eq!(foreign_column.value, "id");
                 assert_eq!(*on_delete, ReferentialAction::NoAction);
                 assert_eq!(*on_update, ReferentialAction::NoAction);
