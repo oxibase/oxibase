@@ -171,6 +171,88 @@ impl Executor {
         // Collect referenced schemas to update after table creation
         let mut schemas_to_update: Vec<crate::core::Schema> = Vec::new();
 
+        // Process column-level REFERENCES constraints
+        for col_def in &stmt.columns {
+            let col_name = &col_def.name.value;
+            let (col_idx, _) = schema.find_column(col_name).unwrap();
+
+            for constraint in &col_def.constraints {
+                if let ColumnConstraint::References(foreign_table, foreign_column) = constraint {
+                    let referencing_schema = stmt
+                        .table_name
+                        .schema()
+                        .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string());
+
+                    let foreign_full_name = if foreign_table.schema().is_some() {
+                        foreign_table.value()
+                    } else {
+                        format!("{}.{}", referencing_schema, foreign_table.value())
+                    };
+
+                    let referencing_full_name = if stmt.table_name.schema().is_some() {
+                        stmt.table_name.value()
+                    } else {
+                        format!("{}.{}", referencing_schema, stmt.table_name.value())
+                    };
+
+                    let is_self_referencing =
+                        foreign_full_name.eq_ignore_ascii_case(&referencing_full_name);
+
+                    let mut ref_schema = if is_self_referencing {
+                        schema.clone()
+                    } else {
+                        self.engine.get_table_schema(&foreign_full_name)?
+                    };
+
+                    // Find referenced column name
+                    let ref_col_name = if let Some(ref col) = foreign_column {
+                        col.value.clone()
+                    } else {
+                        ref_schema
+                            .primary_key_columns()
+                            .first()
+                            .map(|c| c.name.clone())
+                            .ok_or_else(|| {
+                                Error::internal(format!(
+                                    "referenced table '{}' must have a primary key for unqualified references",
+                                    foreign_full_name
+                                ))
+                            })?
+                    };
+
+                    let ref_col = ref_schema
+                        .get_column_by_name(&ref_col_name)
+                        .ok_or_else(|| Error::column_not_found_by_name(ref_col_name.clone()))?;
+
+                    if ref_col.data_type != schema.columns[col_idx].data_type {
+                        return Err(Error::Type(format!(
+                            "foreign key type mismatch: {} ({:?}) vs {} ({:?})",
+                            col_name,
+                            schema.columns[col_idx].data_type,
+                            ref_col_name,
+                            ref_col.data_type
+                        )));
+                    }
+
+                    let fk_meta = crate::core::schema::ForeignKeyMetadata {
+                        column_id: col_idx,
+                        referenced_table: foreign_full_name.clone(),
+                        referenced_column_name: ref_col_name,
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    };
+                    schema.foreign_keys.push(fk_meta);
+
+                    if is_self_referencing {
+                        schema.referenced_by.push(referencing_full_name.clone());
+                    } else {
+                        ref_schema.referenced_by.push(referencing_full_name.clone());
+                        schemas_to_update.push(ref_schema);
+                    }
+                }
+            }
+        }
+
         for constraint in &stmt.table_constraints {
             match constraint {
                 TableConstraint::Unique(cols) => {
@@ -190,13 +272,31 @@ impl Executor {
                         .find_column(&column.value)
                         .ok_or_else(|| Error::column_not_found_by_name(column.value.clone()))?;
 
-                    let is_self_referencing = foreign_table.value.eq_ignore_ascii_case(table_name);
+                    let referencing_schema = stmt
+                        .table_name
+                        .schema()
+                        .unwrap_or_else(|| ctx.current_schema().unwrap_or("public").to_string());
+
+                    let foreign_full_name = if foreign_table.schema().is_some() {
+                        foreign_table.value()
+                    } else {
+                        format!("{}.{}", referencing_schema, foreign_table.value())
+                    };
+
+                    let referencing_full_name = if stmt.table_name.schema().is_some() {
+                        stmt.table_name.value()
+                    } else {
+                        format!("{}.{}", referencing_schema, stmt.table_name.value())
+                    };
+
+                    let is_self_referencing =
+                        foreign_full_name.eq_ignore_ascii_case(&referencing_full_name);
 
                     // Validate that the referenced table exists and get its schema
                     let mut ref_schema = if is_self_referencing {
                         schema.clone()
                     } else {
-                        self.engine.get_table_schema(&foreign_table.value)?
+                        self.engine.get_table_schema(&foreign_full_name)?
                     };
 
                     // Validate that the referenced column exists and is PK or Unique
@@ -225,7 +325,7 @@ impl Executor {
                     // Build metadata
                     let fk_meta = crate::core::schema::ForeignKeyMetadata {
                         column_id: col_idx,
-                        referenced_table: foreign_table.value.clone(),
+                        referenced_table: foreign_full_name.clone(),
                         referenced_column_name: foreign_column.value.clone(),
                         on_delete: *on_delete,
                         on_update: *on_update,
@@ -233,10 +333,10 @@ impl Executor {
                     schema.foreign_keys.push(fk_meta);
 
                     if is_self_referencing {
-                        schema.referenced_by.push(table_name.clone());
+                        schema.referenced_by.push(referencing_full_name.clone());
                     } else {
                         // Update referenced schema's referenced_by list
-                        ref_schema.referenced_by.push(table_name.clone());
+                        ref_schema.referenced_by.push(referencing_full_name.clone());
                         schemas_to_update.push(ref_schema);
                     }
                 }
@@ -257,8 +357,10 @@ impl Executor {
 
             // Update referenced schemas
             for ref_schema in schemas_to_update {
-                self.engine
-                    .update_table_schema(&ref_schema.table_name.clone(), ref_schema)?;
+                self.engine.update_table_schema(
+                    &format!("{}.{}", ref_schema.schema_name, ref_schema.table_name),
+                    ref_schema,
+                )?;
             }
 
             if let Some(ref mut tx_state) = *active_tx {
@@ -280,8 +382,10 @@ impl Executor {
 
             // Update referenced schemas
             for ref_schema in schemas_to_update {
-                self.engine
-                    .update_table_schema(&ref_schema.table_name.clone(), ref_schema)?;
+                self.engine.update_table_schema(
+                    &format!("{}.{}", ref_schema.schema_name, ref_schema.table_name),
+                    ref_schema,
+                )?;
             }
         }
 
@@ -839,9 +943,21 @@ impl Executor {
                                     Error::column_not_found_by_name(column.value.clone())
                                 })?;
 
+                            let referencing_schema =
+                                ctx.current_schema().unwrap_or("public").to_string();
+
+                            let foreign_full_name = if foreign_table.schema().is_some() {
+                                foreign_table.value()
+                            } else {
+                                format!("{}.{}", referencing_schema, foreign_table.value())
+                            };
+
+                            let referencing_full_name =
+                                format!("{}.{}", referencing_schema, stmt.table_name.value);
+
                             // 2. Validate referenced table and column
                             let mut ref_schema =
-                                self.engine.get_table_schema(&foreign_table.value)?;
+                                self.engine.get_table_schema(&foreign_full_name)?;
                             let ref_col = ref_schema
                                 .get_column_by_name(&foreign_column.value)
                                 .ok_or_else(|| {
@@ -869,7 +985,7 @@ impl Executor {
                                     }
 
                                     // Query the referenced table
-                                    let ref_table_name = foreign_table.value.to_lowercase();
+                                    let ref_table_name = foreign_full_name.to_lowercase();
                                     let ref_table = tx.get_table(&ref_table_name)?;
 
                                     let mut check_expr =
@@ -887,7 +1003,7 @@ impl Executor {
                                         return Err(Error::ReferentialIntegrityViolation {
                                             message: format!(
                                                 "ALTER TABLE ADD CONSTRAINT failed: row contains value '{}' not present in {}({})",
-                                                val, foreign_table.value, foreign_column.value
+                                                val, foreign_full_name, foreign_column.value
                                             ),
                                         });
                                     }
@@ -898,7 +1014,7 @@ impl Executor {
                             // 4. Update current table schema
                             let fk_meta = crate::core::schema::ForeignKeyMetadata {
                                 column_id: col_idx,
-                                referenced_table: foreign_table.value.clone(),
+                                referenced_table: foreign_full_name.clone(),
                                 referenced_column_name: foreign_column.value.clone(),
                                 on_delete: *on_delete,
                                 on_update: *on_update,
@@ -907,9 +1023,9 @@ impl Executor {
                             self.engine.update_table_schema(table_name, schema)?;
 
                             // 5. Update referenced table schema
-                            ref_schema.referenced_by.push(table_name.clone());
+                            ref_schema.referenced_by.push(referencing_full_name.clone());
                             self.engine
-                                .update_table_schema(&foreign_table.value, ref_schema)?;
+                                .update_table_schema(&foreign_full_name, ref_schema)?;
                         }
                         _ => {
                             return Err(Error::NotSupportedMessage(

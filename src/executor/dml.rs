@@ -1798,7 +1798,12 @@ impl Executor {
 
             // Find foreign keys in that table that reference US
             for fk in &referencing_schema.foreign_keys {
-                if fk.referenced_table.eq_ignore_ascii_case(&schema.table_name) {
+                if fk.referenced_table.eq_ignore_ascii_case(&schema.table_name)
+                    || fk.referenced_table.eq_ignore_ascii_case(&format!(
+                        "{}.{}",
+                        schema.schema_name, schema.table_name
+                    ))
+                {
                     // Check if the referenced column is the one being modified
                     // MVP assumes the referenced column is the PK and that's what we have in old_pk_value
                     let action = if new_pk_value.is_none() {
