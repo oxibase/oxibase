@@ -241,3 +241,148 @@ fn test_schema_evolution_and_transaction_inserts() {
     assert_eq!(row.get_value(1).unwrap(), &Value::text("Tablet"));
     assert_eq!(row.get_value(2).unwrap(), &Value::null_unknown()); // Padded as NULL
 }
+
+#[test]
+fn test_cross_schema_foreign_key_and_cascade() {
+    let db = Database::open_in_memory().unwrap();
+
+    // Create schemas
+    db.execute("CREATE SCHEMA crm", ()).unwrap();
+    db.execute("CREATE SCHEMA sales", ()).unwrap();
+
+    // Create parent table in crm schema
+    db.execute(
+        "CREATE TABLE crm.customers (id INTEGER PRIMARY KEY, name TEXT)",
+        (),
+    )
+    .unwrap();
+
+    // Create child table in sales schema with foreign key referencing crm.customers(id)
+    db.execute("CREATE TABLE sales.orders (id INTEGER PRIMARY KEY, customer_id INTEGER, FOREIGN KEY (customer_id) REFERENCES crm.customers(id) ON DELETE CASCADE)", ()).unwrap();
+
+    // Insert records
+    db.execute(
+        "INSERT INTO crm.customers (id, name) VALUES (1, 'John Doe')",
+        (),
+    )
+    .unwrap();
+    db.execute(
+        "INSERT INTO sales.orders (id, customer_id) VALUES (100, 1)",
+        (),
+    )
+    .unwrap();
+
+    // Insertion with non-existent parent should fail
+    let err = db.execute(
+        "INSERT INTO sales.orders (id, customer_id) VALUES (101, 2)",
+        (),
+    );
+    assert!(err.is_err());
+    assert!(err
+        .unwrap_err()
+        .to_string()
+        .contains("FOREIGN KEY constraint failed"));
+
+    // Verify cascade delete across schemas
+    db.execute("DELETE FROM crm.customers WHERE id = 1", ())
+        .unwrap();
+
+    // Child record in sales.orders should be cascaded and deleted
+    let mut q = db
+        .query("SELECT id FROM sales.orders WHERE id = 100", ())
+        .unwrap();
+    assert!(q.next().is_none());
+}
+
+#[test]
+fn test_alter_table_add_cross_schema_fk() {
+    let db = Database::open_in_memory().unwrap();
+
+    // Create schemas
+    db.execute("CREATE SCHEMA crm", ()).unwrap();
+    db.execute("CREATE SCHEMA sales", ()).unwrap();
+
+    // Switch to sales schema context
+    db.execute("USE SCHEMA sales", ()).unwrap();
+
+    // Create parent table in crm schema
+    db.execute(
+        "CREATE TABLE crm.customers (id INTEGER PRIMARY KEY, name TEXT)",
+        (),
+    )
+    .unwrap();
+
+    // Create child table in sales schema without foreign key first (context is sales schema)
+    db.execute(
+        "CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER)",
+        (),
+    )
+    .unwrap();
+
+    // Insert records
+    db.execute(
+        "INSERT INTO crm.customers (id, name) VALUES (1, 'John Doe')",
+        (),
+    )
+    .unwrap();
+    db.execute("INSERT INTO orders (id, customer_id) VALUES (100, 1)", ())
+        .unwrap();
+
+    // Alter table to add foreign key constraint (target table is orders in current sales schema)
+    db.execute("ALTER TABLE orders ADD CONSTRAINT fk_orders_cust FOREIGN KEY (customer_id) REFERENCES crm.customers(id) ON DELETE CASCADE", ()).unwrap();
+
+    // Invalid insert should now fail
+    let err = db.execute("INSERT INTO orders (id, customer_id) VALUES (101, 2)", ());
+    assert!(err.is_err());
+    assert!(err
+        .unwrap_err()
+        .to_string()
+        .contains("FOREIGN KEY constraint failed"));
+
+    // Delete should cascade
+    db.execute("DELETE FROM crm.customers WHERE id = 1", ())
+        .unwrap();
+    let mut q = db
+        .query("SELECT id FROM orders WHERE id = 100", ())
+        .unwrap();
+    assert!(q.next().is_none());
+}
+
+#[test]
+fn test_cross_schema_column_level_foreign_key() {
+    let db = Database::open_in_memory().unwrap();
+
+    // Create schemas
+    db.execute("CREATE SCHEMA crm", ()).unwrap();
+    db.execute("CREATE SCHEMA sales", ()).unwrap();
+
+    // Switch to sales schema context
+    db.execute("USE SCHEMA sales", ()).unwrap();
+
+    // Create parent table in crm schema
+    db.execute(
+        "CREATE TABLE crm.customers (id INTEGER PRIMARY KEY, name TEXT)",
+        (),
+    )
+    .unwrap();
+
+    // Create child table in sales schema with column-level constraint referencing crm.customers(id)
+    db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES crm.customers(id))", ()).unwrap();
+
+    // Insert records
+    db.execute(
+        "INSERT INTO crm.customers (id, name) VALUES (1, 'John Doe')",
+        (),
+    )
+    .unwrap();
+    db.execute("INSERT INTO orders (id, customer_id) VALUES (100, 1)", ())
+        .unwrap();
+
+    // Invalid insert should fail
+    let err = db.execute("INSERT INTO orders (id, customer_id) VALUES (101, 2)", ());
+    assert!(err.is_err());
+    assert!(err
+        .unwrap_err()
+        .to_string()
+        .contains("FOREIGN KEY constraint failed"));
+}

@@ -34,5 +34,5 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-specs/050-plsql-table-iteration/plan.md
+specs/051-fix-fk-identifiers/plan.md
 <!-- SPECKIT END -->
