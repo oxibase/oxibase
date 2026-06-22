@@ -73,6 +73,8 @@
                         }
                         code = extracted.replace(/''/g, "'");
                     }
+                    // Handle literal \n and \t escape sequences for clean rendering
+                    code = code.replace(/\\n/g, "\n").replace(/\\t/g, "    ");
                 } else {
                     code = `-- Procedure ${procedureName} not found or has no code`;
                 }
