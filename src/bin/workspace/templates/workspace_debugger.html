@@ -214,46 +214,69 @@
                         }
                         const scopes = await window.dapClient.sendRequest('scopes', { frameId });
                         
-                        // Render Call Stack and Scopes/Variables in the sidebar
+                        // Render Call Stack and Scopes/Variables in the sidebar side-by-side
                         const container = document.getElementById('debug-variables-container');
                         if (container) {
                             container.innerHTML = '';
+                            container.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono p-4 bg-base-200/50 rounded-box border border-base-200';
 
-                            // 1. Render Call Stack frames
+                            // Left Column: Frames (Call Stack)
+                            const leftCol = document.createElement('div');
+                            leftCol.className = 'flex flex-col gap-2 border-r border-base-300/50 pr-4 last:border-r-0';
+                            
                             const callStackHeader = document.createElement('div');
                             callStackHeader.className = 'font-semibold text-xs text-secondary uppercase mb-2 border-b border-base-200 pb-1';
-                            callStackHeader.innerText = 'Call Stack';
-                            container.appendChild(callStackHeader);
+                            callStackHeader.innerText = 'Frames';
+                            leftCol.appendChild(callStackHeader);
                             
-                            stackTrace.body.stackFrames.forEach(f => {
+                            stackTrace.body.stackFrames.forEach((f, idx) => {
                                 const frameEl = document.createElement('div');
-                                frameEl.className = 'text-xs font-mono py-1 px-2 bg-base-200 rounded mb-2 border border-base-300 flex justify-between items-center';
-                                frameEl.innerHTML = `<span class="font-semibold text-secondary-content/80">${f.name}</span><span class="opacity-60 text-[10px]">Line ${f.line}</span>`;
-                                container.appendChild(frameEl);
+                                if (idx === 0) {
+                                    frameEl.className = 'text-xs font-mono py-1.5 px-3 bg-primary/10 text-primary rounded border border-primary/20 flex justify-between items-center font-bold shadow-sm';
+                                } else {
+                                    frameEl.className = 'text-xs font-mono py-1.5 px-3 bg-base-100 rounded border border-base-200 flex justify-between items-center opacity-70 hover:opacity-100 transition-opacity';
+                                }
+                                frameEl.innerHTML = `<span class="truncate">${f.name}</span><span class="opacity-60 text-[10px]">Line ${f.line}</span>`;
+                                leftCol.appendChild(frameEl);
                             });
+                            container.appendChild(leftCol);
 
-                            // 2. Render all Scopes and their Variables
+                            // Right Column: Variables
+                            const rightCol = document.createElement('div');
+                            rightCol.className = 'flex flex-col gap-2 pl-2';
+                            
+                            const variablesHeader = document.createElement('div');
+                            variablesHeader.className = 'font-semibold text-xs text-primary uppercase mb-2 border-b border-base-200 pb-1';
+                            variablesHeader.innerText = 'Variables';
+                            rightCol.appendChild(variablesHeader);
+
                             if (scopes.body.scopes && scopes.body.scopes.length > 0) {
                                 for (const scope of scopes.body.scopes) {
                                     const scopeHeader = document.createElement('div');
-                                    scopeHeader.className = 'font-semibold text-xs text-primary uppercase mt-4 mb-2 border-b border-base-200 pb-1';
-                                    scopeHeader.innerText = scope.name;
-                                    container.appendChild(scopeHeader);
+                                    scopeHeader.className = 'font-bold text-[10px] text-base-content/60 uppercase mt-2 mb-1.5 flex items-center gap-1.5';
+                                    scopeHeader.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> ${scope.name}`;
+                                    rightCol.appendChild(scopeHeader);
                                     
                                     const varRef = scope.variablesReference;
                                     const vars = await window.dapClient.sendRequest('variables', { variablesReference: varRef });
                                     
                                     const scopeVariablesList = document.createElement('div');
-                                    scopeVariablesList.className = 'flex flex-col gap-1.5 pl-1';
+                                    scopeVariablesList.className = 'flex flex-col gap-1 pl-1';
                                     vars.body.variables.forEach(v => {
                                         const el = document.createElement('div');
-                                        el.className = 'flex justify-between font-mono text-xs py-0.5 border-b border-base-200/50 last:border-b-0 gap-2';
-                                        el.innerHTML = `<span class="opacity-70 truncate">${v.name}</span><span class="font-bold font-mono break-all">${v.value}</span>`;
+                                        el.className = 'flex justify-between font-mono text-xs py-1 border-b border-base-200/50 last:border-b-0 gap-2 hover:bg-base-200/30 px-1 rounded transition-colors';
+                                        el.innerHTML = `<span class="opacity-70 truncate font-semibold">${v.name}</span><span class="font-bold break-all">${v.value}</span>`;
                                         scopeVariablesList.appendChild(el);
                                     });
-                                    container.appendChild(scopeVariablesList);
+                                    rightCol.appendChild(scopeVariablesList);
                                 }
+                            } else {
+                                const emptyEl = document.createElement('div');
+                                emptyEl.className = 'opacity-40 italic text-xs p-4 text-center';
+                                emptyEl.innerText = 'No variables in scope';
+                                rightCol.appendChild(emptyEl);
                             }
+                            container.appendChild(rightCol);
                         }
                     }
                 } catch (err) {
@@ -266,6 +289,11 @@
                  document.getElementById('btn-step-over').disabled = true;
                  window.currentPausedLine = null;
                  syncDebuggerLineStyles();
+                 const container = document.getElementById('debug-variables-container');
+                 if (container) {
+                     container.className = 'text-sm font-mono p-4 bg-base-200/50 rounded-box min-h-[150px] border border-base-200';
+                     container.innerHTML = '<span class="opacity-40 italic">Running...</span>';
+                 }
              });
             
             document.getElementById('btn-continue').addEventListener('click', () => {
@@ -368,6 +396,9 @@
                     } else {
                         console.log("Run finished successfully:", res);
                         const container = document.getElementById('debug-variables-container');
+                        if (container) {
+                            container.className = 'text-sm font-mono p-4 bg-base-200/50 rounded-box min-h-[150px] border border-base-200';
+                        }
                         if (res.result !== undefined) {
                             if (container) {
                                 container.innerHTML = `<div class="mb-2 font-bold text-success">Execution finished.</div><div><strong>Result</strong>: <pre class="mt-2 bg-base-300 p-2 rounded overflow-auto max-h-48">${typeof res.result === 'object' ? JSON.stringify(res.result, null, 2) : res.result}</pre></div>`;
