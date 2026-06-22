@@ -14,12 +14,12 @@
 // This file handles the logic for the Axum routes.
 // We import required Axum and Oxibase types to be used across handlers.
 
-use crate::api::Database;
+use crate::api::{Database, NamedParams};
 use crate::server::template::create_env;
 use crate::server::AppState;
 use crate::Value;
 use axum::{
-    extract::{Form, Path, Query, Request, State},
+    extract::{Path, Query, Request, State},
     http::HeaderMap,
     http::StatusCode,
     response::{Html, IntoResponse},
@@ -218,121 +218,457 @@ pub async fn get_table(
     (StatusCode::OK, Json(JsonValue::Array(all_rows))).into_response()
 }
 
+fn url_decode(val: &str) -> String {
+    let mut decoded = String::new();
+    let mut chars = val.chars();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            if let (Some(h1), Some(h2)) = (chars.next(), chars.next()) {
+                if let Ok(byte) = u8::from_str_radix(&format!("{}{}", h1, h2), 16) {
+                    decoded.push(byte as char);
+                } else {
+                    decoded.push('%');
+                    decoded.push(h1);
+                    decoded.push(h2);
+                }
+            } else {
+                decoded.push('%');
+            }
+        } else if c == '+' {
+            decoded.push(' ');
+        } else {
+            decoded.push(c);
+        }
+    }
+    decoded
+}
+
+fn match_and_extract_path_vars(
+    route_pattern: &str,
+    request_path: &str,
+) -> Option<std::collections::HashMap<String, String>> {
+    let route_parts: Vec<&str> = route_pattern.split('/').filter(|s| !s.is_empty()).collect();
+    let request_parts: Vec<&str> = request_path.split('/').filter(|s| !s.is_empty()).collect();
+    if route_parts.len() != request_parts.len() {
+        return None;
+    }
+    let mut params = std::collections::HashMap::new();
+    for (r_part, req_part) in route_parts.iter().zip(request_parts.iter()) {
+        if r_part.starts_with('{') && r_part.ends_with('}') {
+            let var_name = &r_part[1..r_part.len() - 1];
+            params.insert(var_name.to_string(), req_part.to_string());
+        } else if let Some(var_name) = r_part.strip_prefix(':') {
+            params.insert(var_name.to_string(), req_part.to_string());
+        } else if r_part != req_part {
+            return None;
+        }
+    }
+    Some(params)
+}
+
 /// Fallback route handler for dynamic database-driven templates
 pub async fn dynamic_route_handler(
     State(state): State<AppState>,
     req: Request,
 ) -> impl IntoResponse {
-    let method = req.method().as_str();
-    let path = req.uri().path();
+    let method = req.method().as_str().to_string();
+    let path = req.uri().path().to_string();
+    let query_str = req.uri().query().map(|s| s.to_string());
 
-    // Lookup the route
-    let query =
-        "SELECT template_name, context_query FROM interface.routes WHERE method = ? AND path = ?";
-    let rows_res = match state
-        .db
-        .query(query, vec![Value::text(method), Value::text(path)])
-    {
+    // Extract body bytes
+    let (_parts, body) = req.into_parts();
+    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(b) => b,
+        Err(_) => axum::body::Bytes::new(),
+    };
+
+    // Lookup all routes for this method
+    let query = "SELECT template_name, context_query, path FROM interface.routes WHERE method = ?";
+    let rows_res = match state.db.query(query, vec![Value::text(&method)]) {
         Ok(res) => res,
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error finding route: {}", e),
+                format!("Database error finding routes: {}", e),
             )
                 .into_response()
         }
     };
 
-    let mut matching_rows = vec![];
-    for r in rows_res.flatten() {
-        matching_rows.push(r);
+    let mut matched_route = None;
+    for row_res in rows_res {
+        let row = match row_res {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        let t_name = row
+            .get_value(0)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let ctx_q = row
+            .get_value(1)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let r_path = row
+            .get_value(2)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        if let Some(extracted) = match_and_extract_path_vars(&r_path, &path) {
+            matched_route = Some((t_name, ctx_q, extracted));
+            break;
+        }
     }
 
-    if matching_rows.is_empty() {
-        return (StatusCode::NOT_FOUND, "Not Found").into_response();
+    let (template_name, context_query, path_params) = match matched_route {
+        Some(val) => val,
+        None => return (StatusCode::NOT_FOUND, "Not Found").into_response(),
+    };
+
+    // Coalesce parameters
+    let mut context_params = std::collections::HashMap::<String, Value>::new();
+    for (k, v) in path_params {
+        context_params.insert(k, Value::text(v));
     }
 
-    let route_row = &matching_rows[0];
-    let template_name = match route_row.get_value(0) {
-        Some(Value::Text(s)) => s.to_string(),
-        _ => return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid template_name").into_response(),
-    };
-
-    let context_query = match route_row.get_value(1) {
-        Some(Value::Text(s)) => Some(s.to_string()),
-        _ => None,
-    };
-
-    // Build context
-    let mut context = serde_json::Map::new();
-
-    // Parse simple query parameters into context (simple decoding)
-    if let Some(query_str) = req.uri().query() {
-        for pair in query_str.split('&') {
+    if let Some(qs) = query_str {
+        for pair in qs.split('&') {
             if let Some((key, val)) = pair.split_once('=') {
-                let mut decoded = String::new();
-                let mut chars = val.chars();
-                while let Some(c) = chars.next() {
-                    if c == '%' {
-                        if let (Some(h1), Some(h2)) = (chars.next(), chars.next()) {
-                            if let Ok(byte) = u8::from_str_radix(&format!("{}{}", h1, h2), 16) {
-                                decoded.push(byte as char);
-                            } else {
-                                decoded.push('%');
-                                decoded.push(h1);
-                                decoded.push(h2);
-                            }
-                        } else {
-                            decoded.push('%');
-                        }
-                    } else if c == '+' {
-                        decoded.push(' ');
-                    } else {
-                        decoded.push(c);
-                    }
-                }
-                context.insert(key.to_string(), JsonValue::String(decoded));
+                let decoded = url_decode(val);
+                context_params.insert(key.to_string(), Value::text(decoded));
             }
         }
     }
 
+    if !body_bytes.is_empty() {
+        if let Ok(serde_json::Value::Object(map)) =
+            serde_json::from_slice::<serde_json::Value>(&body_bytes)
+        {
+            for (key, val) in map {
+                let oxibase_val = match val {
+                    serde_json::Value::Null => Value::null_unknown(),
+                    serde_json::Value::Bool(b) => Value::boolean(b),
+                    serde_json::Value::Number(num) => {
+                        if let Some(i) = num.as_i64() {
+                            Value::integer(i)
+                        } else if let Some(f) = num.as_f64() {
+                            Value::float(f)
+                        } else {
+                            Value::null_unknown()
+                        }
+                    }
+                    serde_json::Value::String(s) => Value::text(s),
+                    _ => Value::text(val.to_string()),
+                };
+                context_params.insert(key, oxibase_val);
+            }
+        } else {
+            // Try to parse as urlencoded form data
+            if let Ok(body_str) = String::from_utf8(body_bytes.to_vec()) {
+                for pair in body_str.split('&') {
+                    if let Some((key, val)) = pair.split_once('=') {
+                        let decoded_key = url_decode(key);
+                        let decoded_val = url_decode(val);
+                        context_params.insert(decoded_key, Value::text(decoded_val));
+                    }
+                }
+            }
+        }
+    }
+
+    // Build context
+    let mut template_ctx = serde_json::Map::new();
+
+    // Map context_params into template context "params" and root context for compatibility
+    let mut params_json_map = serde_json::Map::new();
+    for (k, v) in &context_params {
+        let json_val = value_to_json(v);
+        params_json_map.insert(k.clone(), json_val.clone());
+        template_ctx.insert(k.clone(), json_val);
+    }
+    template_ctx.insert(
+        "params".to_string(),
+        serde_json::Value::Object(params_json_map),
+    );
+
     if let Some(ctx_query) = context_query {
         // Run the query to fetch dynamic context
-        let ctx_rows_res = match state.db.query(&ctx_query, ()) {
-            Ok(res) => res,
-            Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Context query error: {}", e),
-                )
-                    .into_response()
+        let mut compiled_query = ctx_query.clone();
+
+        // Special case: SQL editor query execution
+        if path == "/workspace/sql" {
+            if let Some(q_val) = context_params.get("query").and_then(|v| v.as_str()) {
+                compiled_query = q_val.to_string();
             }
+        }
+
+        if compiled_query.contains(":schema") || compiled_query.contains(":table") {
+            let s_val = context_params
+                .get("schema")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let t_val = context_params
+                .get("table")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if s_val.chars().all(|c| c.is_alphanumeric() || c == '_')
+                && t_val.chars().all(|c| c.is_alphanumeric() || c == '_')
+            {
+                compiled_query = compiled_query
+                    .replace(":schema", s_val)
+                    .replace(":table", t_val);
+            }
+        }
+
+        let is_query = {
+            let u = compiled_query.to_uppercase();
+            u.starts_with("SELECT")
+                || u.starts_with("SHOW")
+                || u.starts_with("EXPLAIN")
+                || u.starts_with("DESCRIBE")
+                || u.starts_with("WITH")
         };
 
-        let cols = ctx_rows_res.columns().to_vec();
-        let mut all_rows = Vec::new();
-
-        for row_res in ctx_rows_res {
-            let row = match row_res {
-                Ok(r) => r,
+        if is_query {
+            let named = NamedParams::from(context_params.clone());
+            let ctx_rows_res = match state.db.query_named(&compiled_query, named) {
+                Ok(res) => res,
                 Err(e) => {
                     return (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Row error: {}", e),
+                        format!("Query error: {}", e),
                     )
                         .into_response()
                 }
             };
 
-            let mut json_row = serde_json::Map::new();
-            for (i, col_name) in cols.iter().enumerate() {
-                let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                json_row.insert(col_name.clone(), value_to_json(&val));
+            let cols = ctx_rows_res.columns().to_vec();
+            let mut all_rows = Vec::new();
+
+            for row_res in ctx_rows_res {
+                let row = match row_res {
+                    Ok(r) => r,
+                    Err(e) => {
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("Row error: {}", e),
+                        )
+                            .into_response()
+                    }
+                };
+
+                let mut json_row = serde_json::Map::new();
+                for (i, col_name) in cols.iter().enumerate() {
+                    let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                    json_row.insert(col_name.clone(), value_to_json(&val));
+                }
+                all_rows.push(JsonValue::Object(json_row));
             }
-            all_rows.push(JsonValue::Object(json_row));
+
+            template_ctx.insert("data".to_string(), JsonValue::Array(all_rows));
+            template_ctx.insert("columns".to_string(), serde_json::json!(cols));
+        } else {
+            let named = NamedParams::from(context_params.clone());
+            match state.db.execute_named(&compiled_query, named) {
+                Ok(rows_affected) => {
+                    template_ctx.insert(
+                        "rows_affected".to_string(),
+                        serde_json::json!(rows_affected),
+                    );
+                    template_ctx.insert("data".to_string(), JsonValue::Array(vec![]));
+                    template_ctx.insert(
+                        "columns".to_string(),
+                        serde_json::json!(Vec::<String>::new()),
+                    );
+                }
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Execution error: {}", e),
+                    )
+                        .into_response()
+                }
+            }
+        }
+    } else {
+        template_ctx.insert("data".to_string(), JsonValue::Array(vec![]));
+        template_ctx.insert(
+            "columns".to_string(),
+            serde_json::json!(Vec::<String>::new()),
+        );
+    }
+
+    // Copy data to template-specific variable aliases for backwards compatibility
+    let data_val = template_ctx
+        .get("data")
+        .cloned()
+        .unwrap_or(JsonValue::Array(vec![]));
+    template_ctx.insert("spans".to_string(), data_val.clone());
+    template_ctx.insert("logs".to_string(), data_val.clone());
+    template_ctx.insert("traces".to_string(), data_val.clone());
+    template_ctx.insert("rows".to_string(), data_val.clone());
+
+    // Inject trace ID
+    if let Some(tid) = context_params.get("trace_id") {
+        template_ctx.insert("trace_id".to_string(), value_to_json(tid));
+    }
+
+    // Populate trace start/end time
+    let mut trace_start_time = String::new();
+    let mut trace_end_time = String::new();
+    if let JsonValue::Array(ref spans) = data_val {
+        for s in spans {
+            if let Some(st) = s.get("start_time").and_then(|v| v.as_str()) {
+                if trace_start_time.is_empty() || st < trace_start_time.as_str() {
+                    trace_start_time = st.to_string();
+                }
+            }
+            if let Some(et) = s.get("end_time").and_then(|v| v.as_str()) {
+                if trace_end_time.is_empty() || et > trace_end_time.as_str() {
+                    trace_end_time = et.to_string();
+                }
+            }
+        }
+    }
+    template_ctx.insert(
+        "trace_start_time".to_string(),
+        JsonValue::String(trace_start_time),
+    );
+    template_ctx.insert(
+        "trace_end_time".to_string(),
+        JsonValue::String(trace_end_time),
+    );
+    template_ctx.insert(
+        "spans_json".to_string(),
+        JsonValue::String(serde_json::to_string(&data_val).unwrap_or_else(|_| "[]".to_string())),
+    );
+
+    // Inject log histogram and filters for workspace observe logs
+    if path == "/workspace/observe/logs" {
+        let mut histogram = serde_json::Map::new();
+        histogram.insert("ERROR".to_string(), serde_json::json!(0));
+        histogram.insert("WARN".to_string(), serde_json::json!(0));
+        histogram.insert("INFO".to_string(), serde_json::json!(0));
+        histogram.insert("DEBUG".to_string(), serde_json::json!(0));
+
+        if let Ok(res) = state
+            .db
+            .query("SELECT level, COUNT(*) FROM system.logs GROUP BY level", ())
+        {
+            for row in res.flatten() {
+                let lvl = row
+                    .get_value(0)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default();
+                let count = row.get_value(1).and_then(|v| v.as_int64()).unwrap_or(0);
+                histogram.insert(lvl.to_string(), serde_json::json!(count));
+            }
+        }
+        template_ctx.insert("histogram".to_string(), JsonValue::Object(histogram));
+
+        // Get filters from params
+        let level = context_params
+            .get("level")
+            .and_then(|v| v.as_str())
+            .unwrap_or("all")
+            .to_string();
+        let search = context_params
+            .get("search")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let limit_str = context_params
+            .get("limit")
+            .and_then(|v| v.as_str())
+            .unwrap_or("100")
+            .to_string();
+        let offset_str = context_params
+            .get("offset")
+            .and_then(|v| v.as_str())
+            .unwrap_or("0")
+            .to_string();
+        let auto_refresh = context_params
+            .get("auto_refresh")
+            .and_then(|v| v.as_str())
+            .unwrap_or("false")
+            .to_string();
+
+        let limit: i32 = limit_str.parse().unwrap_or(100);
+        let offset: i32 = offset_str.parse().unwrap_or(0);
+
+        let mut filter_map = serde_json::Map::new();
+        filter_map.insert("level".to_string(), JsonValue::String(level));
+        filter_map.insert("search".to_string(), JsonValue::String(search));
+        filter_map.insert("limit".to_string(), serde_json::json!(limit));
+        template_ctx.insert("filters".to_string(), JsonValue::Object(filter_map));
+        template_ctx.insert("auto_refresh".to_string(), JsonValue::String(auto_refresh));
+        template_ctx.insert("has_more".to_string(), JsonValue::Bool(false)); // can default to false or calculate
+        template_ctx.insert("next_offset".to_string(), serde_json::json!(offset + limit));
+    }
+
+    // Inject trace filters and parameters for workspace observe traces
+    if path == "/workspace/observe/traces" {
+        let search = context_params
+            .get("search")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let status = context_params
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("all")
+            .to_string();
+        let limit_str = context_params
+            .get("limit")
+            .and_then(|v| v.as_str())
+            .unwrap_or("100")
+            .to_string();
+        let auto_refresh = context_params
+            .get("auto_refresh")
+            .and_then(|v| v.as_str())
+            .unwrap_or("false")
+            .to_string();
+
+        let limit: i32 = limit_str.parse().unwrap_or(100);
+
+        let mut filter_map = serde_json::Map::new();
+        filter_map.insert("search".to_string(), JsonValue::String(search));
+        filter_map.insert("status".to_string(), JsonValue::String(status));
+        filter_map.insert("limit".to_string(), serde_json::json!(limit));
+        template_ctx.insert("filters".to_string(), JsonValue::Object(filter_map));
+        template_ctx.insert("auto_refresh".to_string(), JsonValue::String(auto_refresh));
+    }
+
+    // Inject parameters for run_modal
+    if path == "/workspace/run_modal" {
+        let mut parameters_json = JsonValue::Array(Vec::new());
+        if let JsonValue::Array(ref rows) = data_val {
+            if !rows.is_empty() {
+                if let Some(JsonValue::String(ref params_str)) = rows[0].get("parameters") {
+                    if let Ok(parsed) = serde_json::from_str::<JsonValue>(params_str) {
+                        parameters_json = parsed;
+                    }
+                }
+            }
         }
 
-        context.insert("data".to_string(), JsonValue::Array(all_rows));
+        if let JsonValue::Array(params_arr) = parameters_json {
+            let in_params: Vec<JsonValue> = params_arr
+                .into_iter()
+                .filter(|p| {
+                    if let Some(mode) = p.get("mode").and_then(|m| m.as_str()) {
+                        mode == "IN" || mode == "INOUT"
+                    } else {
+                        true
+                    }
+                })
+                .collect();
+            template_ctx.insert("parameters".to_string(), JsonValue::Array(in_params));
+        } else {
+            template_ctx.insert("parameters".to_string(), parameters_json);
+        }
     }
 
     // Setup jinja environment
@@ -350,7 +686,7 @@ pub async fn dynamic_route_handler(
         }
     };
 
-    match tmpl.render(JsonValue::Object(context)) {
+    match tmpl.render(JsonValue::Object(template_ctx)) {
         Ok(html) => Html(html).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1016,678 +1352,5 @@ pub async fn execute_sql(
             )
                 .into_response(),
         }
-    }
-}
-
-pub async fn workspace_execute_sql(
-    headers: HeaderMap,
-    State(state): State<AppState>,
-    Form(form): Form<HashMap<String, String>>,
-) -> impl IntoResponse {
-    let parent_cx = opentelemetry::global::get_text_map_propagator(|prop| {
-        prop.extract(&HeaderExtractor(&headers))
-    });
-    let span = tracing::info_span!("network.request", method = "POST", path = "/workspace/sql");
-    let _ = span.set_parent(parent_cx);
-    let _guard = span.enter();
-
-    let sql = match form.get("query") {
-        Some(q) => q.trim(),
-        None => return (StatusCode::BAD_REQUEST, "Missing query").into_response(),
-    };
-
-    let mut context = serde_json::Map::new();
-    context.insert("query".to_string(), JsonValue::String(sql.to_string()));
-
-    let upper_sql = sql.to_uppercase();
-    let is_query = upper_sql.starts_with("SELECT")
-        || upper_sql.starts_with("SHOW")
-        || upper_sql.starts_with("EXPLAIN")
-        || upper_sql.starts_with("DESCRIBE")
-        || upper_sql.starts_with("WITH");
-
-    if is_query {
-        match state.db.query(sql, ()) {
-            Ok(rows_result) => {
-                let columns = rows_result.columns().to_vec();
-                let mut all_rows = Vec::new();
-
-                for row_res in rows_result {
-                    match row_res {
-                        Ok(row) => {
-                            let mut json_row = serde_json::Map::new();
-                            for (i, col_name) in columns.iter().enumerate() {
-                                let val =
-                                    row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                                json_row.insert(col_name.clone(), value_to_json(&val));
-                            }
-                            all_rows.push(JsonValue::Object(json_row));
-                        }
-                        Err(e) => {
-                            context.insert("error".to_string(), JsonValue::String(e.to_string()));
-                            break;
-                        }
-                    }
-                }
-
-                context.insert("columns".to_string(), serde_json::json!(columns));
-                context.insert("rows".to_string(), JsonValue::Array(all_rows));
-            }
-            Err(e) => {
-                context.insert("error".to_string(), JsonValue::String(e.to_string()));
-            }
-        }
-    } else {
-        match state.db.execute(sql, ()) {
-            Ok(rows_affected) => {
-                context.insert(
-                    "rows_affected".to_string(),
-                    serde_json::json!(rows_affected),
-                );
-            }
-            Err(e) => {
-                context.insert("error".to_string(), JsonValue::String(e.to_string()));
-            }
-        }
-    }
-
-    let env = create_env(state.db.clone());
-    let tmpl = match env.get_template("workspace_sql_results.html") {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template load error: {}", e),
-            )
-                .into_response()
-        }
-    };
-
-    match tmpl.render(JsonValue::Object(context)) {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Template render error: {}", e),
-        )
-            .into_response(),
-    }
-}
-
-#[derive(Deserialize)]
-pub struct WorkspaceTableCreateForm {
-    pub table_name: String,
-    pub col_name: String,
-    pub col_type: String,
-}
-
-pub async fn workspace_create_table(
-    State(state): State<AppState>,
-    Form(form): Form<WorkspaceTableCreateForm>,
-) -> impl IntoResponse {
-    let sql = format!(
-        "CREATE TABLE {} ({} {})",
-        form.table_name, form.col_name, form.col_type
-    );
-
-    match state.db.execute(&sql, ()) {
-        Ok(_) => {
-            // Unpoly accepts a redirect or an HTML fragment
-            // We'll return an Unpoly-compatible response to close the modal and reload the sidebar
-            let html = r#"
-            <div class="p-4 bg-green-100 text-green-700 rounded">
-                Table created successfully.
-                <script>
-                    up.emit('table:created');
-                    up.layer.dismiss();
-                </script>
-            </div>
-            "#;
-            Html(html).into_response()
-        }
-        Err(e) => {
-            let html = format!(
-                r#"
-            <div class="p-4 bg-red-100 text-red-700 rounded">
-                Error creating table: {}
-            </div>
-            "#,
-                e
-            );
-            (StatusCode::BAD_REQUEST, Html(html)).into_response()
-        }
-    }
-}
-
-pub async fn workspace_get_table_data(
-    Path((schema, table)): Path<(String, String)>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let mut context = serde_json::Map::new();
-    context.insert("schema".to_string(), JsonValue::String(schema.clone()));
-    context.insert("table".to_string(), JsonValue::String(table.clone()));
-
-    let sql = format!("SELECT * FROM {}.{} LIMIT 100", schema, table);
-
-    match state.db.query(&sql, ()) {
-        Ok(rows_result) => {
-            let columns = rows_result.columns().to_vec();
-            let mut all_rows = Vec::new();
-
-            for row_res in rows_result {
-                match row_res {
-                    Ok(row) => {
-                        let mut json_row = serde_json::Map::new();
-                        for (i, col_name) in columns.iter().enumerate() {
-                            let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                            json_row.insert(col_name.clone(), value_to_json(&val));
-                        }
-                        all_rows.push(JsonValue::Object(json_row));
-                    }
-                    Err(e) => {
-                        context.insert("error".to_string(), JsonValue::String(e.to_string()));
-                        break;
-                    }
-                }
-            }
-
-            context.insert("columns".to_string(), serde_json::json!(columns));
-            context.insert("rows".to_string(), JsonValue::Array(all_rows));
-        }
-        Err(e) => {
-            context.insert("error".to_string(), JsonValue::String(e.to_string()));
-        }
-    }
-
-    let env = create_env(state.db.clone());
-    let tmpl = match env.get_template("workspace_data_grid.html") {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template load error: {}", e),
-            )
-                .into_response()
-        }
-    };
-
-    match tmpl.render(JsonValue::Object(context)) {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Template render error: {}", e),
-        )
-            .into_response(),
-    }
-}
-
-pub async fn workspace_trace_view(
-    Path(trace_id): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let mut context = serde_json::Map::new();
-    context.insert("trace_id".to_string(), JsonValue::String(trace_id.clone()));
-
-    let sql = "SELECT span_id, parent_span_id, name, span_kind, start_time, end_time, duration_ms, status_code, status_message, attributes, events FROM system.traces WHERE trace_id = ? ORDER BY start_time ASC";
-
-    match state.db.query(sql, vec![Value::text(&trace_id)]) {
-        Ok(rows_result) => {
-            let columns = rows_result.columns().to_vec();
-            let mut all_spans = Vec::new();
-            let mut start_time = String::new();
-            let mut end_time = String::new();
-
-            for row in rows_result.flatten() {
-                let mut json_row = serde_json::Map::new();
-                for (i, col_name) in columns.iter().enumerate() {
-                    let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                    json_row.insert(col_name.clone(), value_to_json(&val));
-                }
-
-                if start_time.is_empty() {
-                    if let Some(st) = json_row.get("start_time") {
-                        start_time = st.as_str().unwrap_or("").to_string();
-                    }
-                }
-                if let Some(et) = json_row.get("end_time") {
-                    end_time = et.as_str().unwrap_or("").to_string();
-                }
-
-                all_spans.push(JsonValue::Object(json_row));
-            }
-
-            context.insert("spans".to_string(), JsonValue::Array(all_spans.clone()));
-            context.insert(
-                "spans_json".to_string(),
-                JsonValue::String(
-                    serde_json::to_string(&all_spans).unwrap_or_else(|_| "[]".to_string()),
-                ),
-            );
-            context.insert(
-                "trace_start_time".to_string(),
-                JsonValue::String(start_time),
-            );
-            context.insert("trace_end_time".to_string(), JsonValue::String(end_time));
-        }
-        Err(e) => {
-            context.insert("error".to_string(), JsonValue::String(e.to_string()));
-        }
-    }
-
-    let env = create_env(state.db.clone());
-    let tmpl = match env.get_template("workspace_trace_view.html") {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template load error: {}", e),
-            )
-                .into_response()
-        }
-    };
-
-    match tmpl.render(JsonValue::Object(context)) {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Template render error: {}", e),
-        )
-            .into_response(),
-    }
-}
-
-pub async fn workspace_run_modal(
-    Query(params): Query<HashMap<String, String>>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let mut context = serde_json::Map::new();
-    let procedure_name = params.get("procedure_name").cloned().unwrap_or_default();
-    context.insert(
-        "procedure_name".to_string(),
-        JsonValue::String(procedure_name.clone()),
-    );
-
-    let sql = "SELECT parameters FROM system.procedures WHERE name = ?";
-    let mut parameters_json = JsonValue::Array(Vec::new());
-
-    match state
-        .db
-        .query(sql, vec![Value::text(procedure_name.to_uppercase())])
-    {
-        Ok(rows_result) => {
-            if let Some(row) = rows_result.flatten().next() {
-                if let Some(Value::Text(params_str)) = row.get_value(0) {
-                    if let Ok(parsed) = serde_json::from_str::<JsonValue>(params_str.as_ref()) {
-                        parameters_json = parsed;
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            context.insert("error".to_string(), JsonValue::String(e.to_string()));
-        }
-    }
-
-    // Filter out OUT parameters from the input form
-    if let JsonValue::Array(params_arr) = parameters_json {
-        let in_params: Vec<JsonValue> = params_arr
-            .into_iter()
-            .filter(|p| {
-                if let Some(mode) = p.get("mode").and_then(|m| m.as_str()) {
-                    mode == "IN" || mode == "INOUT"
-                } else {
-                    true // default mode is IN
-                }
-            })
-            .collect();
-        context.insert("parameters".to_string(), JsonValue::Array(in_params));
-    } else {
-        context.insert("parameters".to_string(), parameters_json);
-    }
-
-    let env = create_env(state.db.clone());
-    let tmpl = match env.get_template("workspace_run_modal.html") {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template load error: {}", e),
-            )
-                .into_response()
-        }
-    };
-
-    match tmpl.render(JsonValue::Object(context)) {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Template render error: {}", e),
-        )
-            .into_response(),
-    }
-}
-
-pub async fn workspace_observe_logs(
-    Query(params): Query<HashMap<String, String>>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let level = params
-        .get("level")
-        .cloned()
-        .unwrap_or_else(|| "all".to_string());
-    let search = params.get("search").cloned().unwrap_or_default();
-    let limit_str = params
-        .get("limit")
-        .cloned()
-        .unwrap_or_else(|| "100".to_string());
-    let offset_str = params
-        .get("offset")
-        .cloned()
-        .unwrap_or_else(|| "0".to_string());
-    let auto_refresh = params
-        .get("auto_refresh")
-        .cloned()
-        .unwrap_or_else(|| "false".to_string());
-
-    let limit: i32 = limit_str.parse().unwrap_or(100);
-    let offset: i32 = offset_str.parse().unwrap_or(0);
-
-    let mut context = serde_json::Map::new();
-
-    let mut histogram = serde_json::Map::new();
-    histogram.insert("ERROR".to_string(), serde_json::json!(0));
-    histogram.insert("WARN".to_string(), serde_json::json!(0));
-    histogram.insert("INFO".to_string(), serde_json::json!(0));
-    histogram.insert("DEBUG".to_string(), serde_json::json!(0));
-
-    if let Ok(res) = state
-        .db
-        .query("SELECT level, COUNT(*) FROM system.logs GROUP BY level", ())
-    {
-        for row in res.flatten() {
-            let lvl = row
-                .get_value(0)
-                .and_then(|v| v.as_str())
-                .unwrap_or_default();
-            let count = row.get_value(1).and_then(|v| v.as_int64()).unwrap_or(0);
-            histogram.insert(lvl.to_string(), serde_json::json!(count));
-        }
-    }
-
-    let mut conditions = Vec::new();
-    let mut values = Vec::new();
-
-    if !level.is_empty() && level != "all" {
-        conditions.push("level = ?".to_string());
-        values.push(Value::text(&level));
-    }
-
-    if !search.is_empty() {
-        conditions.push("(message LIKE ? OR target LIKE ?)".to_string());
-        values.push(Value::text(format!("%{}%", search)));
-        values.push(Value::text(format!("%{}%", search)));
-    }
-
-    let where_clause = if conditions.is_empty() {
-        "".to_string()
-    } else {
-        format!("WHERE {}", conditions.join(" AND "))
-    };
-
-    let sql = format!(
-        "SELECT id, timestamp, level, target, message, json_fields, trace_id, span_id FROM system.logs {} ORDER BY timestamp DESC LIMIT {} OFFSET {}",
-        where_clause, limit + 1, offset
-    );
-
-    let mut logs = Vec::new();
-    let mut has_more = false;
-
-    match state.db.query(&sql, values) {
-        Ok(rows_result) => {
-            let cols = rows_result.columns().to_vec();
-            let raw_rows: Vec<_> = rows_result.flatten().collect();
-
-            let count = raw_rows.len();
-            let rows_to_process = if count > limit as usize {
-                has_more = true;
-                &raw_rows[0..(limit as usize)]
-            } else {
-                &raw_rows[..]
-            };
-
-            for row in rows_to_process {
-                let mut log_map = serde_json::Map::new();
-                for (i, col_name) in cols.iter().enumerate() {
-                    let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                    log_map.insert(col_name.clone(), value_to_json(&val));
-                }
-                logs.push(JsonValue::Object(log_map));
-            }
-        }
-        Err(e) => {
-            context.insert("error".to_string(), JsonValue::String(e.to_string()));
-        }
-    }
-
-    context.insert("logs".to_string(), JsonValue::Array(logs));
-    context.insert("histogram".to_string(), JsonValue::Object(histogram));
-    context.insert("auto_refresh".to_string(), JsonValue::String(auto_refresh));
-    context.insert("has_more".to_string(), JsonValue::Bool(has_more));
-    context.insert("next_offset".to_string(), serde_json::json!(offset + limit));
-
-    let mut filter_map = serde_json::Map::new();
-    filter_map.insert("level".to_string(), JsonValue::String(level));
-    filter_map.insert("search".to_string(), JsonValue::String(search));
-    filter_map.insert("limit".to_string(), serde_json::json!(limit));
-    context.insert("filters".to_string(), JsonValue::Object(filter_map));
-
-    let env = create_env(state.db.clone());
-    let tmpl = match env.get_template("workspace_observe_logs.html") {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template load error: {}", e),
-            )
-                .into_response()
-        }
-    };
-
-    match tmpl.render(JsonValue::Object(context)) {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Template render error: {}", e),
-        )
-            .into_response(),
-    }
-}
-
-pub async fn workspace_observe_traces(
-    Query(params): Query<HashMap<String, String>>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let mut context = serde_json::Map::new();
-    let search = params.get("search").cloned().unwrap_or_default();
-    let status = params
-        .get("status")
-        .cloned()
-        .unwrap_or_else(|| "all".to_string());
-    let limit_str = params
-        .get("limit")
-        .cloned()
-        .unwrap_or_else(|| "100".to_string());
-    let auto_refresh = params
-        .get("auto_refresh")
-        .cloned()
-        .unwrap_or_else(|| "false".to_string());
-
-    let limit: usize = limit_str.parse().unwrap_or(100);
-
-    let mut filter_map = serde_json::Map::new();
-    filter_map.insert("search".to_string(), JsonValue::String(search.clone()));
-    filter_map.insert("status".to_string(), JsonValue::String(status.clone()));
-    filter_map.insert("limit".to_string(), serde_json::json!(limit));
-    context.insert("filters".to_string(), JsonValue::Object(filter_map));
-
-    let sql = "SELECT trace_id, parent_span_id, name, start_time, end_time, duration_ms, status_code FROM system.traces ORDER BY start_time DESC";
-
-    let mut traces_list = Vec::new();
-
-    if let Ok(rows) = state.db.query(sql, ()) {
-        use std::collections::HashMap;
-        let mut trace_groups: HashMap<String, Vec<serde_json::Map<String, JsonValue>>> =
-            HashMap::new();
-        let mut trace_order = Vec::new();
-
-        let columns = rows.columns().to_vec();
-        for row in rows.flatten() {
-            let mut json_row = serde_json::Map::new();
-            for (i, col_name) in columns.iter().enumerate() {
-                let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                json_row.insert(col_name.clone(), value_to_json(&val));
-            }
-
-            let trace_id = json_row
-                .get("trace_id")
-                .and_then(|t| t.as_str())
-                .unwrap_or_default()
-                .to_string();
-            if trace_id.is_empty() {
-                continue;
-            }
-
-            if !trace_groups.contains_key(&trace_id) {
-                trace_order.push(trace_id.clone());
-            }
-            trace_groups.entry(trace_id).or_default().push(json_row);
-        }
-
-        for trace_id in trace_order {
-            let spans = &trace_groups[&trace_id];
-
-            let mut root_span_name = "unknown".to_string();
-            let mut start_time = "".to_string();
-            let mut end_time = "".to_string();
-            let mut total_duration_ms = 0.0;
-            let mut has_error = false;
-            let span_count = spans.len();
-
-            let mut root_found = false;
-            for span in spans {
-                let parent_id = span
-                    .get("parent_span_id")
-                    .and_then(|p| p.as_str())
-                    .unwrap_or_default();
-                if parent_id.is_empty() || parent_id == "none" {
-                    root_span_name = span
-                        .get("name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("unknown")
-                        .to_string();
-                    root_found = true;
-                    break;
-                }
-            }
-
-            if !root_found && !spans.is_empty() {
-                root_span_name = spans[0]
-                    .get("name")
-                    .and_then(|n| n.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-            }
-
-            for span in spans {
-                let st = span
-                    .get("start_time")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or_default();
-                if start_time.is_empty() || (!st.is_empty() && st < start_time.as_str()) {
-                    start_time = st.to_string();
-                }
-                let et = span
-                    .get("end_time")
-                    .and_then(|e| e.as_str())
-                    .unwrap_or_default();
-                if end_time.is_empty() || (!et.is_empty() && et > end_time.as_str()) {
-                    end_time = et.to_string();
-                }
-
-                let dur = span
-                    .get("duration_ms")
-                    .and_then(|d| d.as_f64())
-                    .unwrap_or(0.0);
-                total_duration_ms += dur;
-
-                let code = span
-                    .get("status_code")
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("");
-                if code == "ERROR" {
-                    has_error = true;
-                }
-            }
-
-            if !search.is_empty() {
-                let search_lower = search.to_lowercase();
-                if !trace_id.to_lowercase().contains(&search_lower)
-                    && !root_span_name.to_lowercase().contains(&search_lower)
-                {
-                    continue;
-                }
-            }
-
-            if status == "errors_only" && !has_error {
-                continue;
-            }
-            if status == "success_only" && has_error {
-                continue;
-            }
-
-            let mut trace_summary = serde_json::Map::new();
-            trace_summary.insert("trace_id".to_string(), JsonValue::String(trace_id));
-            trace_summary.insert(
-                "root_span_name".to_string(),
-                JsonValue::String(root_span_name),
-            );
-            trace_summary.insert("start_time".to_string(), JsonValue::String(start_time));
-            trace_summary.insert("end_time".to_string(), JsonValue::String(end_time));
-            trace_summary.insert(
-                "total_duration_ms".to_string(),
-                serde_json::json!(total_duration_ms),
-            );
-            trace_summary.insert("span_count".to_string(), serde_json::json!(span_count));
-            trace_summary.insert("has_error".to_string(), JsonValue::Bool(has_error));
-
-            traces_list.push(JsonValue::Object(trace_summary));
-
-            if traces_list.len() >= limit {
-                break;
-            }
-        }
-    }
-
-    context.insert("traces".to_string(), JsonValue::Array(traces_list));
-    context.insert("auto_refresh".to_string(), JsonValue::String(auto_refresh));
-
-    let env = create_env(state.db.clone());
-    let tmpl = match env.get_template("workspace_observe_traces.html") {
-        Ok(t) => t,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template load error: {}", e),
-            )
-                .into_response()
-        }
-    };
-
-    match tmpl.render(JsonValue::Object(context)) {
-        Ok(html) => Html(html).into_response(),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Template render error: {}", e),
-        )
-            .into_response(),
     }
 }

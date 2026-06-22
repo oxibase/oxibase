@@ -375,6 +375,9 @@ async fn test_observe_dashboards() {
     db.execute("INSERT INTO interface.templates (name, content) VALUES ('workspace_observe_logs.html', '{% extends \"workspace_layout.html\" %}{% block content %}{{ logs|length }} logs found: {% for l in logs %}{{ l.message }} {% endfor %}{% endblock %}')", ()).unwrap();
     db.execute("INSERT INTO interface.templates (name, content) VALUES ('workspace_observe_traces.html', '{% extends \"workspace_layout.html\" %}{% block content %}{{ traces|length }} traces found: {% for t in traces %}{{ t.trace_id }} {% endfor %}{% endblock %}')", ()).unwrap();
 
+    db.execute("INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/logs', 'workspace_observe_logs.html', 'SELECT id, timestamp, level, target, message, json_fields, trace_id, span_id FROM system.logs WHERE (:level = ''all'' OR level = :level) ORDER BY timestamp DESC LIMIT 100')", ()).unwrap();
+    db.execute("INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/traces', 'workspace_observe_traces.html', 'SELECT trace_id, parent_span_id, name, start_time, end_time, duration_ms, status_code FROM system.traces ORDER BY start_time DESC')", ()).unwrap();
+
     // Start background flushers
     let (log_tx, log_rx) = crossbeam_channel::bounded(100);
     let _log_shutdown = oxibase::common::logging::start_log_flusher(db.engine().clone(), log_rx);
@@ -426,7 +429,7 @@ async fn test_observe_dashboards() {
     // Allow time for flushers to write
     std::thread::sleep(std::time::Duration::from_millis(500));
 
-    let app = create_router(db);
+    let app = create_router(db.clone());
 
     // 1. Test logs explorer with filter
     let req = Request::builder()
@@ -434,10 +437,12 @@ async fn test_observe_dashboards() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-
+    let status = res.status();
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let body_str = String::from_utf8(body.to_vec()).unwrap();
+    if status != StatusCode::OK {
+        panic!("Status was {}, Body: {}", status, body_str);
+    }
     assert!(body_str.contains("1 logs found"));
     assert!(body_str.contains("Oops something failed"));
 
@@ -447,10 +452,37 @@ async fn test_observe_dashboards() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    let trace_status = res.status();
+    let trace_body = res.into_body().collect().await.unwrap().to_bytes();
+    let trace_body_str = String::from_utf8(trace_body.to_vec()).unwrap();
+    if trace_status != StatusCode::OK {
+        panic!(
+            "Traces status was {}, Body: {}",
+            trace_status, trace_body_str
+        );
+    }
+    assert!(trace_body_str.contains("1 traces found"));
+    assert!(trace_body_str.contains("trace-123"));
 
-    let body = res.into_body().collect().await.unwrap().to_bytes();
-    let body_str = String::from_utf8(body.to_vec()).unwrap();
-    assert!(body_str.contains("1 traces found"));
-    assert!(body_str.contains("trace-123"));
+    // 3. Test dynamic SQL execution endpoint (POST /workspace/sql)
+    db.execute("INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('POST', '/workspace/sql', 'workspace_sql_results.html', 'dummy')", ()).unwrap();
+    db.execute("INSERT INTO interface.templates (name, content) VALUES ('workspace_sql_results.html', 'Rows: {% for row in data %}{{ row.id }} {% endfor %}')", ()).unwrap();
+
+    let req = Request::builder()
+        .method("POST")
+        .uri("/workspace/sql")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from("query=SELECT+id+FROM+system.logs"))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    let sql_status = res.status();
+    let sql_body = res.into_body().collect().await.unwrap().to_bytes();
+    let sql_body_str = String::from_utf8(sql_body.to_vec()).unwrap();
+    if sql_status != StatusCode::OK {
+        panic!(
+            "SQL execution status was {}, Body: {}",
+            sql_status, sql_body_str
+        );
+    }
+    assert!(sql_body_str.contains("Rows:"));
 }

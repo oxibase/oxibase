@@ -214,19 +214,45 @@
                         }
                         const scopes = await window.dapClient.sendRequest('scopes', { frameId });
                         
-                        if (scopes.body.scopes && scopes.body.scopes.length > 0) {
-                            const varRef = scopes.body.scopes[0].variablesReference;
-                            const vars = await window.dapClient.sendRequest('variables', { variablesReference: varRef });
+                        // Render Call Stack and Scopes/Variables in the sidebar
+                        const container = document.getElementById('debug-variables-container');
+                        if (container) {
+                            container.innerHTML = '';
+
+                            // 1. Render Call Stack frames
+                            const callStackHeader = document.createElement('div');
+                            callStackHeader.className = 'font-semibold text-xs text-secondary uppercase mb-2 border-b border-base-200 pb-1';
+                            callStackHeader.innerText = 'Call Stack';
+                            container.appendChild(callStackHeader);
                             
-                            // Render variables in the sidebar if available
-                            const container = document.getElementById('debug-variables-container');
-                            if (container) {
-                                container.innerHTML = '';
-                                vars.body.variables.forEach(v => {
-                                    const el = document.createElement('div');
-                                    el.innerHTML = `<strong>${v.name}</strong>: <span>${v.value}</span>`;
-                                    container.appendChild(el);
-                                });
+                            stackTrace.body.stackFrames.forEach(f => {
+                                const frameEl = document.createElement('div');
+                                frameEl.className = 'text-xs font-mono py-1 px-2 bg-base-200 rounded mb-2 border border-base-300 flex justify-between items-center';
+                                frameEl.innerHTML = `<span class="font-semibold text-secondary-content/80">${f.name}</span><span class="opacity-60 text-[10px]">Line ${f.line}</span>`;
+                                container.appendChild(frameEl);
+                            });
+
+                            // 2. Render all Scopes and their Variables
+                            if (scopes.body.scopes && scopes.body.scopes.length > 0) {
+                                for (const scope of scopes.body.scopes) {
+                                    const scopeHeader = document.createElement('div');
+                                    scopeHeader.className = 'font-semibold text-xs text-primary uppercase mt-4 mb-2 border-b border-base-200 pb-1';
+                                    scopeHeader.innerText = scope.name;
+                                    container.appendChild(scopeHeader);
+                                    
+                                    const varRef = scope.variablesReference;
+                                    const vars = await window.dapClient.sendRequest('variables', { variablesReference: varRef });
+                                    
+                                    const scopeVariablesList = document.createElement('div');
+                                    scopeVariablesList.className = 'flex flex-col gap-1.5 pl-1';
+                                    vars.body.variables.forEach(v => {
+                                        const el = document.createElement('div');
+                                        el.className = 'flex justify-between font-mono text-xs py-0.5 border-b border-base-200/50 last:border-b-0 gap-2';
+                                        el.innerHTML = `<span class="opacity-70 truncate">${v.name}</span><span class="font-bold font-mono break-all">${v.value}</span>`;
+                                        scopeVariablesList.appendChild(el);
+                                    });
+                                    container.appendChild(scopeVariablesList);
+                                }
                             }
                         }
                     }

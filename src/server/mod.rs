@@ -67,31 +67,6 @@ pub fn create_router(db: Database) -> Router {
         )
         .route("/api/sql", axum::routing::post(handlers::execute_sql))
         .route(
-            "/workspace/sql",
-            axum::routing::post(handlers::workspace_execute_sql),
-        )
-        .route(
-            "/workspace/meta/tables",
-            axum::routing::post(handlers::workspace_create_table),
-        )
-        .route(
-            "/workspace/data/{schema}/{table}",
-            get(handlers::workspace_get_table_data),
-        )
-        .route("/workspace/run_modal", get(handlers::workspace_run_modal))
-        .route(
-            "/workspace/traces/{trace_id}",
-            get(handlers::workspace_trace_view),
-        )
-        .route(
-            "/workspace/observe/logs",
-            get(handlers::workspace_observe_logs),
-        )
-        .route(
-            "/workspace/observe/traces",
-            get(handlers::workspace_observe_traces),
-        )
-        .route(
             "/workspace/static/js/dap-client.js",
             get(dap::serve_dap_client),
         )

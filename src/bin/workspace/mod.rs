@@ -153,11 +153,27 @@ pub fn install(db: &Database) {
         ()
     ).unwrap();
     tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/logs', 'workspace_observe_logs.html', NULL)",
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('POST', '/workspace/sql', 'workspace_sql_results.html', 'dummy')",
         ()
     ).unwrap();
     tx.execute(
-        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/traces', 'workspace_observe_traces.html', NULL)",
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/logs', 'workspace_observe_logs.html', 'SELECT id, timestamp, level, target, message, json_fields, trace_id, span_id FROM system.logs WHERE (:level = ''all'' OR level = :level) ORDER BY timestamp DESC LIMIT 100')",
+        ()
+    ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/observe/traces', 'workspace_observe_traces.html', 'SELECT trace_id, parent_span_id, name, start_time, end_time, duration_ms, status_code FROM system.traces ORDER BY start_time DESC')",
+        ()
+    ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/traces/{trace_id}', 'workspace_trace_view.html', 'SELECT span_id, parent_span_id, name, span_kind, start_time, end_time, duration_ms, status_code, status_message, attributes, events FROM system.traces WHERE trace_id = :trace_id ORDER BY start_time ASC')",
+        ()
+    ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/run_modal', 'workspace_run_modal.html', 'SELECT parameters FROM system.procedures WHERE name = UPPER(:procedure_name) UNION ALL SELECT parameters FROM system.functions WHERE name = UPPER(:procedure_name)')",
+        ()
+    ).unwrap();
+    tx.execute(
+        "INSERT INTO interface.routes (method, path, template_name, context_query) VALUES ('GET', '/workspace/data/{schema}/{table}', 'workspace_data_grid.html', 'SELECT * FROM :schema.:table LIMIT 100')",
         ()
     ).unwrap();
 

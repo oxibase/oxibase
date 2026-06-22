@@ -34,5 +34,5 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-specs/051-observe-ui-overhaul/plan.md
+specs/052-generic-db-router/plan.md
 <!-- SPECKIT END -->
