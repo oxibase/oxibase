@@ -37,7 +37,7 @@ tokio = { version = "1.50", features = ["full"], optional = true }
 
 # Web server (optional)
 axum = { version = "0.8", features = ["ws"], optional = true }
-tower-http = { version = "0.6", features = ["cors", "trace"], optional = true }
+tower-http = { version = "0.7", features = ["cors", "trace"], optional = true }
 minijinja = { version = "2", optional = true }
 
 # Serialization
@@ -80,7 +80,7 @@ radsort = "0.1"  # Radix sort - O(n) for integer keys
 rand = "0.10"  # Random number generation for RANDOM() function
 ahash = "0.8"  # Fast hash for hash indexes (~30 GB/s, DOS-resistant)
 roaring = "0.11"  # Compressed bitmap indexes (used by Lucene, Druid, Spark)
-cron = "0.16"
+cron = "0.17"
 crossbeam-channel = "0.5.15"
 csv = "1.4.0"
 opentelemetry = "0.32.0"
