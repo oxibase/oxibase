@@ -6,6 +6,9 @@ This file contains high-signal, repo-specific context to help agents work effect
 - **Testing**: Use `cargo nextest run` instead of `cargo test`. 
   - Standard tests: `make test` (or `cargo nextest run --profile ci`)
   - All features: `make test-all`
+- **Workspace E2E Testing**: When working on the workspace, use `make test-workspace` (or `node scripts/test-workspace.js`) to run browser-automation tests.
+  - **CRITICAL**: ANY time you modify frontend templates (`src/bin/workspace/templates/*`), server-side workspace routes or rendering handlers (`src/server/handlers.rs`, `src/bin/workspace/mod.rs`), or interactive GUI features (SQL console, telemetry logs/traces, debugger, data grid), you **MUST** execute `make test-workspace` to verify that your changes do not introduce regressions.
+  - This E2E suite starts up a local server, populates telemetry, handshakes a debugger WebSocket session, and cleanly terminates with zero zombie processes.
 - **Linting & Formatting**: Use `make lint` (runs `cargo fmt --all -- --check` and `cargo clippy --all-targets --all-features -- -D warnings`).
   - **IMPORTANT**: ALWAYS run `make lint` and fix any issues before pushing code to avoid CI failures.
 - **Features**: The codebase has optional scripting backends: `python` (RustPython) and `rhai` (default). When testing or building specific backend logic, ensure you pass the right feature flag (e.g., `--features python`).
@@ -34,5 +37,5 @@ The system is an autonomous relational database management system.
 - Binary artifacts are built for Linux, macOS, and Windows on release. Ensure any new dependencies support cross-compilation on these targets.
 
 <!-- SPECKIT START -->
-specs/052-generic-db-router/plan.md
+specs/054-workspace-puppeteer-tests/plan.md
 <!-- SPECKIT END -->
