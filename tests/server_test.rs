@@ -486,3 +486,108 @@ async fn test_observe_dashboards() {
     }
     assert!(sql_body_str.contains("Rows:"));
 }
+
+#[tokio::test]
+async fn test_multi_byte_url_query() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute("CREATE TABLE users (id INT, name TEXT)", ())
+        .unwrap();
+    db.execute("INSERT INTO users (id, name) VALUES (1, 'Alice á')", ())
+        .unwrap();
+
+    let app = create_router(db);
+
+    // GET /api/data/users?name=eq.Alice+%C3%A1
+    // %C3%A1 is percent-encoded 'á' in UTF-8
+    let req = Request::builder()
+        .uri("/api/data/users?name=eq.Alice+%C3%A1")
+        .body(Body::empty())
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = get_json_response(res).await;
+    assert_eq!(body, json!([{"id": 1, "name": "Alice á"}]));
+}
+
+#[tokio::test]
+async fn test_sql_comment_classification() {
+    let db = Database::open_in_memory().unwrap();
+    db.execute("CREATE TABLE users (id INT, name TEXT)", ())
+        .unwrap();
+    db.execute("INSERT INTO users (id, name) VALUES (1, 'Alice')", ())
+        .unwrap();
+
+    let app = create_router(db);
+
+    // POST /api/sql with leading comment and newline before SELECT query
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/sql")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({
+            "query": "  -- Some single-line comment\n  /* Some multi-line \n comment */ \n SELECT id, name FROM users"
+        }).to_string()))
+        .unwrap();
+
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let body = get_json_response(res).await;
+    assert_eq!(body["rows"], json!([{"id": 1, "name": "Alice"}]));
+}
+
+#[tokio::test]
+async fn test_tcp_dap_debugger() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+
+    let db = Database::open_in_memory().unwrap();
+    let app_state = oxibase::server::AppState::new(db);
+
+    // Start listener on a dynamic/custom port for testing
+    let port = 14711;
+    let state_clone = app_state.clone();
+    tokio::spawn(async move {
+        oxibase::server::dap::start_tcp_dap_listener(state_clone, port).await;
+    });
+
+    // Wait a brief moment for the port to bind
+    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+
+    // Connect as standard TCP client
+    let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port))
+        .await
+        .unwrap();
+
+    // 1. Send Initialize request
+    let init_req =
+        r#"{"seq":1,"type":"request","command":"initialize","arguments":{"clientID":"test"}}"#;
+    let payload = format!("Content-Length: {}\r\n\r\n{}", init_req.len(), init_req);
+    stream.write_all(payload.as_bytes()).await.unwrap();
+
+    // Read response until both initialize response and initialized event are received
+    let mut response_str = String::new();
+    let mut read_buf = [0; 4096];
+    while !response_str.contains("initialized") {
+        let n = stream.read(&mut read_buf).await.unwrap();
+        if n == 0 {
+            break;
+        }
+        response_str.push_str(&String::from_utf8_lossy(&read_buf[..n]));
+    }
+
+    assert!(response_str.contains("initialize"));
+    assert!(response_str.contains("initialized"));
+
+    // 2. Send setBreakpoints request
+    let bp_req = r#"{"seq":2,"type":"request","command":"setBreakpoints","arguments":{"source":{"path":"procedure"},"breakpoints":[{"line":1}]}}"#;
+    let payload_bp = format!("Content-Length: {}\r\n\r\n{}", bp_req.len(), bp_req);
+    stream.write_all(payload_bp.as_bytes()).await.unwrap();
+
+    // Read response
+    let n2 = stream.read(&mut read_buf).await.unwrap();
+    let bp_response_str = String::from_utf8_lossy(&read_buf[..n2]);
+    assert!(bp_response_str.contains("setBreakpoints"));
+}

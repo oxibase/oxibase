@@ -22,17 +22,17 @@
         
         <!-- Severity Summary Histogram -->
         <div class="flex gap-2 text-xs">
-            <div class="px-3 py-1.5 rounded-box bg-error/10 border border-error/20 text-error font-medium">
-                ERROR: {{ histogram.ERROR | default(0) }}
+            <div id="hist-error" class="px-3 py-1.5 rounded-box bg-error/10 border border-error/20 text-error font-medium">
+                ERROR: 0
             </div>
-            <div class="px-3 py-1.5 rounded-box bg-warning/10 border border-warning/20 text-warning font-medium">
-                WARN: {{ histogram.WARN | default(0) }}
+            <div id="hist-warn" class="px-3 py-1.5 rounded-box bg-warning/10 border border-warning/20 text-warning font-medium">
+                WARN: 0
             </div>
-            <div class="px-3 py-1.5 rounded-box bg-primary/10 border border-primary/20 text-primary font-medium">
-                INFO: {{ histogram.INFO | default(0) }}
+            <div id="hist-info" class="px-3 py-1.5 rounded-box bg-primary/10 border border-primary/20 text-primary font-medium">
+                INFO: 0
             </div>
-            <div class="px-3 py-1.5 rounded-box bg-base-300/50 border border-base-300 text-base-content/70 font-medium">
-                DEBUG: {{ histogram.DEBUG | default(0) }}
+            <div id="hist-debug" class="px-3 py-1.5 rounded-box bg-base-300/50 border border-base-300 text-base-content/70 font-medium">
+                DEBUG: 0
             </div>
         </div>
     </div>
@@ -166,4 +166,43 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function() {
+        async function loadHistogram() {
+            try {
+                const response = await fetch('/api/rpc/get_log_histogram', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const counts = { ERROR: 0, WARN: 0, INFO: 0, DEBUG: 0 };
+                    if (data && Array.isArray(data.result)) {
+                        data.result.forEach(item => {
+                            if (item.level && item.count !== undefined) {
+                                counts[item.level.toUpperCase()] = item.count;
+                            }
+                        });
+                    }
+                    const elError = document.getElementById('hist-error');
+                    const elWarn = document.getElementById('hist-warn');
+                    const elInfo = document.getElementById('hist-info');
+                    const elDebug = document.getElementById('hist-debug');
+                    if (elError) elError.textContent = `ERROR: ${counts.ERROR}`;
+                    if (elWarn) elWarn.textContent = `WARN: ${counts.WARN}`;
+                    if (elInfo) elInfo.textContent = `INFO: ${counts.INFO}`;
+                    if (elDebug) elDebug.textContent = `DEBUG: ${counts.DEBUG}`;
+                }
+            } catch (e) {
+                console.error('Failed to load log histogram', e);
+            }
+        }
+        loadHistogram();
+        {% if auto_refresh == 'true' %}
+        setInterval(loadHistogram, 5000);
+        {% endif %}
+    })();
+</script>
 {% endblock %}

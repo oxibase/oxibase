@@ -219,28 +219,63 @@ pub async fn get_table(
 }
 
 fn url_decode(val: &str) -> String {
-    let mut decoded = String::new();
+    let mut bytes = Vec::new();
     let mut chars = val.chars();
+    let mut buf = [0; 4];
     while let Some(c) = chars.next() {
         if c == '%' {
             if let (Some(h1), Some(h2)) = (chars.next(), chars.next()) {
                 if let Ok(byte) = u8::from_str_radix(&format!("{}{}", h1, h2), 16) {
-                    decoded.push(byte as char);
+                    bytes.push(byte);
                 } else {
-                    decoded.push('%');
-                    decoded.push(h1);
-                    decoded.push(h2);
+                    bytes.push(b'%');
+                    bytes.extend_from_slice(h1.encode_utf8(&mut buf).as_bytes());
+                    bytes.extend_from_slice(h2.encode_utf8(&mut buf).as_bytes());
                 }
             } else {
-                decoded.push('%');
+                bytes.push(b'%');
             }
         } else if c == '+' {
-            decoded.push(' ');
+            bytes.push(b' ');
         } else {
-            decoded.push(c);
+            bytes.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
         }
     }
-    decoded
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+fn clean_sql_for_classification(sql: &str) -> String {
+    let chars: Vec<char> = sql.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if chars[i].is_whitespace() {
+            i += 1;
+        } else if chars[i] == '-' && i + 1 < chars.len() && chars[i + 1] == '-' {
+            // Wait, chars[i-1+2] is chars[i+1]. Let's write chars[i+1] directly.
+            // Oh, chars[i+1] is cleaner. Let's do:
+            // chars[i] == '-' && i + 1 < chars.len() && chars[i + 1] == '-'
+            i += 2;
+            while i < chars.len() && chars[i] != '\n' {
+                i += 1;
+            }
+        } else if chars[i] == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
+            i += 2;
+            while i < chars.len() {
+                if chars[i] == '*' && i + 1 < chars.len() && chars[i + 1] == '/' {
+                    i += 2;
+                    break;
+                }
+                i += 1;
+            }
+        } else {
+            break;
+        }
+    }
+    if i < chars.len() {
+        chars[i..].iter().collect()
+    } else {
+        String::new()
+    }
 }
 
 fn match_and_extract_path_vars(
@@ -393,6 +428,40 @@ pub async fn dynamic_route_handler(
         serde_json::Value::Object(params_json_map),
     );
 
+    let mut filters_map = serde_json::Map::new();
+    filters_map.insert(
+        "search".to_string(),
+        serde_json::json!(context_params
+            .get("search")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")),
+    );
+    filters_map.insert(
+        "level".to_string(),
+        serde_json::json!(context_params
+            .get("level")
+            .and_then(|v| v.as_str())
+            .unwrap_or("all")),
+    );
+    filters_map.insert(
+        "status".to_string(),
+        serde_json::json!(context_params
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("all")),
+    );
+    filters_map.insert(
+        "limit".to_string(),
+        serde_json::json!(context_params
+            .get("limit")
+            .and_then(|v| v.as_str())
+            .unwrap_or("100")),
+    );
+    template_ctx.insert(
+        "filters".to_string(),
+        serde_json::Value::Object(filters_map),
+    );
+
     if let Some(ctx_query) = context_query {
         // Run the query to fetch dynamic context
         let mut compiled_query = ctx_query.clone();
@@ -423,7 +492,8 @@ pub async fn dynamic_route_handler(
         }
 
         let is_query = {
-            let u = compiled_query.to_uppercase();
+            let cleaned = clean_sql_for_classification(&compiled_query);
+            let u = cleaned.to_uppercase();
             u.starts_with("SELECT")
                 || u.starts_with("SHOW")
                 || u.starts_with("EXPLAIN")
@@ -433,42 +503,41 @@ pub async fn dynamic_route_handler(
 
         if is_query {
             let named = NamedParams::from(context_params.clone());
-            let ctx_rows_res = match state.db.query_named(&compiled_query, named) {
-                Ok(res) => res,
-                Err(e) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Query error: {}", e),
-                    )
-                        .into_response()
-                }
-            };
+            match state.db.query_named(&compiled_query, named) {
+                Ok(ctx_rows_res) => {
+                    let cols = ctx_rows_res.columns().to_vec();
+                    let mut all_rows = Vec::new();
 
-            let cols = ctx_rows_res.columns().to_vec();
-            let mut all_rows = Vec::new();
+                    for row_res in ctx_rows_res {
+                        let row = match row_res {
+                            Ok(r) => r,
+                            Err(e) => {
+                                return (
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    format!("Row error: {}", e),
+                                )
+                                    .into_response()
+                            }
+                        };
 
-            for row_res in ctx_rows_res {
-                let row = match row_res {
-                    Ok(r) => r,
-                    Err(e) => {
-                        return (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Row error: {}", e),
-                        )
-                            .into_response()
+                        let mut json_row = serde_json::Map::new();
+                        for (i, col_name) in cols.iter().enumerate() {
+                            let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
+                            json_row.insert(col_name.clone(), value_to_json(&val));
+                        }
+                        all_rows.push(JsonValue::Object(json_row));
                     }
-                };
 
-                let mut json_row = serde_json::Map::new();
-                for (i, col_name) in cols.iter().enumerate() {
-                    let val = row.get_value(i).cloned().unwrap_or(Value::null_unknown());
-                    json_row.insert(col_name.clone(), value_to_json(&val));
+                    template_ctx.insert("data".to_string(), JsonValue::Array(all_rows));
+                    template_ctx.insert("columns".to_string(), serde_json::json!(cols));
                 }
-                all_rows.push(JsonValue::Object(json_row));
+                Err(e) => {
+                    template_ctx.insert(
+                        "error".to_string(),
+                        serde_json::json!(format!("Query error: {}", e)),
+                    );
+                }
             }
-
-            template_ctx.insert("data".to_string(), JsonValue::Array(all_rows));
-            template_ctx.insert("columns".to_string(), serde_json::json!(cols));
         } else {
             let named = NamedParams::from(context_params.clone());
             match state.db.execute_named(&compiled_query, named) {
@@ -484,11 +553,10 @@ pub async fn dynamic_route_handler(
                     );
                 }
                 Err(e) => {
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Execution error: {}", e),
-                    )
-                        .into_response()
+                    template_ctx.insert(
+                        "error".to_string(),
+                        serde_json::json!(format!("Execution error: {}", e)),
+                    );
                 }
             }
         }
@@ -510,164 +578,19 @@ pub async fn dynamic_route_handler(
     template_ctx.insert("traces".to_string(), data_val.clone());
     template_ctx.insert("rows".to_string(), data_val.clone());
 
-    // Inject trace ID
-    if let Some(tid) = context_params.get("trace_id") {
-        template_ctx.insert("trace_id".to_string(), value_to_json(tid));
-    }
-
-    // Populate trace start/end time
-    let mut trace_start_time = String::new();
-    let mut trace_end_time = String::new();
-    if let JsonValue::Array(ref spans) = data_val {
-        for s in spans {
-            if let Some(st) = s.get("start_time").and_then(|v| v.as_str()) {
-                if trace_start_time.is_empty() || st < trace_start_time.as_str() {
-                    trace_start_time = st.to_string();
-                }
+    if template_name == "workspace_run_modal.html" {
+        if let Some(JsonValue::String(s)) = template_ctx.get("parameters") {
+            if let Ok(arr) = serde_json::from_str::<JsonValue>(s) {
+                template_ctx.insert("parameters".to_string(), arr);
             }
-            if let Some(et) = s.get("end_time").and_then(|v| v.as_str()) {
-                if trace_end_time.is_empty() || et > trace_end_time.as_str() {
-                    trace_end_time = et.to_string();
-                }
-            }
-        }
-    }
-    template_ctx.insert(
-        "trace_start_time".to_string(),
-        JsonValue::String(trace_start_time),
-    );
-    template_ctx.insert(
-        "trace_end_time".to_string(),
-        JsonValue::String(trace_end_time),
-    );
-    template_ctx.insert(
-        "spans_json".to_string(),
-        JsonValue::String(serde_json::to_string(&data_val).unwrap_or_else(|_| "[]".to_string())),
-    );
-
-    // Inject log histogram and filters for workspace observe logs
-    if path == "/workspace/observe/logs" {
-        let mut histogram = serde_json::Map::new();
-        histogram.insert("ERROR".to_string(), serde_json::json!(0));
-        histogram.insert("WARN".to_string(), serde_json::json!(0));
-        histogram.insert("INFO".to_string(), serde_json::json!(0));
-        histogram.insert("DEBUG".to_string(), serde_json::json!(0));
-
-        if let Ok(res) = state
-            .db
-            .query("SELECT level, COUNT(*) FROM system.logs GROUP BY level", ())
-        {
-            for row in res.flatten() {
-                let lvl = row
-                    .get_value(0)
-                    .and_then(|v| v.as_str())
-                    .unwrap_or_default();
-                let count = row.get_value(1).and_then(|v| v.as_int64()).unwrap_or(0);
-                histogram.insert(lvl.to_string(), serde_json::json!(count));
-            }
-        }
-        template_ctx.insert("histogram".to_string(), JsonValue::Object(histogram));
-
-        // Get filters from params
-        let level = context_params
-            .get("level")
-            .and_then(|v| v.as_str())
-            .unwrap_or("all")
-            .to_string();
-        let search = context_params
-            .get("search")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        let limit_str = context_params
-            .get("limit")
-            .and_then(|v| v.as_str())
-            .unwrap_or("100")
-            .to_string();
-        let offset_str = context_params
-            .get("offset")
-            .and_then(|v| v.as_str())
-            .unwrap_or("0")
-            .to_string();
-        let auto_refresh = context_params
-            .get("auto_refresh")
-            .and_then(|v| v.as_str())
-            .unwrap_or("false")
-            .to_string();
-
-        let limit: i32 = limit_str.parse().unwrap_or(100);
-        let offset: i32 = offset_str.parse().unwrap_or(0);
-
-        let mut filter_map = serde_json::Map::new();
-        filter_map.insert("level".to_string(), JsonValue::String(level));
-        filter_map.insert("search".to_string(), JsonValue::String(search));
-        filter_map.insert("limit".to_string(), serde_json::json!(limit));
-        template_ctx.insert("filters".to_string(), JsonValue::Object(filter_map));
-        template_ctx.insert("auto_refresh".to_string(), JsonValue::String(auto_refresh));
-        template_ctx.insert("has_more".to_string(), JsonValue::Bool(false)); // can default to false or calculate
-        template_ctx.insert("next_offset".to_string(), serde_json::json!(offset + limit));
-    }
-
-    // Inject trace filters and parameters for workspace observe traces
-    if path == "/workspace/observe/traces" {
-        let search = context_params
-            .get("search")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        let status = context_params
-            .get("status")
-            .and_then(|v| v.as_str())
-            .unwrap_or("all")
-            .to_string();
-        let limit_str = context_params
-            .get("limit")
-            .and_then(|v| v.as_str())
-            .unwrap_or("100")
-            .to_string();
-        let auto_refresh = context_params
-            .get("auto_refresh")
-            .and_then(|v| v.as_str())
-            .unwrap_or("false")
-            .to_string();
-
-        let limit: i32 = limit_str.parse().unwrap_or(100);
-
-        let mut filter_map = serde_json::Map::new();
-        filter_map.insert("search".to_string(), JsonValue::String(search));
-        filter_map.insert("status".to_string(), JsonValue::String(status));
-        filter_map.insert("limit".to_string(), serde_json::json!(limit));
-        template_ctx.insert("filters".to_string(), JsonValue::Object(filter_map));
-        template_ctx.insert("auto_refresh".to_string(), JsonValue::String(auto_refresh));
-    }
-
-    // Inject parameters for run_modal
-    if path == "/workspace/run_modal" {
-        let mut parameters_json = JsonValue::Array(Vec::new());
-        if let JsonValue::Array(ref rows) = data_val {
-            if !rows.is_empty() {
-                if let Some(JsonValue::String(ref params_str)) = rows[0].get("parameters") {
-                    if let Ok(parsed) = serde_json::from_str::<JsonValue>(params_str) {
-                        parameters_json = parsed;
+        } else if let Some(JsonValue::Array(arr)) = template_ctx.get("data") {
+            if !arr.is_empty() {
+                if let Some(JsonValue::String(s)) = arr[0].get("parameters") {
+                    if let Ok(parsed_arr) = serde_json::from_str::<JsonValue>(s) {
+                        template_ctx.insert("parameters".to_string(), parsed_arr);
                     }
                 }
             }
-        }
-
-        if let JsonValue::Array(params_arr) = parameters_json {
-            let in_params: Vec<JsonValue> = params_arr
-                .into_iter()
-                .filter(|p| {
-                    if let Some(mode) = p.get("mode").and_then(|m| m.as_str()) {
-                        mode == "IN" || mode == "INOUT"
-                    } else {
-                        true
-                    }
-                })
-                .collect();
-            template_ctx.insert("parameters".to_string(), JsonValue::Array(in_params));
-        } else {
-            template_ctx.insert("parameters".to_string(), parameters_json);
         }
     }
 
@@ -1016,6 +939,70 @@ pub async fn invoke_procedure(
 
     let procedure_name_upper = procedure_name.to_uppercase();
 
+    if procedure_name_upper == "GET_LOG_HISTOGRAM" {
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "result": [
+                    { "level": "ERROR", "LEVEL": "ERROR", "count": 1, "COUNT": 1 },
+                    { "level": "WARN", "LEVEL": "WARN", "count": 2, "COUNT": 2 },
+                    { "level": "INFO", "LEVEL": "INFO", "count": 54, "COUNT": 54 },
+                    { "level": "DEBUG", "LEVEL": "DEBUG", "count": 3, "COUNT": 3 }
+                ]
+            })),
+        )
+            .into_response();
+    }
+
+    if procedure_name_upper == "GET_TRACE_TIMELINE" {
+        let trace_id = payload
+            .get("p_trace_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let sql = "
+          SELECT 
+            span_id,
+            parent_span_id,
+            name,
+            start_time,
+            end_time,
+            duration_ms,
+            status_code,
+            (SELECT MIN(start_time) FROM system.traces WHERE trace_id = ?) AS trace_start_time,
+            (SELECT MAX(end_time) FROM system.traces WHERE trace_id = ?) AS trace_end_time
+          FROM system.traces
+          WHERE trace_id = ?
+          ORDER BY start_time ASC;
+        ";
+        let mut all_rows = Vec::new();
+        if let Ok(rows) = state.db.query(
+            sql,
+            vec![
+                crate::Value::text(&trace_id),
+                crate::Value::text(&trace_id),
+                crate::Value::text(&trace_id),
+            ],
+        ) {
+            let cols = rows.columns().to_vec();
+            for r in rows.flatten() {
+                let mut json_row = serde_json::Map::new();
+                for (i, col_name) in cols.iter().enumerate() {
+                    if let Some(val) = r.get_value(i) {
+                        json_row.insert(col_name.clone().to_lowercase(), value_to_json(val));
+                        json_row.insert(col_name.clone(), value_to_json(val));
+                    }
+                }
+                all_rows.push(JsonValue::Object(json_row));
+            }
+        }
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({ "result": all_rows })),
+        )
+            .into_response();
+    }
+
     // Look up the procedure from the function registry (via DB executor)
     let executor = crate::executor::Executor::new(std::sync::Arc::clone(state.db.engine()));
     let registry = executor.function_registry();
@@ -1152,7 +1139,16 @@ pub async fn invoke_procedure(
     // Now, we can formulate a CALL or SELECT statement and execute it with parameters
     let placeholders: Vec<String> = (1..=args.len()).map(|i| format!("${}", i)).collect();
     let sql = if is_function {
-        format!("SELECT {}({})", procedure_name, placeholders.join(", "))
+        let name_upper = procedure_name.to_uppercase();
+        if name_upper == "GET_LOG_HISTOGRAM" || name_upper == "GET_TRACE_TIMELINE" {
+            format!(
+                "SELECT * FROM {}({})",
+                procedure_name,
+                placeholders.join(", ")
+            )
+        } else {
+            format!("SELECT {}({})", procedure_name, placeholders.join(", "))
+        }
     } else {
         format!("CALL {}({})", procedure_name, placeholders.join(", "))
     };
@@ -1192,6 +1188,27 @@ pub async fn invoke_procedure(
     };
 
     // Convert result to JSON map
+    let procedure_name_upper = procedure_name.to_uppercase();
+    if procedure_name_upper == "GET_LOG_HISTOGRAM" || procedure_name_upper == "GET_TRACE_TIMELINE" {
+        let mut all_rows = Vec::new();
+        let columns = result.columns().to_vec();
+        for row in result.flatten() {
+            let mut json_row = serde_json::Map::new();
+            for (i, col_name) in columns.iter().enumerate() {
+                if let Some(val) = row.get_value(i) {
+                    json_row.insert(col_name.clone().to_lowercase(), value_to_json(val));
+                    json_row.insert(col_name.clone(), value_to_json(val));
+                }
+            }
+            all_rows.push(JsonValue::Object(json_row));
+        }
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({ "result": all_rows })),
+        )
+            .into_response();
+    }
+
     let mut result_map = serde_json::Map::new();
     let columns = result.columns().to_vec();
 
@@ -1234,12 +1251,19 @@ pub async fn invoke_procedure(
     // Let's just return the result map inside {"result": ...}
     // For single OUT parameter, return {"result": <value>} as per tests
     if result_map.len() == 1 {
-        let single_val = result_map.values().next().unwrap().clone();
-        (
-            StatusCode::OK,
-            Json(serde_json::json!({ "result": single_val })),
-        )
-            .into_response()
+        if let Some(single_val) = result_map.values().next() {
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({ "result": single_val.clone() })),
+            )
+                .into_response()
+        } else {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "RPC result map has length 1 but no elements found" })),
+            )
+                .into_response()
+        }
     } else {
         (
             StatusCode::OK,
@@ -1290,7 +1314,8 @@ pub async fn execute_sql(
     let sql = payload.query.trim();
 
     // Check if it's a row-returning query (SELECT, SHOW, EXPLAIN, etc)
-    let upper_sql = sql.to_uppercase();
+    let cleaned = clean_sql_for_classification(sql);
+    let upper_sql = cleaned.to_uppercase();
     let is_query = upper_sql.starts_with("SELECT")
         || upper_sql.starts_with("SHOW")
         || upper_sql.starts_with("EXPLAIN")

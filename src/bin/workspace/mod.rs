@@ -179,6 +179,59 @@ pub fn install(db: &Database) {
 
     tx.commit().expect("Failed to commit transaction");
 
+    // Install system telemetry functions (T001)
+    let _ = db.execute("DROP FUNCTION IF EXISTS system.get_log_histogram", ());
+    if let Err(e) = db.execute(
+        r#"
+        CREATE FUNCTION system.get_log_histogram()
+        RETURNS TABLE(level TEXT, count INT)
+        LANGUAGE SQL AS '
+          SELECT level, COUNT(*) AS count
+          FROM system.logs
+          GROUP BY level;
+        ';
+        "#,
+        (),
+    ) {
+        eprintln!("Failed to create system.get_log_histogram: {:?}", e);
+    }
+
+    let _ = db.execute("DROP FUNCTION IF EXISTS system.get_trace_timeline", ());
+    if let Err(e) = db.execute(
+        r#"
+        CREATE FUNCTION system.get_trace_timeline(p_trace_id TEXT)
+        RETURNS TABLE(
+          span_id TEXT,
+          parent_span_id TEXT,
+          name TEXT,
+          start_time TIMESTAMP,
+          end_time TIMESTAMP,
+          duration_ms INT,
+          status_code TEXT,
+          trace_start_time TIMESTAMP,
+          trace_end_time TIMESTAMP
+        )
+        LANGUAGE SQL AS '
+          SELECT 
+            span_id,
+            parent_span_id,
+            name,
+            start_time,
+            end_time,
+            duration_ms,
+            status_code,
+            (SELECT MIN(start_time) FROM system.traces WHERE trace_id = p_trace_id) AS trace_start_time,
+            (SELECT MAX(end_time) FROM system.traces WHERE trace_id = p_trace_id) AS trace_end_time
+          FROM system.traces
+          WHERE trace_id = p_trace_id
+          ORDER BY start_time ASC;
+        ';
+        "#,
+        (),
+    ) {
+        eprintln!("Failed to create system.get_trace_timeline: {:?}", e);
+    }
+
     // Run pizza demo setup script
 
     // We split by ';' since db.execute doesn't support multiple statements well,
@@ -282,4 +335,4 @@ fn parse_sql_script(script: &str) -> Vec<String> {
     queries
 }
 
-// ponytail: force template rebuild
+// ponytail: force template rebuild 3

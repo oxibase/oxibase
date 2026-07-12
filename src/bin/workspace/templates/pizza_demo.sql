@@ -191,7 +191,10 @@ AS '
 
     oxibase::execute("UPDATE pizza_tx.customer_order SET total_price = COALESCE((SELECT SUM(s.price) FROM pizza_tx.customer_pizzas cp JOIN pizza_tx.pizzas p ON cp.pizza_id = p.id JOIN pizza_tx.sizes s ON p.size_id = s.id WHERE cp.customer_order_id = (SELECT MAX(id) FROM pizza_tx.customer_order)), 0.0) + COALESCE((SELECT SUM(d.price) FROM pizza_tx.customer_drinks cd JOIN pizza_tx.drinks d ON cd.drink_id = d.id WHERE cd.customer_order_id = (SELECT MAX(id) FROM pizza_tx.customer_order)), 0.0) WHERE id = (SELECT MAX(id) FROM pizza_tx.customer_order)");
 
+    oxibase::log("ERROR", "Simulated error log entry.");
+    oxibase::log("WARN", "Simulated warning log entry.");
     oxibase::log("INFO", "Simulated transactional pizza order successfully created.");
+    oxibase::log("DEBUG", "Simulated debug log entry.");
 ';
 
 -- -------------------------------------------------------------

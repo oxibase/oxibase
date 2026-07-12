@@ -136,6 +136,14 @@ struct Args {
     /// Long-running queries will be cancelled after this time.
     #[arg(short = 't', long = "timeout", value_name = "MS", default_value = "0")]
     timeout_ms: u64,
+
+    /// Enable standalone external TCP DAP socket listener
+    #[arg(long = "dap-tcp", default_value = "false")]
+    dap_tcp: bool,
+
+    /// Bind the external TCP socket listener to the specified port number
+    #[arg(long = "dap-port", default_value = "4711")]
+    dap_port: u16,
 }
 
 #[derive(Subcommand, Debug)]
@@ -1038,6 +1046,26 @@ fn main() {
         }
     }
 
+    // Spawn TCP DAP listener globally if `--dap-tcp` is enabled and not in Serve subcommand (T013)
+    #[cfg(feature = "server")]
+    if args.dap_tcp {
+        let is_serve = matches!(args.command, Some(Commands::Serve { .. }));
+        if !is_serve {
+            let db_dap = db.clone();
+            let dap_port = args.dap_port;
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to build TCP DAP tokio runtime");
+                rt.block_on(async {
+                    let app_state = oxibase::server::AppState::new(db_dap);
+                    oxibase::server::dap::start_tcp_dap_listener(app_state, dap_port).await;
+                });
+            });
+        }
+    }
+
     match args.command {
         #[cfg(feature = "server")]
         Some(Commands::Serve { port, host, .. }) => {
@@ -1050,7 +1078,18 @@ fn main() {
                 .expect("Failed to build tokio runtime");
 
             rt.block_on(async {
-                let app = oxibase::server::create_router(db);
+                let app_state = oxibase::server::AppState::new(db);
+
+                // Spawn TCP DAP listener if enabled (T013)
+                if args.dap_tcp {
+                    let state_clone = app_state.clone();
+                    let dap_port = args.dap_port;
+                    tokio::spawn(async move {
+                        oxibase::server::dap::start_tcp_dap_listener(state_clone, dap_port).await;
+                    });
+                }
+
+                let app = oxibase::server::create_router_with_state(app_state);
                 let addr = format!("{}:{}", host, port);
                 let listener = tokio::net::TcpListener::bind(&addr)
                     .await

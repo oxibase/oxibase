@@ -29,28 +29,32 @@ pub struct AppState {
     pub debug_controller: Arc<crate::common::debug::DebugController>,
 }
 
-/// Creates and configures the Axum router for the Auto-API layer.
-pub fn create_router(db: Database) -> Router {
-    // Initialize system schemas and tables for template rendering. We ignore errors since they might already exist
-    let _ = db.execute("CREATE SCHEMA interface", ());
+impl AppState {
+    pub fn new(db: Database) -> Self {
+        Self {
+            db: Arc::new(db),
+            debug_controller: Arc::new(crate::common::debug::DebugController::new()),
+        }
+    }
+}
 
-    let _ = db.execute(
+/// Creates and configures the Axum router with a pre-configured AppState.
+pub fn create_router_with_state(state: AppState) -> Router {
+    // Initialize system schemas and tables for template rendering. We ignore errors since they might already exist
+    let _ = state.db.execute("CREATE SCHEMA interface", ());
+
+    let _ = state.db.execute(
         "CREATE TABLE interface.routes (method TEXT, path TEXT, template_name TEXT, context_query TEXT)",
         (),
     );
-    let _ = db.execute(
+    let _ = state.db.execute(
         "CREATE TABLE interface.templates (name TEXT, content TEXT)",
         (),
     );
-    let _ = db.execute(
+    let _ = state.db.execute(
         "CREATE TABLE interface.templates (name TEXT, content TEXT)",
         (),
     );
-
-    let state = AppState {
-        db: Arc::new(db),
-        debug_controller: Arc::new(crate::common::debug::DebugController::new()),
-    };
 
     Router::new()
         // Define wildcards for the Auto-API
@@ -95,4 +99,9 @@ pub fn create_router(db: Database) -> Router {
         // Add middleware for logging and CORS
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
+}
+
+/// Creates and configures the Axum router for the Auto-API layer.
+pub fn create_router(db: Database) -> Router {
+    create_router_with_state(AppState::new(db))
 }

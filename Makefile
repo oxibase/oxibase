@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: all lint test build buil-all coverage coverage-html coverage-check license docs docs-build docs-lib release help run-memory run-files run-all install clean
+.PHONY: all lint test test-all test-workspace build build-all coverage coverage-html coverage-check license docs docs-build docs-lib release help run-memory run-files run-all install clean
 
 .PHONY: help
 # [other] Display help
@@ -24,6 +24,14 @@ test:
 # [dev] Run all tests
 test-all:
 	cargo nextest run --all-features --show-progress only
+
+# [dev] Run Puppeteer-based Workspace E2E tests
+test-workspace: build
+	@if [ ! -d "node_modules/puppeteer" ]; then \
+		echo "Installing Puppeteer locally..."; \
+		npm install puppeteer --no-save; \
+	fi
+	node scripts/test-workspace.js
 
 # [dev] Build in release mode
 build:

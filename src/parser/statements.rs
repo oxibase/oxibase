@@ -2276,6 +2276,26 @@ impl Parser {
                 return None;
             }
             Some(data_type)
+        } else if data_type == "TABLE" && self.peek_token_is_punctuator("(") {
+            self.next_token(); // consume (
+            let mut depth = 1;
+            while depth > 0 {
+                self.next_token();
+                if self.cur_token_is(TokenType::Punctuator) {
+                    if self.cur_token.literal == "(" {
+                        depth += 1;
+                    } else if self.cur_token.literal == ")" {
+                        depth -= 1;
+                    }
+                } else if self.cur_token_is(TokenType::Eof) {
+                    self.add_error(format!(
+                        "unclosed parenthesis in TABLE type at {}",
+                        self.cur_token.position
+                    ));
+                    return None;
+                }
+            }
+            Some("TABLE".to_string())
         } else {
             Some(data_type)
         }

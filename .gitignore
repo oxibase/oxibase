@@ -62,3 +62,4 @@ release/
 *.rlib
 *.log
 *.prof*
+node_modules/
