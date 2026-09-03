@@ -387,7 +387,7 @@ impl Executor {
         // Get the outer value from the outer row hashmap
         // Try qualified name first (e.g., "u.id"), then just column name
         let outer_value = if let Some(tbl) = &correlation.outer_table {
-            let qualified = format!("{}.{}", tbl, &correlation.outer_column);
+            let qualified = format!("{}.{}", tbl, correlation.outer_column);
             outer_row
                 .get(&qualified.to_lowercase())
                 .or_else(|| outer_row.get(&correlation.outer_column.to_lowercase()))
