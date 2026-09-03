@@ -2422,13 +2422,7 @@ impl TransactionVersionStore {
     pub fn detect_conflicts(&self) -> Result<(), Error> {
         // Fast path: if we have no write set entries without read_version,
         // and all rows were claimed, there can be no conflicts
-        let mut needs_insert_check = false;
-        for (_, write_entry) in self.write_set.iter() {
-            if write_entry.read_version.is_none() {
-                needs_insert_check = true;
-                break;
-            }
-        }
+        let needs_insert_check = self.write_set.values().any(|e| e.read_version.is_none());
 
         // For UPDATE/DELETE operations where we claimed existing rows,
         // the claim mechanism already prevents conflicts. Skip the expensive
@@ -2523,7 +2517,7 @@ impl TransactionVersionStore {
 
     /// Release all row claims held by this transaction
     fn release_all_claims(&self) {
-        for (row_id, _) in self.write_set.iter() {
+        for row_id in self.write_set.keys() {
             self.parent_store.release_row_claim(*row_id, self.txn_id);
         }
     }

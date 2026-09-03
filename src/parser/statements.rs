@@ -2503,11 +2503,7 @@ impl Parser {
         if !self.peek_token_is_punctuator(")") {
             loop {
                 self.next_token();
-                if let Some(expr) = self.parse_expression(Precedence::Lowest) {
-                    arguments.push(expr);
-                } else {
-                    return None;
-                }
+                arguments.push(self.parse_expression(Precedence::Lowest)?);
 
                 if self.peek_token_is_punctuator(",") {
                     self.next_token();
