@@ -285,10 +285,7 @@ impl Schema {
     /// This validates the schema part of the table name (e.g., "system.tables" -> "system")
     pub fn is_reserved_namespace(name: &str) -> bool {
         let name_lower = name.to_lowercase();
-        if name_lower.starts_with("system.") || name_lower.starts_with("information_schema.") {
-            return true;
-        }
-        false
+        name_lower.starts_with("system.") || name_lower.starts_with("information_schema.")
     }
 
     /// Create a new schema with explicit timestamps

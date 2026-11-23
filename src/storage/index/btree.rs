@@ -326,14 +326,9 @@ impl<K: Ord + Clone, V: Clone> BTreeNode<K, V> {
             }
         }
 
-        if !self.is_leaf
+        !(!self.is_leaf
             && self.children.len() > self.keys.len()
-            && !self.children[self.keys.len()].for_each(callback)
-        {
-            return false;
-        }
-
-        true
+            && !self.children[self.keys.len()].for_each(callback))
     }
 }
 
