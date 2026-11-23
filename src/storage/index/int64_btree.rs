@@ -93,12 +93,10 @@ impl<V: Clone> BTreeNode<V> {
     fn binary_search(&self, key: i64) -> usize {
         // Fast path for small nodes - linear search
         if self.key_count <= 8 {
-            for i in 0..self.key_count {
-                if self.keys[i] >= key {
-                    return i;
-                }
-            }
-            return self.key_count;
+            return self.keys[..self.key_count]
+                .iter()
+                .position(|&k| k >= key)
+                .unwrap_or(self.key_count);
         }
 
         // Binary search for larger nodes
@@ -402,8 +400,8 @@ impl<V: Clone> BTreeNode<V> {
         left.values.push(parent_value);
         left.key_count += 1;
 
-        for j in 0..right.key_count {
-            left.keys[left.key_count] = right.keys[j];
+        for &k in &right.keys[..right.key_count] {
+            left.keys[left.key_count] = k;
             left.key_count += 1;
         }
         left.values.extend(right.values);
@@ -459,14 +457,9 @@ impl<V: Clone> BTreeNode<V> {
             }
         }
 
-        if !self.is_leaf
+        !(!self.is_leaf
             && self.children.len() > self.key_count
-            && !self.children[self.key_count].for_each(callback)
-        {
-            return false;
-        }
-
-        true
+            && !self.children[self.key_count].for_each(callback))
     }
 }
 
