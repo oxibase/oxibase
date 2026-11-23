@@ -146,8 +146,7 @@ impl MVCCTable {
 
         if row_cols < schema_cols {
             // Row has fewer columns - add default values (or NULLs) for new columns
-            for i in row_cols..schema_cols {
-                let col = &schema.columns[i];
+            for col in &schema.columns[row_cols..schema_cols] {
                 // Use pre-computed default value if available, otherwise use NULL
                 if let Some(ref default_val) = col.default_value {
                     row.push(default_val.clone());

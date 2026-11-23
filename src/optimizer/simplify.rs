@@ -427,13 +427,9 @@ impl ExpressionSimplifier {
             Expression::BooleanLiteral(b) => b.value,
             Expression::Infix(infix) => {
                 // 1 = 1 is always true
-                if infix.op_type == InfixOperator::Equal
+                infix.op_type == InfixOperator::Equal
                     && self.expr_equals(&infix.left, &infix.right)
                     && self.is_deterministic(&infix.left)
-                {
-                    return true;
-                }
-                false
             }
             _ => false,
         }
