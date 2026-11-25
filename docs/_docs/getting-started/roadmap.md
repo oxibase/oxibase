@@ -122,7 +122,7 @@ Control) system, store and execute procedures, debug them, monitor and trace
 them, invoke them and finally provide a dev-friendly interface for interacting
 with the system. This should serve as a demo of the system's capabilities.
 
-- **Observability**: Implement comprehensive logging, tracing, and metrics to monitor system health, query performance, and procedure execution.
+- [x] **Observability**: Implement comprehensive logging, tracing, and metrics to monitor system health, query performance, and procedure execution.
 
 #### Goal
 Validate the development experience and build a community around the project.
@@ -208,11 +208,22 @@ Global autonomous computing environment.
 
 We are currently at [Phase 0](#phase-0-validation).
 
+### Shipped since v0.6.0
+
+- [x] Scripting backend parity ([#136](https://github.com/oxibase/oxibase/pull/136))
+- [x] PL/SQL `TABLE` type and `FOR` loop iteration ([#139](https://github.com/oxibase/oxibase/pull/139))
+- [x] Stored procedure logging API and PL/SQL `LOG` keyword ([#133](https://github.com/oxibase/oxibase/pull/133))
+- [x] Stdout interception for Rhai (`on_print`) and PL/SQL (`PRINT`/`RAISE NOTICE`) ([#131](https://github.com/oxibase/oxibase/pull/131))
+- [x] HTTP request headers context in Python and PL/SQL ([#132](https://github.com/oxibase/oxibase/pull/132))
+- [x] Schema-qualified foreign keys ([#141](https://github.com/oxibase/oxibase/pull/141))
+- [x] Removed the JavaScript (Boa) scripting backend ([#94](https://github.com/oxibase/oxibase/pull/94))
+
 ### Working areas
 
 - [x] **Relational Database**: Add support for relational databases in the executor layer.
 - [x] **User defined Functions**: Use SQL scripting and scripting language to define functions.
-- [ ] **Server mode**: Implement a server binary to run the system standalone.
+- [x] **Server mode (standalone HTTP server)**: Run the system standalone with `oxibase serve --db … --host … --port …` behind the Auto-API HTTP server.
+- [ ] **Server mode (Postgres wire protocol)**: Network SQL endpoint speaking the Postgres wire protocol ([#100](https://github.com/oxibase/oxibase/issues/100)).
 - [x] **Stored Procedures**: Add support for stored procedures in the executor layer.
     - [x] **Transaction management**: Add support for transaction management in the executor layer.
     - [x] **Service invocation**: Add support for service invocation with a webserver.
@@ -239,7 +250,7 @@ We are currently at [Phase 0](#phase-0-validation).
 
 | Object Type | Status | Notes |
 |-------------|--------|-------|
-| Schemas | Available | No CREATE SCHEMA/DROP SCHEMA support |
+| Schemas | Available | `CREATE/DROP SCHEMA [IF [NOT] EXISTS]` supported; covered by `tests/integration_sql_test.rs` (`test_schema_management`) |
 | User-defined Functions | Available | CREATE FUNCTION/DROP FUNCTION supported |
 | Stored Procedures | Available | CREATE PROCEDURE/DROP PROCEDURE supported |
 | Materialized Views | Missing | No CREATE MATERIALIZED VIEW |
